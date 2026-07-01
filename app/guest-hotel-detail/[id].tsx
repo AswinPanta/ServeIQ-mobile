@@ -11,26 +11,35 @@ import { Card } from '@/components/ui/card';
 import { UrgencyBadge } from '@/components/feature/urgency-badge';
 import { useColors } from '@/hooks/use-colors';
 import { Image } from 'react-native';
+import { getHotelById, type Hotel } from '@/lib/mock/properties';
 
 export default function GuestHotelDetail() {
   const colors = useColors();
   const { id, checkIn, checkOut, guests } = useLocalSearchParams();
   const [selectedImage, setSelectedImage] = useState(0);
 
-  // Mock hotel data
-  const hotel = {
-    id,
+  // Get hotel from mock data
+  const hotelData = getHotelById(id as string);
+  
+  // Fallback to default if not found
+  const hotel: Hotel = hotelData || {
+    id: id as string,
     name: 'Grand Hotel Kathmandu',
-    location: 'Thamel, Kathmandu, Nepal',
+    location: 'Thamel, Kathmandu',
+    city: 'Kathmandu',
+    country: 'Nepal',
+    address: 'Thamel Marg, Kathmandu 44600, Nepal',
     rating: 4.8,
     review_count: 342,
+    starRating: 5,
     price: 8000,
     currency: 'NPR',
     description:
-      'Experience luxury and comfort at our 5-star hotel in the heart of Kathmandu. Located in the vibrant Thamel district, we offer world-class amenities and exceptional service.',
-    images: [require('@/assets/images/hotel-1.jpg'), require('@/assets/images/hotel-2.jpg'), require('@/assets/images/hotel-3.jpg'), require('@/assets/images/hotel-1.jpg')],
+      'Experience luxury and comfort at our 5-star hotel in the heart of Kathmandu.',
+    shortDescription: '5-star luxury in the heart of Thamel',
+    images: [require('@/assets/images/hotel-1.jpg'), require('@/assets/images/hotel-2.jpg'), require('@/assets/images/hotel-3.jpg')],
     amenities: [
-      { name: 'WiFi', icon: '📶' },
+      { name: 'Free WiFi', icon: '📶' },
       { name: 'Swimming Pool', icon: '🏊' },
       { name: 'Fitness Center', icon: '💪' },
       { name: 'Restaurant', icon: '🍽️' },
@@ -41,47 +50,58 @@ export default function GuestHotelDetail() {
     ],
     roomTypes: [
       {
-        id: '1',
+        id: 'standard-1',
         name: 'Standard Room',
         price: 5000,
+        currency: 'NPR',
         occupancy: 2,
         bed: 'Double Bed',
         description: 'Cozy room with basic amenities',
         available: 5,
+        amenities: ['WiFi', 'AC', 'TV'],
+        image: 'https://via.placeholder.com/400x300?text=Standard+Room',
       },
       {
-        id: '2',
+        id: 'deluxe-1',
         name: 'Deluxe Room',
         price: 8000,
+        currency: 'NPR',
         occupancy: 2,
         bed: 'King Bed',
         description: 'Spacious room with premium amenities',
-        available: 2,
+        available: 3,
+        amenities: ['WiFi', 'AC', 'TV', 'Mini Bar'],
+        image: 'https://via.placeholder.com/400x300?text=Deluxe+Room',
       },
       {
-        id: '3',
+        id: 'suite-1',
         name: 'Suite',
         price: 15000,
+        currency: 'NPR',
         occupancy: 4,
         bed: 'King Bed + Sofa',
         description: 'Luxury suite with separate living area',
         available: 1,
+        amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Balcony'],
+        image: 'https://via.placeholder.com/400x300?text=Suite',
       },
     ],
     reviews: [
       {
-        id: '1',
+        id: 'r1',
         author: 'John Doe',
         rating: 5,
-        date: '2024-01-15',
+        date: '2026-06-15',
         comment: 'Excellent hotel with great service and comfortable rooms!',
+        helpful: 12,
       },
       {
-        id: '2',
+        id: 'r2',
         author: 'Jane Smith',
         rating: 4,
-        date: '2024-01-10',
+        date: '2026-06-10',
         comment: 'Good location and friendly staff. Highly recommended.',
+        helpful: 8,
       },
     ],
     cancellationPolicy: 'Free cancellation up to 24 hours before check-in',
@@ -89,6 +109,8 @@ export default function GuestHotelDetail() {
     checkOutTime: '11:00',
     phone: '+977-1-4123456',
     email: 'info@grandhotel.com',
+    availableRooms: 10,
+    tags: ['Luxury', 'Restaurant', 'Spa'],
   };
 
   const handleBookNow = () => {

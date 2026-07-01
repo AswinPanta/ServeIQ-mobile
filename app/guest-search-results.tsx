@@ -3,7 +3,7 @@
  * Search results accessible without authentication
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
@@ -11,51 +11,7 @@ import { HotelCard } from '@/components/feature/hotel-card';
 import { FilterModal } from '@/components/feature/filter-modal';
 import { UrgencyBadge } from '@/components/feature/urgency-badge';
 import { useColors } from '@/hooks/use-colors';
-
-const MOCK_HOTELS = [
-  {
-    id: '1',
-    name: 'Grand Hotel Kathmandu',
-    address: 'Thamel, Kathmandu',
-    city: 'Kathmandu',
-    country: 'Nepal',
-    price: 8000,
-    currency: 'NPR',
-    rating: 4.8,
-    review_count: 342,
-    image: require('@/assets/images/hotel-1.jpg'),
-    amenities: ['WiFi', 'Pool', 'Gym'],
-    availableRooms: 5,
-  },
-  {
-    id: '2',
-    name: 'Budget Inn',
-    address: 'Kathmandu',
-    city: 'Kathmandu',
-    country: 'Nepal',
-    price: 3500,
-    currency: 'NPR',
-    rating: 4.2,
-    review_count: 156,
-    image: require('@/assets/images/hotel-2.jpg'),
-    amenities: ['WiFi', 'AC'],
-    availableRooms: 2,
-  },
-  {
-    id: '3',
-    name: 'Luxury Suites',
-    address: 'Kathmandu',
-    city: 'Kathmandu',
-    country: 'Nepal',
-    price: 15000,
-    currency: 'NPR',
-    rating: 4.9,
-    review_count: 418,
-    image: require('@/assets/images/hotel-3.jpg'),
-    amenities: ['WiFi', 'Pool', 'Gym', 'Spa'],
-    availableRooms: 1,
-  },
-];
+import { MOCK_PROPERTIES, searchHotels } from '@/lib/mock/properties';
 
 export default function GuestSearchResults() {
   const colors = useColors();
@@ -76,7 +32,7 @@ export default function GuestSearchResults() {
     bedTypes: [],
   });
 
-  const filteredHotels = MOCK_HOTELS.filter((hotel) => {
+  const filteredHotels = MOCK_PROPERTIES.filter((hotel) => {
     if (hotel.price < filters.priceRange[0] || hotel.price > filters.priceRange[1]) {
       return false;
     }
@@ -84,7 +40,7 @@ export default function GuestSearchResults() {
       return false;
     }
     if (filters.amenities.length > 0) {
-      const hasAll = filters.amenities.some((a) => hotel.amenities.includes(a));
+      const hasAll = filters.amenities.some((a) => hotel.amenities.some(ha => ha.name === a));
       if (!hasAll) return false;
     }
     return true;
@@ -167,22 +123,22 @@ export default function GuestSearchResults() {
                 hotel={{
                   id: item.id,
                   name: item.name,
-                  description: '',
+                  description: item.shortDescription || item.description,
                   property_type: 'Hotel',
                   address: item.address,
                   city: item.city,
                   country: item.country,
-                  latitude: 0,
-                  longitude: 0,
-                  phone: '',
-                  email: '',
+                  latitude: item.coordinates?.lat || 0,
+                  longitude: item.coordinates?.lng || 0,
+                  phone: item.phone,
+                  email: item.email,
                   rating: item.rating,
                   review_count: item.review_count,
-                  photos: [{ url: '', caption: '', id: '1', order: 1 }],
-                  amenities: item.amenities.map(name => ({ id: '1', name, icon: '✓', category: 'other' })),
-                  check_in_time: '14:00',
-                  check_out_time: '11:00',
-                  cancellation_policy: 'Free cancellation',
+                  photos: item.images.map((img, idx) => ({ url: '', caption: '', id: String(idx), order: idx })),
+                  amenities: item.amenities.map(a => ({ id: a.name, name: a.name, icon: a.icon, category: 'other' })),
+                  check_in_time: item.checkInTime,
+                  check_out_time: item.checkOutTime,
+                  cancellation_policy: item.cancellationPolicy,
                   currency: item.currency,
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
