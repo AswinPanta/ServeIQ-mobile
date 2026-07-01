@@ -79,15 +79,24 @@ export default function HomeScreen() {
   }, []);
 
   const handleSearch = () => {
-    Alert.alert('Search', 'Navigate to search screen');
+    router.push({
+      pathname: '/guest-search-results',
+      params: { location: '', checkIn: '', checkOut: '', guests: '1' },
+    });
   };
 
   const handleDestinationPress = (destination: any) => {
-    Alert.alert('Destination', `Search for ${destination.name}`);
+    router.push({
+      pathname: '/guest-search-results',
+      params: { location: destination.name, checkIn: '', checkOut: '', guests: '1' },
+    });
   };
 
   const handleHotelPress = (hotel: any) => {
-    Alert.alert('Hotel', `View details for ${hotel.name}`);
+    router.push({
+      pathname: '/guest-hotel-detail/[id]',
+      params: { id: hotel.id, checkIn: '', checkOut: '', guests: '1' },
+    });
   };
 
   const handleFavoritePress = (hotelId: string) => {

@@ -1,0 +1,1 @@
+export interface Booking { id: string; hotelId: string; checkIn: string; checkOut: string; }

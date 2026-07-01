@@ -212,13 +212,13 @@ export default function ProfileScreen() {
       <View className="flex-row gap-2 pt-3 border-t border-border">
         <TouchableOpacity
           onPress={() => handleEditReview(item.id)}
-          className="flex-1 py-2 rounded-lg bg-primary/10 items-center"
+          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: `${colors.primary}10`, alignItems: 'center' }}
         >
           <Text className="text-xs font-semibold text-primary">Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => handleDeleteReview(item.id)}
-          className="flex-1 py-2 rounded-lg bg-error/10 items-center"
+          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: `${colors.error}10`, alignItems: 'center' }}
         >
           <Text className="text-xs font-semibold text-error">Delete</Text>
         </TouchableOpacity>
@@ -462,7 +462,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleLogout}
-            className="py-3 px-4 rounded-lg bg-error/10 border border-error flex-row items-center justify-between"
+            style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: `${colors.error}10`, borderWidth: 1, borderColor: colors.error, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
           >
             <View className="flex-row items-center gap-3">
               <Text className="text-lg">🚪</Text>

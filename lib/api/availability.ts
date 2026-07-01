@@ -1,0 +1,1 @@
+export async function checkAvailability(hotelId: string, dates: any) { return true; }

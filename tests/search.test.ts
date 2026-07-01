@@ -1,0 +1,1 @@
+describe('Search', () => { it('should search hotels', () => {}); });

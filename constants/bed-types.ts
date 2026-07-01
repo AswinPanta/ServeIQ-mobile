@@ -1,0 +1,1 @@
+export const BED_TYPES = ['Single', 'Double', 'King'];

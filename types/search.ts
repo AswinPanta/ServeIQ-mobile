@@ -1,0 +1,1 @@
+export interface SearchParams { query?: string; location?: string; checkIn?: string; checkOut?: string; }

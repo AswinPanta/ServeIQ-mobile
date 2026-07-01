@@ -1,0 +1,1 @@
+describe('Hotels', () => { it('should fetch hotels', () => {}); });

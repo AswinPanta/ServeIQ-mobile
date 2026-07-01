@@ -154,7 +154,7 @@ export default function BookingConfirmationScreen() {
               <Text className="font-semibold text-primary">Download Receipt</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.push('/(tabs)')}
+              onPress={() => router.push('/')}
               style={{ paddingVertical: 12, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center' }}
             >
               <Text className="font-semibold text-white">Back to Home</Text>
