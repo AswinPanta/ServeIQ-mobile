@@ -37,7 +37,11 @@ export default function GuestHotelDetail() {
     description:
       'Experience luxury and comfort at our 5-star hotel in the heart of Kathmandu.',
     shortDescription: '5-star luxury in the heart of Thamel',
-    images: [require('@/assets/images/hotel-1.jpg'), require('@/assets/images/hotel-2.jpg'), require('@/assets/images/hotel-3.jpg')],
+    images: [
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&h=600&fit=crop',
+    ],
     amenities: [
       { name: 'Free WiFi', icon: '📶' },
       { name: 'Swimming Pool', icon: '🏊' },

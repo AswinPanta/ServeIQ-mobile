@@ -61,9 +61,21 @@ export interface Hotel {
 }
 
 const hotelImages = {
-  hotel1: [require('@/assets/images/hotel-1.jpg'), require('@/assets/images/hotel-2.jpg'), require('@/assets/images/hotel-3.jpg')],
-  hotel2: [require('@/assets/images/hotel-2.jpg'), require('@/assets/images/hotel-1.jpg'), require('@/assets/images/hotel-3.jpg')],
-  hotel3: [require('@/assets/images/hotel-3.jpg'), require('@/assets/images/hotel-1.jpg'), require('@/assets/images/hotel-2.jpg')],
+  hotel1: [
+    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&h=600&fit=crop',
+  ],
+  hotel2: [
+    'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800&h=600&fit=crop',
+  ],
+  hotel3: [
+    'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1445019980597-93fa8acb246c?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&h=600&fit=crop',
+  ],
 };
 
 export const MOCK_PROPERTIES: Hotel[] = [
@@ -106,7 +118,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
         description: 'Comfortable room with city views, featuring modern amenities and a cozy atmosphere. Perfect for solo travelers or couples.',
         available: 5,
         amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe'],
-        image: 'https://via.placeholder.com/400x300?text=Standard+Room',
+        image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=400&h=300&fit=crop',
       },
       {
         id: 'deluxe-1',
@@ -118,7 +130,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
         description: 'Spacious room with premium amenities, mountain views, and a separate seating area. Includes complimentary breakfast.',
         available: 3,
         amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe', 'Balcony', 'Coffee Maker'],
-        image: 'https://via.placeholder.com/400x300?text=Deluxe+Room',
+        image: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=400&h=300&fit=crop',
       },
       {
         id: 'suite-1',
@@ -130,7 +142,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
         description: 'Luxury suite with separate living room, panoramic mountain views, and exclusive lounge access. Perfect for families or extended stays.',
         available: 2,
         amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe', 'Balcony', 'Jacuzzi', 'Living Room'],
-        image: 'https://via.placeholder.com/400x300?text=Executive+Suite',
+        image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=400&h=300&fit=crop',
       },
     ],
     reviews: [
@@ -206,7 +218,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
         description: 'Wake up to stunning lake views. Modern room with private balcony overlooking Phewa Lake.',
         available: 4,
         amenities: ['WiFi', 'AC', 'TV', 'Balcony', 'Lake View'],
-        image: 'https://via.placeholder.com/400x300?text=Lake+View+Room',
+        image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&h=300&fit=crop',
       },
       {
         id: 'premium-2',
@@ -218,7 +230,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
         description: 'Spacious suite with panoramic lake and mountain views. Includes separate seating area and premium amenities.',
         available: 2,
         amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Balcony', 'Lake View', 'Coffee Maker'],
-        image: 'https://via.placeholder.com/400x300?text=Premium+Suite',
+        image: 'https://images.unsplash.com/photo-1591088398332-8a7791972843?w=400&h=300&fit=crop',
       },
     ],
     reviews: [
@@ -284,7 +296,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
         description: 'Traditional Newari-style room with handcrafted furniture and local artwork. Cozy and authentic.',
         available: 3,
         amenities: ['WiFi', 'AC', 'TV', 'Garden View'],
-        image: 'https://via.placeholder.com/400x300?text=Heritage+Room',
+        image: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=400&h=300&fit=crop',
       },
       {
         id: 'stupa-2',
@@ -296,7 +308,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
         description: 'Premium room with stunning views of Boudhanath Stupa. Watch the prayer flags flutter from your private balcony.',
         available: 1,
         amenities: ['WiFi', 'AC', 'TV', 'Balcony', 'Stupa View', 'Mini Bar'],
-        image: 'https://via.placeholder.com/400x300?text=Stupa+View+Room',
+        image: 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=400&h=300&fit=crop',
       },
     ],
     reviews: [
