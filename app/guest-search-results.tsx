@@ -62,6 +62,37 @@ export default function GuestSearchResults() {
   const { location, checkIn, checkOut, guests } = useLocalSearchParams();
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'distance'>('rating');
+  const [filters, setFilters] = useState<{
+    priceRange: [number, number];
+    rating: number;
+    amenities: string[];
+    roomTypes: string[];
+    bedTypes: string[];
+  }>({
+    priceRange: [0, 50000],
+    rating: 0,
+    amenities: [],
+    roomTypes: [],
+    bedTypes: [],
+  });
+
+  const filteredHotels = MOCK_HOTELS.filter((hotel) => {
+    if (hotel.price < filters.priceRange[0] || hotel.price > filters.priceRange[1]) {
+      return false;
+    }
+    if (hotel.rating < filters.rating) {
+      return false;
+    }
+    if (filters.amenities.length > 0) {
+      const hasAll = filters.amenities.some((a) => hotel.amenities.includes(a));
+      if (!hasAll) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === 'price') return a.price - b.price;
+    if (sortBy === 'rating') return b.rating - a.rating;
+    return 0;
+  });
 
   const handleHotelPress = (hotelId: string) => {
     router.push({
@@ -75,9 +106,8 @@ export default function GuestSearchResults() {
     });
   };
 
-  const handleApplyFilters = (filters: any) => {
-    // Apply filters logic here
-    console.log('Filters applied:', filters);
+  const handleApplyFilters = (newFilters: any) => {
+    setFilters(newFilters);
   };
 
   return (
@@ -126,7 +156,7 @@ export default function GuestSearchResults() {
         className="px-6 py-6"
       >
         <FlatList
-          data={MOCK_HOTELS}
+          data={filteredHotels}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
