@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
 import { MOCK_BOOKING_HISTORY, type BookingHistoryItem } from '@/lib/mock/booking-data';
+import { BookingModifyModal } from '@/components/feature/booking-modify-modal';
 
 interface UserReview {
   id: string;
@@ -70,6 +71,7 @@ export default function ProfileScreen() {
   ]);
 
   const [bookings, setBookings] = useState<BookingHistoryItem[]>(MOCK_BOOKING_HISTORY);
+  const [editingBooking, setEditingBooking] = useState<any>(null);
 
   const handleDeleteReview = (reviewId: string) => {
     Alert.alert('Delete Review', 'Are you sure you want to delete this review?', [
@@ -287,7 +289,7 @@ export default function ProfileScreen() {
         {item.status === 'upcoming' && (
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             <TouchableOpacity
-              onPress={() => Alert.alert('Modify', 'Booking modification feature coming soon')}
+              onPress={() => setEditingBooking(item)}
               style={{
                 flex: 1,
                 paddingVertical: 8,
@@ -472,6 +474,17 @@ export default function ProfileScreen() {
 
         <View className="h-8" />
       </ScrollView>
+
+      <BookingModifyModal
+        visible={!!editingBooking}
+        onClose={() => setEditingBooking(null)}
+        booking={editingBooking || { id: '', hotelName: '', roomType: '', checkIn: '', checkOut: '', nights: 0, totalPrice: 0 }}
+        onSave={(updated) => {
+          setBookings((prev) =>
+            prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b))
+          );
+        }}
+      />
     </ScreenContainer>
   );
 }
