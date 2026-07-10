@@ -1,0 +1,107 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+
+const ACCENT = '#7C3AED';
+
+const EXPORT_TYPES = [
+  { icon: '🏢', title: 'Tenants', description: 'Export all tenant data with subscription details', formats: ['CSV', 'Excel'], color: '#3B82F6' },
+  { icon: '📋', title: 'Bookings', description: 'Export booking records with guest and payment info', formats: ['CSV', 'Excel'], color: '#10B981' },
+  { icon: '💰', title: 'Revenue', description: 'Export financial data, invoices, and transactions', formats: ['CSV', 'PDF'], color: '#F59E0B' },
+  { icon: '📊', title: 'Analytics', description: 'Export platform analytics and performance metrics', formats: ['PDF'], color: '#7C3AED' },
+];
+
+const EXPORT_HISTORY = [
+  { filename: 'tenants_export_jun2025.csv', date: '2025-06-28', status: 'Completed', size: '1.2 MB' },
+  { filename: 'bookings_q2_2025.xlsx', date: '2025-06-25', status: 'Completed', size: '4.5 MB' },
+  { filename: 'revenue_report_jun2025.pdf', date: '2025-06-22', status: 'Processing', size: '—' },
+  { filename: 'analytics_dashboard_may.pdf', date: '2025-06-01', status: 'Completed', size: '3.1 MB' },
+  { filename: 'large_tenants_export.csv', date: '2025-05-28', status: 'Failed', size: '—' },
+];
+
+const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
+  Completed: { bg: '#10B98115', text: '#10B981' },
+  Processing: { bg: '#F59E0B15', text: '#F59E0B' },
+  Failed: { bg: '#EF444415', text: '#EF4444' },
+};
+
+export default function ExportsScreen() {
+  const colors = useColors();
+
+  const handleExport = (title: string) => {
+    Alert.alert('Export Started', `${title} export is being processed. You will be notified when ready.`);
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-lg" style={{ color: ACCENT }}>←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground flex-1">Data Exports</Text>
+          </View>
+
+          {EXPORT_TYPES.map((exp) => (
+            <View key={exp.title} style={{
+              padding: 16, borderRadius: 20, marginBottom: 12,
+              backgroundColor: colors.surface, borderLeftWidth: 4, borderLeftColor: exp.color,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+            }}>
+              <View className="flex-row items-start gap-3 mb-3">
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: exp.color + '15', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 20 }}>{exp.icon}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-foreground">{exp.title}</Text>
+                  <Text className="text-xs text-muted mt-1">{exp.description}</Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row gap-2">
+                  {exp.formats.map((fmt) => (
+                    <View key={fmt} style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, backgroundColor: ACCENT + '10' }}>
+                      <Text className="text-xs font-bold" style={{ color: ACCENT }}>{fmt}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleExport(exp.title)}
+                  style={{ paddingHorizontal: 18, paddingVertical: 14, borderRadius: 12, backgroundColor: ACCENT }}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-sm font-bold text-white">Export</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginTop: 4 }}>
+            <Text className="text-lg font-bold text-foreground mb-4">Export History</Text>
+            {EXPORT_HISTORY.map((h, i) => {
+              const st = STATUS_STYLES[h.status];
+              return (
+                <View key={h.filename} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: i < EXPORT_HISTORY.length - 1 ? 1 : 0, borderBottomColor: colors.border, gap: 10 }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 14 }}>📁</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-foreground">{h.filename}</Text>
+                    <Text className="text-xs text-muted">{h.date} • {h.size}</Text>
+                  </View>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: st.bg }}>
+                    <Text className="text-xs font-bold" style={{ color: st.text }}>{h.status}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

@@ -3,10 +3,9 @@
  * Temporary notification messages
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, createContext, useContext, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -26,9 +25,8 @@ export function Toast({
   duration = 3000,
   onDismiss,
 }: ToastProps) {
-  const colors = useColors();
   const insets = useSafeAreaInsets();
-  const opacity = React.useRef(new Animated.Value(0)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     if (visible) {
@@ -84,11 +82,6 @@ export function Toast({
   );
 }
 
-/**
- * Toast Context for global toast management
- */
-import { createContext, useContext, useState, useCallback } from 'react';
-
 interface ToastContextType {
   show: (message: string, type?: ToastType, duration?: number) => void;
   success: (message: string, duration?: number) => void;
@@ -100,7 +93,7 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: ToastType }[]>([]);
 
   const show = useCallback((message: string, type: ToastType = 'info', duration = 3000) => {
     const id = Date.now().toString();

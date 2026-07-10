@@ -1,0 +1,199 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useRestaurant } from '@/lib/context/restaurant-context';
+
+const ACCENT = '#0D9488';
+
+const TABLE_STATUS_COLORS: Record<string, string> = {
+  Free: '#10B981',
+  Occupied: '#EF4444',
+  Reserved: '#F59E0B',
+};
+
+export default function TableOrderScreen() {
+  const colors = useColors();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { menuCategories, menuItems, getTable, cart, addToCart, removeFromCart, getCartTotal, placeOrder, tickets } = useRestaurant();
+  const [activeCategory, setActiveCategory] = useState<string>('Food');
+  const [notes, setNotes] = useState('');
+
+  const table = getTable(id || '');
+  const tableStatus = table?.status || 'Free';
+  const orderItems = cart[id || ''] || [];
+  const total = getCartTotal(id || '');
+  const existingTickets = tickets.filter(t => t.tableNumber === id && t.status !== 'Ready');
+
+  const handlePlaceOrder = () => {
+    if (orderItems.length === 0) {
+      Alert.alert('Empty Order', 'Add items before placing an order');
+      return;
+    }
+    placeOrder(id || '', notes.trim() || undefined);
+    setNotes('');
+    Alert.alert('Order Placed', `Order sent to kitchen for ${id}`, [
+      { text: 'OK', onPress: () => router.back() },
+    ]);
+  };
+
+  const handleSplitBill = () => {
+    if (orderItems.length === 0) {
+      Alert.alert('Empty Order', 'Add items before splitting the bill');
+      return;
+    }
+    router.push({
+      pathname: '/(operations)/pos/checkout' as any,
+      params: { tableId: id, total: String(total) },
+    });
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity onPress={() => router.back()}
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <View className="flex-1 flex-row items-center justify-between">
+              <View>
+                <Text className="text-2xl font-bold text-foreground">Table {id}</Text>
+                <Text className="text-sm text-muted">Capacity: {table?.capacity || 4} guests</Text>
+              </View>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, backgroundColor: (TABLE_STATUS_COLORS[tableStatus] || ACCENT) + '15' }}>
+                <Text className="text-xs font-bold" style={{ color: TABLE_STATUS_COLORS[tableStatus] || ACCENT }}>{tableStatus}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View className="px-6 gap-5">
+          {existingTickets.length > 0 && (
+            <View style={{ padding: 14, borderRadius: 14, backgroundColor: '#F59E0B12', borderWidth: 1, borderColor: '#F59E0B30' }}>
+              <Text className="text-sm font-bold text-amber-600">⚠ {existingTickets.length} order(s) already in kitchen</Text>
+            </View>
+          )}
+
+          {orderItems.length > 0 && (
+            <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-base font-bold text-foreground">Current Order</Text>
+                <Text className="text-sm font-bold" style={{ color: ACCENT }}>{orderItems.length} items</Text>
+              </View>
+              <View className="gap-2">
+                {orderItems.map((item) => (
+                  <View key={item.id} className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
+                      <Text className="text-xs text-muted">₹{item.price} × {item.qty}</Text>
+                    </View>
+                    <View className="flex-row items-center gap-3">
+                      <TouchableOpacity onPress={() => removeFromCart(id || '', item.id)}
+                        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#EF4444' + '12', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Text className="text-xs font-bold" style={{ color: '#EF4444' }}>−</Text>
+                      </TouchableOpacity>
+                      <Text className="text-sm font-bold text-foreground w-5 text-center">{item.qty}</Text>
+                      <TouchableOpacity onPress={() => addToCart(id || '', { id: item.id, name: item.name, price: item.price })}
+                        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Text className="text-xs font-bold" style={{ color: ACCENT }}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <View className="border-t border-border mt-3 pt-3 flex-row justify-between">
+                <Text className="text-base font-bold text-foreground">Running Total</Text>
+                <Text className="text-base font-bold" style={{ color: ACCENT }}>₹{total}</Text>
+              </View>
+            </View>
+          )}
+
+          <View>
+            <Text className="text-base font-bold text-foreground mb-3">Menu</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+              <View className="flex-row gap-2">
+                {menuCategories.map((cat) => (
+                  <TouchableOpacity key={cat} onPress={() => setActiveCategory(cat)}
+                    style={{
+                      paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20,
+                      backgroundColor: activeCategory === cat ? ACCENT : colors.surface,
+                      borderWidth: 1, borderColor: activeCategory === cat ? ACCENT : colors.border,
+                    }}
+                  >
+                    <Text className="text-sm font-semibold" style={{ color: activeCategory === cat ? '#fff' : colors.text }}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <View className="gap-2">
+              {menuItems[activeCategory]?.map((item) => {
+                const inOrder = orderItems.find(i => i.id === item.id);
+                return (
+                  <TouchableOpacity key={item.id} onPress={() => addToCart(id || '', item)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14,
+                      backgroundColor: colors.surface, borderWidth: 1, borderColor: inOrder ? ACCENT + '30' : colors.border,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-foreground">{item.name}</Text>
+                      <Text className="text-sm font-bold mt-1" style={{ color: ACCENT }}>₹{item.price}</Text>
+                    </View>
+                    {inOrder && (
+                      <View style={{ marginRight: 8, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: ACCENT + '12' }}>
+                        <Text className="text-xs font-bold" style={{ color: ACCENT }}>×{inOrder.qty}</Text>
+                      </View>
+                    )}
+                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text className="text-white text-base font-bold">+</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {orderItems.length > 0 && (
+            <View>
+              <TextInput placeholder="Order notes (e.g., Extra spicy)" placeholderTextColor={colors.muted}
+                value={notes} onChangeText={setNotes}
+                className="text-base text-foreground px-4 py-3 rounded-xl"
+                style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
+              />
+            </View>
+          )}
+
+          <View className="flex-row gap-3 mt-2">
+            <TouchableOpacity onPress={handlePlaceOrder}
+              style={{
+                flex: 1, paddingVertical: 16, borderRadius: 16, alignItems: 'center',
+                backgroundColor: ACCENT,
+                shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+              }}
+              activeOpacity={0.85}
+            >
+              <Text className="text-base font-semibold text-white">Place Order</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSplitBill}
+              style={{
+                flex: 1, paddingVertical: 16, borderRadius: 16, alignItems: 'center',
+                backgroundColor: colors.surface, borderWidth: 1.5, borderColor: ACCENT + '40',
+              }}
+              activeOpacity={0.85}
+            >
+              <Text className="text-base font-semibold" style={{ color: ACCENT }}>Split Bill</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

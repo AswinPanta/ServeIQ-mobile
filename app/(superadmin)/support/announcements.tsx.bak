@@ -1,0 +1,97 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+
+const ACCENT = '#7C3AED';
+
+const INITIAL_ANNOUNCEMENTS = [
+  { id: '1', title: 'New Feature: Dynamic Pricing', body: 'We are excited to announce the launch of AI-driven dynamic pricing for all Pro and Enterprise plans. This feature will automatically adjust room rates based on demand, occupancy, and local events to maximize your revenue.', audience: 'All', status: 'Published', date: '2025-06-28' },
+  { id: '2', title: 'Scheduled Maintenance: June 30', body: 'The platform will undergo scheduled maintenance on June 30, 2025 from 2:00 AM to 4:00 AM NPT. During this time, the dashboard and booking system will be temporarily unavailable.', audience: 'All', status: 'Published', date: '2025-06-25' },
+  { id: '3', title: 'Holiday Booking Season Tips', body: 'Get ready for the upcoming holiday season! Here are our top tips to maximize your bookings during Dashain and Tihar...', audience: 'Hosts', status: 'Draft', date: '2025-06-22' },
+  { id: '4', title: 'Payment Gateway Update', body: 'We have upgraded our payment gateway to support additional payment methods including Connect IPS and Khalti for easier guest payments.', audience: 'Guests', status: 'Published', date: '2025-06-18' },
+  { id: '5', title: 'Platform Upgrade: v2.5 Release Notes', body: 'Version 2.5 is here with improved performance, new reporting features, and enhanced security. Check out the full release notes here...', audience: 'All', status: 'Published', date: '2025-06-15' },
+];
+
+const AUDIENCE_COLORS: Record<string, string> = {
+  All: '#7C3AED',
+  Hosts: '#3B82F6',
+  Guests: '#10B981',
+};
+
+export default function AnnouncementsScreen() {
+  const colors = useColors();
+  const [announcements, setAnnouncements] = useState(INITIAL_ANNOUNCEMENTS);
+
+  const handleDelete = (id: string, title: string) => {
+    Alert.alert('Delete Announcement', `Are you sure you want to delete "${title}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => setAnnouncements((prev) => prev.filter((a) => a.id !== id)) },
+    ]);
+  };
+
+  const handleCreate = () => {
+    Alert.alert('Create Announcement', 'Announcement creation form would open here.');
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-lg" style={{ color: ACCENT }}>←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground flex-1">Announcements</Text>
+            <TouchableOpacity
+              onPress={handleCreate}
+              style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, backgroundColor: ACCENT }}
+              activeOpacity={0.7}
+            >
+              <Text className="text-sm font-bold text-white">+ Create</Text>
+            </TouchableOpacity>
+          </View>
+
+          {announcements.map((ann) => (
+            <View key={ann.id} style={{
+              padding: 16, borderRadius: 20, marginBottom: 12,
+              backgroundColor: colors.surface, borderLeftWidth: 4, borderLeftColor: ann.status === 'Published' ? '#10B981' : '#F59E0B',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+            }}>
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-base font-bold text-foreground flex-1">{ann.title}</Text>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: ann.status === 'Published' ? '#10B98115' : '#F59E0B15' }}>
+                  <Text className="text-xs font-bold" style={{ color: ann.status === 'Published' ? '#10B981' : '#F59E0B' }}>{ann.status}</Text>
+                </View>
+              </View>
+
+              <Text className="text-sm text-muted mb-3" numberOfLines={2}>{ann.body}</Text>
+
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: AUDIENCE_COLORS[ann.audience] + '15' }}>
+                    <Text className="text-xs font-bold" style={{ color: AUDIENCE_COLORS[ann.audience] }}>{ann.audience}</Text>
+                  </View>
+                  <Text className="text-xs text-muted">{ann.date}</Text>
+                </View>
+                <View className="flex-row gap-2">
+                  <TouchableOpacity style={{ paddingHorizontal: 12, paddingVertical: 14, borderRadius: 8, backgroundColor: ACCENT + '12' }} activeOpacity={0.7}>
+                    <Text className="text-xs font-bold" style={{ color: ACCENT }}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(ann.id, ann.title)}
+                    style={{ paddingHorizontal: 12, paddingVertical: 14, borderRadius: 8, backgroundColor: '#EF444415' }}
+                    activeOpacity={0.7}
+                  >
+                    <Text className="text-xs font-bold text-red-500">Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

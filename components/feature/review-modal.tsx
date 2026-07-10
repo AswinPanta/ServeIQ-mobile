@@ -29,7 +29,7 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddPhoto = () => {
-    const newPhoto = `https://via.placeholder.com/300x300?text=Photo+${photos.length + 1}`;
+    const newPhoto = `https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=300&h=300&fit=crop&q=80`;
     setPhotos([...photos, newPhoto]);
   };
 

@@ -1,0 +1,205 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useHousekeeping, STATUS_ORDER, STATUS_FLOW_COLORS, HKTaskStatus } from '@/lib/context/housekeeping-context';
+
+const ACCENT = '#0D9488';
+
+const CHECKLIST = [
+  { id: '1', label: 'Make bed & change linens' },
+  { id: '2', label: 'Clean bathroom & restock toiletries' },
+  { id: '3', label: 'Vacuum & mop floors' },
+  { id: '4', label: 'Dust all surfaces & furniture' },
+  { id: '5', label: 'Restock amenities (tea, coffee, water)' },
+  { id: '6', label: 'Empty trash bins' },
+  { id: '7', label: 'Wipe windows & mirrors' },
+  { id: '8', label: 'Check mini bar & restock' },
+  { id: '9', label: 'Replace towels & bathrobes' },
+  { id: '10', label: 'Sanitize high-touch areas' },
+];
+
+export default function RoomDetailScreen() {
+  const colors = useColors();
+  const { roomId } = useLocalSearchParams<{ roomId: string }>();
+  const { getTask, updateTaskStatus, assignCleaner, updateNotes } = useHousekeeping();
+  const task = getTask(roomId || '');
+
+  const [currentStatus, setCurrentStatus] = useState<HKTaskStatus>(task?.status || 'Dirty');
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState(task?.notes || '');
+  const [assignedCleaner, setAssignedCleaner] = useState(task?.cleaner || '');
+
+  useEffect(() => {
+    if (task) {
+      setCurrentStatus(task.status);
+      setNotes(task.notes || '');
+      setAssignedCleaner(task.cleaner);
+    }
+  }, [task]);
+
+  const statusIdx = STATUS_ORDER.indexOf(currentStatus);
+
+  const toggleItem = (id: string) => {
+    const next = new Set(checkedItems);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setCheckedItems(next);
+  };
+
+  const advanceStatus = () => {
+    if (statusIdx < STATUS_ORDER.length - 1) {
+      const next = STATUS_ORDER[statusIdx + 1];
+      setCurrentStatus(next);
+      updateTaskStatus(roomId || '', next);
+    }
+  };
+
+  const jumpToStatus = (s: HKTaskStatus) => {
+    const idx = STATUS_ORDER.indexOf(s);
+    if (idx > statusIdx) {
+      setCurrentStatus(s);
+      updateTaskStatus(roomId || '', s);
+    }
+  };
+
+  const handleSave = () => {
+    if (assignedCleaner.trim()) {
+      assignCleaner(roomId || '', assignedCleaner.trim());
+    }
+    if (notes.trim()) {
+      updateNotes(roomId || '', notes.trim());
+    }
+    Alert.alert(
+      'Task Updated',
+      `Room ${roomId} — ${currentStatus}${assignedCleaner.trim() ? `, assigned to ${assignedCleaner.trim()}` : ''}`,
+      [{ text: 'OK', onPress: () => router.back() }]
+    );
+  };
+
+  if (!task) {
+    return (
+      <ScreenContainer containerClassName="bg-background" className="flex-1">
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-lg text-muted">Room {roomId} not found</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity onPress={() => router.back()}
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground">Room {roomId}</Text>
+          </View>
+        </View>
+
+        <View className="px-6 gap-5">
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-sm text-muted mb-2">Current Status</Text>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 6, borderRadius: 10, backgroundColor: (STATUS_FLOW_COLORS[currentStatus] || ACCENT) + '15' }}>
+              <Text className="text-base font-bold" style={{ color: STATUS_FLOW_COLORS[currentStatus] || ACCENT }}>{currentStatus}</Text>
+            </View>
+          </View>
+
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-3">Status Flow</Text>
+            <View className="flex-row justify-between">
+              {STATUS_ORDER.map((s, i) => (
+                <TouchableOpacity key={s} onPress={() => jumpToStatus(s)}
+                  disabled={i <= statusIdx}
+                  style={{ alignItems: 'center', opacity: i <= statusIdx ? 1 : 0.4 }}
+                >
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 18,
+                    backgroundColor: i <= statusIdx ? (STATUS_FLOW_COLORS[s] || ACCENT) : colors.border,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Text className="text-white text-sm font-bold">{i < statusIdx ? '✓' : i === statusIdx ? '●' : String(i + 1)}</Text>
+                  </View>
+                  <Text className="text-xs text-muted mt-1">{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {statusIdx < STATUS_ORDER.length - 1 && (
+              <TouchableOpacity onPress={advanceStatus}
+                style={{ marginTop: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center' }}
+              >
+                <Text className="text-sm font-bold" style={{ color: ACCENT }}>Advance to {STATUS_ORDER[statusIdx + 1]}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-base font-bold text-foreground">Cleaning Checklist</Text>
+              <Text className="text-sm font-bold" style={{ color: ACCENT }}>{checkedItems.size}/{CHECKLIST.length}</Text>
+            </View>
+            <View className="gap-2">
+              {CHECKLIST.map((item) => {
+                const checked = checkedItems.has(item.id);
+                return (
+                  <TouchableOpacity key={item.id} onPress={() => toggleItem(item.id)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 12,
+                      backgroundColor: checked ? '#10B981' + '08' : 'transparent',
+                    }}
+                  >
+                    <View style={{
+                      width: 22, height: 22, borderRadius: 6,
+                      borderWidth: 2, borderColor: checked ? '#10B981' : colors.border,
+                      backgroundColor: checked ? '#10B981' : 'transparent',
+                      alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                    }}>
+                      {checked && <Text className="text-white text-xs">✓</Text>}
+                    </View>
+                    <Text className="text-sm" style={{ color: checked ? '#10B981' : colors.text, textDecorationLine: checked ? 'line-through' : 'none' }}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-3">Cleaner Assignment</Text>
+            <TextInput placeholder="Assign cleaner name..." placeholderTextColor={colors.muted}
+              value={assignedCleaner} onChangeText={setAssignedCleaner}
+              className="text-base text-foreground px-4 py-3 rounded-xl"
+              style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
+            />
+          </View>
+
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-3">Notes</Text>
+            <TextInput placeholder="Add notes about this room..." placeholderTextColor={colors.muted}
+              value={notes} onChangeText={setNotes} multiline numberOfLines={3}
+              className="text-base text-foreground px-4 py-3 rounded-xl"
+              style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, minHeight: 80, textAlignVertical: 'top' }}
+            />
+          </View>
+
+          <TouchableOpacity onPress={handleSave}
+            style={{
+              paddingVertical: 16, borderRadius: 16, alignItems: 'center',
+              backgroundColor: ACCENT, marginTop: 4,
+              shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+            }}
+            activeOpacity={0.85}
+          >
+            <Text className="text-base font-semibold text-white">Save & Complete</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

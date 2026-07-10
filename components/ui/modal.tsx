@@ -1,16 +1,34 @@
-import { Modal as RNModal, View, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal as RNModal, Pressable } from 'react-native';
 
-export function Modal({ visible, children, onClose }: { visible: boolean; children: React.ReactNode; onClose: () => void }) {
+interface ModalProps {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+}
+
+export function Modal({ visible, onClose, title, children, actions }: ModalProps) {
   return (
-    <RNModal visible={visible} transparent animationType='slide'>
-      <View style={styles.overlay}>
-        <View style={styles.content}>{children}</View>
-      </View>
+    <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 24 }} onPress={onClose}>
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{ backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, maxHeight: '80%', overflow: 'hidden' }}
+        >
+          {title && (
+            <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1E293B' }}>{title}</Text>
+            </View>
+          )}
+          <View style={{ padding: 20 }}>{children}</View>
+          {actions && (
+            <View style={{ paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+              {actions}
+            </View>
+          )}
+        </Pressable>
+      </Pressable>
     </RNModal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  content: { backgroundColor: 'white', padding: 20, borderTopLeftRadius: 16, borderTopRightRadius: 16 }
-});

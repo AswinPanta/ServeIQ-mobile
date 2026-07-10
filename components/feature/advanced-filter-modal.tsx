@@ -7,7 +7,6 @@ import {
   Modal,
   ActivityIndicator,
 } from 'react-native';
-import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
 
 export interface FilterState {
@@ -58,7 +57,6 @@ export function AdvancedFilterModal({
   initialFilters,
   isLoading = false,
 }: AdvancedFilterModalProps) {
-  const colors = useColors();
   const [filters, setFilters] = useState<FilterState>(
     initialFilters || {
       priceRange: [0, 50000],

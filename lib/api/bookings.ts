@@ -1,1 +1,0 @@
-export async function createBooking(data: any) { return { id: '1' }; }

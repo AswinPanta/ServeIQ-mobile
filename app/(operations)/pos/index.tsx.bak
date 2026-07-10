@@ -1,0 +1,138 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useRestaurant } from '@/lib/context/restaurant-context';
+
+const ACCENT = '#0D9488';
+
+const STATUS_COLORS: Record<string, string> = {
+  Free: '#10B981',
+  Occupied: '#EF4444',
+  Reserved: '#F59E0B',
+};
+
+const STATUS_BG: Record<string, string> = {
+  Free: '#10B98112',
+  Occupied: '#EF444412',
+  Reserved: '#F59E0B12',
+};
+
+const QUICK_ACTIONS = [
+  { id: 'reservations', label: 'Reservations', icon: '📅' },
+];
+
+export default function POSScreen() {
+  const colors = useColors();
+  const { sections, getTodayStats, tickets } = useRestaurant();
+  const allTables = sections.flatMap(s => s.tables);
+  const occupiedCount = allTables.filter(t => t.status === 'Occupied').length;
+  const pendingOrders = tickets.filter(t => t.status !== 'Ready').length;
+  const stats = getTodayStats();
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity onPress={() => router.back()}
+              style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <View>
+              <Text className="text-2xl font-bold text-foreground">POS</Text>
+              <Text className="text-sm text-muted">Restaurant Floor Plan</Text>
+            </View>
+          </View>
+        </View>
+
+        <View className="px-6 mb-6">
+          <View className="flex-row gap-2">
+            <TouchableOpacity
+              style={{
+                flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center',
+              }}
+            >
+              <Text className="text-base font-bold" style={{ color: ACCENT }}>{allTables.length}</Text>
+              <Text className="text-xs text-muted">Total</Text>
+            </TouchableOpacity>
+            {Object.entries(STATUS_COLORS).map(([status, color]) => (
+              <View key={status} style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: color + '12', alignItems: 'center' }}>
+                <Text className="text-base font-bold" style={{ color }}>{allTables.filter(t => t.status === status).length}</Text>
+                <Text className="text-xs text-muted">{status}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {sections.map((section) => (
+          <View key={section.name} className="px-6 mb-6">
+            <View className="flex-row items-center gap-2 mb-3">
+              <Text style={{ fontSize: 16 }}>{section.icon}</Text>
+              <Text className="text-sm font-bold text-foreground">{section.name}</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: colors.border, opacity: 0.4 }} />
+              <Text className="text-xs text-muted">{section.tables.filter(t => t.status === 'Occupied').length}/{section.tables.length}</Text>
+            </View>
+            <View className="flex-row flex-wrap gap-3">
+              {section.tables.map((table) => {
+                const color = STATUS_COLORS[table.status];
+                return (
+                  <TouchableOpacity key={table.id} onPress={() => router.push(`/(operations)/pos/table/${table.id}` as any)}
+                    style={{
+                      width: '22%', paddingVertical: 16, borderRadius: 16,
+                      backgroundColor: STATUS_BG[table.status],
+                      borderWidth: 2, borderColor: color + '30',
+                      alignItems: 'center',
+                      shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-lg font-bold text-foreground">{table.id}</Text>
+                    <Text className="text-xs text-muted mt-1">👤 {table.capacity}</Text>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, marginTop: 6 }} />
+                    <Text className="text-xs font-bold mt-1" style={{ color }}>{table.status}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ))}
+
+        <View className="px-6 mb-6">
+          <Text className="text-lg font-bold text-foreground mb-4">Quick Actions</Text>
+          <View className="flex-row gap-3">
+            {QUICK_ACTIONS.map((action) => (
+              <TouchableOpacity key={action.id}
+                style={{
+                  flex: 1, padding: 16, borderRadius: 16, backgroundColor: colors.surface,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+                  alignItems: 'center',
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 28, marginBottom: 8 }}>{action.icon}</Text>
+                <Text className="text-sm font-bold text-foreground">{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View className="px-6">
+          <View style={{ padding: 16, borderRadius: 16, backgroundColor: ACCENT + '08', borderWidth: 1, borderColor: ACCENT + '20' }}>
+            <Text className="text-sm text-muted mb-1">Today's Summary</Text>
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-base font-bold text-foreground">{occupiedCount}/{allTables.length} tables occupied</Text>
+              <Text className="text-base font-bold" style={{ color: ACCENT }}>{pendingOrders} orders pending</Text>
+            </View>
+            <View className="flex-row gap-4 pt-2 border-t border-border/30">
+              <Text className="text-xs text-muted">💰 Revenue: <Text className="font-bold text-foreground">₹{stats.revenue.toLocaleString()}</Text></Text>
+              <Text className="text-xs text-muted">⏱️ Turnover: <Text className="font-bold text-foreground">{stats.turnover}</Text></Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

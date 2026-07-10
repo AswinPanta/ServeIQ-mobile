@@ -18,6 +18,31 @@ interface FolioBreakdownProps {
   currency?: string;
 }
 
+function Row({ label, value, bold, color, textColor }: { label: string; value: string; bold?: boolean; color?: string; textColor?: string }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+      <Text
+        style={{
+          fontSize: bold ? 15 : 13,
+          fontWeight: bold ? '700' : '400',
+          color: color || textColor || '#000',
+        }}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          fontSize: bold ? 15 : 13,
+          fontWeight: bold ? '700' : '500',
+          color: color || textColor || '#000',
+        }}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 export function FolioBreakdown({
   items,
   subtotal,
@@ -27,29 +52,6 @@ export function FolioBreakdown({
   currency = 'NPR',
 }: FolioBreakdownProps) {
   const colors = useColors();
-
-  const Row = ({ label, value, bold, color }: { label: string; value: string; bold?: boolean; color?: string }) => (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
-      <Text
-        style={{
-          fontSize: bold ? 15 : 13,
-          fontWeight: bold ? '700' : '400',
-          color: color || colors.foreground,
-        }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{
-          fontSize: bold ? 15 : 13,
-          fontWeight: bold ? '700' : '500',
-          color: color || colors.foreground,
-        }}
-      >
-        {value}
-      </Text>
-    </View>
-  );
 
   return (
     <View style={{ gap: 4 }}>
@@ -74,15 +76,15 @@ export function FolioBreakdown({
       <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 8 }} />
 
       {/* Summary */}
-      <Row label="Subtotal" value={`${currency} ${subtotal.toLocaleString()}`} />
-      <Row label="Tax & Fees (13%)" value={`${currency} ${tax.toLocaleString()}`} />
+      <Row label="Subtotal" value={`${currency} ${subtotal.toLocaleString()}`} textColor={colors.foreground} />
+      <Row label="Tax & Fees (13%)" value={`${currency} ${tax.toLocaleString()}`} textColor={colors.foreground} />
       {discount > 0 && (
-        <Row label="Discount" value={`-${currency} ${discount.toLocaleString()}`} color={colors.success} />
+        <Row label="Discount" value={`-${currency} ${discount.toLocaleString()}`} color={colors.success} textColor={colors.foreground} />
       )}
 
       {/* Total */}
       <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
-      <Row label="Total" value={`${currency} ${total.toLocaleString()}`} bold />
+      <Row label="Total" value={`${currency} ${total.toLocaleString()}`} bold textColor={colors.foreground} />
     </View>
   );
 }

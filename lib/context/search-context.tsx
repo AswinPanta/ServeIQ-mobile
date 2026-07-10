@@ -3,7 +3,7 @@
  * Manages search state, filters, and results
  */
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import type { SearchParams, SearchFilters, SearchResults } from '@/types/api';
 
 interface SearchContextType {
@@ -37,17 +37,30 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
     setSearchParams((prev) => (prev ? { ...prev, ...params } : null));
   }, []);
 
-  const value: SearchContextType = {
-    searchParams,
-    searchFilters,
-    searchResults,
-    isSearching,
-    setSearchParams,
-    setSearchFilters,
-    setSearchResults,
-    clearSearch,
-    updateSearchParams,
-  };
+  const value = useMemo<SearchContextType>(
+    () => ({
+      searchParams,
+      searchFilters,
+      searchResults,
+      isSearching,
+      setSearchParams,
+      setSearchFilters,
+      setSearchResults,
+      clearSearch,
+      updateSearchParams,
+    }),
+    [
+      searchParams,
+      searchFilters,
+      searchResults,
+      isSearching,
+      setSearchParams,
+      setSearchFilters,
+      setSearchResults,
+      clearSearch,
+      updateSearchParams,
+    ],
+  );
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
 }

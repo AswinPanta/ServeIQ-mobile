@@ -11,9 +11,7 @@ import {
   Modal,
   FlatList,
   TextInput,
-  Alert,
 } from 'react-native';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';

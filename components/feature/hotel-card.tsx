@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
-import { useColors } from '@/hooks/use-colors';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Hotel } from '@/types/api';
@@ -23,15 +22,14 @@ export function HotelCard({
   isFavorite = false,
   onFavoritePress,
 }: HotelCardProps) {
-  const colors = useColors();
-  const mainImage = hotel.photos?.[0]?.url || 'https://via.placeholder.com/400x300?text=Hotel';
+  const mainImage = hotel.photos?.[0]?.url || 'https://images.unsplash.com/photo-1563911302283-d2bc129e7570?w=400&h=300&fit=crop';
   
   // Determine if image is a URI string or a require() object
   const imageSource = typeof mainImage === 'string' 
     ? { uri: mainImage }
     : mainImage;
 
-  const minPrice = 5000;
+  const minPrice = 'price' in hotel ? (hotel as any).price : 5000;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
@@ -45,7 +43,7 @@ export function HotelCard({
           />
 
           {/* Rating Badge */}
-          <View className="absolute top-3 left-3 bg-primary/90 rounded-full px-2 py-1 flex-row items-center gap-1">
+          <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: (hotel.brandColor || '#E63946') + 'E6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
             <Text className="text-yellow-300 font-bold">★</Text>
             <Text className="text-white font-semibold text-sm">{hotel.rating.toFixed(1)}</Text>
           </View>
@@ -53,7 +51,7 @@ export function HotelCard({
           {/* Favorite Button */}
           <TouchableOpacity
             onPress={onFavoritePress}
-            style={{ position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', top: 12, right: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' }}
           >
             <Text className={cn('text-xl', isFavorite ? 'text-error' : 'text-muted')}>
               {isFavorite ? '❤️' : '🤍'}
@@ -61,7 +59,7 @@ export function HotelCard({
           </TouchableOpacity>
 
           {/* Price Badge */}
-          <View className="absolute bottom-3 right-3 bg-primary/90 rounded-lg px-3 py-1">
+          <View style={{ position: 'absolute', bottom: 12, right: 12, backgroundColor: (hotel.brandColor || '#E63946') + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
             <Text className="text-white font-bold text-sm">
               {hotel.currency} {minPrice.toLocaleString()}+
             </Text>
@@ -82,6 +80,13 @@ export function HotelCard({
               {hotel.city}, {hotel.country}
             </Text>
           </View>
+
+          {/* Description */}
+          {hotel.description ? (
+            <Text className="text-xs text-muted" numberOfLines={2}>
+              {hotel.description}
+            </Text>
+          ) : null}
 
           {/* Review Count */}
           <Text className="text-xs text-muted">

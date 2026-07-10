@@ -8,8 +8,6 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
-import { useColors } from '@/hooks/use-colors';
-import { cn } from '@/lib/utils';
 
 export interface Review {
   id: string;
@@ -28,7 +26,6 @@ interface ReviewListProps {
 }
 
 export function ReviewList({ reviews, onWriteReview }: ReviewListProps) {
-  const colors = useColors();
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 

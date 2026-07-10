@@ -1,0 +1,335 @@
+import React, { useState, useMemo } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useRestaurant } from '@/lib/context/restaurant-context';
+
+const ACCENT = '#0D9488';
+
+const PAYMENT_METHODS = [
+  { id: 'card', label: 'Card', icon: '💳' },
+  { id: 'cash', label: 'Cash', icon: '💵' },
+  { id: 'upi', label: 'UPI', icon: '📱' },
+  { id: 'wallet', label: 'Wallet', icon: '👛' },
+];
+
+type SplitMethod = 'none' | 'equal' | 'byItem' | 'byPercentage';
+
+export default function POSCheckoutScreen() {
+  const colors = useColors();
+  const { tableId, total: totalParam } = useLocalSearchParams<{ tableId: string; total: string }>();
+  const { cart, getCartTotal, completePayment } = useRestaurant();
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [discountType, setDiscountType] = useState<'none' | 'percentage' | 'fixed'>('none');
+  const [discountValue, setDiscountValue] = useState('');
+  const [splitMethod, setSplitMethod] = useState<SplitMethod>('none');
+  const [splitGuests, setSplitGuests] = useState(2);
+  const [splitPercentages, setSplitPercentages] = useState<number[]>([50, 50]);
+  const [splitItems, setSplitItems] = useState<Record<string, number[]>>({});
+
+  const orderItems = cart[tableId || ''] || [];
+  const subtotal = getCartTotal(tableId || '');
+  const discountAmount = discountType === 'percentage'
+    ? Math.round(subtotal * (parseFloat(discountValue || '0') / 100))
+    : discountType === 'fixed'
+    ? parseInt(discountValue || '0')
+    : 0;
+  const tax = Math.round((subtotal - discountAmount) * 0.1);
+  const grandTotal = subtotal - discountAmount + tax;
+
+  // Split bill calculations (PO-007)
+  const splitPortions = useMemo(() => {
+    if (splitMethod === 'none') return [];
+    if (splitMethod === 'equal') {
+      const perPerson = Math.round(grandTotal / splitGuests);
+      const remainder = grandTotal - perPerson * splitGuests;
+      return Array.from({ length: splitGuests }, (_, i) => ({
+        label: `Person ${i + 1}`,
+        amount: i === 0 ? perPerson + remainder : perPerson,
+      }));
+    }
+    if (splitMethod === 'byPercentage') {
+      return splitPercentages.map((pct, i) => ({
+        label: `Person ${i + 1} (${pct}%)`,
+        amount: Math.round(grandTotal * pct / 100),
+      }));
+    }
+    if (splitMethod === 'byItem') {
+      // Build per-person totals from item assignments
+      const personTotals = Array.from({ length: splitGuests }, () => 0);
+      orderItems.forEach(item => {
+        const assignment = splitItems[item.id] || [0];
+        const perPerson = Math.round(item.price * item.qty / assignment.length);
+        assignment.forEach(personIdx => {
+          personTotals[personIdx] += perPerson;
+        });
+      });
+      // Proportionally split tax and discount
+      const totalItems = personTotals.reduce((s, v) => s + v, 0) || 1;
+      return personTotals.map((amt, i) => ({
+        label: `Person ${i + 1}`,
+        amount: amt + Math.round((grandTotal - subtotal) * amt / totalItems),
+      }));
+    }
+    return [];
+  }, [splitMethod, splitGuests, splitPercentages, splitItems, grandTotal, subtotal, orderItems]);
+
+  const toggleItemAssignment = (itemId: string, personIdx: number) => {
+    setSplitItems(prev => {
+      const current = prev[itemId] || [0];
+      const next = current.includes(personIdx)
+        ? current.filter(p => p !== personIdx)
+        : [...current, personIdx];
+      return { ...prev, [itemId]: next.length > 0 ? next : [0] };
+    });
+  };
+
+  const handlePayment = () => {
+    if (!paymentMethod) {
+      Alert.alert('Select Method', 'Please select a payment method');
+      return;
+    }
+    if (orderItems.length === 0) {
+      Alert.alert('Empty Order', 'No items to process payment for');
+      return;
+    }
+
+    let paymentMessage = `₹${grandTotal.toLocaleString()} paid via ${paymentMethod.toUpperCase()}`;
+    if (splitMethod !== 'none') {
+      paymentMessage = splitPortions.map(p => `${p.label}: ₹${p.amount.toLocaleString()}`).join('\n');
+      paymentMessage += `\n\nTotal: ₹${grandTotal.toLocaleString()} via ${paymentMethod.toUpperCase()}`;
+    }
+
+    completePayment(
+      tableId || '',
+      discountType,
+      discountType === 'none' ? 0 : parseFloat(discountValue || '0'),
+      paymentMethod
+    );
+    Alert.alert(
+      'Payment Successful',
+      paymentMessage,
+      [{ text: 'OK', onPress: () => router.back() }]
+    );
+  };
+
+  const handleSplitGuestsChange = (delta: number) => {
+    const next = Math.max(2, Math.min(10, splitGuests + delta));
+    setSplitGuests(next);
+    // Rebalance percentages
+    const equal = Math.round(100 / next);
+    setSplitPercentages(Array.from({ length: next }, (_, i) => i === next - 1 ? 100 - equal * (next - 1) : equal));
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity onPress={() => router.back()}
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <View>
+              <Text className="text-2xl font-bold text-foreground">Checkout</Text>
+              <Text className="text-sm text-muted">Table {tableId || 'N/A'}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View className="px-6 gap-5">
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-3">Order Summary</Text>
+            {orderItems.length === 0 ? (
+              <Text className="text-sm text-muted">No items in current order</Text>
+            ) : (
+              <View className="gap-2">
+                {orderItems.map((item) => (
+                  <View key={item.id} className="flex-row justify-between">
+                    <View className="flex-1">
+                      <Text className="text-sm text-foreground">{item.name}</Text>
+                      <Text className="text-xs text-muted">×{item.qty}</Text>
+                    </View>
+                    <Text className="text-sm font-semibold text-foreground">₹{item.price * item.qty}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-3">Discount</Text>
+            <View className="flex-row gap-2 mb-3">
+              {(['none', 'percentage', 'fixed'] as const).map((t) => (
+                <TouchableOpacity key={t} onPress={() => { setDiscountType(t); setDiscountValue(''); }}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10,
+                    backgroundColor: discountType === t ? ACCENT : colors.background,
+                    borderWidth: 1, borderColor: discountType === t ? ACCENT : colors.border,
+                  }}
+                >
+                  <Text className="text-xs font-semibold" style={{ color: discountType === t ? '#fff' : colors.text }}>
+                    {t === 'none' ? 'None' : t === 'percentage' ? '%' : '₹ Fixed'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {discountType !== 'none' && (
+              <TextInput placeholder={discountType === 'percentage' ? 'Enter percentage' : 'Enter amount'} placeholderTextColor={colors.muted}
+                value={discountValue} onChangeText={setDiscountValue} keyboardType="numeric"
+                className="text-base text-foreground px-4 py-3 rounded-xl"
+                style={{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}
+              />
+            )}
+          </View>
+
+          {/* PO-007: Split Bill Functionality */}
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-3">Split Bill</Text>
+            <View className="flex-row gap-2 mb-3">
+              {(['none', 'equal', 'byPercentage', 'byItem'] as const).map((method) => (
+                <TouchableOpacity key={method} onPress={() => { setSplitMethod(method); if (method !== 'none' && splitMethod === 'none') { setSplitPercentages(Array.from({ length: splitGuests }, (_, i) => Math.round(100 / splitGuests))); } }}
+                  style={{
+                    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10,
+                    backgroundColor: splitMethod === method ? ACCENT : colors.background,
+                    borderWidth: 1, borderColor: splitMethod === method ? ACCENT : colors.border,
+                  }}
+                >
+                  <Text className="text-xs font-semibold" style={{ color: splitMethod === method ? '#fff' : colors.text }}>
+                    {method === 'none' ? 'No Split' : method === 'equal' ? 'Equal' : method === 'byPercentage' ? '% Split' : 'By Item'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {splitMethod !== 'none' && (
+              <>
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-sm text-muted">Number of guests</Text>
+                  <View className="flex-row items-center gap-3">
+                    <TouchableOpacity onPress={() => handleSplitGuestsChange(-1)}
+                      style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Text className="text-base font-bold" style={{ color: ACCENT }}>−</Text>
+                    </TouchableOpacity>
+                    <Text className="text-base font-bold text-foreground">{splitGuests}</Text>
+                    <TouchableOpacity onPress={() => handleSplitGuestsChange(1)}
+                      style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Text className="text-base font-bold" style={{ color: ACCENT }}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {splitMethod === 'byPercentage' && (
+                  <View className="gap-2 mb-3">
+                    {splitPercentages.map((pct, i) => (
+                      <View key={i} className="flex-row items-center gap-2">
+                        <Text className="text-xs text-muted w-20">Person {i + 1}</Text>
+                        <View style={{ flex: 1, height: 24, borderRadius: 6, backgroundColor: colors.border }}>
+                          <View style={{ width: `${pct}%`, height: '100%', borderRadius: 6, backgroundColor: ACCENT }} />
+                        </View>
+                        <Text className="text-xs font-bold text-foreground w-10 text-right">{pct}%</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {splitMethod === 'byItem' && (
+                  <View className="gap-2 mb-3">
+                    {orderItems.map(item => (
+                      <View key={item.id} className="flex-row items-center gap-2 py-1">
+                        <Text className="text-xs text-foreground flex-1" numberOfLines={1}>{item.name} ×{item.qty}</Text>
+                        <View className="flex-row gap-1">
+                          {Array.from({ length: splitGuests }, (_, i) => (
+                            <TouchableOpacity key={i} onPress={() => toggleItemAssignment(item.id, i)}
+                              style={{
+                                width: 24, height: 24, borderRadius: 6,
+                                backgroundColor: (splitItems[item.id] || [0]).includes(i) ? ACCENT : colors.border,
+                                alignItems: 'center', justifyContent: 'center',
+                              }}
+                            >
+                              <Text className="text-xs font-bold" style={{ color: (splitItems[item.id] || [0]).includes(i) ? '#fff' : colors.muted }}>{i + 1}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {splitPortions.length > 0 && (
+                  <View style={{ padding: 12, borderRadius: 10, backgroundColor: ACCENT + '08', gap: 2 }}>
+                    <Text className="text-xs font-semibold text-muted mb-1">Split Amounts</Text>
+                    {splitPortions.map((p, i) => (
+                      <View key={i} className="flex-row justify-between">
+                        <Text className="text-sm text-foreground">{p.label}</Text>
+                        <Text className="text-sm font-bold" style={{ color: ACCENT }}>₹{p.amount.toLocaleString()}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+
+          <View style={{ padding: 18, borderRadius: 18, backgroundColor: ACCENT + '06', borderWidth: 1, borderColor: ACCENT + '15' }}>
+            <Text className="text-base font-bold text-foreground mb-3">Total Breakdown</Text>
+            <View className="gap-2">
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-muted">Subtotal</Text>
+                <Text className="text-sm font-semibold text-foreground">₹{subtotal.toLocaleString()}</Text>
+              </View>
+              {discountAmount > 0 && (
+                <View className="flex-row justify-between">
+                  <Text className="text-sm text-muted">Discount</Text>
+                  <Text className="text-sm font-semibold text-error">-₹{discountAmount.toLocaleString()}</Text>
+                </View>
+              )}
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-muted">Tax (10%)</Text>
+                <Text className="text-sm font-semibold text-foreground">₹{tax.toLocaleString()}</Text>
+              </View>
+              <View className="border-t border-border pt-2 flex-row justify-between">
+                <Text className="text-base font-bold text-foreground">Grand Total</Text>
+                <Text className="text-base font-bold" style={{ color: ACCENT }}>₹{grandTotal.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View>
+            <Text className="text-base font-bold text-foreground mb-4">Payment Method</Text>
+            <View className="flex-row flex-wrap gap-3">
+              {PAYMENT_METHODS.map((pm) => (
+                <TouchableOpacity key={pm.id} onPress={() => setPaymentMethod(pm.id)}
+                  style={{
+                    flex: 1, padding: 16, borderRadius: 14, alignItems: 'center',
+                    backgroundColor: paymentMethod === pm.id ? ACCENT + '10' : colors.surface,
+                    borderWidth: 1.5, borderColor: paymentMethod === pm.id ? ACCENT : colors.border,
+                    minWidth: '45%',
+                  }}
+                >
+                  <Text style={{ fontSize: 28, marginBottom: 6 }}>{pm.icon}</Text>
+                  <Text className="text-sm font-bold" style={{ color: paymentMethod === pm.id ? ACCENT : colors.text }}>{pm.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity onPress={handlePayment}
+            style={{
+              paddingVertical: 16, borderRadius: 16, alignItems: 'center',
+              backgroundColor: ACCENT, marginTop: 4,
+              shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+            }}
+            activeOpacity={0.85}
+          >
+            <Text className="text-base font-semibold text-white">Process Payment — ₹{grandTotal.toLocaleString()}</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

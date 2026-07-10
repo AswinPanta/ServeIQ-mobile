@@ -19,7 +19,7 @@ interface HeroSectionProps {
 export function HeroSection({
   title = 'Find Your Perfect Stay',
   subtitle = 'Explore amazing hotels and restaurants',
-  backgroundImage = 'https://via.placeholder.com/600x400?text=Hero',
+  backgroundImage = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&h=600&fit=crop',
   onSearchPress,
   onExplorePress,
   searchPlaceholder = 'Where are you going?',
@@ -50,7 +50,7 @@ export function HeroSection({
         <View className="gap-3">
           <TouchableOpacity
             onPress={onSearchPress}
-            style={{ backgroundColor: 'white', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            style={{ backgroundColor: 'white', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 8 }}
           >
             <Text className="text-xl">🔍</Text>
             <Text className="text-base text-muted flex-1">{searchPlaceholder}</Text>
@@ -59,7 +59,7 @@ export function HeroSection({
           {/* Explore Button */}
           <TouchableOpacity
             onPress={onExplorePress}
-            style={{ backgroundColor: colors.primary, borderRadius: 999, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center' }}
+            style={{ backgroundColor: colors.primary, borderRadius: 999, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center' }}
           >
             <Text className="text-white font-semibold text-base">Explore Now</Text>
           </TouchableOpacity>

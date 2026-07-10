@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 
@@ -19,8 +19,8 @@ interface BookingModifyModalProps {
 
 export function BookingModifyModal({ visible, onClose, booking, onSave }: BookingModifyModalProps) {
   const colors = useColors();
-  const [newCheckIn, setNewCheckIn] = useState(booking.checkIn);
-  const [newCheckOut, setNewCheckOut] = useState(booking.checkOut);
+  const newCheckIn = booking.checkIn;
+  const newCheckOut = booking.checkOut;
 
   const originalNights = booking.nights;
   const newNights = Math.max(1, Math.ceil(

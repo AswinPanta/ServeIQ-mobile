@@ -1,0 +1,233 @@
+/**
+ * Self-Service Check-in Screen (SRS CI-004)
+ * Allows guests with registered accounts to check in via the portal
+ */
+
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useAuth } from '@/lib/context/auth-context';
+import { useBookings } from '@/lib/context/booking-context';
+import { useCRM } from '@/lib/context/crm-context';
+import * as ImagePicker from 'expo-image-picker';
+import type { GuestProfile } from '@/types/api';
+
+const ACCENT = '#E63946';
+
+export default function SelfCheckinScreen() {
+  const colors = useColors();
+  const { user } = useAuth();
+  const { bookings } = useBookings();
+  const { earnPoints } = useCRM();
+  const guest = user as GuestProfile | null;
+
+  const [step, setStep] = useState<'select' | 'verify' | 'complete'>('select');
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
+  const [idUploaded, setIdUploaded] = useState(false);
+  const [confirmedDetails, setConfirmedDetails] = useState(false);
+
+  const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
+  const selectedBooking = selectedBookingId
+    ? bookings.find(b => b.id === selectedBookingId)
+    : null;
+
+  const handleUploadID = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Please grant gallery access to upload your ID');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.7 });
+    if (!result.canceled && result.assets[0]) {
+      setIdUploaded(true);
+      Alert.alert('ID Uploaded', 'Your identification has been uploaded successfully.');
+    }
+  };
+
+  const handleCompleteCheckin = () => {
+    if (!idUploaded || !confirmedDetails) {
+      Alert.alert('Incomplete', 'Please upload your ID and confirm your details');
+      return;
+    }
+    // Award loyalty points for self check-in
+    if (guest?.id) {
+      earnPoints(guest.id, 50);
+    }
+    Alert.alert(
+      'Self Check-in Complete!',
+      `You have been checked in successfully.\n\n${50} bonus loyalty points awarded for using self check-in!\n\nYour digital key has been sent to your registered email.`,
+      [{ text: 'Done', onPress: () => router.back() }]
+    );
+  };
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => router.back()}
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <View>
+              <Text className="text-2xl font-bold text-foreground">Self Check-in</Text>
+              <Text className="text-sm text-muted">Skip the queue — check in from your phone</Text>
+            </View>
+          </View>
+
+          {/* Progress Steps */}
+          <View className="flex-row items-center mb-8 px-2">
+            {(['select', 'verify', 'complete'] as const).map((s, i) => (
+              <React.Fragment key={s}>
+                <View className="items-center">
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 18,
+                    backgroundColor: step === s ? ACCENT : ['select', 'verify'].includes(step) && i < ['select', 'verify', 'complete'].indexOf(step) ? '#10B981' : colors.border,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Text className="text-sm font-bold text-white">{i + 1}</Text>
+                  </View>
+                  <Text className="text-[10px] text-muted mt-1">{s === 'select' ? 'Booking' : s === 'verify' ? 'Verify' : 'Done'}</Text>
+                </View>
+                {i < 2 && <View style={{ flex: 1, height: 2, backgroundColor: i < ['select', 'verify', 'complete'].indexOf(step) ? '#10B981' : colors.border, marginHorizontal: 4 }} />}
+              </React.Fragment>
+            ))}
+          </View>
+
+          {step === 'select' && (
+            <View>
+              <Text className="text-lg font-bold text-foreground mb-4">Select Your Booking</Text>
+              {upcomingBookings.length === 0 ? (
+                <View style={{ padding: 32, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center' }}>
+                  <Text className="text-3xl mb-3">📅</Text>
+                  <Text className="text-sm text-muted text-center">No upcoming bookings found.</Text>
+                  <Text className="text-xs text-muted text-center mt-1">Self check-in is available for bookings within the next 48 hours.</Text>
+                  <TouchableOpacity onPress={() => router.push('/(tabs)')}
+                    style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT }}>
+                    <Text className="text-sm font-semibold text-white">Browse Hotels</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                upcomingBookings.map(b => {
+                  const isWithin48h = (new Date(b.checkIn).getTime() - Date.now()) < 48 * 60 * 60 * 1000;
+                  return (
+                    <TouchableOpacity key={b.id} onPress={() => { setSelectedBookingId(b.id); setStep('verify'); }}
+                      style={{
+                        padding: 16, borderRadius: 18, marginBottom: 12,
+                        backgroundColor: colors.surface, borderWidth: 1.5,
+                        borderColor: selectedBookingId === b.id ? ACCENT : colors.border,
+                        opacity: isWithin48h ? 1 : 0.5,
+                      }}
+                    >
+                      <View className="flex-row gap-3">
+                        <Image source={{ uri: b.hotelImage }} className="w-16 h-16 rounded-xl" resizeMode="cover" />
+                        <View className="flex-1">
+                          <Text className="text-sm font-bold text-foreground">{b.hotelName}</Text>
+                          <Text className="text-xs text-muted">{b.hotelCity}, {b.hotelCountry}</Text>
+                          <Text className="text-xs text-muted mt-1">
+                            {formatDate(b.checkIn)} — {formatDate(b.checkOut)}
+                          </Text>
+                          <Text className="text-xs text-muted">{b.roomTypeName} · {b.guests} guest{b.guests > 1 ? 's' : ''}</Text>
+                          {!isWithin48h && (
+                            <Text className="text-xs mt-1 font-semibold" style={{ color: '#F59E0B' }}>
+                              ⏳ Available 48h before check-in
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          )}
+
+          {step === 'verify' && selectedBooking && (
+            <View>
+              <Text className="text-lg font-bold text-foreground mb-4">Verify Your Details</Text>
+
+              {/* Booking Summary */}
+              <View style={{ padding: 18, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+                <View className="gap-3">
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Hotel</Text>
+                    <Text className="text-sm font-semibold text-foreground">{selectedBooking.hotelName}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Room</Text>
+                    <Text className="text-sm font-semibold text-foreground">{selectedBooking.roomTypeName}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Check-in</Text>
+                    <Text className="text-sm font-semibold text-foreground">{formatDate(selectedBooking.checkIn)}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Check-out</Text>
+                    <Text className="text-sm font-semibold text-foreground">{formatDate(selectedBooking.checkOut)}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Guests</Text>
+                    <Text className="text-sm font-semibold text-foreground">{selectedBooking.guests}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* ID Upload */}
+              <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+                <Text className="text-sm font-bold text-foreground mb-3">Upload Identification</Text>
+                <Text className="text-xs text-muted mb-4">Please upload a government-issued ID (passport, driver's license, or national ID) for verification.</Text>
+                <TouchableOpacity onPress={handleUploadID}
+                  style={{
+                    paddingVertical: 20, borderRadius: 14, borderWidth: 2, borderStyle: 'dashed',
+                    borderColor: idUploaded ? '#10B981' : colors.border, alignItems: 'center', marginBottom: 8,
+                    backgroundColor: idUploaded ? '#10B98108' : 'transparent',
+                  }}
+                >
+                  <Text style={{ fontSize: 28, marginBottom: 8 }}>{idUploaded ? '✅' : '📄'}</Text>
+                  <Text className="text-sm font-semibold" style={{ color: idUploaded ? '#10B981' : colors.foreground }}>
+                    {idUploaded ? 'ID Uploaded' : 'Tap to Upload ID'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Confirm Details */}
+              <TouchableOpacity onPress={() => setConfirmedDetails(!confirmedDetails)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16,
+                  backgroundColor: confirmedDetails ? '#10B98110' : colors.surface,
+                  borderWidth: 1.5, borderColor: confirmedDetails ? '#10B981' : colors.border,
+                  marginBottom: 16,
+                }}
+              >
+                <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: confirmedDetails ? '#10B981' : colors.border, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  {confirmedDetails && <Text style={{ color: '#10B981', fontSize: 16 }}>✓</Text>}
+                </View>
+                <Text className="text-sm text-foreground flex-1">I confirm that the above details are correct</Text>
+              </TouchableOpacity>
+
+              {/* Check-in Button */}
+              <TouchableOpacity onPress={handleCompleteCheckin}
+                style={{
+                  paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginTop: 8,
+                  backgroundColor: idUploaded && confirmedDetails ? ACCENT : colors.border,
+                  shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: idUploaded && confirmedDetails ? 0.3 : 0, shadowRadius: 8, elevation: 4,
+                }}
+                disabled={!idUploaded || !confirmedDetails}
+              >
+                <Text className="text-base font-semibold" style={{ color: idUploaded && confirmedDetails ? '#fff' : colors.muted }}>
+                  Complete Check-in
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

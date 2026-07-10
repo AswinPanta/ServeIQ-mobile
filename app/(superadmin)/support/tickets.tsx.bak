@@ -1,0 +1,104 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+
+const ACCENT = '#7C3AED';
+
+const FILTERS = ['All', 'Open', 'In Progress', 'Resolved', 'Closed'] as const;
+
+const TICKETS = [
+  { id: '1234', tenant: 'Himalayan Heights Hotels', subject: 'Payment gateway integration failing on checkout', priority: 'Urgent', status: 'Open', date: '2025-06-30', assignee: 'Ram P.', priorityColor: '#EF4444' },
+  { id: '1235', tenant: 'Pokhara Lake Resort', subject: 'Unable to update room photos in dashboard', priority: 'High', status: 'In Progress', date: '2025-06-29', assignee: 'Sita K.', priorityColor: '#F59E0B' },
+  { id: '1236', tenant: 'Buddha B&B Chain', subject: 'How to set up seasonal pricing?', priority: 'Medium', status: 'Open', date: '2025-06-28', assignee: 'Unassigned', priorityColor: '#3B82F6' },
+  { id: '1237', tenant: 'Everest Base Camp Lodges', subject: 'Multi-language support not showing on mobile', priority: 'High', status: 'In Progress', date: '2025-06-27', assignee: 'Hari G.', priorityColor: '#F59E0B' },
+  { id: '1238', tenant: 'Lumbini Garden Hotel', subject: 'Invoice discrepancy for May billing', priority: 'Medium', status: 'Resolved', date: '2025-06-26', assignee: 'Ram P.', priorityColor: '#3B82F6' },
+  { id: '1239', tenant: 'Garden Retreat', subject: 'Account setup assistance needed', priority: 'Low', status: 'Open', date: '2025-06-25', assignee: 'Unassigned', priorityColor: '#6B7280' },
+  { id: '1240', tenant: 'Mountain View Inn', subject: 'Trial period extension request', priority: 'Low', status: 'Closed', date: '2025-06-24', assignee: 'Sita K.', priorityColor: '#6B7280' },
+  { id: '1241', tenant: 'Chitwan Safari Lodge', subject: 'Billing address update not saving', priority: 'Urgent', status: 'Open', date: '2025-06-30', assignee: 'Unassigned', priorityColor: '#EF4444' },
+];
+
+const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
+  Open: { bg: '#3B82F615', text: '#3B82F6' },
+  'In Progress': { bg: '#F59E0B15', text: '#F59E0B' },
+  Resolved: { bg: '#10B98115', text: '#10B981' },
+  Closed: { bg: '#6B728015', text: '#6B7280' },
+};
+
+export default function TicketsScreen() {
+  const colors = useColors();
+  const [filter, setFilter] = useState<string>('All');
+
+  const filtered = filter === 'All' ? TICKETS : TICKETS.filter((t) => t.status === filter);
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-lg" style={{ color: ACCENT }}>←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground flex-1">Support Tickets</Text>
+            <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, backgroundColor: '#EF444415' }}>
+              <Text className="text-xs font-bold text-red-500">{TICKETS.filter((t) => t.priority === 'Urgent').length} urgent</Text>
+            </View>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5">
+            <View className="flex-row gap-2">
+              {FILTERS.map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  onPress={() => setFilter(f)}
+                  style={{
+                    paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20,
+                    backgroundColor: filter === f ? ACCENT : colors.border,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-sm font-semibold" style={{ color: filter === f ? '#FFF' : colors.muted }}>{f}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {filtered.map((ticket) => {
+            const st = STATUS_STYLES[ticket.status];
+            return (
+              <TouchableOpacity
+                key={ticket.id}
+                style={{
+                  padding: 16, borderRadius: 16, marginBottom: 10,
+                  backgroundColor: colors.surface,
+                  borderLeftWidth: 4, borderLeftColor: ticket.priorityColor,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+                }}
+                activeOpacity={0.7}
+              >
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-xs font-bold" style={{ color: colors.muted }}>#{ticket.id}</Text>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: st.bg }}>
+                    <Text className="text-xs font-bold" style={{ color: st.text }}>{ticket.status}</Text>
+                  </View>
+                </View>
+                <Text className="text-sm font-bold text-foreground mb-1">{ticket.subject}</Text>
+                <Text className="text-xs text-muted mb-2">{ticket.tenant}</Text>
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: ticket.priorityColor + '15' }}>
+                      <Text className="text-xs font-bold" style={{ color: ticket.priorityColor }}>{ticket.priority}</Text>
+                    </View>
+                    <Text className="text-xs text-muted">{ticket.date}</Text>
+                  </View>
+                  <Text className="text-xs text-muted">{ticket.assignee}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

@@ -1,61 +1,20 @@
-/**
- * Favorites Screen
- * Display saved/wishlist hotels
- */
-
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
+import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { HotelCard } from '@/components/feature/hotel-card';
 import { useFavorites } from '@/lib/context/favorites-context';
-import { useColors } from '@/hooks/use-colors';
+import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 
 export default function FavoritesScreen() {
-  const colors = useColors();
-  const { favorites, removeFavorite } = useFavorites();
+  const { favoritesList, removeFavorite } = useFavorites();
 
-  // Mock hotels data
-  const allHotels: Record<string, any> = {
-    '1': {
-      id: '1',
-      name: 'Grand Hotel Kathmandu',
-      city: 'Kathmandu',
-      country: 'Nepal',
-      rating: 4.8,
-      review_count: 342,
-      currency: 'NPR',
-      check_in_time: '14:00',
-      photos: [{ url: 'https://via.placeholder.com/400x300?text=Hotel+1', caption: 'Main' }],
-      amenities: [
-        { id: 'wifi', name: 'WiFi', icon: '📶', category: 'room' },
-        { id: 'pool', name: 'Pool', icon: '🏊', category: 'facility' },
-      ],
-    },
-    '2': {
-      id: '2',
-      name: 'Lakeside Resort Pokhara',
-      city: 'Pokhara',
-      country: 'Nepal',
-      rating: 4.6,
-      review_count: 256,
-      currency: 'NPR',
-      check_in_time: '15:00',
-      photos: [{ url: 'https://via.placeholder.com/400x300?text=Hotel+2', caption: 'Main' }],
-      amenities: [
-        { id: 'wifi', name: 'WiFi', icon: '📶', category: 'room' },
-        { id: 'restaurant', name: 'Restaurant', icon: '🍽️', category: 'facility' },
-      ],
-    },
-  };
-
-  const favoriteHotels = favorites
-    .map((id) => allHotels[id])
-    .filter(Boolean);
+  const favoriteHotels = MOCK_PROPERTIES.filter(h => favoritesList.includes(h.id));
 
   const handleHotelPress = (hotel: any) => {
     router.push({
-      pathname: '/guest-hotel-detail/[id]',
-      params: { id: hotel.id, checkIn: '', checkOut: '', guests: '1' },
+      pathname: '/hotel-detail-full/[id]',
+      params: { id: hotel.id },
     });
   };
 
@@ -65,7 +24,6 @@ export default function FavoritesScreen() {
 
   return (
     <ScreenContainer className="flex-1" containerClassName="bg-background">
-      {/* Header */}
       <View className="px-6 py-6 border-b border-border">
         <Text className="text-3xl font-bold text-foreground">My Favorites</Text>
         <Text className="text-sm text-muted mt-1">
@@ -73,7 +31,6 @@ export default function FavoritesScreen() {
         </Text>
       </View>
 
-      {/* Favorites List */}
       {favoriteHotels.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-3xl mb-4">❤️</Text>
@@ -89,7 +46,31 @@ export default function FavoritesScreen() {
           renderItem={({ item }) => (
             <View className="px-6 py-3">
               <HotelCard
-                hotel={item}
+                hotel={{
+                  id: item.id,
+                  name: item.name,
+                  description: item.shortDescription || item.description,
+                  property_type: 'Hotel' as const,
+                  address: item.address,
+                  city: item.city,
+                  country: item.country,
+                  latitude: item.coordinates?.lat || 0,
+                  longitude: item.coordinates?.lng || 0,
+                  phone: item.phone,
+                  email: item.email,
+                  rating: item.rating,
+                  review_count: item.review_count,
+                  price: item.price,
+                  currency: item.currency,
+                  check_in_time: item.checkInTime,
+                  check_out_time: item.checkOutTime,
+                  cancellation_policy: item.cancellationPolicy,
+                  photos: item.images.map((url, idx) => ({ url, caption: '', id: String(idx), order: idx })),
+                  amenities: item.amenities.map(a => ({ id: a.name, name: a.name, icon: a.icon, category: 'other' as const })),
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  website: item.website,
+                }}
                 onPress={() => handleHotelPress(item)}
                 isFavorite={true}
                 onFavoritePress={() => handleRemoveFavorite(item.id)}

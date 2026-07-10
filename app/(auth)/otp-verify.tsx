@@ -12,17 +12,16 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Keyboard,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuth } from '@/lib/context/auth-context';
 import { useColors } from '@/hooks/use-colors';
-import { cn } from '@/lib/utils';
+import { cn, safeGoBack } from '@/lib/utils';
 
 export default function OTPVerifyScreen() {
   const colors = useColors();
-  const { email = '', mode = 'login' } = useLocalSearchParams<{ email: string; mode: string }>();
+  const { email = '' } = useLocalSearchParams<{ email: string; mode: string }>();
   const { verifyOTP, resendOTP, isLoading } = useAuth();
 
   const [otp, setOtp] = useState('');
@@ -99,7 +98,7 @@ export default function OTPVerifyScreen() {
           <View className="gap-2">
             <Text className="text-4xl font-bold text-foreground">Verify OTP</Text>
             <Text className="text-base text-muted">
-              We've sent a 6-digit code to {email}
+              We&apos;ve sent a 6-digit code to {email}
             </Text>
           </View>
 
@@ -149,7 +148,7 @@ export default function OTPVerifyScreen() {
 
             {/* Resend OTP Section */}
             <View className="gap-2">
-              <Text className="text-sm text-muted text-center">Didn't receive the code?</Text>
+              <Text className="text-sm text-muted text-center">Didn&apos;t receive the code?</Text>
               <TouchableOpacity
                 onPress={handleResendOTP}
                 disabled={resendTimer > 0 || resendLoading}
@@ -174,7 +173,7 @@ export default function OTPVerifyScreen() {
           {/* Footer */}
           <View className="flex-row items-center justify-center gap-2">
             <Text className="text-base text-muted">Wrong email?</Text>
-            <TouchableOpacity disabled={isLoading} onPress={() => router.back()}>
+            <TouchableOpacity disabled={isLoading} onPress={() => safeGoBack('/(auth)/login')}>
               <Text className="text-base font-semibold text-primary">Go Back</Text>
             </TouchableOpacity>
           </View>

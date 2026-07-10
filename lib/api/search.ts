@@ -1,1 +1,0 @@
-export async function searchHotels(query: any) { return []; }

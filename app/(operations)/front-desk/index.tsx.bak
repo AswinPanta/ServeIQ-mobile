@@ -1,0 +1,175 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useFrontDesk } from '@/lib/context/frontdesk-context';
+
+const ACCENT = '#0D9488';
+
+const STATUS_COLORS: Record<string, string> = {
+  Available: '#10B981',
+  Occupied: '#3B82F6',
+  Dirty: '#F59E0B',
+  Maintenance: '#EF4444',
+};
+
+const STATUS_BG: Record<string, string> = {
+  Available: '#10B98112',
+  Occupied: '#3B82F612',
+  Dirty: '#F59E0B12',
+  Maintenance: '#EF444412',
+};
+
+const QUICK_ACTIONS = [
+  { id: 'new-booking', label: 'New Booking', icon: '📝', desc: 'Walk-in or phone booking' },
+  { id: 'check-in', label: 'Check-in', icon: '🛬', desc: 'Process guest arrival' },
+  { id: 'check-out', label: 'Check-out', icon: '🛫', desc: 'Process guest departure' },
+];
+
+export default function FrontDeskDashboard() {
+  const colors = useColors();
+  const { rooms, summaryStats, bookings } = useFrontDesk();
+  const [filter, setFilter] = useState<string | null>(null);
+
+  const filteredRooms = filter ? rooms.filter(r => r.status === filter) : rooms;
+
+  const statusCounts = rooms.reduce((acc, r) => {
+    acc[r.status] = (acc[r.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const todayBookings = bookings.filter(b => b.status !== 'Cancelled').slice(0, 5);
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity onPress={() => router.back()}
+              style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground">Front Desk</Text>
+          </View>
+        </View>
+
+        <View className="px-6 mb-6">
+          <View className="flex-row gap-2">
+            {Object.entries(STATUS_COLORS).map(([status, color]) => (
+              <TouchableOpacity key={status} onPress={() => setFilter(filter === status ? null : status)}
+                style={{
+                  flex: 1, paddingVertical: 12, borderRadius: 12,
+                  backgroundColor: filter === status ? color : color + '12',
+                  alignItems: 'center',
+                }}
+              >
+                <Text className="text-lg font-bold" style={{ color: filter === status ? '#fff' : color }}>{statusCounts[status] || 0}</Text>
+                <Text className="text-xs mt-1" style={{ color: filter === status ? '#fff' : color }}>{status}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View className="px-6 mb-5">
+          <View className="flex-row gap-2">
+            {([
+              { label: 'Arrivals', value: summaryStats.arrivals, color: '#10B981', icon: '🛬' },
+              { label: 'In House', value: summaryStats.inHouse, color: '#3B82F6', icon: '🏠' },
+              { label: 'Departures', value: summaryStats.departures, color: '#F59E0B', icon: '🛫' },
+              { label: 'Occ.%', value: summaryStats.occupancy, color: '#8B5CF6', icon: '📊' },
+            ] as const).map((stat) => (
+              <View key={stat.label}
+                style={{
+                  flex: 1, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 12,
+                  backgroundColor: stat.color + '0C',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 16, marginBottom: 4 }}>{stat.icon}</Text>
+                <Text className="text-base font-bold" style={{ color: stat.color }}>{stat.value}</Text>
+                <Text className="text-xs text-muted">{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className="px-6 mb-6">
+          <Text className="text-sm font-bold text-foreground mb-3">
+            {filter ? `Rooms — ${filter}` : 'All Rooms'}
+            <Text className="text-muted font-normal"> ({filteredRooms.length})</Text>
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {filteredRooms.map((room) => {
+              const color = STATUS_COLORS[room.status];
+              return (
+                <View key={room.number}
+                  style={{
+                    width: '23%', paddingVertical: 12, borderRadius: 12,
+                    backgroundColor: STATUS_BG[room.status],
+                    borderWidth: 1, borderColor: color + '30',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text className="text-sm font-bold text-foreground">{room.number}</Text>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, marginTop: 4 }} />
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        <View className="px-6 mb-6">
+          <Text className="text-lg font-bold text-foreground mb-4">Quick Actions</Text>
+          <View className="flex-row gap-3">
+            {QUICK_ACTIONS.map((action) => (
+              <TouchableOpacity key={action.id} onPress={() => router.push(`/(operations)/front-desk/${action.id}` as any)}
+                style={{
+                  flex: 1, padding: 16, borderRadius: 16, backgroundColor: colors.surface,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+                  alignItems: 'center',
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 24, marginBottom: 6 }}>{action.icon}</Text>
+                <Text className="text-sm font-bold text-foreground text-center">{action.label}</Text>
+                <Text className="text-xs text-muted text-center mt-1">{action.desc}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View className="px-6">
+          <Text className="text-lg font-bold text-foreground mb-4">Today's Bookings</Text>
+          {todayBookings.map((b) => {
+            const statusColor = b.status === 'Arriving' ? '#10B981' : b.status === 'In House' ? '#3B82F6' : '#6B7280';
+            return (
+              <View key={b.id}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16,
+                  borderRadius: 12, backgroundColor: colors.surface, marginBottom: 8,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+                }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Text className="text-base font-bold" style={{ color: ACCENT }}>{b.roomNumber || '—'}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-foreground">{b.guestName}</Text>
+                  <Text className="text-xs text-muted">{b.roomType} · {b.bookingRef}</Text>
+                </View>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: statusColor + '15' }}>
+                  <Text className="text-xs font-bold" style={{ color: statusColor }}>{b.status}</Text>
+                </View>
+              </View>
+            );
+          })}
+          {todayBookings.length === 0 && (
+            <Text className="text-sm text-muted text-center py-6">No bookings today</Text>
+          )}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

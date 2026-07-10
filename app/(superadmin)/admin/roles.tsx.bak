@@ -1,0 +1,134 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+
+const ACCENT = '#7C3AED';
+
+const ROLES = [
+  {
+    name: 'SuperAdmin', users: 1,
+    permissions: [
+      { name: 'Manage Tenants', allowed: true },
+      { name: 'View Billing', allowed: true },
+      { name: 'Manage Platform', allowed: true },
+      { name: 'Manage Roles', allowed: true },
+      { name: 'View Reports', allowed: true },
+      { name: 'System Config', allowed: true },
+    ],
+    color: '#7C3AED', description: 'Full platform access with all permissions',
+  },
+  {
+    name: 'Admin', users: 3,
+    permissions: [
+      { name: 'Manage Tenants', allowed: true },
+      { name: 'View Billing', allowed: true },
+      { name: 'Manage Platform', allowed: false },
+      { name: 'Manage Roles', allowed: false },
+      { name: 'View Reports', allowed: true },
+      { name: 'System Config', allowed: false },
+    ],
+    color: '#3B82F6', description: 'Operational access with limited platform management',
+  },
+  {
+    name: 'Manager', users: 5,
+    permissions: [
+      { name: 'Manage Tenants', allowed: true },
+      { name: 'View Billing', allowed: true },
+      { name: 'Manage Platform', allowed: false },
+      { name: 'Manage Roles', allowed: false },
+      { name: 'View Reports', allowed: true },
+      { name: 'System Config', allowed: false },
+    ],
+    color: '#10B981', description: 'Tenant management and billing view access',
+  },
+  {
+    name: 'Support', users: 4,
+    permissions: [
+      { name: 'Manage Tenants', allowed: false },
+      { name: 'View Billing', allowed: false },
+      { name: 'Manage Platform', allowed: false },
+      { name: 'Manage Roles', allowed: false },
+      { name: 'View Reports', allowed: false },
+      { name: 'System Config', allowed: false },
+    ],
+    color: '#F59E0B', description: 'Support ticket access only',
+  },
+  {
+    name: 'Read-Only', users: 2,
+    permissions: [
+      { name: 'Manage Tenants', allowed: false },
+      { name: 'View Billing', allowed: true },
+      { name: 'Manage Platform', allowed: false },
+      { name: 'Manage Roles', allowed: false },
+      { name: 'View Reports', allowed: true },
+      { name: 'System Config', allowed: false },
+    ],
+    color: '#EC4899', description: 'View-only access to reports and billing',
+  },
+];
+
+export default function RolesScreen() {
+  const colors = useColors();
+
+  const handleCreateRole = () => {
+    Alert.alert('Create Role', 'Role creation form would open here.');
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-lg" style={{ color: ACCENT }}>←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground flex-1">Roles & Permissions</Text>
+            <TouchableOpacity
+              onPress={handleCreateRole}
+              style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, backgroundColor: ACCENT }}
+              activeOpacity={0.7}
+            >
+              <Text className="text-sm font-bold text-white">+ Role</Text>
+            </TouchableOpacity>
+          </View>
+
+          {ROLES.map((role) => (
+            <View key={role.name} style={{
+              padding: 16, borderRadius: 20, marginBottom: 14,
+              backgroundColor: colors.surface, borderLeftWidth: 4, borderLeftColor: role.color,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+            }}>
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-lg font-bold text-foreground">{role.name}</Text>
+                <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, backgroundColor: role.color + '15' }}>
+                  <Text className="text-xs font-bold" style={{ color: role.color }}>{role.users} user{role.users > 1 ? 's' : ''}</Text>
+                </View>
+              </View>
+              <Text className="text-sm text-muted mb-4">{role.description}</Text>
+
+              <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 12 }} />
+
+              {role.permissions.map((perm) => (
+                <View key={perm.name} className="flex-row items-center justify-between mb-2">
+                  <Text className="text-sm text-foreground">{perm.name}</Text>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: perm.allowed ? '#10B98115' : '#EF444415' }}>
+                    <Text className="text-xs font-bold" style={{ color: perm.allowed ? '#10B981' : '#EF4444' }}>{perm.allowed ? 'Allowed' : 'Denied'}</Text>
+                  </View>
+                </View>
+              ))}
+
+              <TouchableOpacity
+                style={{ marginTop: 12, paddingVertical: 14, borderRadius: 12, backgroundColor: role.color + '10', alignItems: 'center', borderWidth: 1, borderColor: role.color + '20' }}
+                activeOpacity={0.7}
+              >
+                <Text className="text-sm font-bold" style={{ color: role.color }}>Edit Permissions</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

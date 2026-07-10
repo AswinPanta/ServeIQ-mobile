@@ -1,0 +1,110 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+
+const ACCENT = '#7C3AED';
+
+const REPORT_TYPES = [
+  { icon: '💰', title: 'Revenue Report', description: 'Detailed revenue breakdown by tenant, property, and time period', lastGenerated: '2025-06-28', color: '#10B981' },
+  { icon: '🏨', title: 'Occupancy Report', description: 'Occupancy rates across all properties with trend analysis', lastGenerated: '2025-06-27', color: '#3B82F6' },
+  { icon: '📊', title: 'Booking Trends', description: 'Booking patterns, seasonal trends, and forecast data', lastGenerated: '2025-06-25', color: '#F59E0B' },
+  { icon: '👥', title: 'User Activity', description: 'User engagement metrics, login frequency, and feature adoption', lastGenerated: '2025-06-20', color: '#7C3AED' },
+  { icon: '⭐', title: 'Property Performance', description: 'Property ratings, reviews, and comparative performance analysis', lastGenerated: '2025-06-15', color: '#EC4899' },
+];
+
+const RECENT_REPORTS = [
+  { name: 'Revenue_Report_Jun2025.pdf', date: '2025-06-28', size: '2.4 MB' },
+  { name: 'Occupancy_Q2_2025.pdf', date: '2025-06-27', size: '1.8 MB' },
+  { name: 'Booking_Trends_Weekly.xlsx', date: '2025-06-25', size: '856 KB' },
+  { name: 'User_Activity_Report.pdf', date: '2025-06-20', size: '3.2 MB' },
+];
+
+export default function ReportsScreen() {
+  const colors = useColors();
+  const [selectedRange, setSelectedRange] = useState('This Month');
+  const ranges = ['Today', 'This Week', 'This Month', 'Last Quarter', 'Custom'];
+
+  const handleGenerate = (title: string) => {
+    Alert.alert('Report Generated', `${title} has been generated and is ready for download.`);
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-lg" style={{ color: ACCENT }}>←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground flex-1">Reports</Text>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+            <View className="flex-row gap-2">
+              {ranges.map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setSelectedRange(r)}
+                  style={{
+                    paddingHorizontal: 16, paddingVertical: 14, borderRadius: 20,
+                    backgroundColor: selectedRange === r ? ACCENT : colors.border,
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-sm font-semibold" style={{ color: selectedRange === r ? '#FFF' : colors.muted }}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {REPORT_TYPES.map((report) => (
+            <View key={report.title} style={{
+              padding: 16, borderRadius: 20, marginBottom: 12,
+              backgroundColor: colors.surface,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+              borderLeftWidth: 4, borderLeftColor: report.color,
+            }}>
+              <View className="flex-row items-start gap-3">
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: report.color + '15', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 20 }}>{report.icon}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-foreground">{report.title}</Text>
+                  <Text className="text-xs text-muted mt-1">{report.description}</Text>
+                  <Text className="text-xs text-muted mt-1">Last generated: {report.lastGenerated}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleGenerate(report.title)}
+                style={{ marginTop: 12, paddingVertical: 14, borderRadius: 16, backgroundColor: ACCENT, alignItems: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Text className="text-sm font-bold text-white">Generate Report</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginTop: 4 }}>
+            <Text className="text-lg font-bold text-foreground mb-4">Recent Reports</Text>
+            {RECENT_REPORTS.map((r, i) => (
+              <View key={r.name} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: i < RECENT_REPORTS.length - 1 ? 1 : 0, borderBottomColor: colors.border, gap: 10 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16 }}>📄</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-foreground">{r.name}</Text>
+                  <Text className="text-xs text-muted">{r.date} • {r.size}</Text>
+                </View>
+                <TouchableOpacity style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 8, backgroundColor: ACCENT + '15' }} activeOpacity={0.7}>
+                  <Text className="text-xs font-bold" style={{ color: ACCENT }}>Download</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

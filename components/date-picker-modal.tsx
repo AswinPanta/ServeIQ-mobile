@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   Pressable,
-  Platform,
 } from "react-native";
 import { Calendar, DateData } from "react-native-calendars";
 import { useColors } from "@/hooks/use-colors";

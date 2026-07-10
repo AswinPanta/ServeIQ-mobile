@@ -1,111 +1,121 @@
-/**
- * Favorites Context
- * Manages favorites/wishlist state
- */
-
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@/constants/api-config';
+import { useAuth } from './auth-context';
 
-interface FavoritesContextType {
-  favorites: string[]; // Array of hotel IDs
+interface FavoritesContextValue {
+  favorites: Set<number | string>;
+  favoritesList: (number | string)[];
   isLoading: boolean;
+  isFavorite: (id: number | string) => boolean;
+  toggleFavorite: (id: number | string) => void;
   addFavorite: (hotelId: string) => Promise<void>;
   removeFavorite: (hotelId: string) => Promise<void>;
-  isFavorite: (hotelId: string) => boolean;
   clearFavorites: () => Promise<void>;
 }
 
-const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
+const FavoritesContext = createContext<FavoritesContextValue | undefined>(undefined);
+
+function getStorageKey(userId?: string): string {
+  return userId ? `favorites_${userId}` : 'favorites_guest';
+}
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const { user } = useAuth();
+  const [favorites, setFavorites] = useState<Set<number | string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize favorites from storage
   useEffect(() => {
-    const initializeFavorites = async () => {
+    const load = async () => {
+      setIsLoading(true);
       try {
-        const storedFavorites = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITES);
-        if (storedFavorites) {
-          setFavorites(JSON.parse(storedFavorites));
+        const key = getStorageKey(user?.id);
+        const data = await AsyncStorage.getItem(key);
+        if (data) {
+          const parsed: (number | string)[] = JSON.parse(data);
+          setFavorites(new Set(parsed));
         }
-      } catch (error) {
-        console.error('Failed to initialize favorites:', error);
-      } finally {
+      } catch {} finally {
         setIsLoading(false);
       }
     };
+    load();
+  }, [user?.id]);
 
-    initializeFavorites();
+  useEffect(() => {
+    const save = async () => {
+      try {
+        const key = getStorageKey(user?.id);
+        await AsyncStorage.setItem(key, JSON.stringify([...favorites]));
+      } catch {}
+    };
+    save();
+  }, [favorites, user?.id]);
+
+  const isFavorite = useCallback((id: number | string) => favorites.has(id), [favorites]);
+
+  const toggleFavorite = useCallback((id: number | string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
 
-  const addFavorite = useCallback(
-    async (hotelId: string) => {
-      try {
-        setFavorites((prev) => {
-          if (prev.includes(hotelId)) return prev;
-          const updated = [...prev, hotelId];
-          AsyncStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
-          return updated;
-        });
-      } catch (error) {
-        console.error('Failed to add favorite:', error);
-        throw error;
-      }
-    },
-    []
-  );
+  const addFavorite = useCallback(async (hotelId: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      next.add(hotelId);
+      return next;
+    });
+  }, []);
 
-  const removeFavorite = useCallback(
-    async (hotelId: string) => {
-      try {
-        setFavorites((prev) => {
-          const updated = prev.filter((id) => id !== hotelId);
-          AsyncStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
-          return updated;
-        });
-      } catch (error) {
-        console.error('Failed to remove favorite:', error);
-        throw error;
-      }
-    },
-    []
-  );
-
-  const isFavorite = useCallback(
-    (hotelId: string) => {
-      return favorites.includes(hotelId);
-    },
-    [favorites]
-  );
+  const removeFavorite = useCallback(async (hotelId: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      next.delete(hotelId);
+      return next;
+    });
+  }, []);
 
   const clearFavorites = useCallback(async () => {
+    setFavorites(new Set());
     try {
-      setFavorites([]);
-      await AsyncStorage.removeItem(STORAGE_KEYS.FAVORITES);
-    } catch (error) {
-      console.error('Failed to clear favorites:', error);
-      throw error;
-    }
-  }, []);
+      await AsyncStorage.removeItem(getStorageKey(user?.id));
+    } catch {}
+  }, [user?.id]);
 
-  const value: FavoritesContextType = {
+  const favoritesList = React.useMemo(() => [...favorites], [favorites]);
+
+  const value = useMemo(() => ({
     favorites,
+    favoritesList,
     isLoading,
+    isFavorite,
+    toggleFavorite,
     addFavorite,
     removeFavorite,
-    isFavorite,
     clearFavorites,
-  };
+  }), [
+    favorites,
+    favoritesList,
+    isLoading,
+    isFavorite,
+    toggleFavorite,
+    addFavorite,
+    removeFavorite,
+    clearFavorites,
+  ]);
 
-  return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
+  return (
+    <FavoritesContext.Provider value={value}>
+      {children}
+    </FavoritesContext.Provider>
+  );
 }
 
 export function useFavorites() {
-  const context = useContext(FavoritesContext);
-  if (context === undefined) {
-    throw new Error('useFavorites must be used within a FavoritesProvider');
-  }
-  return context;
+  const ctx = useContext(FavoritesContext);
+  if (!ctx) throw new Error('useFavorites must be inside FavoritesProvider');
+  return ctx;
 }

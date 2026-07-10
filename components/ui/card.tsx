@@ -1,11 +1,5 @@
-/**
- * Card Component
- * Reusable card container for displaying content
- */
-
 import React from 'react';
 import { View, ViewProps } from 'react-native';
-import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
 
 interface CardProps extends ViewProps {
@@ -22,11 +16,9 @@ export function Card({
   className,
   ...props
 }: CardProps) {
-  const colors = useColors();
-
   const variantStyles = {
-    default: 'bg-surface border border-border',
-    elevated: 'bg-surface shadow-sm',
+    default: 'bg-card border border-border',
+    elevated: 'bg-card shadow-sm',
     outlined: 'border-2 border-border bg-transparent',
   };
 
@@ -40,13 +32,29 @@ export function Card({
   return (
     <View
       className={cn(
-        'rounded-lg overflow-hidden',
+        'rounded-xl overflow-hidden',
         variantStyles[variant],
         paddingStyles[padding],
         className
       )}
       {...props}
     >
+      {children}
+    </View>
+  );
+}
+
+export function CardHead({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <View className={cn('px-5 py-4 border-b border-border', className)}>
+      {children}
+    </View>
+  );
+}
+
+export function CardBody({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <View className={cn('px-5 py-4', className)}>
       {children}
     </View>
   );

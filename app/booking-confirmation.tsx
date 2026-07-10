@@ -1,14 +1,11 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Image, Share } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image, Share, ActivityIndicator, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScreenContainer } from '@/components/screen-container';
-import { useColors } from '@/hooks/use-colors';
-import { FolioBreakdown, type FolioItem } from '@/components/feature/folio-breakdown';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 
 export default function BookingConfirmationScreen() {
-  const colors = useColors();
   const params = useLocalSearchParams();
-
   const bookingId = (params.bookingId as string) || 'BK' + Date.now();
   const hotelName = (params.hotelName as string) || 'Hotel';
   const checkIn = (params.checkIn as string) || 'N/A';
@@ -16,152 +13,158 @@ export default function BookingConfirmationScreen() {
   const nights = parseInt((params.nights as string) || '1', 10);
   const guests = parseInt((params.guests as string) || '1', 10);
   const rooms = (params.rooms as string) || 'Standard Room';
+  const subtotal = parseInt((params.subtotal as string) || '0', 10);
+  const tax = parseInt((params.tax as string) || '0', 10);
+  const discount = parseInt((params.discount as string) || '0', 10);
   const total = parseInt((params.total as string) || '0', 10);
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `My booking at ${hotelName}: ${bookingId}\nCheck-in: ${checkIn}\nCheck-out: ${checkOut}`,
-        title: 'Booking Confirmation',
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  const [emailSent, setEmailSent] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
-  const handleDownloadReceipt = () => {
-    Alert.alert('Download', 'Receipt download functionality coming soon');
-  };
+  const handleSendEmail = useCallback(async () => {
+    setSendingEmail(true);
+    await new Promise(r => setTimeout(r, 1200));
+    setEmailSent(true);
+    setSendingEmail(false);
+  }, []);
 
   return (
-    <ScreenContainer className="flex-1" containerClassName="bg-background">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="px-6 py-8 items-center gap-4 border-b border-border">
-          <View className="w-16 h-16 rounded-full bg-success/20 items-center justify-center">
-            <Text className="text-4xl">✓</Text>
-          </View>
-          <View className="items-center gap-2">
-            <Text className="text-2xl font-bold text-foreground">Booking Confirmed!</Text>
-            <Text className="text-sm text-muted">Your reservation has been confirmed</Text>
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      {/* Success Header */}
+      <View style={s.successSection}>
+        <View style={s.successCircle}>
+          <IconSymbol name="check" size={36} color={SRS.green} />
+        </View>
+        <Text style={s.successTitle}>Booking Confirmed!</Text>
+        <Text style={s.successSub}>Your reservation has been confirmed</Text>
+      </View>
+
+      <View style={s.body}>
+        {/* Booking Code */}
+        <View style={s.codeCard}>
+          <Text style={s.codeLabel}>Confirmation Code</Text>
+          <Text style={s.codeValue}>{bookingId}</Text>
+          <Text style={s.codeHint}>Save this code for your records</Text>
+        </View>
+
+        {/* Hotel Details */}
+        <View style={s.infoCard}>
+          <Text style={s.sectionTitle}>Hotel Details</Text>
+          <View style={s.infoRow}>
+            <IconSymbol name="hotel" size={16} color={SRS.teal} />
+            <Text style={s.infoText}>{hotelName}</Text>
+            <View style={s.confirmedBadge}>
+              <IconSymbol name="check" size={10} color={SRS.green} />
+              <Text style={s.confirmedText}>Confirmed</Text>
+            </View>
           </View>
         </View>
 
-        <View className="px-6 py-8 gap-6">
-          <View className="bg-primary/10 rounded-xl p-4 items-center gap-2">
-            <Text className="text-xs text-muted">Confirmation Code</Text>
-            <Text className="text-2xl font-bold text-primary">{bookingId}</Text>
-            <Text className="text-xs text-muted">Save this code for your records</Text>
-          </View>
-
-          <View className="gap-3">
-            <Text className="text-lg font-bold text-foreground">Hotel Details</Text>
-            <View className="bg-surface rounded-lg p-4 border border-border">
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1 gap-1">
-                  <Text className="text-base font-semibold text-foreground">{hotelName}</Text>
-                  <Text className="text-sm text-muted">{rooms}</Text>
-                </View>
-                <View className="bg-success/20 px-2 py-1 rounded-full">
-                  <Text className="text-xs font-semibold text-success">Confirmed</Text>
-                </View>
+        {/* Stay Details */}
+        <View style={s.infoCard}>
+          <Text style={s.sectionTitle}>Stay Details</Text>
+          <View style={{ flexDirection: 'row', gap: SPACING.md }}>
+            {[
+              { label: 'Check-in', value: checkIn },
+              { label: 'Check-out', value: checkOut },
+              { label: 'Nights', value: `${nights}` },
+              { label: 'Guests', value: `${guests}` },
+            ].map(item => (
+              <View key={item.label} style={s.stayBox}>
+                <Text style={s.stayLabel}>{item.label}</Text>
+                <Text style={s.stayValue}>{item.value}</Text>
               </View>
-            </View>
-          </View>
-
-          <View className="gap-3">
-            <Text className="text-lg font-bold text-foreground">Stay Details</Text>
-            <View className="flex-row gap-3">
-              <View className="flex-1 bg-surface rounded-lg p-4 border border-border gap-1">
-                <Text className="text-xs text-muted">Check-in</Text>
-                <Text className="text-base font-semibold text-foreground">{checkIn}</Text>
-              </View>
-              <View className="flex-1 bg-surface rounded-lg p-4 border border-border gap-1">
-                <Text className="text-xs text-muted">Check-out</Text>
-                <Text className="text-base font-semibold text-foreground">{checkOut}</Text>
-              </View>
-            </View>
-            <View className="flex-row gap-3">
-              <View className="flex-1 bg-surface rounded-lg p-4 border border-border gap-1">
-                <Text className="text-xs text-muted">Nights</Text>
-                <Text className="text-base font-semibold text-foreground">{nights}</Text>
-              </View>
-              <View className="flex-1 bg-surface rounded-lg p-4 border border-border gap-1">
-                <Text className="text-xs text-muted">Guests</Text>
-                <Text className="text-base font-semibold text-foreground">{guests}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View className="bg-surface rounded-lg p-4 border border-border">
-            <FolioBreakdown
-              items={[
-                { label: rooms, quantity: nights, unitPrice: Math.round(total / nights / 1.13), total: Math.round(total / 1.13) },
-              ]}
-              subtotal={Math.round(total / 1.13)}
-              tax={total - Math.round(total / 1.13)}
-              total={total}
-            />
-          </View>
-
-          <View className="bg-surface rounded-lg p-4 border border-border gap-2">
-            <Text className="text-sm font-semibold text-foreground">Important Information</Text>
-            <View className="gap-2 mt-2">
-              <Text className="text-xs text-muted">
-                • A confirmation email has been sent to your email
-              </Text>
-              <Text className="text-xs text-muted">
-                • Please arrive 15 minutes before check-in time
-              </Text>
-              <Text className="text-xs text-muted">
-                • Present this confirmation at the front desk
-              </Text>
-            </View>
-          </View>
-
-          <View className="bg-surface rounded-lg p-4 border border-border gap-2">
-            <Text className="text-sm font-semibold text-foreground">Cancellation Policy</Text>
-            <Text className="text-xs text-muted">
-              Free cancellation up to 24 hours before check-in. Cancellations made less than 24 hours before check-in will incur a charge of 1 night's stay.
-            </Text>
-          </View>
-
-          <View className="bg-surface rounded-lg p-4 items-center border border-border">
-            <Text className="text-sm font-semibold text-foreground mb-3">Booking QR Code</Text>
-            <View className="w-40 h-40 bg-white rounded-lg items-center justify-center border-2 border-border">
-              <Image
-                source={{
-                  uri: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${bookingId}`,
-                }}
-                className="w-32 h-32"
-              />
-            </View>
-            <Text className="text-xs text-muted text-center mt-2">
-              Show this QR code at check-in
-            </Text>
-          </View>
-
-          <View className="gap-3 mt-4">
-            <TouchableOpacity
-              onPress={handleShare}
-              style={{ paddingVertical: 12, borderRadius: 8, backgroundColor: `${colors.primary}10`, borderWidth: 1, borderColor: `${colors.primary}20`, alignItems: 'center' }}
-            >
-              <Text className="font-semibold text-primary">Share Booking</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleDownloadReceipt}
-              style={{ paddingVertical: 12, borderRadius: 8, backgroundColor: `${colors.primary}10`, borderWidth: 1, borderColor: `${colors.primary}20`, alignItems: 'center' }}
-            >
-              <Text className="font-semibold text-primary">Download Receipt</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push('/')}
-              style={{ paddingVertical: 12, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center' }}
-            >
-              <Text className="font-semibold text-white">Back to Home</Text>
-            </TouchableOpacity>
+            ))}
           </View>
         </View>
-      </ScrollView>
-    </ScreenContainer>
+
+        {/* Price Breakdown */}
+        <View style={s.priceCard}>
+          <Text style={s.sectionTitle}>Price Breakdown</Text>
+          <View style={s.priceRow}><Text style={s.priceLabel}>Subtotal</Text><Text style={s.priceVal}>NPR {subtotal.toLocaleString()}</Text></View>
+          <View style={s.priceRow}><Text style={s.priceLabel}>Tax (13%)</Text><Text style={s.priceVal}>NPR {tax.toLocaleString()}</Text></View>
+          {discount > 0 && <View style={s.priceRow}><Text style={[s.priceLabel, { color: SRS.green }]}>Discount</Text><Text style={[s.priceVal, { color: SRS.green }]}>-NPR {discount.toLocaleString()}</Text></View>}
+          <View style={[s.priceRow, s.totalRow]}><Text style={s.totalLabel}>Total</Text><Text style={s.totalVal}>NPR {total.toLocaleString()}</Text></View>
+        </View>
+
+        {/* Send Confirmation */}
+        <TouchableOpacity onPress={handleSendEmail} disabled={emailSent || sendingEmail}
+          style={[s.emailCard, { borderColor: emailSent ? SRS.green : GRAY[200], backgroundColor: emailSent ? SRS.green + '08' : '#FFF' }]}
+        >
+          <View style={[s.emailIcon, { backgroundColor: emailSent ? SRS.green + '18' : SRS.teal + '12' }]}>
+            {sendingEmail ? <ActivityIndicator size="small" color={SRS.teal} /> : <IconSymbol name="email" size={18} color={emailSent ? SRS.green : SRS.teal} />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.emailTitle}>{emailSent ? 'Confirmation Email Sent' : 'Send Confirmation Email'}</Text>
+            <Text style={s.emailSub}>{emailSent ? 'Check your inbox' : 'Get details delivered to your email'}</Text>
+          </View>
+          {emailSent && <Text style={{ fontSize: 12, fontWeight: '600', color: SRS.green }}>Sent!</Text>}
+        </TouchableOpacity>
+
+        {/* QR Code */}
+        <View style={s.qrCard}>
+          <Text style={s.sectionTitle}>Booking QR Code</Text>
+          <View style={s.qrBox}>
+            <Image source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${bookingId}` }}
+              style={{ width: 120, height: 120 }} />
+          </View>
+          <Text style={s.qrHint}>Show this QR code at check-in</Text>
+        </View>
+
+        {/* Actions */}
+        <View style={{ gap: SPACING.md, marginTop: SPACING.lg }}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)')} style={s.primaryBtn} activeOpacity={0.85}>
+            <IconSymbol name="hotel" size={16} color="#FFF" />
+            <Text style={s.primaryBtnText}>Back to Home</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={async () => {
+            try { await Share.share({ message: `Booking at ${hotelName}: ${bookingId}`, title: 'Booking Confirmation' }); } catch {}
+          }} style={s.secondaryBtn}>
+            <IconSymbol name="share" size={16} color={SRS.teal} />
+            <Text style={s.secondaryBtnText}>Share Booking</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: GRAY[50] },
+  successSection: { alignItems: 'center', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.lg, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: GRAY[100], gap: SPACING.sm },
+  successCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: SRS.green + '18', alignItems: 'center', justifyContent: 'center' },
+  successTitle: { ...TYPOGRAPHY.h2, color: SRS.navy },
+  successSub: { ...TYPOGRAPHY.body, color: GRAY[500] },
+  body: { padding: SPACING.lg, gap: SPACING.lg },
+  sectionTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.sm },
+  codeCard: { alignItems: 'center', padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: SRS.navy + '08', borderWidth: 1, borderColor: SRS.navy + '18', gap: 4 },
+  codeLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
+  codeValue: { ...TYPOGRAPHY.h2, fontWeight: '700', color: SRS.navy, letterSpacing: 2 },
+  codeHint: { ...TYPOGRAPHY.caption, color: GRAY[400] },
+  infoCard: { padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100] },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  infoText: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy, flex: 1 },
+  confirmedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.badge, backgroundColor: SRS.green + '12' },
+  confirmedText: { fontSize: 11, fontWeight: '600', color: SRS.green },
+  stayBox: { flex: 1, padding: SPACING.sm, borderRadius: RADIUS.button, backgroundColor: GRAY[50], alignItems: 'center', gap: 2 },
+  stayLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
+  stayValue: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
+  priceCard: { padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '06', borderWidth: 1, borderColor: SRS.teal + '16', gap: SPACING.xs },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  priceLabel: { ...TYPOGRAPHY.body, color: GRAY[600] },
+  priceVal: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
+  totalRow: { borderTopWidth: 1, borderTopColor: SRS.teal + '20', paddingTop: SPACING.sm, marginTop: SPACING.xs },
+  totalLabel: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy },
+  totalVal: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.teal },
+  emailCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md, borderRadius: RADIUS.card, borderWidth: 1.5 },
+  emailIcon: { width: 40, height: 40, borderRadius: RADIUS.card, alignItems: 'center', justifyContent: 'center' },
+  emailTitle: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
+  emailSub: { ...TYPOGRAPHY.caption, color: GRAY[500] },
+  qrCard: { alignItems: 'center', padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100], gap: SPACING.md },
+  qrBox: { width: 140, height: 140, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: GRAY[100] },
+  qrHint: { ...TYPOGRAPHY.caption, color: GRAY[400] },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingVertical: 16, borderRadius: RADIUS.card, backgroundColor: SRS.navy },
+  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingVertical: 14, borderRadius: RADIUS.card, borderWidth: 1.5, borderColor: SRS.teal },
+  secondaryBtnText: { fontSize: 14, fontWeight: '700', color: SRS.teal },
+});

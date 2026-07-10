@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Image,
-  FlatList,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -15,136 +14,38 @@ import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 import { ReviewModal } from '@/components/feature/review-modal';
 import { ReviewList, type Review } from '@/components/feature/review-list';
 import { useFavorites } from '@/lib/context/favorites-context';
-import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
-
-interface Room {
-  id: string;
-  type: string;
-  bedType: string;
-  capacity: number;
-  basePrice: number;
-  amenities: string[];
-  image: string;
-}
-
-interface Hotel {
-  id: string;
-  name: string;
-  city: string;
-  country: string;
-  rating: number;
-  review_count: number;
-  description: string;
-  address: string;
-  phone: string;
-  email: string;
-  check_in_time: string;
-  check_out_time: string;
-  photos: Array<{ url: string; caption: string }>;
-  amenities: Array<{ id: string; name: string; icon: string }>;
-  cancellation_policy: string;
-  rooms: Room[];
-  reviews: Review[];
-}
+import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 
 export default function HotelDetailFullScreen() {
-  const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+
+  const hotel = useMemo(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0], [id]);
+
+  const relatedHotels = useMemo(
+    () => MOCK_PROPERTIES.filter(h => h.city === hotel.city && h.id !== hotel.id).slice(0, 3),
+    [hotel]
+  );
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<typeof hotel.roomTypes[0] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [hotelReviews, setHotelReviews] = useState<Review[]>([]);
-
-  const mockHotel: Hotel = {
-    id: id || '1',
-    name: 'Grand Hotel Kathmandu',
-    city: 'Kathmandu',
-    country: 'Nepal',
-    rating: 4.8,
-    review_count: 342,
-    description:
-      'Experience luxury and comfort at our 5-star hotel in the heart of Kathmandu. Featuring world-class amenities, exceptional service, and stunning views of the Himalayas.',
-    address: '123 Durbar Marg, Kathmandu, Nepal',
-    phone: '+977-1-4123456',
-    email: 'info@grandhotel.com.np',
-    check_in_time: '14:00',
-    check_out_time: '11:00',
-    photos: [
-      { url: 'https://via.placeholder.com/400x300?text=Hotel+Lobby', caption: 'Main Lobby' },
-      { url: 'https://via.placeholder.com/400x300?text=Hotel+Room', caption: 'Room View' },
-      { url: 'https://via.placeholder.com/400x300?text=Hotel+Restaurant', caption: 'Restaurant' },
-    ],
-    amenities: [
-      { id: 'wifi', name: 'Free WiFi', icon: '📶' },
-      { id: 'pool', name: 'Swimming Pool', icon: '🏊' },
-      { id: 'gym', name: 'Fitness Center', icon: '💪' },
-      { id: 'spa', name: 'Spa & Wellness', icon: '💆' },
-      { id: 'restaurant', name: 'Restaurant & Bar', icon: '🍽️' },
-      { id: 'parking', name: 'Free Parking', icon: '🅿️' },
-      { id: 'concierge', name: '24/7 Concierge', icon: '🔔' },
-      { id: 'business', name: 'Business Center', icon: '💼' },
-    ],
-    cancellation_policy:
-      'Free cancellation up to 48 hours before check-in. After that, one night will be charged.',
-    rooms: [
-      {
-        id: 'room1',
-        type: 'Standard Room',
-        bedType: 'Queen Bed',
-        capacity: 2,
-        basePrice: 8500,
-        amenities: ['WiFi', 'AC', 'TV', 'Bathroom'],
-        image: 'https://via.placeholder.com/300x200?text=Standard+Room',
-      },
-      {
-        id: 'room2',
-        type: 'Deluxe Room',
-        bedType: 'King Bed',
-        capacity: 2,
-        basePrice: 12500,
-        amenities: ['WiFi', 'AC', 'TV', 'Bathroom', 'Mini Bar', 'Balcony'],
-        image: 'https://via.placeholder.com/300x200?text=Deluxe+Room',
-      },
-      {
-        id: 'room3',
-        type: 'Suite',
-        bedType: 'King Bed',
-        capacity: 4,
-        basePrice: 18500,
-        amenities: ['WiFi', 'AC', 'TV', 'Bathroom', 'Mini Bar', 'Balcony', 'Living Area'],
-        image: 'https://via.placeholder.com/300x200?text=Suite',
-      },
-    ],
-    reviews: [
-      {
-        id: '1',
-        author: 'John Doe',
-        rating: 5,
-        date: '2024-06-15',
-        title: 'Excellent stay!',
-        comment: 'Excellent hotel with great service and beautiful views! Highly recommend for anyone visiting Kathmandu.',
-        photos: ['https://via.placeholder.com/300x300?text=Room+Photo'],
-        verified: true,
-      },
-      {
-        id: '2',
-        author: 'Jane Smith',
-        rating: 4,
-        date: '2024-06-10',
-        title: 'Good location and comfortable',
-        comment: 'Good location and comfortable rooms. Highly recommended. The staff was very helpful.',
-        photos: ['https://via.placeholder.com/300x300?text=Lobby+Photo', 'https://via.placeholder.com/300x300?text=Restaurant+Photo'],
-        verified: true,
-      },
-    ] as Review[],
-  };
+  const [hotelReviews, setHotelReviews] = useState<Review[]>(
+    () => hotel.reviews.map(r => ({
+      id: r.id,
+      author: r.author,
+      rating: r.rating,
+      date: r.date,
+      title: '',
+      comment: r.comment,
+      verified: true,
+    }))
+  );
 
   const handleDateSelect = (checkIn: Date, checkOut: Date) => {
     setCheckInDate(checkIn);
@@ -152,7 +53,7 @@ export default function HotelDetailFullScreen() {
     setShowDatePicker(false);
   };
 
-  const handleSelectRoom = (room: Room) => {
+  const handleSelectRoom = (room: typeof hotel.roomTypes[0]) => {
     setSelectedRoom(room);
   };
 
@@ -166,25 +67,42 @@ export default function HotelDetailFullScreen() {
     setTimeout(() => {
       setIsLoading(false);
       router.push({
-        pathname: '/booking-form',
+        pathname: '/booking-flow',
         params: {
-          hotelId: mockHotel.id,
-          hotelName: mockHotel.name,
-          roomId: selectedRoom.id,
-          roomType: selectedRoom.type,
+          hotelName: hotel.name,
           checkIn: checkInDate.toISOString(),
           checkOut: checkOutDate.toISOString(),
-          price: selectedRoom.basePrice,
+          guests: '1',
+          roomId: selectedRoom.id,
+          roomName: selectedRoom.name,
+          roomPrice: String(selectedRoom.price),
         },
       });
     }, 500);
   };
 
-  const isFav = isFavorite(mockHotel.id);
+  const toggleFavorite = () => {
+    if (isFavorite(hotel.id)) {
+      removeFavorite(hotel.id);
+    } else {
+      addFavorite(hotel.id);
+    }
+  };
 
-  React.useEffect(() => {
-    setHotelReviews(mockHotel.reviews);
-  }, []);
+  const nights = useMemo(() => {
+    if (checkInDate && checkOutDate) {
+      return Math.max(1, Math.ceil(
+        (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+      ));
+    }
+    return 1;
+  }, [checkInDate, checkOutDate]);
+
+  const roomPrice = selectedRoom?.price || hotel.price;
+  const subtotal = roomPrice * nights;
+  const cleaningFee = Math.round(roomPrice * 0.15);
+  const serviceFee = Math.round(subtotal * 0.12);
+  const total = subtotal + cleaningFee + serviceFee;
 
   const handleSubmitReview = (review: { rating: number; title: string; comment: string; photos: string[] }) => {
     const newReview: Review = {
@@ -205,78 +123,67 @@ export default function HotelDetailFullScreen() {
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
         <View className="relative">
           <Image
-            source={{ uri: mockHotel.photos[selectedImageIndex].url }}
+            source={{ uri: hotel.images.length > 0 ? hotel.images[selectedImageIndex] : 'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&h=600&fit=crop' }}
             className="w-full h-64 bg-surface"
           />
-
-          <View className="absolute top-4 right-4 flex-row gap-2">
+          <View className="absolute top-4 left-4 flex-row gap-2">
             <View className="bg-black/60 rounded-full px-3 py-1">
               <Text className="text-white text-xs font-semibold">
-                {selectedImageIndex + 1}/{mockHotel.photos.length}
+                {hotel.images.length > 0 ? `${selectedImageIndex + 1}/${hotel.images.length}` : '1/1'}
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => {
-                if (isFav) {
-                  removeFavorite(mockHotel.id);
-                } else {
-                  addFavorite(mockHotel.id);
-                }
-              }}
+              onPress={toggleFavorite}
               className="bg-white rounded-full w-10 h-10 items-center justify-center"
             >
-              <Text className="text-xl">{isFav ? '❤️' : '🤍'}</Text>
+              <Text className="text-xl">{isFavorite(hotel.id) ? '❤️' : '🤍'}</Text>
             </TouchableOpacity>
           </View>
 
-          <View className="flex-row gap-2 px-4 py-3 bg-surface">
-            {mockHotel.photos.map((photo, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => setSelectedImageIndex(index)}
-                className={cn(
-                  'w-16 h-16 rounded-lg overflow-hidden border-2',
-                  selectedImageIndex === index ? 'border-primary' : 'border-border'
-                )}
-              >
-                <Image
-                  source={{ uri: photo.url }}
-                  className="w-full h-full bg-surface"
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
+          {hotel.images.length > 0 && (
+            <View className="flex-row gap-2 px-4 py-3 bg-surface">
+              {hotel.images.map((img: string, index: number) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => setSelectedImageIndex(index)}
+                  className={cn(
+                    'w-16 h-16 rounded-lg overflow-hidden border-2',
+                    selectedImageIndex === index ? 'border-primary' : 'border-border'
+                  )}
+                >
+                  <Image source={{ uri: img }} className="w-full h-full bg-surface" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         <View className="px-6 py-4 border-b border-border">
           <View className="flex-row items-start justify-between mb-2">
             <View className="flex-1">
-              <Text className="text-2xl font-bold text-foreground">{mockHotel.name}</Text>
-              <Text className="text-sm text-muted">
-                {mockHotel.city}, {mockHotel.country}
-              </Text>
+              <Text className="text-2xl font-bold text-foreground">{hotel.name}</Text>
+              <Text className="text-sm text-muted">{hotel.city}, {hotel.country}</Text>
             </View>
           </View>
-
           <View className="flex-row items-center gap-2">
-            <Text className="text-lg font-bold text-foreground">⭐ {mockHotel.rating}</Text>
-            <Text className="text-sm text-muted">({mockHotel.review_count} reviews)</Text>
+            <Text className="text-lg font-bold text-foreground">★ {hotel.rating}</Text>
+            <Text className="text-sm text-muted">({hotel.review_count} reviews)</Text>
           </View>
         </View>
 
         <View className="px-6 py-4 border-b border-border">
-          <Text className="text-sm text-foreground leading-relaxed">{mockHotel.description}</Text>
+          <Text className="text-sm text-foreground leading-relaxed">{hotel.description}</Text>
         </View>
 
         <View className="px-6 py-4 border-b border-border">
           <Text className="text-lg font-bold text-foreground mb-3">Contact Information</Text>
           <View className="gap-2">
-            <Text className="text-sm text-foreground">📍 {mockHotel.address}</Text>
-            <Text className="text-sm text-foreground">📞 {mockHotel.phone}</Text>
-            <Text className="text-sm text-foreground">✉️ {mockHotel.email}</Text>
+            <Text className="text-sm text-foreground">📍 {hotel.address}</Text>
+            <Text className="text-sm text-foreground">📞 {hotel.phone}</Text>
+            <Text className="text-sm text-foreground">✉️ {hotel.email}</Text>
             <View className="flex-row gap-4 mt-2">
-              <Text className="text-xs text-muted">Check-in: {mockHotel.check_in_time}</Text>
-              <Text className="text-xs text-muted">Check-out: {mockHotel.check_out_time}</Text>
+              <Text className="text-xs text-muted">Check-in: {hotel.checkInTime}</Text>
+              <Text className="text-xs text-muted">Check-out: {hotel.checkOutTime}</Text>
             </View>
           </View>
         </View>
@@ -284,8 +191,8 @@ export default function HotelDetailFullScreen() {
         <View className="px-6 py-4 border-b border-border">
           <Text className="text-lg font-bold text-foreground mb-3">Amenities</Text>
           <View className="flex-row flex-wrap gap-2">
-            {mockHotel.amenities.map((amenity) => (
-              <View key={amenity.id} className="bg-surface rounded-full px-3 py-2 flex-row items-center gap-1">
+            {hotel.amenities.map((amenity) => (
+              <View key={amenity.name} className="bg-surface rounded-full px-3 py-2 flex-row items-center gap-1">
                 <Text className="text-sm">{amenity.icon}</Text>
                 <Text className="text-xs text-foreground font-semibold">{amenity.name}</Text>
               </View>
@@ -314,7 +221,7 @@ export default function HotelDetailFullScreen() {
         <View className="px-6 py-4 border-b border-border">
           <Text className="text-lg font-bold text-foreground mb-3">Select Room Type</Text>
           <View className="gap-3">
-            {mockHotel.rooms.map((room) => (
+            {hotel.roomTypes.map((room) => (
               <TouchableOpacity
                 key={room.id}
                 onPress={() => handleSelectRoom(room)}
@@ -323,19 +230,17 @@ export default function HotelDetailFullScreen() {
                   selectedRoom?.id === room.id ? 'border-primary bg-primary/5' : 'border-border bg-surface'
                 )}
               >
-                <Image
-                  source={{ uri: room.image }}
-                  className="w-20 h-20 rounded-lg bg-surface"
-                />
+                <Image source={{ uri: room.image }} className="w-20 h-20 rounded-lg bg-surface" />
                 <View className="flex-1">
-                  <Text className="text-base font-bold text-foreground">{room.type}</Text>
+                  <Text className="text-base font-bold text-foreground">{room.name}</Text>
                   <Text className="text-xs text-muted mb-1">
-                    {room.bedType} • Up to {room.capacity} guests
+                    {room.bed} • Up to {room.occupancy} guests
                   </Text>
-                  <Text className="text-xs text-foreground mb-2">
-                    {room.amenities.join(', ')}
-                  </Text>
-                  <Text className="text-lg font-bold text-primary">NPR {room.basePrice}</Text>
+                  <Text className="text-xs text-foreground mb-2">{room.amenities.join(', ')}</Text>
+                  <Text className="text-lg font-bold text-primary">NPR {room.price.toLocaleString()}</Text>
+                  {room.available > 0 && room.available <= 3 && (
+                    <Text className="text-xs text-error font-semibold">Only {room.available} left</Text>
+                  )}
                 </View>
                 <View className="items-center justify-center">
                   <View
@@ -355,9 +260,37 @@ export default function HotelDetailFullScreen() {
         <View className="px-6 py-4 border-b border-border">
           <Text className="text-lg font-bold text-foreground mb-2">Cancellation Policy</Text>
           <View className="bg-warning/10 rounded-lg p-3">
-            <Text className="text-xs text-foreground">{mockHotel.cancellation_policy}</Text>
+            <Text className="text-xs text-foreground">{hotel.cancellationPolicy}</Text>
           </View>
         </View>
+
+        {/* Related Hotels */}
+        {relatedHotels.length > 0 && (
+          <View className="px-6 py-4 border-b border-border">
+            <Text className="text-lg font-bold text-foreground mb-3">More in {hotel.city}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-3">
+                {relatedHotels.map((h) => (
+                  <TouchableOpacity
+                    key={h.id}
+                    onPress={() => router.push({ pathname: '/hotel-detail-full/[id]', params: { id: h.id } })}
+                    className="w-44 rounded-xl border border-border overflow-hidden bg-surface"
+                  >
+                    <Image source={{ uri: h.images[0] }} className="w-full h-28 bg-surface" resizeMode="cover" />
+                    <View className="p-3 gap-1">
+                      <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>{h.name}</Text>
+                      <View className="flex-row items-center gap-1">
+                        <Text className="text-yellow-400 text-xs">★</Text>
+                        <Text className="text-xs text-muted">{h.rating} ({h.review_count})</Text>
+                      </View>
+                      <Text className="text-sm font-bold text-primary">NPR {h.price.toLocaleString()} <Text className="text-[10px] font-normal text-muted">night</Text></Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         <View className="px-6 py-4">
           <ReviewList
@@ -369,12 +302,28 @@ export default function HotelDetailFullScreen() {
         <View className="h-8" />
       </ScrollView>
 
-      <View className="px-6 py-4 border-t border-border bg-background">
+      <View className="px-6 pt-3 pb-6 border-t border-border bg-background shadow-sm">
+        {checkInDate && checkOutDate && (
+          <View className="flex-row items-center justify-between mb-3">
+            <View>
+              <Text className="text-xl font-bold text-foreground">
+                {hotel.currency} {total.toLocaleString()}
+              </Text>
+              <Text className="text-sm text-muted">
+                <Text className="font-medium text-foreground">{nights}</Text> {nights === 1 ? 'night' : 'nights'}
+                {selectedRoom ? <Text className="text-muted"> · {selectedRoom.name}</Text> : null}
+              </Text>
+            </View>
+            <View className="items-end">
+              <Text className="text-xs text-muted">{hotel.currency} {(total / nights).toFixed(0)}/night</Text>
+            </View>
+          </View>
+        )}
         <TouchableOpacity
           onPress={handleBookNow}
           disabled={isLoading || !checkInDate || !checkOutDate || !selectedRoom}
           className={cn(
-            'flex-row items-center justify-center py-4 rounded-lg',
+            'py-4 rounded-xl items-center justify-center',
             isLoading || !checkInDate || !checkOutDate || !selectedRoom
               ? 'bg-primary/50'
               : 'bg-primary'
@@ -383,7 +332,9 @@ export default function HotelDetailFullScreen() {
           {isLoading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-base font-bold text-white">Book Now</Text>
+            <Text className="text-base font-bold text-white">
+              {checkInDate && checkOutDate && selectedRoom ? 'Book Now' : 'Select dates to book'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -400,7 +351,7 @@ export default function HotelDetailFullScreen() {
         visible={showReviewModal}
         onClose={() => setShowReviewModal(false)}
         onSubmit={handleSubmitReview}
-        hotelName={mockHotel.name}
+        hotelName={hotel.name}
       />
     </ScreenContainer>
   );

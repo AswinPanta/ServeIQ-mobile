@@ -1,0 +1,122 @@
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+
+const ACCENT = '#E63946';
+
+export default function BookingSummaryScreen() {
+  const colors = useColors();
+  const params = useLocalSearchParams();
+
+  const hotelName = (params.hotelName as string) || 'Himalayan Lake View Resort';
+  const hotelPhone = (params.hotelPhone as string) || '+977-61-523456';
+  const hotelEmail = (params.hotelEmail as string) || 'info@himalayanlakeview.com';
+  const roomType = (params.roomType as string) || 'Lakeview Room';
+  const nights = parseInt((params.nights as string) || '9', 10);
+  const perNight = parseInt((params.perNight as string) || '180', 10);
+  const roomTotal = parseInt((params.roomTotal as string) || '1620', 10);
+  const cleaningFee = parseInt((params.cleaningFee as string) || '27', 10);
+  const serviceFee = parseInt((params.serviceFee as string) || '194', 10);
+  const grandTotal = parseInt((params.grandTotal as string) || '1841', 10);
+
+  const roomId = params.roomId as string | undefined;
+
+  const handleBookNow = () => {
+    router.push({
+      pathname: '/booking-flow',
+      params: {
+        hotelName,
+        checkIn: params.checkIn || '',
+        checkOut: params.checkOut || '',
+        guests: params.guests || '1',
+        roomId: roomId || '',
+        roomName: roomType,
+        roomPrice: String(perNight),
+      },
+    });
+  };
+
+  return (
+    <ScreenContainer className="flex-1" containerClassName="bg-background">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+        <View className="px-6 pt-14 pb-4">
+          <TouchableOpacity onPress={() => router.back()}
+            style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text className="text-lg">←</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View className="mx-6 rounded-2xl overflow-hidden"
+          style={{ backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 }}
+        >
+          <View style={{ backgroundColor: ACCENT, paddingVertical: 14, paddingHorizontal: 20 }}>
+            <Text className="text-lg font-bold text-white text-center">{hotelName}</Text>
+          </View>
+
+          <View className="px-5 py-4 gap-3 border-b border-border">
+            <View className="flex-row items-center gap-3">
+              <Text style={{ fontSize: 16 }}>📞</Text>
+              <Text className="text-sm text-foreground" selectable>{hotelPhone}</Text>
+            </View>
+            <View className="flex-row items-center gap-3">
+              <Text style={{ fontSize: 16 }}>✉</Text>
+              <Text className="text-sm text-foreground" selectable>{hotelEmail}</Text>
+            </View>
+          </View>
+
+          <View className="px-5 py-5 gap-4">
+            <Text className="text-base font-bold text-foreground">Booking Summary</Text>
+
+            <View className="gap-3">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-foreground">{roomType}</Text>
+                  <Text className="text-xs text-muted">{nights} nights × NPR {perNight.toLocaleString()}</Text>
+                </View>
+                <Text className="text-sm font-semibold text-foreground">NPR {roomTotal.toLocaleString()}</Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: colors.border }} />
+
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-muted">Cleaning Fee</Text>
+                <Text className="text-sm text-foreground">NPR {cleaningFee.toLocaleString()}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-muted">Service Fee</Text>
+                <Text className="text-sm text-foreground">NPR {serviceFee.toLocaleString()}</Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: colors.border }} />
+
+              <View className="flex-row justify-between">
+                <Text className="text-base font-bold text-foreground">Grand Total</Text>
+                <Text className="text-base font-bold" style={{ color: ACCENT }}>NPR {grandTotal.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View className="px-6 mt-6 gap-4">
+          <Text className="text-xs text-muted text-center">
+            By tapping "Book Now", you agree to our cancellation and refund policies.
+          </Text>
+
+          <TouchableOpacity onPress={handleBookNow}
+            style={{
+              paddingVertical: 16, borderRadius: 16, alignItems: 'center',
+              backgroundColor: ACCENT,
+              shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+            }}
+            activeOpacity={0.85}
+          >
+            <Text className="text-base font-semibold text-white">Book Now</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

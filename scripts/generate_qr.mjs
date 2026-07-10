@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-import QRCode from "qrcode";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const QRCode = require("qrcode");
 
 const url = process.argv[2];
 

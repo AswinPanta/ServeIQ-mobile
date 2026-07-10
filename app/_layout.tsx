@@ -1,7 +1,16 @@
 import "@/global.css";
+
+// Suppress the InteractionManager deprecation warning from React Native dependencies
+// (react-native-gesture-handler, react-native-screens, etc. use it internally)
+const _origWarn = console.warn;
+console.warn = (...args: unknown[]) => {
+  if (typeof args[0] === 'string' && args[0].includes('InteractionManager has been deprecated')) return;
+  _origWarn.apply(console, args);
+};
+
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform, ActivityIndicator, View } from "react-native";
@@ -12,11 +21,18 @@ import {
   SafeAreaProvider,
   initialWindowMetrics,
 } from "react-native-safe-area-context";
-import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
+import type { EdgeInsets, Rect } from "react-native-safe-area-context";
 
-import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { AuthProvider, useAuth } from "@/lib/context/auth-context";
 import { FavoritesProvider } from "@/lib/context/favorites-context";
+import { NotificationProvider, useNotifications } from "@/lib/context/notification-context";
+import { BookingProvider } from "@/lib/context/booking-context";
+import { CouponProvider } from "@/lib/context/coupon-context";
+import { PreferencesProvider } from "@/lib/context/preferences-context";
+import { SearchProvider } from "@/lib/context/search-context";
+import { CRMProvider } from "@/lib/context/crm-context";
+import { AnalyticsProvider } from "@/lib/context/analytics-context";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useColors } from "@/hooks/use-colors";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -26,12 +42,25 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
+function PushNotificationInit() {
+  const { expoPushToken } = usePushNotifications();
+  const { registerPushToken } = useNotifications();
+
+  useEffect(() => {
+    if (expoPushToken) {
+      registerPushToken(expoPushToken);
+    }
+  }, [expoPushToken, registerPushToken]);
+
+  return null;
+}
+
 /**
  * Root Navigation Component
  * Routes between auth and app screens based on authentication state
  */
 function RootNavigator() {
-  const { isSignedIn, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const colors = useColors();
 
   if (isLoading) {
@@ -47,16 +76,21 @@ function RootNavigator() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(host)" />
+      <Stack.Screen name="(operations)" />
+      <Stack.Screen name="(superadmin)" />
       <Stack.Screen name="search-results" options={{ presentation: "modal" }} />
-      <Stack.Screen name="hotel-detail" options={{ presentation: "modal" }} />
-      <Stack.Screen name="hotel-detail-full" options={{ presentation: "modal" }} />
-      <Stack.Screen name="booking-form" options={{ presentation: "fullScreenModal" }} />
       <Stack.Screen name="booking-flow" options={{ presentation: "fullScreenModal" }} />
+      <Stack.Screen name="booking-summary" options={{ presentation: "fullScreenModal" }} />
       <Stack.Screen name="booking-confirmation" options={{ presentation: "fullScreenModal" }} />
       <Stack.Screen name="guest-search-results" />
-      <Stack.Screen name="guest-hotel-detail" />
-      <Stack.Screen name="oauth/callback" />
+      <Stack.Screen name="destinations" />
+      <Stack.Screen name="country/[code]" />
       <Stack.Screen name="[id]" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="profile-edit" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="promotions" />
     </Stack>
   );
 }
@@ -67,22 +101,6 @@ export default function RootLayout() {
 
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
-
-  // Initialize Manus runtime for cookie injection from parent container
-  useEffect(() => {
-    initManusRuntime();
-  }, []);
-
-  const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {
-    setInsets(metrics.insets);
-    setFrame(metrics.frame);
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== "web") return;
-    const unsubscribe = subscribeSafeAreaInsets(handleSafeAreaUpdate);
-    return () => unsubscribe();
-  }, [handleSafeAreaUpdate]);
 
   // Ensure minimum 8px padding for top and bottom on mobile
   const providerInitialMetrics = useMemo(() => {
@@ -101,8 +119,23 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <FavoritesProvider>
-          <RootNavigator />
-          <StatusBar style="auto" />
+          <NotificationProvider>
+            <BookingProvider>
+              <CouponProvider>
+                <PreferencesProvider>
+                  <SearchProvider>
+                    <CRMProvider>
+                      <AnalyticsProvider>
+                        <RootNavigator />
+                      </AnalyticsProvider>
+                    </CRMProvider>
+                  </SearchProvider>
+                </PreferencesProvider>
+                <PushNotificationInit />
+                <StatusBar style="auto" />
+              </CouponProvider>
+            </BookingProvider>
+          </NotificationProvider>
         </FavoritesProvider>
       </AuthProvider>
     </GestureHandlerRootView>

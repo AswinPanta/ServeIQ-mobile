@@ -1,0 +1,190 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+
+const ACCENT = '#7C3AED';
+
+const MOCK_TENANTS = [
+  {
+    id: '1', company: 'Himalayan Heights Hotels', email: 'info@himalayanheights.com', phone: '+977-1-4XXXXXX',
+    address: 'Thamel, Kathmandu', created_at: '2024-01-15', plan: 'Enterprise', renewal_date: '2026-01-15',
+    properties: 8, users: 24, bookings: 342, revenue: 980000, status: 'Active', avatar: 'HH',
+    recent_activity: [
+      { action: 'New booking created', time: '2 hours ago' },
+      { action: 'Payment of NPR 45,000 received', time: '5 hours ago' },
+      { action: 'Property "Himalayan Deluxe Suite" added', time: '1 day ago' },
+      { action: 'User "ram@hh.com" joined', time: '2 days ago' },
+      { action: 'Subscription renewed to Enterprise', time: '5 days ago' },
+    ],
+  },
+  {
+    id: '2', company: 'Pokhara Lake Resort', email: 'hello@pokharalake.com', phone: '+977-61-4XXXXX',
+    address: 'Lakeside, Pokhara', created_at: '2024-03-20', plan: 'Pro', renewal_date: '2025-09-20',
+    properties: 3, users: 10, bookings: 156, revenue: 450000, status: 'Active', avatar: 'PL',
+    recent_activity: [
+      { action: 'New review received (5 stars)', time: '30 mins ago' },
+      { action: 'Booking #B2024-890 confirmed', time: '3 hours ago' },
+      { action: 'Room rate updated for peak season', time: '1 day ago' },
+    ],
+  },
+  {
+    id: '4', company: 'Chitwan Safari Lodge', email: 'admin@chitwansafari.com', phone: '+977-56-4XXXXX',
+    address: 'Sauraha, Chitwan', created_at: '2024-02-01', plan: 'Basic', renewal_date: '2025-08-01',
+    properties: 1, users: 3, bookings: 28, revenue: 65000, status: 'Suspended', avatar: 'CS',
+    recent_activity: [
+      { action: 'Account suspended due to payment failure', time: '3 days ago' },
+      { action: 'Support ticket #5678 escalated', time: '4 days ago' },
+      { action: 'Payment of NPR 25,000 failed', time: '5 days ago' },
+    ],
+  },
+];
+
+export default function TenantDetailScreen() {
+  const colors = useColors();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const tenant = MOCK_TENANTS.find((t) => t.id === id) || MOCK_TENANTS[0];
+  const [isActive, setIsActive] = useState(tenant.status === 'Active');
+
+  const handleSuspendToggle = () => {
+    Alert.alert(
+      isActive ? 'Suspend Tenant' : 'Activate Tenant',
+      isActive
+        ? `Are you sure you want to suspend ${tenant.company}? They will lose access to the platform.`
+        : `Are you sure you want to reactivate ${tenant.company}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: isActive ? 'Suspend' : 'Activate', style: isActive ? 'destructive' : 'default', onPress: () => setIsActive(!isActive) },
+      ]
+    );
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Tenant',
+      `This will permanently delete ${tenant.company} and all associated data. This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => { Alert.alert('Deleted', `${tenant.company} has been deleted.`); router.back(); } },
+      ]
+    );
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => router.back()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-lg" style={{ color: ACCENT }}>←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground flex-1">Tenant Details</Text>
+          </View>
+
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 16 }}>
+            <View className="flex-row items-center gap-4 mb-4">
+              <View style={{ width: 60, height: 60, borderRadius: 16, backgroundColor: ACCENT + '18', alignItems: 'center', justifyContent: 'center' }}>
+                <Text className="text-lg font-bold" style={{ color: ACCENT }}>{tenant.avatar}</Text>
+              </View>
+              <View className="flex-1">
+                <Text className="text-xl font-bold text-foreground">{tenant.company}</Text>
+                <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, backgroundColor: isActive ? '#10B98115' : '#EF444415', alignSelf: 'flex-start', marginTop: 4 }}>
+                  <Text className="text-xs font-bold" style={{ color: isActive ? '#10B981' : '#EF4444' }}>{isActive ? 'Active' : 'Suspended'}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 16 }} />
+
+            <View className="gap-3">
+              <InfoRow label="Email" value={tenant.email} />
+              <InfoRow label="Phone" value={tenant.phone} />
+              <InfoRow label="Address" value={tenant.address} />
+              <InfoRow label="Created" value={tenant.created_at} />
+            </View>
+          </View>
+
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 16 }}>
+            <Text className="text-lg font-bold text-foreground mb-4">Plan</Text>
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-sm text-muted">Current Plan</Text>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, backgroundColor: ACCENT + '15' }}>
+                <Text className="text-sm font-bold" style={{ color: ACCENT }}>{tenant.plan}</Text>
+              </View>
+            </View>
+            <InfoRow label="Renewal Date" value={tenant.renewal_date} />
+            <TouchableOpacity
+              style={{ marginTop: 14, paddingVertical: 14, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' }}
+              activeOpacity={0.7}
+            >
+              <Text className="text-base font-bold text-white">Upgrade Plan</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 16 }}>
+            <Text className="text-lg font-bold text-foreground mb-4">Stats</Text>
+            <View className="flex-row flex-wrap gap-3">
+              <StatCard label="Properties" value={tenant.properties} color="#3B82F6" />
+              <StatCard label="Users" value={tenant.users} color="#10B981" />
+              <StatCard label="Bookings" value={tenant.bookings} color="#F59E0B" />
+              <StatCard label="Revenue" value={`NPR ${(tenant.revenue / 1000).toFixed(0)}K`} color="#7C3AED" />
+            </View>
+          </View>
+
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 16 }}>
+            <Text className="text-lg font-bold text-foreground mb-4">Actions</Text>
+            <TouchableOpacity
+              onPress={handleSuspendToggle}
+              style={{ paddingVertical: 14, borderRadius: 12, backgroundColor: isActive ? '#EF444415' : '#10B98115', alignItems: 'center', marginBottom: 10 }}
+              activeOpacity={0.7}
+            >
+              <Text className="text-base font-bold" style={{ color: isActive ? '#EF4444' : '#10B981' }}>
+                {isActive ? 'Suspend Tenant' : 'Activate Tenant'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleDelete}
+              style={{ paddingVertical: 14, borderRadius: 12, backgroundColor: '#EF444415', alignItems: 'center', borderWidth: 1, borderColor: '#EF444420' }}
+              activeOpacity={0.7}
+            >
+              <Text className="text-base font-bold text-red-500">Delete Tenant</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+            <Text className="text-lg font-bold text-foreground mb-4">Recent Activity</Text>
+            {tenant.recent_activity.map((act, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 12, borderBottomWidth: i < tenant.recent_activity.length - 1 ? 1 : 0, borderBottomColor: colors.border }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT, marginTop: 6 }} />
+                <View className="flex-1">
+                  <Text className="text-sm text-foreground">{act.action}</Text>
+                  <Text className="text-xs text-muted mt-1">{act.time}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  const colors = useColors();
+  return (
+    <View className="flex-row items-center justify-between">
+      <Text className="text-sm text-muted">{label}</Text>
+      <Text className="text-sm font-semibold text-foreground">{value}</Text>
+    </View>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
+  return (
+    <View style={{ width: '47%', padding: 16, borderRadius: 12, backgroundColor: color + '10', borderWidth: 1, borderColor: color + '20' }}>
+      <Text className="text-xl font-bold text-foreground">{value}</Text>
+      <Text className="text-xs text-muted mt-1">{label}</Text>
+    </View>
+  );
+}

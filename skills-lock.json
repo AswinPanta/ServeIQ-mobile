@@ -114,6 +114,12 @@
       "sourceType": "github",
       "skillPath": "skills/react-native-skills/SKILL.md",
       "computedHash": "41d24eafa7c3d82e270439808f7cfbc4d51aeb2d14f2809a2267c16275784d06"
+    },
+    "image-to-code": {
+      "source": "Thadaw/Stay_Easy",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/image-to-code/SKILL.md",
+      "computedHash": "3d2ac14d956fdafc5500d2108b90895e134d847f9f199e7f1d18bf1f814cf7c8"
     }
   }
 }

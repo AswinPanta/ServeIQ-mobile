@@ -10,4 +10,7 @@ declare const themeColors: {
   error: { light: string; dark: string };
 };
 
+declare const _default: { themeColors: typeof themeColors };
+
+export default _default;
 export { themeColors };

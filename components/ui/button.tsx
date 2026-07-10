@@ -1,19 +1,17 @@
-/**
- * Button Component
- * Reusable button with multiple variants and states
- */
-
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
 
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accent';
+type ButtonSize = 'sm' | 'md' | 'lg';
+
 interface ButtonProps {
   onPress?: () => void;
   disabled?: boolean;
   loading?: boolean;
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   children: React.ReactNode;
   className?: string;
   icon?: React.ReactNode;
@@ -38,30 +36,34 @@ export function Button({
   const colors = useColors();
   const isDisabled = disabled || loading;
 
-  const variantStyles = {
+  const variantStyles: Record<ButtonVariant, string> = {
     primary: 'bg-primary',
-    secondary: 'bg-surface border border-border',
-    tertiary: 'bg-transparent',
-    danger: 'bg-error',
+    secondary: 'bg-secondary',
+    outline: 'border border-border bg-card',
+    ghost: 'bg-transparent',
+    danger: 'bg-destructive',
+    accent: 'bg-accent',
   };
 
-  const variantTextStyles = {
-    primary: 'text-white',
-    secondary: 'text-foreground',
-    tertiary: 'text-primary',
-    danger: 'text-white',
+  const variantTextStyles: Record<ButtonVariant, string> = {
+    primary: 'text-primary-foreground',
+    secondary: 'text-secondary-foreground',
+    outline: 'text-foreground',
+    ghost: 'text-muted-foreground',
+    danger: 'text-destructive-foreground',
+    accent: 'text-accent-foreground',
   };
 
-  const sizeStyles = {
-    sm: 'px-3 py-2',
-    md: 'px-4 py-3',
-    lg: 'px-6 py-4',
+  const sizeStyles: Record<ButtonSize, string> = {
+    sm: 'px-3 py-1.5',
+    md: 'px-4 py-2.5',
+    lg: 'px-6 py-3.5',
   };
 
-  const textSizeStyles = {
-    sm: 'text-sm',
-    md: 'text-base',
-    lg: 'text-lg',
+  const textSizeStyles: Record<ButtonSize, string> = {
+    sm: 'text-xs',
+    md: 'text-sm',
+    lg: 'text-base',
   };
 
   return (
@@ -71,29 +73,23 @@ export function Button({
       activeOpacity={0.8}
       testID={testID}
       className={cn(
-        'flex-row items-center justify-center rounded-lg',
+        'flex-row items-center justify-center rounded-xl font-medium',
         variantStyles[variant],
         sizeStyles[size],
-        isDisabled && 'opacity-60',
+        isDisabled && 'opacity-50',
         fullWidth && 'w-full',
         className
       )}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? 'white' : colors.primary} />
+        <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? colors.foreground : '#fff'} />
       ) : (
         <>
-          {icon && iconPosition === 'left' && <View className="mr-2">{icon}</View>}
-          <Text
-            className={cn(
-              'font-semibold',
-              variantTextStyles[variant],
-              textSizeStyles[size]
-            )}
-          >
+          {icon && iconPosition === 'left' && <View className="mr-1.5">{icon}</View>}
+          <Text className={cn('font-semibold', variantTextStyles[variant], textSizeStyles[size])}>
             {children}
           </Text>
-          {icon && iconPosition === 'right' && <View className="ml-2">{icon}</View>}
+          {icon && iconPosition === 'right' && <View className="ml-1.5">{icon}</View>}
         </>
       )}
     </TouchableOpacity>

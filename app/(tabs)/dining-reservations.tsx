@@ -1,0 +1,335 @@
+/**
+ * Dining Reservations Screen (SRS RS-003)
+ * Guest-facing restaurant table booking via the portal
+ */
+
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useAuth } from '@/lib/context/auth-context';
+import { safeGoBack } from '@/lib/utils';
+const ACCENT = '#E63946';
+
+const RESTAURANTS = [
+  {
+    id: 'res-1',
+    name: 'Grand Himalaya Restaurant',
+    cuisine: 'Nepali, Indian, Continental',
+    rating: 4.5,
+    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
+    sections: [
+      { name: 'Main Dining', capacity: 60, tables: 15, hours: '7:00 AM – 10:30 PM' },
+      { name: 'Rooftop Terrace', capacity: 30, tables: 8, hours: '6:00 PM – 11:00 PM' },
+      { name: 'Private Room', capacity: 12, tables: 1, hours: '12:00 PM – 10:00 PM' },
+    ],
+  },
+  {
+    id: 'res-2',
+    name: 'Lakeside Bistro',
+    cuisine: 'International, Seafood',
+    rating: 4.3,
+    image: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=400',
+    sections: [
+      { name: 'Indoor Dining', capacity: 40, tables: 10, hours: '8:00 AM – 10:00 PM' },
+      { name: 'Lakeside Patio', capacity: 24, tables: 6, hours: '11:00 AM – 9:00 PM' },
+    ],
+  },
+  {
+    id: 'res-3',
+    name: 'Thamel Garden Café',
+    cuisine: 'Café, Bakery, Light Bites',
+    rating: 4.1,
+    image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400',
+    sections: [
+      { name: 'Garden Area', capacity: 20, tables: 5, hours: '7:00 AM – 8:00 PM' },
+    ],
+  },
+];
+
+const TIME_SLOTS = [
+  '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
+  '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM',
+];
+
+const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 8, 10];
+
+export default function DiningReservationsScreen() {
+  const colors = useColors();
+  const { user } = useAuth();
+
+  const [step, setStep] = useState<'restaurant' | 'details' | 'confirm'>('restaurant');
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [timeSlot, setTimeSlot] = useState('');
+  const [partySize, setPartySize] = useState(2);
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [contactPhone, setContactPhone] = useState(user && 'phone' in user ? (user as any).phone || '' : '');
+
+  const selectedRestaurant = selectedRestaurantId
+    ? RESTAURANTS.find(r => r.id === selectedRestaurantId)
+    : null;
+
+  const resetSelection = () => {
+    setSelectedRestaurantId(null);
+    setSelectedSection(null);
+    setTimeSlot('');
+    setStep('restaurant');
+  };
+
+  const handleConfirm = () => {
+    if (!selectedRestaurant || !selectedSection || !timeSlot) return;
+    Alert.alert(
+      'Reservation Confirmed!',
+      `Table at ${selectedRestaurant.name}\n${selectedSection}\n${date} at ${timeSlot}\n${partySize} guest${partySize > 1 ? 's' : ''}\n\nA confirmation has been sent to your email and phone.`,
+      [{ text: 'Done', onPress: () => safeGoBack() }]
+    );
+  };
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => step === 'restaurant' ? safeGoBack() : resetSelection()}
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <View>
+              <Text className="text-2xl font-bold text-foreground">Dining Reservations</Text>
+              <Text className="text-sm text-muted">Book a table at your favorite restaurant</Text>
+            </View>
+          </View>
+
+          {step === 'restaurant' && (
+            <View>
+              <Text className="text-lg font-bold text-foreground mb-4">Select a Restaurant</Text>
+              {RESTAURANTS.map(restaurant => (
+                <TouchableOpacity key={restaurant.id} onPress={() => { setSelectedRestaurantId(restaurant.id); setStep('details'); }}
+                  style={{
+                    padding: 16, borderRadius: 18, marginBottom: 12,
+                    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+                  }}
+                >
+                  <View className="flex-row gap-3 mb-3">
+                    <View style={{ width: 60, height: 60, borderRadius: 14, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 28 }}>🍽️</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-bold text-foreground">{restaurant.name}</Text>
+                      <Text className="text-xs text-muted">{restaurant.cuisine}</Text>
+                      <View className="flex-row items-center gap-1 mt-1">
+                        <Text style={{ color: '#F59E0B', fontSize: 14 }}>★</Text>
+                        <Text className="text-xs font-bold text-foreground">{restaurant.rating}</Text>
+                      </View>
+                    </View>
+                    <Text className="text-lg text-muted self-center">›</Text>
+                  </View>
+                  <View className="flex-row gap-2">
+                    {restaurant.sections.map(s => (
+                      <View key={s.name} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: ACCENT + '10' }}>
+                        <Text className="text-xs font-semibold" style={{ color: ACCENT }}>{s.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {step === 'details' && selectedRestaurant && (
+            <View>
+              <Text className="text-lg font-bold text-foreground mb-4">Reservation Details</Text>
+
+              {/* Section Selection */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-sm font-semibold text-muted mb-2">Dining Section</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {selectedRestaurant.sections.map(s => (
+                    <TouchableOpacity key={s.name} onPress={() => setSelectedSection(s.name)}
+                      style={{
+                        paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
+                        backgroundColor: selectedSection === s.name ? ACCENT : colors.surface,
+                        borderWidth: 1, borderColor: selectedSection === s.name ? ACCENT : colors.border,
+                      }}
+                    >
+                      <Text className="text-sm font-semibold" style={{ color: selectedSection === s.name ? '#fff' : colors.foreground }}>
+                        {s.name}
+                      </Text>
+                      <Text className="text-xs" style={{ color: selectedSection === s.name ? '#fff' : colors.muted }}>
+                        Up to {s.capacity} guests
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Date */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-sm font-semibold text-muted mb-2">Date</Text>
+                <TextInput
+                  value={date}
+                  onChangeText={setDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={colors.muted}
+                  className="text-sm text-foreground px-4 py-3 rounded-xl"
+                  style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+                />
+                <Text className="text-xs text-muted mt-1">Today: {new Date().toLocaleDateString()}</Text>
+              </View>
+
+              {/* Time Slot */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-sm font-semibold text-muted mb-2">Time</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {TIME_SLOTS.map(slot => (
+                    <TouchableOpacity key={slot} onPress={() => setTimeSlot(slot)}
+                      style={{
+                        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+                        backgroundColor: timeSlot === slot ? ACCENT : colors.surface,
+                        borderWidth: 1, borderColor: timeSlot === slot ? ACCENT : colors.border,
+                      }}
+                    >
+                      <Text className="text-xs font-semibold" style={{ color: timeSlot === slot ? '#fff' : colors.foreground }}>
+                        {slot}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Party Size */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-sm font-semibold text-muted mb-2">Party Size</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {PARTY_SIZES.map(size => (
+                    <TouchableOpacity key={size} onPress={() => setPartySize(size)}
+                      style={{
+                        width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: partySize === size ? ACCENT : colors.surface,
+                        borderWidth: 1, borderColor: partySize === size ? ACCENT : colors.border,
+                      }}
+                    >
+                      <Text className="text-sm font-bold" style={{ color: partySize === size ? '#fff' : colors.foreground }}>{size}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Contact Phone */}
+              <View style={{ marginBottom: 16 }}>
+                <Text className="text-sm font-semibold text-muted mb-2">Contact Phone</Text>
+                <TextInput
+                  value={contactPhone}
+                  onChangeText={setContactPhone}
+                  placeholder="Phone number for confirmation"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="phone-pad"
+                  className="text-sm text-foreground px-4 py-3 rounded-xl"
+                  style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+                />
+              </View>
+
+              {/* Special Requests */}
+              <View style={{ marginBottom: 24 }}>
+                <Text className="text-sm font-semibold text-muted mb-2">Special Requests</Text>
+                <TextInput
+                  value={specialRequests}
+                  onChangeText={setSpecialRequests}
+                  placeholder="Allergies, preferences, celebrations..."
+                  placeholderTextColor={colors.muted}
+                  multiline
+                  numberOfLines={3}
+                  className="text-sm text-foreground px-4 py-3 rounded-xl"
+                  style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, minHeight: 70, textAlignVertical: 'top' }}
+                />
+              </View>
+
+              {/* Continue Button */}
+              <TouchableOpacity onPress={() => {
+                if (!selectedSection || !timeSlot) {
+                  Alert.alert('Missing Info', 'Please select a section, date, and time slot.');
+                  return;
+                }
+                setStep('confirm');
+              }}
+                style={{
+                  paddingVertical: 16, borderRadius: 16, alignItems: 'center',
+                  backgroundColor: ACCENT,
+                  shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+                }}
+              >
+                <Text className="text-base font-semibold text-white">Review Reservation</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {step === 'confirm' && selectedRestaurant && (
+            <View>
+              <Text className="text-lg font-bold text-foreground mb-4">Confirm Reservation</Text>
+
+              <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+                <View className="items-center mb-4">
+                  <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: ACCENT + '15', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 32 }}>🍽️</Text>
+                  </View>
+                  <Text className="text-lg font-bold text-foreground">{selectedRestaurant.name}</Text>
+                  <Text className="text-sm text-muted">{selectedRestaurant.cuisine}</Text>
+                </View>
+
+                <View className="gap-3">
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Section</Text>
+                    <Text className="text-sm font-semibold text-foreground">{selectedSection}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Date</Text>
+                    <Text className="text-sm font-semibold text-foreground">{new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Time</Text>
+                    <Text className="text-sm font-semibold text-foreground">{timeSlot}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Guests</Text>
+                    <Text className="text-sm font-semibold text-foreground">{partySize}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-sm text-muted">Contact</Text>
+                    <Text className="text-sm font-semibold text-foreground">{contactPhone || user?.email || '—'}</Text>
+                  </View>
+                  {specialRequests ? (
+                    <View className="flex-row justify-between">
+                      <Text className="text-sm text-muted">Requests</Text>
+                      <Text className="text-sm font-semibold text-foreground text-right flex-1">{specialRequests}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+
+              <TouchableOpacity onPress={handleConfirm}
+                style={{
+                  paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 12,
+                  backgroundColor: ACCENT,
+                  shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+                }}
+              >
+                <Text className="text-base font-semibold text-white">Confirm Reservation</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setStep('details')}
+                style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: colors.border }}
+              >
+                <Text className="text-sm font-semibold text-muted">Edit Details</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

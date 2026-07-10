@@ -1,0 +1,220 @@
+import { useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, Image, ImageBackground } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { getCountry, type WorldCountry, type City } from "@/lib/mock/world-countries";
+import { hotels } from "@/lib/mock/hotels";
+
+function HotelCard({ hotel }: { hotel: (typeof hotels)[number] }) {
+  const router = useRouter();
+  return (
+    <View style={{ borderRadius: 16, overflow: "hidden", backgroundColor: "#FFFFFF", marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 }}>
+      <Image source={{ uri: hotel.imageUrl }} style={{ width: "100%", height: 180 }} resizeMode="cover" />
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#16233A", flex: 1 }} numberOfLines={1}>{hotel.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ color: "#E8B84B", fontSize: 14 }}>★</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: "#16233A", marginLeft: 2 }}>{hotel.rating}</Text>
+          </View>
+        </View>
+        <Text style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>{hotel.location}</Text>
+        <Text style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>{hotel.reviews} reviews · {hotel.bedrooms} bed · {hotel.bathrooms} bath</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#16233A" }}>${hotel.price}<Text style={{ fontSize: 12, fontWeight: "400", color: "#666" }}>/night</Text></Text>
+          {hotel.isSuperhost && (
+            <View style={{ backgroundColor: "#16233A", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ color: "#FFD58A", fontSize: 11, fontWeight: "600" }}>SUPERHOST</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export default function CountryPage() {
+  const { code } = useLocalSearchParams<{ code: string }>();
+  const router = useRouter();
+  const country = getCountry(code || "");
+  const [activeCity, setActiveCity] = useState<string | null>(null);
+
+  const countryHotels = hotels.filter(
+    (h) => h.country?.toLowerCase() === country?.name.toLowerCase()
+  );
+  const displayHotels = countryHotels.length > 0 ? countryHotels : hotels.slice(0, 4);
+
+  const selectedCity = activeCity
+    ? country?.cities.find((c) => c.name === activeCity)
+    : null;
+
+  if (!country) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#FAF6EE", alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>🌍</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600", color: "#16233A", marginBottom: 16 }}>Country not found</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: "#16233A", paddingHorizontal: 24, paddingVertical: 14, borderRadius: 999 }}>
+          <Text style={{ color: "#FFFFFF", fontWeight: "600" }}>Back to home</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#FAF6EE" }}>
+      <ScrollView>
+        {/* HERO */}
+        <View style={{ height: 380, overflow: "hidden" }}>
+          <ImageBackground
+            source={{ uri: selectedCity?.image || country.heroImage }}
+            style={{ flex: 1, justifyContent: "flex-end" }}
+            resizeMode="cover"
+          >
+            <View style={{ padding: 24, paddingBottom: 32 }}>
+              <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 20, padding: 12 }}>
+                <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>← Back</Text>
+              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                <Text style={{ fontSize: 40, marginRight: 8 }}>{country.flag}</Text>
+                <View>
+                  <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "700" }}>
+                    {selectedCity ? selectedCity.name : country.name}
+                  </Text>
+                  {selectedCity && (
+                    <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{country.name} · {country.flag}</Text>
+                  )}
+                </View>
+              </View>
+              <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, lineHeight: 20, maxWidth: "90%" }}>
+                {selectedCity ? selectedCity.description : country.description}
+              </Text>
+            </View>
+          </ImageBackground>
+        </View>
+
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          {/* CITY FILTER */}
+          <Text style={{ fontSize: 15, fontWeight: "600", color: "#16233A", marginBottom: 12 }}>
+            Popular cities & places in {country.name}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+            <TouchableOpacity
+              onPress={() => setActiveCity(null)}
+              style={{
+                paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, marginRight: 8,
+                backgroundColor: !activeCity ? "#16233A" : "#FFFFFF",
+              }}
+            >
+              <Text style={{ color: !activeCity ? "#FFFFFF" : "#16233A", fontSize: 13, fontWeight: "500" }}>
+                All of {country.name}
+              </Text>
+            </TouchableOpacity>
+            {country.cities.map((city) => (
+              <TouchableOpacity
+                key={city.name}
+                onPress={() => setActiveCity(city.name === activeCity ? null : city.name)}
+                style={{
+                  paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, marginRight: 8,
+                  backgroundColor: activeCity === city.name ? "#16233A" : "#FFFFFF",
+                }}
+              >
+                <Text style={{ color: activeCity === city.name ? "#FFFFFF" : "#16233A", fontSize: 13, fontWeight: "500" }}>
+                  {city.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* SELECTED CITY DETAILS */}
+          {selectedCity && (
+            <View style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 20, marginBottom: 24 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#16233A", marginBottom: 8 }}>
+                About {selectedCity.name}
+              </Text>
+              <Text style={{ color: "#666", fontSize: 13, lineHeight: 20, marginBottom: 12 }}>
+                {selectedCity.description}
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                {selectedCity.bestFor.map((b) => (
+                  <View key={b} style={{ backgroundColor: "rgba(22,35,58,0.08)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
+                    <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "500" }}>{b}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: "#16233A", marginBottom: 8 }}>Top Attractions</Text>
+              {selectedCity.attractions.map((attr, i) => (
+                <View key={attr} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(22,35,58,0.08)", alignItems: "center", justifyContent: "center", marginRight: 8 }}>
+                    <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "700" }}>{i + 1}</Text>
+                  </View>
+                  <Text style={{ color: "#16233A", fontSize: 13 }}>{attr}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* COUNTRY INFO QUADS */}
+          {!selectedCity && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+              {[
+                { label: "Capital", value: country.capital },
+                { label: "Top Attraction", value: country.topAttractions[0] },
+                { label: "Must Try", value: country.cuisine[0] },
+                { label: "Best Time", value: country.bestTime },
+              ].map((item) => (
+                <View key={item.label} style={{ width: "47%", backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, marginBottom: 4 }}>
+                  <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "600", letterSpacing: 0.5, marginBottom: 4 }}>{item.label}</Text>
+                  <Text style={{ color: "#16233A", fontSize: 13, fontWeight: "500" }}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* TOP ATTRACTIONS + CUISINE */}
+          {!selectedCity && (
+            <View style={{ flexDirection: "row", gap: 12, marginBottom: 24 }}>
+              <View style={{ flex: 1, backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#16233A", marginBottom: 12 }}>Top Attractions</Text>
+                {country.topAttractions.map((a, i) => (
+                  <View key={a} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                    <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(22,35,58,0.08)", alignItems: "center", justifyContent: "center", marginRight: 8 }}>
+                      <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "700" }}>{i + 1}</Text>
+                    </View>
+                    <Text style={{ color: "#16233A", fontSize: 12, flex: 1 }}>{a}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={{ flex: 1, backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: "#16233A", marginBottom: 12 }}>Local Cuisine</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {country.cuisine.map((dish) => (
+                    <View key={dish} style={{ backgroundColor: "#FAF6EE", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "500" }}>{dish}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ marginTop: 16, borderTopWidth: 1, borderTopColor: "#eee", paddingTop: 12 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#16233A", marginBottom: 8 }}>Explore Cities</Text>
+                  {country.cities.slice(0, 4).map((city) => (
+                    <TouchableOpacity key={city.name} onPress={() => setActiveCity(city.name)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14 }}>
+                      <Text style={{ color: "#16233A", fontSize: 12 }}>{city.name}</Text>
+                      <Text style={{ color: "#666", fontSize: 12 }}>→</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* HOTELS */}
+          <Text style={{ fontSize: 20, fontWeight: "700", color: "#16233A", marginBottom: 16 }}>
+            {selectedCity ? `Stays in ${selectedCity.name}` : `Stays in ${country.name}`}
+          </Text>
+          {displayHotels.map((h) => (
+            <HotelCard key={h.id} hotel={h} />
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

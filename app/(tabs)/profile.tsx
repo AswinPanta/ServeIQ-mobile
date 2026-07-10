@@ -1,490 +1,288 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Alert,
-  FlatList,
-} from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Alert, Modal, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { ScreenContainer } from '@/components/screen-container';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { useAuth } from '@/lib/context/auth-context';
-import { useColors } from '@/hooks/use-colors';
-import { cn } from '@/lib/utils';
-import { MOCK_BOOKING_HISTORY, type BookingHistoryItem } from '@/lib/mock/booking-data';
-import { BookingModifyModal } from '@/components/feature/booking-modify-modal';
-
-interface UserReview {
-  id: string;
-  hotelName: string;
-  hotelCity: string;
-  rating: number;
-  title: string;
-  comment: string;
-  date: string;
-  photos: string[];
-  status: 'pending' | 'approved' | 'rejected';
-}
-
-
+import { useBookings } from '@/lib/context/booking-context';
+import { useFavorites } from '@/lib/context/favorites-context';
+import { useCoupons } from '@/lib/context/coupon-context';
+import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import type { GuestProfile } from '@/types/api';
 
 export default function ProfileScreen() {
-  const colors = useColors();
-  const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'reviews' | 'bookings'>('reviews');
-  const [userReviews, setUserReviews] = useState<UserReview[]>([
-    {
-      id: '1',
-      hotelName: 'Grand Hotel Kathmandu',
-      hotelCity: 'Kathmandu',
-      rating: 5,
-      title: 'Excellent stay!',
-      comment: 'Excellent hotel with great service and beautiful views! Highly recommend for anyone visiting Kathmandu.',
-      date: '2024-06-15',
-      photos: ['https://via.placeholder.com/300x300?text=Room+Photo'],
-      status: 'approved',
-    },
-    {
-      id: '2',
-      hotelName: 'Lake View Resort',
-      hotelCity: 'Pokhara',
-      rating: 4,
-      title: 'Beautiful location',
-      comment: 'Amazing views of the lake. The rooms are clean and comfortable. Staff was helpful.',
-      date: '2024-05-20',
-      photos: ['https://via.placeholder.com/300x300?text=Lake+View'],
-      status: 'approved',
-    },
-    {
-      id: '3',
-      hotelName: 'Heritage Palace',
-      hotelCity: 'Bhaktapur',
-      rating: 3,
-      title: 'Average experience',
-      comment: 'Good location but rooms need renovation. Breakfast could be better.',
-      date: '2024-04-10',
-      photos: [],
-      status: 'pending',
-    },
-  ]);
+  const { user: authUser, logout } = useAuth();
+  const user = authUser as GuestProfile | null;
+  const { bookings, cancelBooking } = useBookings();
+  const { favorites } = useFavorites();
+  const { activeCoupons, usedCoupons } = useCoupons();
 
-  const [bookings, setBookings] = useState<BookingHistoryItem[]>(MOCK_BOOKING_HISTORY);
-  const [editingBooking, setEditingBooking] = useState<any>(null);
+  const [editingAbout, setEditingAbout] = useState(false);
+  const [aboutText, setAboutText] = useState('');
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const [photoData, setPhotoData] = useState('');
 
-  const handleDeleteReview = (reviewId: string) => {
-    Alert.alert('Delete Review', 'Are you sure you want to delete this review?', [
-      { text: 'Cancel', onPress: () => {} },
-      {
-        text: 'Delete',
-        onPress: () => {
-          setUserReviews(userReviews.filter((r) => r.id !== reviewId));
-          Alert.alert('Success', 'Review deleted successfully');
-        },
-      },
-    ]);
-  };
+  const photoKey = user?.id ? `photo_${user.id}` : 'photo_guest';
+  useEffect(() => { AsyncStorage.getItem(photoKey).then(d => { if (d) setPhotoData(d); }); }, [photoKey]);
 
-  const handleEditReview = (reviewId: string) => {
-    Alert.alert('Edit Review', 'Review editing feature coming soon');
-  };
+  const firstName = user?.name?.split(' ')[0] || '';
+  const displayInitials = (firstName?.[0] || user?.email?.[0] || 'U').toUpperCase();
+  const loyaltyPoints = user && 'loyalty_points' in user ? (user as any).loyalty_points || 0 : 0;
+  const tier = loyaltyPoints >= 5000 ? 'PLATINUM' : loyaltyPoints >= 2000 ? 'GOLD' : loyaltyPoints >= 500 ? 'SILVER' : 'BRONZE';
+  const favoriteHotels = MOCK_PROPERTIES.filter(h => favorites.has(h.id));
+  const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
+  const pastBookings = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
 
-  const handleCancelBooking = (bookingId: string) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (!booking) return;
+  return (
+    <ScrollView style={s.container}>
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.title}>Profile</Text>
+        <TouchableOpacity onPress={async () => {
+          Alert.alert('Logout', 'Are you sure?', [{ text: 'Cancel', style: 'cancel' },
+            { text: 'Logout', style: 'destructive', onPress: async () => { await logout(); router.replace('/(auth)/login'); } },
+          ]);
+        }} style={s.logoutBtn}>
+          <IconSymbol name="logout" size={18} color={GRAY[500]} />
+        </TouchableOpacity>
+      </View>
 
-    const now = new Date();
-    const deadline = new Date(booking.cancellationDeadline);
-    const isWithinFreeWindow = now < deadline;
-
-    let message = '';
-    let refundAmount = 0;
-
-    if (booking.cancellationPolicy === 'strict') {
-      message = 'This booking is non-refundable. No refund will be issued.';
-      refundAmount = 0;
-    } else if (isWithinFreeWindow) {
-      message = 'Free cancellation — full refund will be issued.';
-      refundAmount = booking.totalPrice;
-    } else {
-      const penalty = Math.round(booking.totalPrice * 0.25);
-      refundAmount = booking.totalPrice - penalty;
-      message = `Cancellation fee: Rs ${penalty.toLocaleString()} (25%). Refund: Rs ${refundAmount.toLocaleString()}.`;
-    }
-
-    Alert.alert(
-      'Cancel Booking',
-      `${message}\n\nAre you sure you want to cancel?`,
-      [
-        { text: 'Keep Booking', style: 'cancel' },
-        {
-          text: 'Cancel Booking',
-          style: 'destructive',
-          onPress: () => {
-            setBookings((prev) =>
-              prev.map((b) =>
-                b.id === bookingId
-                  ? { ...b, status: 'cancelled' as const, refundAmount }
-                  : b
-              )
-            );
-            Alert.alert(
-              'Booking Cancelled',
-              refundAmount > 0
-                ? `Refund of Rs ${refundAmount.toLocaleString()} will be processed within 5-7 business days.`
-                : 'No refund applicable for this cancellation.'
-            );
-          },
-        },
-      ]
-    );
-  };
-
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', onPress: () => {} },
-      {
-        text: 'Logout',
-        onPress: async () => {
-          await logout();
-        },
-      },
-    ]);
-  };
-
-  const renderReviewItem = ({ item }: { item: UserReview }) => (
-    <View className="bg-surface rounded-lg p-4 mb-3 border border-border">
-      <View className="flex-row items-start justify-between mb-2">
-        <View className="flex-1">
-          <Text className="font-semibold text-foreground">{item.hotelName}</Text>
-          <Text className="text-xs text-muted">{item.hotelCity}</Text>
-        </View>
-        <View className="flex-row items-center gap-1">
-          <Text className="text-lg">⭐</Text>
-          <Text className="font-bold text-foreground">{item.rating}</Text>
+      {/* Profile Card */}
+      <View style={s.profileCard}>
+        <View style={{ flexDirection: 'row', gap: SPACING.lg }}>
+          <View>
+            <View style={s.avatarBox}>
+              {photoData ? (
+                <Image source={{ uri: photoData }} style={s.avatar} resizeMode="cover" />
+              ) : (
+                <View style={s.avatarPlaceholder}>
+                  <Text style={s.avatarInitial}>{displayInitials}</Text>
+                </View>
+              )}
+              <TouchableOpacity onPress={() => setShowPhotoMenu(true)} style={s.cameraBtn}>
+                <IconSymbol name="camera" size={12} color={SRS.navy} />
+              </TouchableOpacity>
+            </View>
+            <Text style={s.roleTag}>Guest</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.userName}>{user?.name || 'User'}</Text>
+            <View style={{ gap: 2, marginTop: 4 }}>
+              <ProfileRow label="Email" value={user?.email || '—'} />
+              <ProfileRow label="Phone" value={user?.phone || 'Not provided'} />
+              {user?.nationality && <ProfileRow label="Nationality" value={user.nationality} />}
+            </View>
+          </View>
         </View>
       </View>
 
-      <View
-        className={cn(
-          'self-start rounded-full px-3 py-1 mb-2',
-          item.status === 'approved'
-            ? 'bg-success/20'
-            : item.status === 'pending'
-            ? 'bg-warning/20'
-            : 'bg-error/20'
+      {/* Loyalty */}
+      <View style={s.loyaltyCard}>
+        <View style={s.loyaltyHeader}>
+          <IconSymbol name="star" size={16} color="#FFD700" />
+          <Text style={s.loyaltyTitle}>Loyalty Program</Text>
+          <View style={s.tierBadge}><Text style={s.tierText}>{tier}</Text></View>
+        </View>
+        <Text style={s.pointsValue}>{loyaltyPoints.toLocaleString()}</Text>
+        <Text style={s.pointsLabel}>Points earned</Text>
+        {loyaltyPoints < 5000 && (
+          <View style={s.tierProgress}>
+            <View style={s.progressBg}>
+              <View style={[s.progressFill, { width: `${Math.min((loyaltyPoints / 5000) * 100, 100)}%` }]} />
+            </View>
+            <Text style={s.progressLabel}>
+              {loyaltyPoints < 500 ? `${500 - loyaltyPoints} pts to SILVER` : loyaltyPoints < 2000 ? `${2000 - loyaltyPoints} pts to GOLD` : `${5000 - loyaltyPoints} pts to PLATINUM`}
+            </Text>
+          </View>
         )}
-      >
-        <Text
-          className={cn(
-            'text-xs font-semibold',
-            item.status === 'approved'
-              ? 'text-success'
-              : item.status === 'pending'
-              ? 'text-warning'
-              : 'text-error'
-          )}
-        >
-          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-        </Text>
+        <View style={s.tierRow}>
+          {['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'].map((t, i) => {
+            const pts = [0, 500, 2000, 5000][i];
+            const unlocked = loyaltyPoints >= pts;
+            return (
+              <View key={t} style={{ alignItems: 'center', gap: 2 }}>
+                <View style={[s.tierDot, { backgroundColor: unlocked ? ['#CD7F32', '#C0C0C0', '#FFD700', '#E5E4E2'][i] : GRAY[200], opacity: unlocked ? 1 : 0.4 }]}>
+                  <IconSymbol name="star" size={10} color={unlocked ? '#FFF' : GRAY[400]} />
+                </View>
+                <Text style={[s.tierLabel, { color: unlocked ? ['#CD7F32', '#C0C0C0', '#FFD700', '#E5E4E2'][i] : GRAY[400] }]}>{t}</Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
 
-      <Text className="font-semibold text-foreground mb-1">{item.title}</Text>
-      <Text className="text-sm text-foreground leading-relaxed mb-2 line-clamp-2">
-        {item.comment}
-      </Text>
+      {/* Bookings */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>
+          <IconSymbol name="booking" size={14} color={SRS.navy} /> My Bookings
+        </Text>
+        {upcomingBookings.length === 0 ? (
+          <View style={s.emptyBox}>
+            <Text style={s.emptyText}>No active reservations</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)')} style={s.browseBtn}>
+              <Text style={s.browseBtnText}>Browse stays</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          upcomingBookings.slice(0, 2).map(b => (
+            <View key={b.id} style={s.bookingCard}>
+              <View style={{ flexDirection: 'row', gap: SPACING.md }}>
+                <Image source={{ uri: b.hotelImage }} style={s.bookingImg} resizeMode="cover" />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.bookingHotel}>{b.hotelName}</Text>
+                  <Text style={s.bookingMeta}>
+                    {new Date(b.checkIn).toLocaleDateString()} — {new Date(b.checkOut).toLocaleDateString()}
+                  </Text>
+                  <Text style={s.bookingMeta}>{b.roomTypeName}</Text>
+                  <Text style={s.bookingPrice}>NPR {b.totalPrice?.toLocaleString()}</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm }}>
+                <TouchableOpacity onPress={() => cancelBooking(b.id)} style={s.cancelBtn}>
+                  <Text style={s.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
 
-      {item.photos.length > 0 && (
-        <View className="flex-row gap-2 mb-3">
-          {item.photos.map((photo, index) => (
-            <Image
-              key={index}
-              source={{ uri: photo }}
-              className="w-12 h-12 rounded-lg bg-surface"
-            />
-          ))}
+      {/* Favorites */}
+      {favoriteHotels.length > 0 && (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>
+            <IconSymbol name="heart.fill" size={14} color={SRS.navy} /> Favorites ({favoriteHotels.length})
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md }}>
+            {favoriteHotels.slice(0, 4).map(h => (
+              <TouchableOpacity key={h.id} onPress={() => router.push({ pathname: '/guest-hotel-detail/[id]', params: { id: h.id } })}
+                style={s.favCard}
+              >
+                <Image source={{ uri: h.images?.[0] }} style={s.favImg} resizeMode="cover" />
+                <View style={{ padding: SPACING.sm }}>
+                  <Text style={s.favName} numberOfLines={1}>{h.name}</Text>
+                  <Text style={s.favMeta}>{h.city}</Text>
+                  <Text style={s.favPrice}>NPR {h.price.toLocaleString()}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       )}
 
-      <Text className="text-xs text-muted mb-3">{item.date}</Text>
-
-      <View className="flex-row gap-2 pt-3 border-t border-border">
-        <TouchableOpacity
-          onPress={() => handleEditReview(item.id)}
-          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: `${colors.primary}10`, alignItems: 'center' }}
-        >
-          <Text className="text-xs font-semibold text-primary">Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => handleDeleteReview(item.id)}
-          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: `${colors.error}10`, alignItems: 'center' }}
-        >
-          <Text className="text-xs font-semibold text-error">Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderBookingItem = ({ item }: { item: BookingHistoryItem }) => (
-    <View className="bg-surface rounded-lg overflow-hidden mb-3 border border-border">
-      <View className="p-4">
-        <View className="flex-row items-start justify-between mb-2">
-          <View className="flex-1">
-            <Text className="font-semibold text-foreground">{item.hotelName}</Text>
-            <Text className="text-xs text-muted">{item.hotelCity}</Text>
-          </View>
-          <View
-            className={cn(
-              'rounded-full px-3 py-1',
-              item.status === 'upcoming'
-                ? 'bg-primary/20'
-                : item.status === 'cancelled'
-                ? 'bg-error/20'
-                : 'bg-success/20'
-            )}
-          >
-            <Text
-              className={cn(
-                'text-xs font-semibold',
-                item.status === 'upcoming'
-                  ? 'text-primary'
-                  : item.status === 'cancelled'
-                  ? 'text-error'
-                  : 'text-success'
-              )}
-            >
-              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-            </Text>
-          </View>
-        </View>
-
-        <View className="gap-2 mb-3">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-xs text-muted">📅</Text>
-            <Text className="text-sm text-foreground">
-              {item.checkIn} to {item.checkOut}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-2">
-            <Text className="text-xs text-muted">🛏️</Text>
-            <Text className="text-sm text-foreground">{item.roomType}</Text>
-          </View>
-          <View className="flex-row items-center gap-2">
-            <Text className="text-xs text-muted">🌙</Text>
-            <Text className="text-sm text-foreground">{item.nights} Nights</Text>
-          </View>
-          <View className="flex-row items-center justify-between pt-2 border-t border-border">
-            <Text className="text-sm text-muted">Total Price:</Text>
-            <Text className="text-lg font-bold text-primary">NPR {item.totalPrice.toLocaleString()}</Text>
-          </View>
-        </View>
-
-        {item.status === 'cancelled' && 'refundAmount' in item && (
-          <Text style={{ fontSize: 12, color: colors.success, marginTop: 4 }}>
-            Refund: Rs {(item as any).refundAmount?.toLocaleString() || '0'}
-          </Text>
-        )}
-
-        {item.status === 'upcoming' && (
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            <TouchableOpacity
-              onPress={() => setEditingBooking(item)}
-              style={{
-                flex: 1,
-                paddingVertical: 8,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Modify</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleCancelBooking(item.id)}
-              style={{
-                flex: 1,
-                paddingVertical: 8,
-                borderRadius: 8,
-                backgroundColor: `${colors.error}10`,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.error }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Coupons */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>
+          <IconSymbol name="discount" size={14} color={SRS.navy} /> Coupons ({activeCoupons.length})
+        </Text>
+        {activeCoupons.length === 0 ? (
+          <Text style={s.emptyText}>No active coupons</Text>
+        ) : (
+          activeCoupons.slice(0, 2).map(c => (
+            <View key={c.id} style={s.couponCard}>
+              <View style={s.couponIcon}>
+                <IconSymbol name="discount" size={20} color={SRS.teal} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.couponCode}>{c.code}</Text>
+                <Text style={s.couponDesc}>{c.description}</Text>
+              </View>
+              <Text style={s.couponValue}>{c.discountType === 'percentage' ? `${c.discount}%` : `NPR ${c.discount}`}</Text>
+            </View>
+          ))
         )}
       </View>
-    </View>
-  );
 
-  return (
-    <ScreenContainer className="flex-1">
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        <View className="px-6 py-6 border-b border-border">
-          <View className="flex-row items-center gap-4">
-            <View className="w-16 h-16 rounded-full bg-primary/20 items-center justify-center">
-              <Text className="text-3xl font-bold text-primary">
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
-            <View className="flex-1">
-              <Text className="text-2xl font-bold text-foreground">{user?.name || 'User'}</Text>
-              <Text className="text-sm text-muted">{user?.email}</Text>
-              <Text className="text-xs text-muted mt-1">Member since June 2024</Text>
-            </View>
-          </View>
-        </View>
+      {/* Settings */}
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>
+          <IconSymbol name="settings" size={14} color={SRS.navy} /> Settings
+        </Text>
+        <TouchableOpacity style={s.settingRow} onPress={() => router.push('/profile-edit')}>
+          <IconSymbol name="person.fill" size={18} color={SRS.navy} />
+          <Text style={s.settingLabel}>Edit Profile</Text>
+          <IconSymbol name="chevron.right" size={16} color={GRAY[400]} />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.settingRow} onPress={() => router.push('/notifications')}>
+          <IconSymbol name="notifications" size={18} color={SRS.navy} />
+          <Text style={s.settingLabel}>Notifications</Text>
+          <IconSymbol name="chevron.right" size={16} color={GRAY[400]} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.settingRow, { borderBottomWidth: 0 }]} onPress={async () => {
+          await logout();
+          router.replace('/');
+        }}>
+          <IconSymbol name="logout" size={18} color={SRS.red} />
+          <Text style={[s.settingLabel, { color: SRS.red }]}>Switch Portal / Logout</Text>
+          <IconSymbol name="chevron.right" size={16} color={GRAY[400]} />
+        </TouchableOpacity>
+      </View>
 
-        <View className="px-6 py-4 flex-row gap-3">
-          <View className="flex-1 bg-surface rounded-lg p-4 items-center border border-border">
-            <Text className="text-2xl font-bold text-primary">{userReviews.length}</Text>
-            <Text className="text-xs text-muted mt-1">Reviews</Text>
-          </View>
-          <View className="flex-1 bg-surface rounded-lg p-4 items-center border border-border">
-            <Text className="text-2xl font-bold text-primary">{bookings.length}</Text>
-            <Text className="text-xs text-muted mt-1">Bookings</Text>
-          </View>
-          <View className="flex-1 bg-surface rounded-lg p-4 items-center border border-border">
-            <Text className="text-2xl font-bold text-primary">
-              {userReviews.length > 0
-                ? (userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length).toFixed(1)
-                : '0'}
-            </Text>
-            <Text className="text-xs text-muted mt-1">Avg Rating</Text>
-          </View>
-        </View>
-
-        <View className="px-6 py-4 flex-row gap-3 border-b border-border">
-          <TouchableOpacity
-            onPress={() => setActiveTab('reviews')}
-            className={cn(
-              'flex-1 py-3 px-4 rounded-lg border-2',
-              activeTab === 'reviews'
-                ? 'border-primary bg-primary/10'
-                : 'border-border bg-surface'
-            )}
-          >
-            <Text
-              className={cn(
-                'text-sm font-semibold text-center',
-                activeTab === 'reviews' ? 'text-primary' : 'text-muted'
-              )}
-            >
-              My Reviews
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setActiveTab('bookings')}
-            className={cn(
-              'flex-1 py-3 px-4 rounded-lg border-2',
-              activeTab === 'bookings'
-                ? 'border-primary bg-primary/10'
-                : 'border-border bg-surface'
-            )}
-          >
-            <Text
-              className={cn(
-                'text-sm font-semibold text-center',
-                activeTab === 'bookings' ? 'text-primary' : 'text-muted'
-              )}
-            >
-              My Bookings
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View className="px-6 py-4 flex-1">
-          {activeTab === 'reviews' ? (
-            <>
-              {userReviews.length > 0 ? (
-                <FlatList
-                  data={userReviews}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderReviewItem}
-                  scrollEnabled={false}
-                  showsVerticalScrollIndicator={false}
-                />
-              ) : (
-                <View className="items-center justify-center py-12">
-                  <Text className="text-lg text-muted mb-2">No reviews yet</Text>
-                  <Text className="text-sm text-muted text-center">
-                    Write a review about your stay to help other guests
-                  </Text>
-                </View>
-              )}
-            </>
-          ) : (
-            <>
-              {bookings.length > 0 ? (
-                <FlatList
-                  data={bookings}
-                  keyExtractor={(item) => item.id}
-                  renderItem={renderBookingItem}
-                  scrollEnabled={false}
-                  showsVerticalScrollIndicator={false}
-                />
-              ) : (
-                <View className="items-center justify-center py-12">
-                  <Text className="text-lg text-muted mb-2">No bookings yet</Text>
-                  <Text className="text-sm text-muted text-center">
-                    Start exploring and book your next stay
-                  </Text>
-                </View>
-              )}
-            </>
-          )}
-        </View>
-
-        <View className="px-6 py-4 border-t border-border">
-          <Text className="text-lg font-bold text-foreground mb-3">Settings</Text>
-          <TouchableOpacity style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View className="flex-row items-center gap-3">
-              <Text className="text-lg">⚙️</Text>
-              <Text className="text-base text-foreground">Account Settings</Text>
-            </View>
-            <Text className="text-lg text-muted">›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View className="flex-row items-center gap-3">
-              <Text className="text-lg">🔔</Text>
-              <Text className="text-base text-foreground">Notifications</Text>
-            </View>
-            <Text className="text-lg text-muted">›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View className="flex-row items-center gap-3">
-              <Text className="text-lg">❓</Text>
-              <Text className="text-base text-foreground">Help & Support</Text>
-            </View>
-            <Text className="text-lg text-muted">›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, backgroundColor: `${colors.error}10`, borderWidth: 1, borderColor: colors.error, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <View className="flex-row items-center gap-3">
-              <Text className="text-lg">🚪</Text>
-              <Text className="text-base font-semibold text-error">Logout</Text>
-            </View>
-            <Text className="text-lg text-error">›</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View className="h-8" />
-      </ScrollView>
-
-      <BookingModifyModal
-        visible={!!editingBooking}
-        onClose={() => setEditingBooking(null)}
-        booking={editingBooking || { id: '', hotelName: '', roomType: '', checkIn: '', checkOut: '', nights: 0, totalPrice: 0 }}
-        onSave={(updated) => {
-          setBookings((prev) =>
-            prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b))
-          );
-        }}
-      />
-    </ScreenContainer>
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 }
+
+function ProfileRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      <Text style={{ fontSize: 11, color: GRAY[500] }}>{label}</Text>
+      <Text style={{ fontSize: 12, fontWeight: '600', color: SRS.navy }}>{value}</Text>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: GRAY[50] },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: 60, paddingBottom: SPACING.md, backgroundColor: '#FFF' },
+  title: { ...TYPOGRAPHY.h2, color: SRS.navy },
+  logoutBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: GRAY[50], alignItems: 'center', justifyContent: 'center' },
+  profileCard: { marginHorizontal: SPACING.lg, marginTop: SPACING.md, padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100] },
+  avatarBox: { position: 'relative' },
+  avatar: { width: 72, height: 72, borderRadius: 36 },
+  avatarPlaceholder: { width: 72, height: 72, borderRadius: 36, backgroundColor: SRS.teal + '18', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { fontSize: 24, fontWeight: '700', color: SRS.teal },
+  cameraBtn: { position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: GRAY[200] },
+  roleTag: { textAlign: 'center', fontSize: 10, fontWeight: '600', color: GRAY[400], marginTop: 4 },
+  userName: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy },
+  loyaltyCard: { marginHorizontal: SPACING.lg, marginTop: SPACING.md, padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: SRS.navy, gap: SPACING.sm },
+  loyaltyHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  loyaltyTitle: { ...TYPOGRAPHY.body, fontWeight: '600', color: '#FFF', flex: 1 },
+  tierBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: RADIUS.badge, backgroundColor: 'rgba(255,215,0,0.2)' },
+  tierText: { fontSize: 10, fontWeight: '700', color: '#FFD700' },
+  pointsValue: { fontSize: 36, fontWeight: '700', color: '#FFD700', letterSpacing: -1 },
+  pointsLabel: { ...TYPOGRAPHY.caption, color: 'rgba(255,255,255,0.6)' },
+  tierProgress: { gap: 4 },
+  progressBg: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#FFD700', borderRadius: 2 },
+  progressLabel: { ...TYPOGRAPHY.caption, color: 'rgba(255,255,255,0.5)' },
+  tierRow: { flexDirection: 'row', justifyContent: 'space-around', paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
+  tierDot: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  tierLabel: { fontSize: 9, fontWeight: '600' },
+  section: { marginHorizontal: SPACING.lg, marginTop: SPACING.md, padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100], gap: SPACING.md },
+  sectionTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.xs },
+  emptyBox: { alignItems: 'center', paddingVertical: SPACING.lg, gap: SPACING.md },
+  emptyText: { ...TYPOGRAPHY.body, color: GRAY[400] },
+  browseBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: RADIUS.card, backgroundColor: SRS.teal },
+  browseBtnText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
+  bookingCard: { padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[100] },
+  bookingImg: { width: 64, height: 64, borderRadius: RADIUS.button },
+  bookingHotel: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
+  bookingMeta: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 1 },
+  bookingPrice: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.teal, marginTop: 4 },
+  cancelBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: RADIUS.button, borderWidth: 1, borderColor: SRS.red },
+  cancelBtnText: { fontSize: 11, fontWeight: '600', color: SRS.red },
+  favCard: { width: '47%', borderRadius: RADIUS.card, backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[100], overflow: 'hidden' },
+  favImg: { width: '100%', height: 80 },
+  favName: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy },
+  favMeta: { ...TYPOGRAPHY.caption, color: GRAY[500] },
+  favPrice: { ...TYPOGRAPHY.small, fontWeight: '700', color: SRS.teal },
+  couponCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '06', borderWidth: 1, borderColor: SRS.teal + '15' },
+  couponIcon: { width: 40, height: 40, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '12', alignItems: 'center', justifyContent: 'center' },
+  couponCode: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy, letterSpacing: 1 },
+  couponDesc: { ...TYPOGRAPHY.caption, color: GRAY[500] },
+  couponValue: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.teal },
+  settingRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: SPACING.md, borderBottomWidth: 1, borderBottomColor: GRAY[100] },
+  settingLabel: { ...TYPOGRAPHY.body, color: SRS.navy, flex: 1 },
+});

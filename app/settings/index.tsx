@@ -1,0 +1,98 @@
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { router } from 'expo-router';
+import { useColors } from '@/hooks/use-colors';
+import { useAuth } from '@/lib/context/auth-context';
+import { ScreenContainer } from '@/components/screen-container';
+import { Alert } from 'react-native';
+import { safeGoBack } from '@/lib/utils';
+const SECTIONS = [
+  {
+    title: 'Account',
+    items: [
+      { icon: '👤', label: 'Edit Profile', route: '/profile-edit' },
+      { icon: '🔒', label: 'Security', route: '/settings/security' },
+      { icon: '🌐', label: 'Preferences', route: '/settings/preferences' },
+    ],
+  },
+  {
+    title: 'Notifications',
+    items: [
+      { icon: '🔔', label: 'Notification Settings', route: '/settings/notifications' },
+    ],
+  },
+  {
+    title: 'Support',
+    items: [
+      { icon: '❓', label: 'Help & Support', route: '/settings/help' },
+      { icon: '📝', label: 'Privacy Policy', route: '' },
+      { icon: '📜', label: 'Terms of Service', route: '' },
+    ],
+  },
+];
+
+export default function SettingsScreen() {
+  const colors = useColors();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: async () => { await logout(); router.replace('/(auth)/login'); } },
+    ]);
+  };
+
+  return (
+    <ScreenContainer className="flex-1 bg-background">
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center gap-3 mb-6">
+            <TouchableOpacity onPress={() => safeGoBack()}
+              style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text className="text-lg">←</Text>
+            </TouchableOpacity>
+            <Text className="text-2xl font-bold text-foreground">Settings</Text>
+          </View>
+
+          {SECTIONS.map((section) => (
+            <View key={section.title} className="mb-6">
+              <Text className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 px-1">
+                {section.title}
+              </Text>
+              <View style={{ borderRadius: 16, backgroundColor: colors.surface, overflow: 'hidden' }}>
+                {section.items.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.label}
+                    onPress={() => item.route ? router.push(item.route as any) : null}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16,
+                      borderBottomWidth: index < section.items.length - 1 ? 1 : 0,
+                      borderBottomColor: colors.border,
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={{ fontSize: 20, marginRight: 14 }}>{item.icon}</Text>
+                    <Text className="flex-1 text-base text-foreground">{item.label}</Text>
+                    <Text style={{ fontSize: 18, color: colors.muted }}>›</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
+
+          <TouchableOpacity onPress={handleLogout}
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              paddingVertical: 16, borderRadius: 16, backgroundColor: '#FEE2E2', marginTop: 8,
+            }}
+          >
+            <Text style={{ fontSize: 18 }}>🚪</Text>
+            <Text className="text-base font-semibold text-red-600">Log Out</Text>
+          </TouchableOpacity>
+
+          <Text className="text-xs text-muted text-center mt-8">StayEasy v1.0.0</Text>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}

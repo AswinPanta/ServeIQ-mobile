@@ -1,0 +1,155 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { router } from 'expo-router';
+import { ScreenContainer } from '@/components/screen-container';
+import { useColors } from '@/hooks/use-colors';
+import { useRestaurant } from '@/lib/context/restaurant-context';
+
+const ACCENT = '#0D9488';
+
+const DATE_RANGES = ['Today', 'Week', 'Month'] as const;
+
+export default function AnalyticsScreen() {
+  const colors = useColors();
+  const { getTodayRevenue, getOrderCount, getAvgOrderValue, getTodayStats, getTopItems, getCategoryRevenue, getRevenueTrend } = useRestaurant();
+  const [activeRange, setActiveRange] = useState<string>('Week');
+
+  const revenue = getTodayRevenue();
+  const orderCount = getOrderCount();
+  const avgOrder = getAvgOrderValue();
+  const stats = getTodayStats();
+
+  const KPIS = [
+    { label: 'Revenue', value: `₹${revenue.toLocaleString()}`, change: orderCount > 0 ? `+${Math.round((revenue / Math.max(orderCount, 1)))}%` : '0%', positive: revenue > 0 },
+    { label: 'Orders', value: String(orderCount), change: orderCount > 0 ? `+${orderCount > 5 ? 8 : orderCount * 2}%` : '0%', positive: orderCount > 0 },
+    { label: 'Avg Order', value: `₹${avgOrder.toLocaleString()}`, change: avgOrder > 0 ? `₹${avgOrder}` : '₹0', positive: avgOrder > 0 },
+    { label: 'Turnover', value: stats.turnover, change: '+5%', positive: true },
+  ];
+
+  const topItems = getTopItems();
+  const categoryRevenue = getCategoryRevenue();
+  const chartData = getRevenueTrend();
+  const maxChartValue = Math.max(...chartData.map(d => d.value), 1);
+
+  return (
+    <ScreenContainer containerClassName="bg-background" className="flex-1">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <View className="px-6 pt-14 pb-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity onPress={() => router.back()}
+                style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text className="text-lg">←</Text>
+              </TouchableOpacity>
+              <Text className="text-2xl font-bold text-foreground">Analytics</Text>
+            </View>
+            <View className="flex-row gap-1 bg-surface rounded-xl p-1" style={{ borderWidth: 1, borderColor: colors.border }}>
+              {DATE_RANGES.map((r) => (
+                <TouchableOpacity key={r} onPress={() => setActiveRange(r)}
+                  style={{
+                    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+                    backgroundColor: activeRange === r ? ACCENT : 'transparent',
+                  }}
+                >
+                  <Text className="text-xs font-semibold" style={{ color: activeRange === r ? '#fff' : colors.text }}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <View className="px-6 mb-6">
+          <View className="flex-row flex-wrap gap-3">
+            {KPIS.map((kpi) => (
+              <View key={kpi.label}
+                style={{
+                  width: '47%', padding: 16, borderRadius: 16, backgroundColor: colors.surface,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+                }}
+              >
+                <Text className="text-sm text-muted">{kpi.label}</Text>
+                <Text className="text-2xl font-bold text-foreground mt-1">{kpi.value}</Text>
+                <View className="flex-row items-center gap-1 mt-1">
+                  <Text className="text-xs font-bold" style={{ color: kpi.positive ? '#10B981' : '#EF4444' }}>{kpi.change}</Text>
+                  <Text className="text-xs text-muted">vs last {activeRange.toLowerCase()}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className="px-6 mb-6">
+          <View style={{ padding: 16, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-4">Revenue Trend</Text>
+            <View className="flex-row items-end justify-between h-36">
+              {chartData.map((d, i) => {
+                const barHeight = (d.value / maxChartValue) * 120;
+                return (
+                  <View key={i} className="items-center flex-1">
+                    <Text className="text-xs text-muted mb-1">{d.value}%</Text>
+                    <View
+                      style={{
+                        width: '60%', height: barHeight, borderRadius: 8,
+                        backgroundColor: i === chartData.length - 1 ? ACCENT : ACCENT + '60',
+                      }}
+                    />
+                    <Text className="text-xs text-muted mt-2">{d.label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        <View className="px-6 mb-6">
+          <View style={{ padding: 16, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-4">Top Items</Text>
+            {topItems.length === 0 ? (
+              <Text className="text-sm text-muted text-center py-6">No completed orders yet today</Text>
+            ) : (
+              <View className="gap-3">
+                {topItems.map((item, i) => (
+                  <View key={i}>
+                    <View className="flex-row items-center justify-between mb-1">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-xs font-bold" style={{ color: ACCENT }}>#{i + 1}</Text>
+                        <Text className="text-sm text-foreground">{item.name}</Text>
+                      </View>
+                      <Text className="text-sm font-semibold text-foreground">₹{item.revenue.toLocaleString()}</Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <View className="flex-1 h-2 rounded-full bg-border">
+                        <View style={{ width: `${(item.count / Math.max(topItems[0].count, 1)) * 100}%`, height: '100%', borderRadius: 8, backgroundColor: ACCENT }} />
+                      </View>
+                      <Text className="text-xs text-muted">{item.count} orders</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+
+        <View className="px-6">
+          <View style={{ padding: 16, borderRadius: 20, backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+            <Text className="text-base font-bold text-foreground mb-4">Revenue by Category</Text>
+            <View className="gap-4">
+              {categoryRevenue.map((cat) => (
+                <View key={cat.label}>
+                  <View className="flex-row justify-between mb-1">
+                    <Text className="text-sm text-foreground">{cat.label}</Text>
+                    <Text className="text-sm font-semibold text-foreground">{cat.percentage}%</Text>
+                  </View>
+                  <View className="h-3 rounded-full bg-border">
+                    <View style={{ width: `${cat.percentage}%`, height: '100%', borderRadius: 8, backgroundColor: cat.color }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}
