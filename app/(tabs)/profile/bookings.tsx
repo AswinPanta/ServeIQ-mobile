@@ -76,7 +76,7 @@ export default function BookingsScreen() {
   const renderEmpty = () => (
     <View style={s.emptyState}>
       <View style={s.emptyIcon}>
-        <IconSymbol name={activeTab === 'cancelled' ? 'xmark.circle' : 'calendar'} size={32} color="#E2E8F0" />
+        <IconSymbol name={activeTab === 'cancelled' ? 'cancel' : 'calendar'} size={32} color="#E2E8F0" />
       </View>
       <Text style={s.emptyTitle}>No {activeTab} bookings</Text>
       <Text style={s.emptyDesc}>

@@ -43,7 +43,7 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
       {[1, 2, 3, 4, 5].map(i => (
         <IconSymbol
           key={i}
-          name="star.fill"
+          name="star"
           size={size}
           color={i <= rating ? CORAL : '#E5E7EB'}
         />
@@ -69,7 +69,7 @@ export default function ReviewsScreen() {
 
       {MOCK_REVIEWS.length === 0 ? (
         <View style={s.emptyState}>
-          <IconSymbol name="star.fill" size={64} color={CORAL + '30'} />
+          <IconSymbol name="star" size={64} color={CORAL + '30'} />
           <Text style={s.emptyTitle}>No reviews yet</Text>
           <Text style={s.emptyDesc}>
             Your reviews will appear here after you complete a stay
