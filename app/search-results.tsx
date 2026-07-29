@@ -1,24 +1,35 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
+import type { Hotel } from '@/types/api';
 import { HotelCard } from '@/components/feature/hotel-card';
-import { SkeletonList } from '@/components/ui/skeleton-loader';
 import { AdvancedFilterModal, FilterState } from '@/components/feature/advanced-filter-modal';
 import { CategoryFilter } from '@/components/feature/category-filter';
 import { useFavorites } from '@/lib/context/favorites-context';
+import { StickySearchHeader } from '@/components/StickySearchHeader';
+import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
+import { searchHotelsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function SearchResultsScreen() {
-  const { location = 'Hotels' } = useLocalSearchParams<{ location: string }>();
+  const { location = 'Hotels', checkIn, checkOut, guests, adults, children, rooms } = useLocalSearchParams<{
+    location?: string; checkIn?: string; checkOut?: string; guests?: string;
+    adults?: string; children?: string; rooms?: string;
+  }>();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
 
+  const [allHotels, setAllHotels] = useState<Hotel[]>(MOCK_PROPERTIES);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fromApi, setFromApi] = useState(false);
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'distance'>('price');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -30,8 +41,33 @@ export default function SearchResultsScreen() {
     bedTypes: [],
   });
 
+  const scrollRef = useRef<FlatList>(null);
+  const routeKey = '/search-results';
+  const handleScroll = useScrollRestoration(scrollRef as any, routeKey);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      const result = await searchHotelsApi({
+        destination: location || '',
+        checkIn: checkIn as string,
+        checkOut: checkOut as string,
+        adults: adults ? Number(adults) : (guests ? Number(guests) : 1),
+        children: children ? Number(children) : 0,
+        rooms: rooms ? Number(rooms) : 1,
+      });
+      if (!cancelled) {
+        setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
+        setFromApi(result.fromApi);
+        setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [location, checkIn, checkOut, guests, adults, children, rooms]);
+
   const filteredHotels = useMemo(() => {
-    let filtered = MOCK_PROPERTIES.filter((hotel) => {
+    let filtered = allHotels.filter((hotel) => {
       if (hotel.price < activeFilters.priceRange[0] || hotel.price > activeFilters.priceRange[1]) {
         return false;
       }
@@ -54,7 +90,7 @@ export default function SearchResultsScreen() {
     }
 
     return filtered;
-  }, [activeFilters, sortBy]);
+  }, [allHotels, activeFilters, sortBy]);
 
   const handleHotelPress = (hotelId: string) => {
     router.push({
@@ -135,7 +171,7 @@ export default function SearchResultsScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
+        <FlatList ref={scrollRef} onScroll={handleScroll} scrollEventThrottle={16}
           data={filteredHotels}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
@@ -165,7 +201,7 @@ export default function SearchResultsScreen() {
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                   website: item.website,
-                }}
+                } as Hotel}
                 onPress={() => handleHotelPress(item.id)}
                 isFavorite={isFavorite(item.id)}
                 onFavoritePress={() => handleFavoritePress(item.id)}
