@@ -25,8 +25,12 @@ export function useAppLanguage() {
   }, []);
 
   const setLanguage = useCallback(async (lang: string) => {
-    await i18n.changeLanguage(lang);
-    await updatePreferences({ language: lang });
+    try {
+      await i18n.changeLanguage(lang);
+      await updatePreferences({ language: lang });
+    } catch (e) {
+      console.warn('Failed to set language:', e);
+    }
   }, [i18n, updatePreferences]);
 
   return {
