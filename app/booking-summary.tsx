@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FolioBreakdown, type FolioItem } from '@/components/feature/folio-breakdown';
 import { safeGoBack } from '@/lib/utils';
@@ -8,6 +9,7 @@ import { safeGoBack } from '@/lib/utils';
 const ACCENT = '#2E86AB';
 
 export default function BookingSummaryScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
 
   const hotelName = (params.hotelName as string) || 'Hotel';
@@ -55,7 +57,7 @@ export default function BookingSummaryScreen() {
             <Text style={s.hotelName}>{hotelName}</Text>
             <View style={s.confirmedBadge}>
               <IconSymbol name="check" size={12} color="#16A085" />
-              <Text style={s.confirmedText}>Available</Text>
+              <Text style={s.confirmedText}>{t('confirmation.statusConfirmed')}</Text>
             </View>
           </View>
 
@@ -84,9 +86,9 @@ export default function BookingSummaryScreen() {
 
           <View style={s.summaryRow}>
             <Text style={s.summaryLabel}>{roomType}</Text>
-            <Text style={s.summaryVal}>NPR {perNight.toLocaleString()}/night</Text>
+            <Text style={s.summaryVal}>NPR {perNight.toLocaleString()}{t('booking.perNight')}</Text>
           </View>
-          <Text style={s.nightsText}>{nights} nights</Text>
+          <Text style={s.nightsText}>{t('confirmation.nights', { count: nights })}</Text>
 
           <View style={s.divider} />
 
@@ -120,7 +122,7 @@ export default function BookingSummaryScreen() {
       {/* Bottom bar */}
       <View style={s.bottomBar}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-          <Text style={s.bottomTotalLabel}>Total</Text>
+          <Text style={s.bottomTotalLabel}>{t('booking.total')}</Text>
           <Text style={s.bottomTotalVal}>NPR {grandTotal.toLocaleString()}</Text>
         </View>
         <TouchableOpacity onPress={handleBookNow} style={s.bookBtn} activeOpacity={0.9}>

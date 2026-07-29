@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, Image, Share, StyleSheet, Platform, Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { FONTS, SRS, RADIUS, SHADOWS, FIGMA_COLORS } from '@/constants/portal-theme';
@@ -32,6 +33,7 @@ function formatCurrency(amount: number): string {
 }
 
 export default function BookingConfirmationScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const { user } = useAuth();
 
@@ -68,8 +70,8 @@ export default function BookingConfirmationScreen() {
       <View style={styles.gradientBanner}>
         <View style={styles.bannerOverlay}>
           <Text style={styles.bannerLogo}>StayEasy</Text>
-          <Text style={styles.bannerTitle}>Booking Confirmed</Text>
-          <Text style={styles.bannerSubtitle}>Your reservation has been successfully confirmed</Text>
+          <Text style={styles.bannerTitle}>{t('confirmation.title')}</Text>
+          <Text style={styles.bannerSubtitle}>{t('confirmation.subtitle')}</Text>
         </View>
       </View>
 
@@ -80,9 +82,9 @@ export default function BookingConfirmationScreen() {
       >
         {/* Confirmation Code Card */}
         <View style={styles.confirmationCard}>
-          <Text style={styles.confirmationLabel}>CONFIRMATION CODE</Text>
+          <Text style={styles.confirmationLabel}>{t('confirmation.code')}</Text>
           <Text style={styles.confirmationCode}>{confirmationCode}</Text>
-          <Text style={styles.confirmationHint}>Save this code for check-in</Text>
+          <Text style={styles.confirmationHint}>{t('confirmation.saveCode')}</Text>
           <TouchableOpacity
             onPress={async () => {
               await Clipboard.setStringAsync(confirmationCode);
@@ -91,13 +93,13 @@ export default function BookingConfirmationScreen() {
             style={styles.copyBtn}
           >
             <Ionicons name="copy-outline" size={14} color={SRS.teal} />
-            <Text style={styles.copyBtnText}>Copy Code</Text>
+            <Text style={styles.copyBtnText}>{t('confirmation.copyCode')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Hotel Details Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>HOTEL DETAILS</Text>
+          <Text style={styles.sectionHeading}>{t('confirmation.hotelDetails')}</Text>
           <View style={styles.hotelRow}>
             {hotelImage ? (
               <Image source={{ uri: hotelImage }} style={styles.hotelImage} />
@@ -111,7 +113,7 @@ export default function BookingConfirmationScreen() {
               <Text style={styles.hotelRoom}>{roomType} · {hotelCity}</Text>
               <View style={styles.confirmedBadge}>
                 <Ionicons name="checkmark-circle" size={12} color="#1E8449" />
-                <Text style={styles.confirmedBadgeText}>Confirmed</Text>
+                <Text style={styles.confirmedBadgeText}>{t('confirmation.statusConfirmed')}</Text>
               </View>
             </View>
           </View>
@@ -119,40 +121,38 @@ export default function BookingConfirmationScreen() {
 
         {/* Stay Details Grid */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>STAY DETAILS</Text>
+          <Text style={styles.sectionHeading}>{t('confirmation.stayDetails')}</Text>
           <View style={styles.stayGrid}>
             <View style={styles.stayCell}>
-              <Text style={styles.stayLabel}>CHECK-IN</Text>
+              <Text style={styles.stayLabel}>{t('confirmation.checkin')}</Text>
               <Text style={styles.stayValue}>{formatDateShort(checkIn)}</Text>
               <Text style={styles.stayDay}>{formatDay(checkIn)}</Text>
             </View>
             <View style={styles.stayCell}>
-              <Text style={styles.stayLabel}>CHECK-OUT</Text>
+              <Text style={styles.stayLabel}>{t('confirmation.checkout')}</Text>
               <Text style={styles.stayValue}>{formatDateShort(checkOut)}</Text>
               <Text style={styles.stayDay}>{formatDay(checkOut)}</Text>
             </View>
             <View style={styles.stayCell}>
               <Text style={styles.stayLabel}>NIGHTS</Text>
-              <Text style={styles.stayValue}>{nights}</Text>
-              <Text style={styles.stayDay}>{nights === 1 ? 'Night' : 'Nights'}</Text>
+              <Text style={styles.stayValue}>{t('confirmation.nights', { count: nights })}</Text>
             </View>
             <View style={styles.stayCell}>
               <Text style={styles.stayLabel}>GUESTS</Text>
-              <Text style={styles.stayValue}>{guests}</Text>
-              <Text style={styles.stayDay}>{guests === 1 ? 'Guest' : 'Guests'}</Text>
+              <Text style={styles.stayValue}>{t('confirmation.guests', { count: guests })}</Text>
             </View>
           </View>
         </View>
 
         {/* Price Breakdown */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>PRICE BREAKDOWN</Text>
+          <Text style={styles.sectionHeading}>{t('confirmation.priceBreakdown')}</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Room ({nights} {nights === 1 ? 'night' : 'nights'} × {formatCurrency(pricePerNight)})</Text>
+            <Text style={styles.priceLabel}>{t('confirmation.roomNights', { count: nights, nights })} × {formatCurrency(pricePerNight)}</Text>
             <Text style={styles.priceValue}>{formatCurrency(subtotal - Math.round(subtotal * 0.1))}</Text>
           </View>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Taxes & Fees (13%)</Text>
+            <Text style={styles.priceLabel}>{t('confirmation.taxes')}</Text>
             <Text style={styles.priceValue}>{formatCurrency(tax)}</Text>
           </View>
           <View style={styles.priceDivider} />
@@ -164,55 +164,53 @@ export default function BookingConfirmationScreen() {
 
         {/* Important Information */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>IMPORTANT INFORMATION</Text>
+          <Text style={styles.sectionHeading}>{t('confirmation.importantInfo')}</Text>
           <View style={styles.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>Check-in time is 2:00 PM onwards. Early check-in is subject to availability.</Text>
+            <Text style={styles.infoText}>{t('confirmation.checkinTime')}</Text>
           </View>
           <View style={styles.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>A valid government-issued photo ID is required at check-in.</Text>
+            <Text style={styles.infoText}>{t('confirmation.photoId')}</Text>
           </View>
           <View style={styles.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>Breakfast is included in your room rate.</Text>
+            <Text style={styles.infoText}>{t('confirmation.breakfast')}</Text>
           </View>
           <View style={styles.infoItem}>
             <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>Free WiFi is available throughout the property.</Text>
+            <Text style={styles.infoText}>{t('confirmation.wifi')}</Text>
           </View>
         </View>
 
         {/* Cancellation Policy */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>CANCELLATION POLICY</Text>
+          <Text style={styles.sectionHeading}>{t('confirmation.cancellationPolicy')}</Text>
           <View style={styles.cancelRow}>
             <Ionicons name="warning" size={18} color="#C0392B" />
-            <Text style={styles.cancelText}>
-              Free cancellation up to 24 hours before check-in. Cancellations within 24 hours incur a 1-night charge.
-            </Text>
+            <Text style={styles.cancelText}>{t('confirmation.freeCancellation')}</Text>
           </View>
         </View>
 
         {/* QR Code */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>BOOKING QR CODE</Text>
+          <Text style={styles.sectionHeading}>{t('confirmation.qrCode')}</Text>
           <View style={styles.qrPlaceholder}>
             <Ionicons name="qr-code-outline" size={80} color="#94A3B8" />
           </View>
-          <Text style={styles.qrHint}>Show this QR code at check-in</Text>
+          <Text style={styles.qrHint}>{t('confirmation.showQr')}</Text>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionsSection}>
           <TouchableOpacity style={styles.outlineBtn} onPress={handleShare} activeOpacity={0.7}>
             <Ionicons name="share-outline" size={18} color={SRS.navy} />
-            <Text style={styles.outlineBtnText}>Share Booking</Text>
+            <Text style={styles.outlineBtnText}>{t('confirmation.share')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.7} onPress={() => Alert.alert('Receipt', 'Receipt downloaded successfully')}>
             <Ionicons name="download-outline" size={18} color={SRS.navy} />
-            <Text style={styles.outlineBtnText}>Download Receipt</Text>
+            <Text style={styles.outlineBtnText}>{t('confirmation.download')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -220,7 +218,7 @@ export default function BookingConfirmationScreen() {
             onPress={() => router.replace('/(tabs)')}
             activeOpacity={0.7}
           >
-            <Text style={styles.primaryBtnText}>Back to Home</Text>
+            <Text style={styles.primaryBtnText}>{t('confirmation.backHome')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

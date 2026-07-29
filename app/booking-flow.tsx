@@ -16,6 +16,7 @@ import { FONTS, GRAY } from '@/constants/portal-theme';
 import { BRAND, TEXT, BG, BORDER, UI, SLATE } from '@/lib/constants/figma-tokens';
 import { bookingApi } from '@/lib/api/booking-api';
 import { searchHotelsApi, getAvailableRoomsApi } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 import { useRazorpay } from '@/lib/razorpay/use-razorpay';
 
 type BookingStep = 'rooms' | 'guests' | 'addons' | 'review' | 'payment';
@@ -33,17 +34,10 @@ function calculateNights(checkIn: string, checkOut: string): number {
   return Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
 }
 
-const STEPS: { key: BookingStep; label: string }[] = [
-  { key: 'rooms', label: 'Rooms' },
-  { key: 'guests', label: 'Guests' },
-  { key: 'addons', label: 'Add-ons' },
-  { key: 'review', label: 'Review' },
-  { key: 'payment', label: 'Payment' },
-];
-
 const ACCENT = BRAND.teal;
 
 export default function BookingFlowScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams();
   const hotelName = (params.hotelName as string) || 'Hotel';
   const checkInDate = (params.checkIn as string) || '';
@@ -51,6 +45,14 @@ export default function BookingFlowScreen() {
   const guestCount = parseInt((params.guests as string) || '1', 10);
   const preselectedRoomId = params.roomId as string | undefined;
   const nights = useMemo(() => calculateNights(checkInDate, checkOutDate), [checkInDate, checkOutDate]);
+  const STEPS: { key: BookingStep; label: string }[] = [
+    { key: 'rooms', label: t('booking.step.rooms') },
+    { key: 'guests', label: t('booking.step.guests') },
+    { key: 'addons', label: t('booking.step.addons') },
+    { key: 'review', label: t('booking.step.review') },
+    { key: 'payment', label: t('booking.step.payment') },
+  ];
+
   const initialStep: BookingStep = preselectedRoomId ? 'guests' : 'rooms';
 
   const [currentStep, setCurrentStep] = useState<BookingStep>(initialStep);
@@ -448,7 +450,7 @@ export default function BookingFlowScreen() {
       {timerExpired && (
         <View style={s.expiredBanner}>
           <IconSymbol name="alarm" size={14} color={TEXT.inverse} />
-          <Text style={s.expiredText}>Session expired — rooms no longer held</Text>
+          <Text style={s.expiredText}>{t('booking.sessionExpired')}</Text>
         </View>
       )}
 
@@ -456,12 +458,12 @@ export default function BookingFlowScreen() {
         {/* Rooms */}
         {currentStep === 'rooms' && (
           <View style={{ gap: 16 }}>
-            <Text style={s.sectionTitle}>Select Rooms</Text>
+            <Text style={s.sectionTitle}>{t('booking.selectRooms')}</Text>
             {checkInDate && checkOutDate && (
               <View style={s.dateStrip}>
-                <Text style={s.dateLabel}>Check-in: <Text style={s.dateVal}>{checkInDate}</Text></Text>
+                <Text style={s.dateLabel}>{t('booking.checkin')} <Text style={s.dateVal}>{checkInDate}</Text></Text>
                 <Text style={s.dateLabel}>{nights} night{nights > 1 ? 's' : ''}</Text>
-                <Text style={s.dateLabel}>Check-out: <Text style={s.dateVal}>{checkOutDate}</Text></Text>
+                <Text style={s.dateLabel}>{t('booking.checkout')} <Text style={s.dateVal}>{checkOutDate}</Text></Text>
               </View>
             )}
             {AVAILABLE_ROOMS.map(room => (
@@ -470,13 +472,13 @@ export default function BookingFlowScreen() {
                 {room.availableCount !== undefined && room.availableCount <= 3 && (
                   <View style={s.scarcityBadge}>
                     <IconSymbol name="alarm" size={10} color="#FFF" />
-                    <Text style={s.scarcityText}>Only {room.availableCount} left</Text>
+                    <Text style={s.scarcityText}>{t('booking.onlyLeft', { n: room.availableCount })}</Text>
                   </View>
                 )}
                 <View style={s.roomBody}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={s.roomName}>{room.name}</Text>
-                    <Text style={s.roomPrice}>{room.currency} {room.price.toLocaleString()}<Text style={s.perNight}>/night</Text></Text>
+                    <Text style={s.roomPrice}>{room.currency} {room.price.toLocaleString()}<Text style={s.perNight}>{t('booking.perNight')}</Text></Text>
                   </View>
                   <Text style={s.roomDesc}>{room.description}</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
@@ -501,13 +503,13 @@ export default function BookingFlowScreen() {
         {/* Guest Info */}
         {currentStep === 'guests' && (
           <View style={{ gap: 16 }}>
-            <Text style={s.sectionTitle}>Guest Information</Text>
-            <Text style={s.sectionSub}>Fill in your details to continue</Text>
+            <Text style={s.sectionTitle}>{t('booking.guestInfo')}</Text>
+            <Text style={s.sectionSub}>{t('booking.guestInfoSubtitle')}</Text>
             {[
-              { label: 'First Name', val: guestInfo.firstName, set: (t: string) => { setGuestInfo({ ...guestInfo, firstName: t }); if (guestErrors.firstName) setGuestErrors({ ...guestErrors, firstName: '' }); }, key: 'firstName' },
-              { label: 'Last Name', val: guestInfo.lastName, set: (t: string) => { setGuestInfo({ ...guestInfo, lastName: t }); if (guestErrors.lastName) setGuestErrors({ ...guestErrors, lastName: '' }); }, key: 'lastName' },
-              { label: 'Email', val: guestInfo.email, set: (t: string) => { setGuestInfo({ ...guestInfo, email: t }); if (guestErrors.email) setGuestErrors({ ...guestErrors, email: '' }); }, key: 'email', keyboard: 'email-address' as const },
-              { label: 'Phone', val: guestInfo.phone, set: (t: string) => { setGuestInfo({ ...guestInfo, phone: t }); if (guestErrors.phone) setGuestErrors({ ...guestErrors, phone: '' }); }, key: 'phone', keyboard: 'phone-pad' as const },
+              { label: t('booking.firstName'), val: guestInfo.firstName, set: (s: string) => { setGuestInfo({ ...guestInfo, firstName: s }); if (guestErrors.firstName) setGuestErrors({ ...guestErrors, firstName: '' }); }, key: 'firstName' },
+              { label: t('booking.lastName'), val: guestInfo.lastName, set: (s: string) => { setGuestInfo({ ...guestInfo, lastName: s }); if (guestErrors.lastName) setGuestErrors({ ...guestErrors, lastName: '' }); }, key: 'lastName' },
+              { label: t('booking.email'), val: guestInfo.email, set: (s: string) => { setGuestInfo({ ...guestInfo, email: s }); if (guestErrors.email) setGuestErrors({ ...guestErrors, email: '' }); }, key: 'email', keyboard: 'email-address' as const },
+              { label: t('booking.phone'), val: guestInfo.phone, set: (s: string) => { setGuestInfo({ ...guestInfo, phone: s }); if (guestErrors.phone) setGuestErrors({ ...guestErrors, phone: '' }); }, key: 'phone', keyboard: 'phone-pad' as const },
             ].map(f => (
               <View key={f.key}>
                 <Text style={s.fieldLabel}>{f.label}                    <Text style={{ color: UI.error }}>*</Text></Text>
@@ -538,7 +540,7 @@ export default function BookingFlowScreen() {
                 </View>
                 <View style={{ alignItems: 'flex-end', marginRight: 12 }}>
                   <Text style={[s.addonPrice, addOn.selected && { color: ACCENT }]}>{addOn.currency} {addOn.price.toLocaleString()}</Text>
-                  {addOn.id === 'dinner' && <Text style={s.perNightSmall}>/night</Text>}
+                  {addOn.id === 'dinner' && <Text style={s.perNightSmall}>{t('booking.perNight')}</Text>}
                 </View>
                 <View style={[s.addonCheck, addOn.selected && s.addonCheckSelected]}>
                   {addOn.selected && <IconSymbol name="check" size={10} color="#FFF" />}
@@ -546,9 +548,9 @@ export default function BookingFlowScreen() {
               </TouchableOpacity>
             ))}
             <View>
-              <Text style={s.fieldLabel}>Special Requests</Text>
+              <Text style={s.fieldLabel}>{t('booking.specialRequests')}</Text>
               <TextInput
-                placeholder="Any special requests..."                  placeholderTextColor={SLATE[400]}
+                placeholder={t('booking.specialRequestsPlaceholder')}                  placeholderTextColor={SLATE[400]}
                 value={specialRequests} onChangeText={setSpecialRequests}
                 multiline numberOfLines={3}
                 style={[s.input, { minHeight: 72, textAlignVertical: 'top' }]}
@@ -560,12 +562,12 @@ export default function BookingFlowScreen() {
         {/* Review */}
         {currentStep === 'review' && (
           <View style={{ gap: 14 }}>
-            <Text style={s.sectionTitle}>Review Your Booking</Text>
+            <Text style={s.sectionTitle}>{t('booking.reviewTitle')}</Text>
             <View style={s.reviewCard}>
               <Text style={s.reviewHotel}>{hotelName}</Text>
-              <ReviewRow label="Check-in" value={checkInDate} />
-              <ReviewRow label="Check-out" value={checkOutDate} />
-              <ReviewRow label="Duration" value={`${nights} night${nights > 1 ? 's' : ''}`} />
+              <ReviewRow label={t('booking.checkin')} value={checkInDate} />
+              <ReviewRow label={t('booking.checkout')} value={checkOutDate} />
+              <ReviewRow label="Duration" value={t('confirmation.nights', { count: nights })} />
             </View>
             {selectedRooms.map(room => (
               <View key={room.id} style={s.reviewCard}>
@@ -573,7 +575,7 @@ export default function BookingFlowScreen() {
                   <Image source={{ uri: room.image }} style={s.reviewRoomImg} resizeMode="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={s.reviewRoomName}>{room.name} x{room.quantity}</Text>
-                    <Text style={s.reviewMeta}>{room.currency} {room.price.toLocaleString()} × {nights} nights</Text>
+                    <Text style={s.reviewMeta}>{room.currency} {room.price.toLocaleString()} × {nights} night{nights > 1 ? 's' : ''}</Text>
                   </View>
                   <Text style={s.reviewRoomTotal}>{room.currency} {(room.price * nights * room.quantity).toLocaleString()}</Text>
                 </View>
@@ -581,7 +583,7 @@ export default function BookingFlowScreen() {
             ))}
             {addOns.filter(a => a.selected).length > 0 && (
               <View style={s.reviewCard}>
-                <Text style={s.reviewSectionLabel}>Add-ons</Text>
+                <Text style={s.reviewSectionLabel}>{t('booking.addons')}</Text>
                 {addOns.filter(a => a.selected).map(a => (
                   <ReviewRow key={a.id} label={a.name} value={`${a.currency} ${(a.id === 'dinner' ? a.price * nights : a.price).toLocaleString()}`} />
                 ))}
@@ -602,11 +604,11 @@ export default function BookingFlowScreen() {
               }}
             />
             <View style={s.priceSummary}>
-              <PriceRow label="Subtotal" value={`NPR ${subtotal.toLocaleString()}`} />
-              <PriceRow label="Tax (13%)" value={`NPR ${tax.toLocaleString()}`} />
-              {discountAmount > 0 && <PriceRow label="Discount" value={`-NPR ${discountAmount.toLocaleString()}`} />}
+              <PriceRow label={t('booking.subtotal')} value={`NPR ${subtotal.toLocaleString()}`} />
+              <PriceRow label={t('booking.tax')} value={`NPR ${tax.toLocaleString()}`} />
+              {discountAmount > 0 && <PriceRow label={t('booking.discount')} value={`-NPR ${discountAmount.toLocaleString()}`} />}
               <View style={s.priceTotalRow}>
-                <Text style={s.priceTotalLabel}>Total</Text>
+                <Text style={s.priceTotalLabel}>{t('booking.total')}</Text>
                 <Text style={s.priceTotalVal}>NPR {total.toLocaleString()}</Text>
               </View>
             </View>
@@ -616,12 +618,12 @@ export default function BookingFlowScreen() {
         {/* Payment */}
         {currentStep === 'payment' && (
           <View style={{ gap: 16 }}>
-            <Text style={s.sectionTitle}>Payment Method</Text>
+            <Text style={s.sectionTitle}>{t('booking.paymentMethod')}</Text>
             {[
-              { id: 'card' as const, label: 'Credit/Debit Card', icon: 'payment' as const },
-              { id: 'wallet' as const, label: 'Digital Wallet', icon: 'wallet' as const },
-              { id: 'bank' as const, label: 'Bank Transfer', icon: 'business' as const },
-              { id: 'razorpay' as const, label: 'Razorpay', icon: 'payment' as const },
+              { id: 'card' as const, label: t('booking.card'), icon: 'payment' as const },
+              { id: 'wallet' as const, label: t('booking.wallet'), icon: 'wallet' as const },
+              { id: 'bank' as const, label: t('booking.bankTransfer'), icon: 'business' as const },
+              { id: 'razorpay' as const, label: t('booking.razorpay'), icon: 'payment' as const },
             ].map(opt => (
               <TouchableOpacity key={opt.id} onPress={() => setPaymentMethod(opt.id)}
                 style={[s.paymentOption, paymentMethod === opt.id && s.paymentOptionActive]}
@@ -638,7 +640,7 @@ export default function BookingFlowScreen() {
               <View style={s.cardForm}>
                 <View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <Text style={s.fieldLabel}>Card Number</Text>
+                    <Text style={s.fieldLabel}>{t('booking.cardNumber')}</Text>
                     {cardType && <Text style={s.cardTypeLabel}>{cardType}</Text>}
                   </View>
                   <View style={[s.cardInput, cardErrors.cardNumber && s.cardInputError]}>
@@ -648,7 +650,7 @@ export default function BookingFlowScreen() {
                   {cardErrors.cardNumber && <Text style={s.errorText}>{cardErrors.cardNumber}</Text>}
                 </View>
                 <View>
-                  <Text style={s.fieldLabel}>Cardholder Name</Text>
+                    <Text style={s.fieldLabel}>{t('booking.cardName')}</Text>
                   <View style={[s.cardInput, cardErrors.cardName && s.cardInputError]}>
                     <TextInput value={cardName} onChangeText={(t) => { setCardName(t); setCardErrors(p => ({ ...p, cardName: '' })); }}
                       placeholder="John Doe"                  placeholderTextColor={SLATE[400]} autoCapitalize="words" style={s.cardTextInput} />
@@ -657,7 +659,7 @@ export default function BookingFlowScreen() {
                 </View>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.fieldLabel}>Expiry</Text>
+                    <Text style={s.fieldLabel}>{t('booking.expiry')}</Text>
                     <View style={[s.cardInput, cardErrors.cardExpiry && s.cardInputError]}>
                       <TextInput value={cardExpiry} onChangeText={(t) => { const cleaned = t.replace(/\D/g, ''); setCardExpiry(formatExpiry(cleaned)); setCardErrors(p => ({ ...p, cardExpiry: '' })); }}
                         placeholder="MM/YY"                  placeholderTextColor={SLATE[400]} keyboardType="number-pad" maxLength={5} style={s.cardTextInput} />
@@ -665,7 +667,7 @@ export default function BookingFlowScreen() {
                     {cardErrors.cardExpiry && <Text style={s.errorText}>{cardErrors.cardExpiry}</Text>}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.fieldLabel}>CVV</Text>
+                    <Text style={s.fieldLabel}>{t('booking.cvv')}</Text>
                     <View style={[s.cardInput, cardErrors.cardCvv && s.cardInputError]}>
                       <TextInput value={cardCvv} onChangeText={(t) => { const cleaned = t.replace(/\D/g, ''); setCardCvv(cleaned.slice(0, cardType === 'Amex' ? 4 : 3)); setCardErrors(p => ({ ...p, cardCvv: '' })); }}
                         placeholder={cardType === 'Amex' ? '1234' : '123'}                  placeholderTextColor={SLATE[400]} keyboardType="number-pad" maxLength={4}
@@ -779,7 +781,7 @@ export default function BookingFlowScreen() {
 
             <View style={s.termsBox}>
               <IconSymbol name="lock" size={14} color="#94A3B8" />
-              <Text style={s.termsText}>By confirming, you agree to our Terms & Conditions and Privacy Policy</Text>
+              <Text style={s.termsText}>{t('booking.agree')}</Text>
             </View>
           </View>
         )}
@@ -789,14 +791,14 @@ export default function BookingFlowScreen() {
       <View style={s.bottomBar}>
         {selectedRooms.length > 0 && (
           <View style={s.pricePreview}>
-            <Text style={s.pricePreviewLabel}>Total</Text>
+            <Text style={s.pricePreviewLabel}>{t('booking.total')}</Text>
             <Text style={s.pricePreviewVal}>NPR {total.toLocaleString()}</Text>
           </View>
         )}
         <View style={s.navRow}>
           {currentIdx > 0 ? (
             <TouchableOpacity onPress={() => setCurrentStep(STEPS[currentIdx - 1].key)} style={s.navBack}>
-              <Text style={s.navBackText}>Back</Text>
+              <Text style={s.navBackText}>{t('booking.back')}</Text>
             </TouchableOpacity>
           ) : <View style={{ flex: 1 }} />}
           <TouchableOpacity
@@ -809,7 +811,7 @@ export default function BookingFlowScreen() {
               <ActivityIndicator color="#FFF" />
             ) : (
               <Text style={s.navNextText}>
-                {currentStep === 'payment' && paymentMethod === 'razorpay' ? 'Pay with Razorpay' : currentStep === 'payment' ? 'Confirm & Pay' : 'Continue'}
+                {currentStep === 'payment' && paymentMethod === 'razorpay' ? 'Pay with Razorpay' : currentStep === 'payment' ? t('booking.confirmPay') : t('booking.continue')}
               </Text>
             )}
           </TouchableOpacity>
