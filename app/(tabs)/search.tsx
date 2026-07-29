@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { StickySearchHeader } from '@/components/StickySearchHeader';
+import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 
 const QUICK_FILTERS = [
   { label: 'Budget', param: 'budget', icon: 'wallet' as const },
@@ -12,161 +14,160 @@ const QUICK_FILTERS = [
 ];
 
 export default function SearchScreen() {
-  const [checkInDate, setCheckInDate] = useState<Date | null>(null);
-  const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
   const [location, setLocation] = useState('');
-  const [guests, setGuests] = useState(1);
+  const [adults, setAdults] = useState(2);
+  const [children, setChildren] = useState(0);
   const [rooms, setRooms] = useState(1);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [selectedCheckIn, setSelectedCheckIn] = useState<Date | null>(null);
+  const [selectedCheckOut, setSelectedCheckOut] = useState<Date | null>(null);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const routeKey = '/(tabs)/search';
+  const handleScroll = useScrollRestoration(scrollRef, routeKey);
 
   const handleSearch = () => {
     router.push({
       pathname: '/guest-search-results',
       params: {
-        location: location || '', checkIn: checkInDate ? checkInDate.toISOString() : '',
-        checkOut: checkOutDate ? checkOutDate.toISOString() : '',
-        guests: guests.toString(), filter: activeFilter || '',
+        location: location || '',
+        checkIn: selectedCheckIn ? selectedCheckIn.toISOString() : '',
+        checkOut: selectedCheckOut ? selectedCheckOut.toISOString() : '',
+        guests: (adults + children).toString(),
+        filter: activeFilter || '',
       },
     });
   };
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ flexGrow: 1 }}>
-      <View style={s.body}>
-        {/* Header */}
-        <View style={s.headerSection}>
-          <Text style={s.title}>Find Hotels</Text>
-          <Text style={s.sub}>Search and book your perfect stay</Text>
+    <ScrollView ref={scrollRef} onScroll={handleScroll} scrollEventThrottle={16}
+      style={s.container}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      contentInsetAdjustmentBehavior="automatic"
+    >
+      {/* Header */}
+      <View style={s.headerSection}>
+        <Text style={s.title}>Find Hotels</Text>
+        <Text style={s.sub}>Search and book your perfect stay</Text>
+      </View>
+
+      <View style={s.form}>
+        {/* Location */}
+        <View style={s.field}>
+          <Text style={s.fieldLabel}>Location</Text>
+          <View style={s.inputRow}>
+            <IconSymbol name="search" size={18} color="#94A3B8" />
+            <TextInput
+              placeholder="City or hotel name"
+              placeholderTextColor="#94A3B8"
+              value={location}
+              onChangeText={setLocation}
+              style={s.input}
+            />
+          </View>
         </View>
 
-        {/* Search Form */}
-        <View style={{ gap: SPACING.lg }}>
-          {/* Location */}
-          <View>
-            <Text style={s.fieldLabel}>Location</Text>
-            <View style={s.inputRow}>
-              <IconSymbol name="search" size={18} color={GRAY[400]} style={{ marginRight: SPACING.sm }} />
-              <TextInput placeholder="Enter city or hotel name" placeholderTextColor={GRAY[400]}
-                value={location} onChangeText={setLocation} style={s.input}
-              />
-            </View>
-          </View>
-
-          {/* Date */}
-          <View>
-            <Text style={s.fieldLabel}>Check-in / Check-out</Text>
-            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[s.inputRow, { justifyContent: 'space-between' }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <IconSymbol name="calendar" size={18} color={GRAY[400]} style={{ marginRight: SPACING.sm }} />
-                <Text style={[s.dateText, { color: checkInDate ? SRS.navy : GRAY[400] }]}>
-                  {checkInDate && checkOutDate
-                    ? `${checkInDate.toLocaleDateString()} — ${checkOutDate.toLocaleDateString()}`
-                    : 'Select dates'}
-                </Text>
-              </View>
-              <IconSymbol name="chevron.down" size={16} color={GRAY[400]} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Guests & Rooms */}
-          <View style={{ flexDirection: 'row', gap: SPACING.md }}>
-            {[{ label: 'Guests', val: guests, set: setGuests, min: 1, max: 10 },
-              { label: 'Rooms', val: rooms, set: setRooms, min: 1, max: 5 },
-            ].map((item) => (
-              <View key={item.label} style={{ flex: 1 }}>
-                <Text style={s.fieldLabel}>{item.label}</Text>
-                <View style={[s.inputRow, { justifyContent: 'space-between', paddingVertical: 4 }]}>
-                  <TouchableOpacity onPress={() => item.val > item.min && item.set(item.val - 1)} style={s.counterBtn}>
-                    <IconSymbol name="minus" size={14} color={SRS.teal} />
-                  </TouchableOpacity>
-                  <Text style={s.counterVal}>{item.val}</Text>
-                  <TouchableOpacity onPress={() => item.val < item.max && item.set(item.val + 1)} style={s.counterBtn}>
-                    <IconSymbol name="add" size={14} color={SRS.teal} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          {/* Search CTA */}
-          <TouchableOpacity onPress={handleSearch} style={s.searchBtn} activeOpacity={0.85}>
-            <IconSymbol name="search" size={18} color="#FFF" />
-            <Text style={s.searchBtnText}>Search Hotels</Text>
+        {/* Date */}
+        <View style={s.field}>
+          <Text style={s.fieldLabel}>Check-in / Check-out</Text>
+          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={s.inputRow}>
+            <IconSymbol name="calendar" size={18} color="#94A3B8" />
+            <Text style={[s.dateText, selectedCheckIn && s.dateTextFilled]}>
+              {selectedCheckIn && selectedCheckOut
+                ? `${selectedCheckIn.toLocaleDateString()} — ${selectedCheckOut.toLocaleDateString()}`
+                : 'Select dates'}
+            </Text>
+            <IconSymbol name="chevron.down" size={16} color="#94A3B8" />
           </TouchableOpacity>
+          {selectedCheckIn && selectedCheckOut && (
+            <Text style={s.nightsText}>
+              {Math.ceil((selectedCheckOut.getTime() - selectedCheckIn.getTime()) / 86400000)} night(s)
+            </Text>
+          )}
+        </View>
 
-          {/* Quick Filters */}
-          <View>
-            <Text style={[s.fieldLabel, { marginBottom: SPACING.md }]}>Quick Filters</Text>
-            <View style={{ flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' }}>
-              {QUICK_FILTERS.map((f) => (
-                <TouchableOpacity key={f.param} onPress={() => setActiveFilter(activeFilter === f.param ? null : f.param)}
-                  style={[s.filterChip, { backgroundColor: activeFilter === f.param ? SRS.teal + '12' : GRAY[100], borderColor: activeFilter === f.param ? SRS.teal : GRAY[200] }]}
-                >
-                  <IconSymbol name={f.icon} size={14} color={activeFilter === f.param ? SRS.teal : GRAY[500]} />
-                  <Text style={[s.filterLabel, { color: activeFilter === f.param ? SRS.teal : GRAY[600] }]}>{f.label}</Text>
+        <DatePickerCalendar
+          visible={showDatePicker}
+          onClose={() => setShowDatePicker(false)}
+          onSelectDates={(inDate, outDate) => {
+            setSelectedCheckIn(inDate);
+            setSelectedCheckOut(outDate);
+          }}
+          initialCheckIn={selectedCheckIn || undefined}
+          initialCheckOut={selectedCheckOut || undefined}
+        />
+
+        {/* Adults, Children & Rooms */}
+        <View style={s.counterRow}>
+          {[{ label: 'Adults', val: adults, set: setAdults, min: 1, max: 10 },
+            { label: 'Children', val: children, set: setChildren, min: 0, max: 6 },
+            { label: 'Rooms', val: rooms, set: setRooms, min: 1, max: 5 },
+          ].map((item) => (
+            <View key={item.label} style={{ flex: 1 }}>
+              <Text style={s.fieldLabel}>{item.label}</Text>
+              <View style={s.counterBox}>
+                <TouchableOpacity onPress={() => item.val > item.min && item.set(item.val - 1)} style={s.counterBtn}>
+                  <IconSymbol name="minus" size={14} color="#2E86AB" />
                 </TouchableOpacity>
-              ))}
+                <Text style={s.counterVal}>{item.val}</Text>
+                <TouchableOpacity onPress={() => item.val < item.max && item.set(item.val + 1)} style={s.counterBtn}>
+                  <IconSymbol name="add" size={14} color="#2E86AB" />
+                </TouchableOpacity>
+              </View>
             </View>
+          ))}
+        </View>
+
+        {/* Search CTA */}
+        <TouchableOpacity onPress={handleSearch} style={s.searchBtn} activeOpacity={0.9}>
+          <IconSymbol name="search" size={18} color="#FFF" />
+          <Text style={s.searchBtnText}>Search Hotels</Text>
+        </TouchableOpacity>
+
+        {/* Quick Filters */}
+        <View>
+          <Text style={[s.fieldLabel, { marginBottom: 12 }]}>Quick Filters</Text>
+          <View style={s.filterRow}>
+            {QUICK_FILTERS.map((f) => (
+              <TouchableOpacity
+                key={f.param}
+                onPress={() => setActiveFilter(activeFilter === f.param ? null : f.param)}
+                style={[s.filterChip, activeFilter === f.param && s.filterChipActive]}
+              >
+                <IconSymbol name={f.icon} size={14} color={activeFilter === f.param ? '#FFF' : '#64748B'} />
+                <Text style={[s.filterLabel, activeFilter === f.param && s.filterLabelActive]}>{f.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </View>
-
-      {/* Date Picker Modal */}
-      {showDatePicker && (
-        <TouchableOpacity style={s.dateOverlay} activeOpacity={1} onPress={() => setShowDatePicker(false)}>
-          <View style={s.dateModal}>
-            <View style={{ flexDirection: 'row', gap: SPACING.md }}>
-              {['Check-in', 'Check-out'].map((label, i) => (
-                <TouchableOpacity key={label} style={s.dateOption}
-                  onPress={() => {
-                    const today = new Date();
-                    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-                    const out = new Date(today); out.setDate(out.getDate() + (i === 0 ? 1 : 3));
-                    setCheckInDate(i === 0 ? today : checkInDate || today);
-                    setCheckOutDate(i === 0 ? tomorrow : out);
-                  }}
-                >
-                  <Text style={s.dateOptionLabel}>{label}</Text>
-                  <Text style={s.dateOptionVal}>
-                    {i === 0
-                      ? (checkInDate || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                      : (checkOutDate || new Date(Date.now() + 2 * 86400000)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={s.dateApplyBtn}>
-              <Text style={s.dateApplyText}>Apply Dates</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      )}
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  body: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.xl, gap: SPACING.xl },
-  headerSection: { gap: SPACING.xs },
-  title: { ...TYPOGRAPHY.h2, color: SRS.navy },
-  sub: { ...TYPOGRAPHY.body, color: GRAY[500] },
-  fieldLabel: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy, marginBottom: SPACING.xs },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 10 },
-  input: { flex: 1, fontSize: 14, color: SRS.navy },
-  dateText: { flex: 1, fontSize: 14 },
-  counterBtn: { width: 32, height: 32, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '12', alignItems: 'center', justifyContent: 'center' },
-  counterVal: { fontSize: 16, fontWeight: '700', color: SRS.navy, minWidth: 24, textAlign: 'center' },
-  searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingVertical: 16, borderRadius: RADIUS.card, backgroundColor: SRS.navy, ...SHADOWS.card },
-  searchBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
-  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
-  filterLabel: { fontSize: 12, fontWeight: '600' },
-  dateOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  dateModal: { backgroundColor: '#FFF', borderTopLeftRadius: RADIUS.modal, borderTopRightRadius: RADIUS.modal, padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 40 },
-  dateOption: { flex: 1, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200], alignItems: 'center', gap: 4 },
-  dateOptionLabel: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy },
-  dateOptionVal: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.teal },
-  dateApplyBtn: { paddingVertical: 14, borderRadius: RADIUS.card, backgroundColor: SRS.navy, alignItems: 'center' },
-  dateApplyText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  headerSection: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8, gap: 4 },
+  title: { fontSize: 24, fontWeight: '700', color: '#1A3C5E', letterSpacing: -0.5 },
+  sub: { fontSize: 13, color: '#94A3B8' },
+  form: { paddingHorizontal: 16, gap: 20, marginTop: 16 },
+  field: { gap: 6 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#1A3C5E' },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  input: { flex: 1, fontSize: 14, color: '#0F172A', padding: 0 },
+  dateText: { flex: 1, fontSize: 14, color: '#94A3B8' },
+  dateTextFilled: { color: '#0F172A', fontWeight: '500' },
+  nightsText: { fontSize: 11, color: '#94A3B8', marginTop: 4, marginLeft: 2 },
+  counterRow: { flexDirection: 'row', gap: 12 },
+  counterBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 6, paddingHorizontal: 10 },
+  counterBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(46, 134, 171, 0.1)', alignItems: 'center', justifyContent: 'center' },
+  counterVal: { fontSize: 16, fontWeight: '700', color: '#0F172A', minWidth: 24, textAlign: 'center' },
+  searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, backgroundColor: '#1A3C5E', shadowColor: '#1A3C5E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  searchBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  filterChipActive: { backgroundColor: '#2E86AB', borderColor: '#2E86AB' },
+  filterLabel: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  filterLabelActive: { color: '#FFF' },
 });
