@@ -16,7 +16,7 @@ export interface RazorpayCheckoutOptions {
   currency: string;
   order_id: string;
   name: string;
-  description?: string;
+  description: string;
   prefill?: {
     name?: string;
     email?: string;
