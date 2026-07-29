@@ -5,12 +5,14 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
 
 const NAVY = '#1A3C5E';
 const TEAL = '#2E86AB';
 
 export default function OTPVerifyScreen() {
+  const { t } = useTranslation();
   const { verifyOTP, resendOTP, isLoading } = useAuth();
   const { email, portal: portalParam } = useLocalSearchParams<{ email: string; portal?: string }>();
   const portal = (portalParam as 'guest' | 'host' | undefined) || 'guest';
@@ -75,8 +77,8 @@ export default function OTPVerifyScreen() {
         </TouchableOpacity>
 
         <View style={s.card}>
-          <Text style={s.title}>Verification code</Text>
-          <Text style={s.subtitle}>Enter the 6-digit code sent to your email</Text>
+          <Text style={s.title}>{t('auth.otp.code')}</Text>
+          <Text style={s.subtitle}>{t('auth.otp.subtitle')}</Text>
 
           <View style={s.codeRow}>
             {code.map((digit, i) => (
@@ -105,15 +107,14 @@ export default function OTPVerifyScreen() {
             {isLoading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={s.verifyBtnText}>Verify</Text>
+              <Text style={s.verifyBtnText}>{t('auth.otp.verify')}</Text>
             )}
           </TouchableOpacity>
 
           <View style={s.resendRow}>
-            <Text style={s.resendText}>Didn't receive a code? </Text>
             <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0 || resendLoading}>
               <Text style={[s.resendLink, (resendTimer > 0 || resendLoading) && { color: '#ccc' }]}>
-                {resendLoading ? 'Sending...' : resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend'}
+                {resendLoading ? t('common.loading') : resendTimer > 0 ? `Resend in ${resendTimer}s` : t('auth.otp.resend')}
               </Text>
             </TouchableOpacity>
           </View>

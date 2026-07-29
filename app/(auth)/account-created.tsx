@@ -2,9 +2,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { FONTS, SRS, RADIUS } from '@/constants/portal-theme';
 
 export default function AccountCreatedScreen() {
+  const { t } = useTranslation();
   return (
     <View style={s.container}>
       <View style={s.content}>
@@ -12,13 +14,11 @@ export default function AccountCreatedScreen() {
           <Ionicons name="checkmark-circle" size={100} color={SRS.green} />
         </View>
 
-        <Text style={s.title}>Congratulation!</Text>
-        <Text style={s.subtitle}>
-          Your account has been successfully created. Welcome to StayEasy!
-        </Text>
+        <Text style={s.title}>{t('auth.accountCreated.title')}</Text>
+        <Text style={s.subtitle}>{t('auth.accountCreated.message')}</Text>
 
         <TouchableOpacity style={s.loginBtn} onPress={() => router.replace('/(auth)/login')} activeOpacity={0.8}>
-          <Text style={s.loginBtnText}>Log in</Text>
+          <Text style={s.loginBtnText}>{t('auth.register.login')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={s.homeBtn} onPress={() => router.replace('/')} activeOpacity={0.8}>

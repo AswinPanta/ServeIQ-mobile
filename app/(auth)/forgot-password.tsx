@@ -5,9 +5,11 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { FONTS, SRS, RADIUS, GRAY } from '@/constants/portal-theme';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
 
@@ -23,20 +25,18 @@ export default function ForgotPasswordScreen() {
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
 
-        <Text style={s.title}>Forget password?</Text>
+        <Text style={s.title}>{t('auth.forgot.title')}</Text>
 
         {!sent ? (
           <>
-            <Text style={s.subtitle}>
-              Enter your email address and we'll send you a verification code to reset your password.
-            </Text>
+            <Text style={s.subtitle}>{t('auth.forgot.subtitle')}</Text>
 
             <View style={s.field}>
-              <Text style={s.label}>Email or Phone</Text>
+              <Text style={s.label}>{t('auth.forgot.email')}</Text>
               <View style={s.inputWrap}>
                 <TextInput
                   style={s.input}
-                  placeholder="Enter your email or phone"
+                  placeholder={t('auth.login.emailPlaceholder')}
                   placeholderTextColor={GRAY[400]}
                   value={email}
                   onChangeText={setEmail}
@@ -47,7 +47,7 @@ export default function ForgotPasswordScreen() {
             </View>
 
             <TouchableOpacity style={s.sendBtn} onPress={handleSend} activeOpacity={0.8}>
-              <Text style={s.sendBtnText}>Send</Text>
+              <Text style={s.sendBtnText}>{t('auth.forgot.send')}</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -61,7 +61,7 @@ export default function ForgotPasswordScreen() {
               <Text style={{ fontWeight: '600', color: '#1A1C1E' }}>{email}</Text>
             </Text>
             <TouchableOpacity style={s.sendBtn} onPress={() => router.replace('/(auth)/login')} activeOpacity={0.8}>
-              <Text style={s.sendBtnText}>Back to Login</Text>
+              <Text style={s.sendBtnText}>{t('auth.forgot.backToLogin')}</Text>
             </TouchableOpacity>
           </View>
         )}

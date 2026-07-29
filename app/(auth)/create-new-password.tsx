@@ -5,9 +5,11 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { FONTS, SRS, RADIUS, GRAY } from '@/constants/portal-theme';
 
 export default function CreateNewPasswordScreen() {
+  const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -22,8 +24,8 @@ export default function CreateNewPasswordScreen() {
     else if (newPassword !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
-    Alert.alert('Success', 'Your password has been reset', [
-      { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+    Alert.alert(t('auth.reset.success'), t('auth.reset.success'), [
+      { text: t('common.ok'), onPress: () => router.replace('/(auth)/login') },
     ]);
   };
 
@@ -34,14 +36,14 @@ export default function CreateNewPasswordScreen() {
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
 
-        <Text style={s.title}>Create new password</Text>
+        <Text style={s.title}>{t('auth.reset.title')}</Text>
 
         <View style={s.field}>
-          <Text style={s.label}>New Password</Text>
+          <Text style={s.label}>{t('auth.reset.password')}</Text>
           <View style={[s.inputWrap, errors.newPassword && s.inputError]}>
             <TextInput
               style={s.input}
-              placeholder="Enter your Password"
+              placeholder={t('auth.login.passwordPlaceholder')}
               placeholderTextColor={GRAY[400]}
               value={newPassword}
               onChangeText={(t) => { setNewPassword(t); if (errors.newPassword) setErrors({ ...errors, newPassword: '' }); }}
@@ -55,11 +57,11 @@ export default function CreateNewPasswordScreen() {
         </View>
 
         <View style={s.field}>
-          <Text style={s.label}>Confirm New Password</Text>
+          <Text style={s.label}>{t('auth.reset.confirmPassword')}</Text>
           <View style={[s.inputWrap, errors.confirmPassword && s.inputError]}>
             <TextInput
               style={s.input}
-              placeholder="Re-enter your password"
+              placeholder={t('auth.reset.confirmPassword')}
               placeholderTextColor={GRAY[400]}
               value={confirmPassword}
               onChangeText={(t) => { setConfirmPassword(t); if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' }); }}
@@ -73,7 +75,7 @@ export default function CreateNewPasswordScreen() {
         </View>
 
         <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm} activeOpacity={0.8}>
-          <Text style={s.confirmBtnText}>Confirm</Text>
+          <Text style={s.confirmBtnText}>{t('auth.reset.button')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

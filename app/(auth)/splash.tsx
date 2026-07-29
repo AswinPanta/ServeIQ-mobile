@@ -2,9 +2,11 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { FONTS, SRS, RADIUS } from '@/constants/portal-theme';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
@@ -17,23 +19,21 @@ export default function SplashScreen() {
 
       <View style={styles.imagePlaceholder} />
 
-      <Text style={styles.welcomeText}>
-        Welcome! Start now your first{'\n'}experience today!
-      </Text>
+      <Text style={styles.welcomeText}>{t('auth.splash.subtitle')}</Text>
 
       <View style={styles.buttonFrame}>
         <Pressable
           style={[styles.button, styles.loginButton]}
           onPress={() => router.push('/(auth)/login')}
         >
-          <Text style={styles.loginText}>Log in</Text>
+          <Text style={styles.loginText}>{t('auth.login.button')}</Text>
         </Pressable>
 
         <Pressable
           style={[styles.button, styles.signupButton]}
           onPress={() => router.push('/(auth)/register')}
         >
-          <Text style={styles.signupText}>Sign up</Text>
+          <Text style={styles.signupText}>{t('auth.login.signup')}</Text>
         </Pressable>
       </View>
     </View>

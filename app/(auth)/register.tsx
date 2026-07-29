@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
 
 const NAVY = '#1A3C5E';
@@ -15,6 +16,7 @@ export default function RegisterScreen() {
   const pathname = usePathname();
   const isHostRoute = pathname.includes('/host');
   const portal = isHostRoute ? 'host' : 'guest';
+  const { t } = useTranslation();
 
   const [form, setForm] = useState({ fullName: '', phone: '', email: '', password: '' });
   const [showPw, setShowPw] = useState(false);
@@ -37,8 +39,8 @@ export default function RegisterScreen() {
     if (error) setError('');
   };
 
-  const heading = isHostRoute ? 'Become a Host' : 'Create account';
-  const subtitle = isHostRoute ? 'Start listing your property today' : 'Start finding your stay today';
+  const heading = t('auth.register.title');
+  const subtitle = t('auth.register.subtitle');
 
   const handleRegister = async () => {
     setError('');
@@ -108,10 +110,10 @@ export default function RegisterScreen() {
         <View style={s.card}>
           <View style={s.tabRow}>
             <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text style={s.tab}>Login</Text>
+              <Text style={s.tab}>{t('auth.register.login')}</Text>
             </TouchableOpacity>
             <View>
-              <Text style={[s.tab, s.tabActive]}>Sign up</Text>
+              <Text style={[s.tab, s.tabActive]}>{t('auth.register.title')}</Text>
               <View style={s.tabLine} />
             </View>
           </View>
@@ -124,15 +126,15 @@ export default function RegisterScreen() {
               {['fullName', 'phone', 'email', 'password'].map((field) => (
                 <View key={field} style={s.field}>
                   <Text style={s.label}>
-                    {field === 'fullName' ? 'Full name' : field === 'phone' ? 'Phone' : field === 'email' ? 'Email' : 'Password'}
+                    {field === 'fullName' ? t('auth.register.name') : field === 'phone' ? t('auth.register.phone') : field === 'email' ? t('auth.register.email') : t('auth.register.password')}
                   </Text>
                   <View style={s.inputRow}>
                     <TextInput
                       style={s.input}
                       placeholder={
-                        field === 'fullName' ? 'Enter your name' :
-                        field === 'phone' ? '+977-98XXXXXXXX' :
-                        field === 'email' ? 'Enter your email' : '••••••••'
+                        field === 'fullName' ? t('auth.register.namePlaceholder') :
+                        field === 'phone' ? t('auth.register.phonePlaceholder') :
+                        field === 'email' ? t('auth.register.emailPlaceholder') : t('auth.register.passwordPlaceholder')
                       }
                       placeholderTextColor="#bbb"
                       value={(form as any)[field]}
@@ -153,7 +155,7 @@ export default function RegisterScreen() {
               ))}
 
               <View style={{ marginBottom: 16 }}>
-                <Text style={s.hint}>Must be 6+ characters.</Text>
+                <Text style={s.hint}>{t('auth.register.passwordHint')}</Text>
               </View>
 
               {error ? <Text style={s.error}>{error}</Text> : null}
@@ -167,26 +169,24 @@ export default function RegisterScreen() {
                 {isLoading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={s.btnText}>Create Account</Text>
+                  <Text style={s.btnText}>{t('auth.register.button')}</Text>
                 )}
               </TouchableOpacity>
 
               <View style={s.footer}>
-                <Text style={s.footerText}>Already have an account? </Text>
+                <Text style={s.footerText}>{t('auth.register.hasAccount')} </Text>
                 <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-                  <Text style={s.footerLink}>Log in</Text>
+                  <Text style={s.footerLink}>{t('auth.register.login')}</Text>
                 </TouchableOpacity>
               </View>
             </>
           ) : !verified ? (
             <>
-              <Text style={s.heading}>Verify your email</Text>
-              <Text style={s.subtitle}>
-                A verification code was sent to <Text style={{ fontWeight: '600', color: '#111' }}>{form.email}</Text>
-              </Text>
+              <Text style={s.heading}>{t('auth.otp.title')}</Text>
+              <Text style={s.subtitle}>{t('auth.otp.subtitle')}</Text>
 
               <View style={s.field}>
-                <Text style={s.label}>Verification code</Text>
+                <Text style={s.label}>{t('auth.otp.code')}</Text>
                 <TextInput
                   style={[s.input, { letterSpacing: 8, fontWeight: '600', fontSize: 18 }]}
                   placeholder="000000"
@@ -210,15 +210,14 @@ export default function RegisterScreen() {
                 {otpLoading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={s.btnText}>Verify OTP</Text>
+                  <Text style={s.btnText}>{t('auth.otp.verify')}</Text>
                 )}
               </TouchableOpacity>
 
               <View style={s.footer}>
-                <Text style={s.footerText}>Didn't receive the code? </Text>
                 <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0 || resendLoading}>
                   <Text style={[s.footerLink, (resendTimer > 0 || resendLoading) && { color: '#ccc' }]}>
-                    {resendLoading ? 'Sending...' : resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend'}
+                    {resendLoading ? t('common.loading') : resendTimer > 0 ? `Resend in ${resendTimer}s` : t('auth.otp.resend')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -229,8 +228,8 @@ export default function RegisterScreen() {
                 <View style={s.checkIcon}>
                   <Ionicons name="checkmark" size={32} color="#FFF" />
                 </View>
-                <Text style={[s.heading, { textAlign: 'center', marginTop: 12 }]}>Email verified!</Text>
-                <Text style={[s.subtitle, { textAlign: 'center' }]}>Your account has been created successfully.</Text>
+                <Text style={[s.heading, { textAlign: 'center', marginTop: 12 }]}>{t('auth.otp.success')}</Text>
+                <Text style={[s.subtitle, { textAlign: 'center' }]}>{t('auth.otp.successMessage')}</Text>
               </View>
 
               <TouchableOpacity
@@ -238,7 +237,7 @@ export default function RegisterScreen() {
                 onPress={() => router.push('/(auth)/login')}
                 activeOpacity={0.85}
               >
-                <Text style={s.btnText}>Next</Text>
+                <Text style={s.btnText}>{t('auth.otp.next')}</Text>
               </TouchableOpacity>
             </>
           )}

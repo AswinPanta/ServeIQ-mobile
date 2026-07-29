@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
 
 const NAVY = '#1A3C5E';
@@ -14,6 +15,7 @@ export default function LoginScreen() {
   const { login, isLoading } = useAuth();
   const pathname = usePathname();
   const isHostRoute = pathname.includes('/host');
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,8 +23,8 @@ export default function LoginScreen() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
 
-  const heading = isHostRoute ? 'Welcome Back, Host' : 'Welcome back!';
-  const subtitle = isHostRoute ? 'Manage your properties' : 'Please enter your details';
+  const heading = t('auth.login.title');
+  const subtitle = t('auth.login.subtitle');
 
   const handleLogin = async () => {
     setError('');
@@ -69,11 +71,11 @@ export default function LoginScreen() {
         <View style={s.card}>
           <View style={s.tabRow}>
             <View>
-              <Text style={[s.tab, s.tabActive]}>Login</Text>
+              <Text style={[s.tab, s.tabActive]}>{t('auth.login.button')}</Text>
               <View style={s.tabLine} />
             </View>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={s.tab}>Sign up</Text>
+              <Text style={s.tab}>{t('auth.login.signup')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -81,10 +83,10 @@ export default function LoginScreen() {
           <Text style={s.subtitle}>{subtitle}</Text>
 
           <View style={s.field}>
-            <Text style={s.label}>Email</Text>
+            <Text style={s.label}>{t('auth.login.email')}</Text>
             <TextInput
               style={s.input}
-              placeholder="Enter your email"
+              placeholder={t('auth.login.emailPlaceholder')}
               placeholderTextColor="#bbb"
               value={email}
               onChangeText={setEmail}
@@ -96,11 +98,11 @@ export default function LoginScreen() {
           </View>
 
           <View style={s.field}>
-            <Text style={s.label}>Password</Text>
+            <Text style={s.label}>{t('auth.login.password')}</Text>
             <View style={s.pwRow}>
               <TextInput
                 style={s.input}
-                placeholder="Set your password"
+                placeholder={t('auth.login.passwordPlaceholder')}
                 placeholderTextColor="#bbb"
                 value={password}
                 onChangeText={setPassword}
@@ -120,10 +122,10 @@ export default function LoginScreen() {
               <View style={[s.checkbox, remember && s.checkboxChecked]}>
                 {remember && <Ionicons name="checkmark" size={10} color="#FFF" />}
               </View>
-              <Text style={s.rememberText}>Remember for 30 days</Text>
+              <Text style={s.rememberText}>{t('auth.login.remember')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
-              <Text style={s.forgotText}>Forgot password?</Text>
+              <Text style={s.forgotText}>{t('auth.login.forgot')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -138,14 +140,14 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={s.loginBtnText}>Log In</Text>
+              <Text style={s.loginBtnText}>{t('auth.login.button')}</Text>
             )}
           </TouchableOpacity>
 
           <View style={s.footer}>
-            <Text style={s.footerText}>Don't have an account? </Text>
+            <Text style={s.footerText}>{t('auth.login.noAccount')} </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={s.footerLink}>Sign up</Text>
+              <Text style={s.footerLink}>{t('auth.login.signup')}</Text>
             </TouchableOpacity>
           </View>
         </View>
