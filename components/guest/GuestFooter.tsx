@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { useAppLanguage } from '@/hooks/use-app-language';
 
 const FOOTER_LINKS = {
   Support: ['Help Center', 'AirCover', 'Safety information', 'Supporting people with disabilities', 'Cancellation options'],
@@ -9,6 +10,9 @@ const FOOTER_LINKS = {
 };
 
 export function GuestFooter() {
+  const { language, setLanguage, availableLanguages } = useAppLanguage();
+  const [showLangPicker, setShowLangPicker] = useState(false);
+
   return (
     <View style={s.container}>
       {/* Brand */}
@@ -40,15 +44,43 @@ export function GuestFooter() {
       <View style={s.bottomRow}>
         <Text style={s.copyright}>© 2026 StayEasy, Inc. All rights reserved.</Text>
         <View style={s.bottomActions}>
-          <TouchableOpacity style={s.actionBtn}>
+          <Pressable style={s.actionBtn} onPress={() => setShowLangPicker(true)}>
             <Text style={s.actionIcon}>🌐</Text>
-            <Text style={s.actionText}>English (US)</Text>
-          </TouchableOpacity>
+            <Text style={s.actionText}>
+              {availableLanguages.find(l => l.code === language)?.label ?? 'English'}
+            </Text>
+          </Pressable>
           <TouchableOpacity style={s.actionBtn}>
             <Text style={s.actionText}>$ USD</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Language Picker Modal */}
+      <Modal visible={showLangPicker} transparent animationType="slide" onRequestClose={() => setShowLangPicker(false)}>
+        <Pressable style={s.modalOverlay} onPress={() => setShowLangPicker(false)}>
+          <Pressable style={s.modalCard} onPress={e => e.stopPropagation()}>
+            <Text style={s.modalTitle}>Select Language</Text>
+            <ScrollView>
+              {availableLanguages.map(lang => (
+                <Pressable
+                  key={lang.code}
+                  style={s.langRow}
+                  onPress={() => {
+                    setLanguage(lang.code);
+                    setShowLangPicker(false);
+                  }}
+                >
+                  <Text style={[s.langLabel, language === lang.code && s.langLabelActive]}>
+                    {lang.label}
+                  </Text>
+                  {language === lang.code && <Text style={s.langCheck}>✓</Text>}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -138,5 +170,52 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#475569',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '80%',
+    maxHeight: '60%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A3C5E',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  langLabel: {
+    fontSize: 15,
+    color: '#334155',
+  },
+  langLabelActive: {
+    color: '#E63946',
+    fontWeight: '600',
+  },
+  langCheck: {
+    fontSize: 16,
+    color: '#E63946',
+    fontWeight: '700',
   },
 });
