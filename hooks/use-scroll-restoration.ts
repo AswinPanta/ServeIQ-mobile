@@ -4,7 +4,7 @@ import { ScrollView, NativeSyntheticEvent, NativeScrollEvent } from 'react-nativ
 const scrollPositions: Record<string, number> = {};
 
 export function useScrollRestoration(
-  scrollRef: RefObject<ScrollView>,
+  scrollRef: RefObject<ScrollView | null>,
   routeKey: string
 ) {
   useEffect(() => {
