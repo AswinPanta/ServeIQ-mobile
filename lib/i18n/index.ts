@@ -19,7 +19,11 @@ i18n.use(initReactI18next).init({
     ja: { translation: ja },
     'zh-CN': { translation: zhCN },
   },
-  lng: Localization.getLocales()?.[0]?.languageCode ?? 'en',
+  lng: (() => {
+    const raw = Localization.getLocales()?.[0]?.languageCode;
+    if (raw === 'zh') return 'zh-CN';
+    return raw ?? 'en';
+  })(),
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
   returnObjects: true,
