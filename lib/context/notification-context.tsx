@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, handleResponse } from '@/lib/api';
-import { API_ENDPOINTS } from '@/constants/api-config';
+// Notifications API not yet available on backend — local-only for now
 
 export interface AppNotification {
   id: string;
@@ -135,25 +133,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const refreshNotifications = useCallback(async () => {
-    try {
-      const response = await api.get(API_ENDPOINTS.NOTIFICATIONS.GET_ALL);
-      const data = await handleResponse<AppNotification[]>(response);
-      if (data && data.length > 0) {
-        setNotifications(data);
-      }
-    } catch {
-      // Backend unavailable — keep current state
-    }
+    // Notifications API not yet available on backend
+    // TODO: wire to backend when /notifications/ endpoint is added
   }, []);
 
   const registerPushToken = useCallback(async (token: string) => {
     setPushToken(token);
     await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-    try {
-      await api.post(API_ENDPOINTS.NOTIFICATIONS.REGISTER_PUSH_TOKEN, { token, platform: Platform.OS });
-    } catch {
-      // Backend unavailable — will retry later
-    }
+    // TODO: wire to backend when /notifications/push-token endpoint is added
+    // On backend: api.post('/notifications/push-token', { token, platform: Platform.OS })
   }, []);
 
   // CI-008: Schedule post-stay review request

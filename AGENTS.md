@@ -1,9 +1,15 @@
 # StayEasy — Architecture
 
 ## Backend
-- **FastAPI (Python)** deployed on Render at `https://stayeasy-1-35ba.onrender.com`
-- Swagger docs at `https://stayeasy-1-35ba.onrender.com/docs`
-- OpenAPI spec at `https://stayeasy-1-35ba.onrender.com/api/v1/openapi.json`
+- **FastAPI (Python)** deployed on Render at `https://stay-easy-sizw.onrender.com`
+- Source repo: `github.com/anilghatan6/Stay-Easy` (19 commits, main branch)
+  - **NOT** `Thadaw/StayEasy` — Thadaw's repo has `/pms/` prefix in routes, which differs from the deployed API
+  - **NOT** `Anilbk777/Booking_system` — old reference
+- Swagger docs at `https://stay-easy-sizw.onrender.com/docs`
+- OpenAPI spec at `https://stay-easy-sizw.onrender.com/api/v1/openapi.json`
+- `Samip-khatri/StayEasy-Booking` is a separate Vite+React frontend (not backend) — irrelevant
+- `anilghatane6` (with 'e') → 404; correct handle is `anilghatan6` (no 'e')
+- All routes use `root_path="/api/v1"` + router-level `/properties`, `/auth`, `/bookings`, `/tenants`, `/search` prefixes (no `/pms`)
 
 ## Mobile App
 - **Expo SDK 56** with React Native
@@ -105,6 +111,49 @@ app/
 ---
 
 ## Removed
+- Express/tRPC server (`server/`) — unused, switched to FastAPI
+- tRPC client (`lib/trpc.ts`) — unused
+- Drizzle ORM (`drizzle/`) — unused
+- Server-only deps removed from `package.json`
+
+---
+
+## Session History
+
+### 2026-07-09 — Backend Connection: Host Portal API + Auth Verification
+
+**Backend Analysis**
+- Deployed at `https://stay-easy-sizw.onrender.com` (FastAPI, source: `github.com/Thadaw/StayEasy`)
+- Source repo routers: `guest_router`, `user_router`, `property_router`, `room_router`, `tenant_router`, `offer_router`, `image_router`, `discount_code_router`
+- Working endpoints: Auth (guest+user OTP flow), PMS Properties/Rooms CRUD, Tenants CRUD, Discount Codes CRUD, Special Offers CRUD, Image Upload, Bookings CRUD, Search
+- Missing: No operations-specific endpoints (check-in/out, housekeeping, POS, KDS, analytics) — those have DB models but no API routers
+- Auth routes live under `/api/v1/` prefix (FastAPI `root_path`)
+
+**Live backend endpoint inventory (verified via OpenAPI spec):**
+- `/auth/guests/*` — register, verify-otp, resend-otp, refresh, me
+- `/auth/users/*` — register, verify-otp, resend-otp, refresh, me
+- `/auth/login` — unified login (OAuth2PasswordRequestForm, `username` + `password`)
+- `/properties/*` — CRUD, amenities, setup wizard steps, image upload, bookings, activation
+- `/properties/{id}/rooms/*` — CRUD, room types, bed types, image upload, available-rooms
+- `/properties/{id}/discount-codes/*` — CRUD
+- `/properties/{id}/special-offers/*` — CRUD
+- `/tenants/` — CRUD
+- `/bookings/*` — create, my-bookings, get-by-ref, confirm, apply-discount, payment-intent
+- `/search` — search hotels
+
+**Key finding: Live backend uses `/properties/...` (no `/pms` prefix)** — what's in the Thadaw/StayEasy GitHub source differs from deployment. The `api-config.ts` paths are correct (no `/pms`). `operations-api.ts` uses `/pms/...` but those endpoints don't exist on backend anyway (pure mock fallback).
+
+**Done**
+- Verified all 8 backend routers against live OpenAPI spec
+- Cross-referenced all frontend `api-config.ts` endpoints against live backend — **all paths match**
+- Verified auth flow: unified login at `/auth/login` → portal detection via `/auth/guests/me` or `/auth/users/me`
+- Confirmed refresh token flow: `POST /auth/{guests,users}/refresh` returns `{ access_token, refresh_token, token_type }`
+- Confirmed `auth-context.tsx` uses correct endpoints for register, login, verifyOTP, resendOTP, refresh
+- Confirmed `booking-flow.tsx` uses correct endpoints: create, payment-intent, confirm, apply-discount
+- Confirmed `host-api.ts` paths via `API_ENDPOINTS.PROPERTIES.*` are correct
+- Confirmed `lib/api.ts` search, available-rooms, property-detail, and tenant functions all use correct paths
+- `Samip-khatri/StayEasy-Booking` is a Vite+React frontend (not API) — irrelevant
+- `anilghatane6` GitHub account is 404 — no repos found under that handle
 - Express/tRPC server (`server/`) — unused, switched to FastAPI
 - tRPC client (`lib/trpc.ts`) — unused
 - Drizzle ORM (`drizzle/`) — unused
@@ -270,3 +319,31 @@ app/
 - Calendar coverage threshold: ≥3 = green (well-covered), 2 = amber (adequate), ≤1 = red (understaffed)
 - Week starts Monday, aligned to hotel industry standard
 - `npx tsc --noEmit` — zero errors
+
+---
+
+### 2026-07-29 — Final API Gap Analysis: All Frontend ↔ Backend Paths Verified
+
+**Backend Source Resolution**
+- `github.com/anilghatan6/Stay-Easy` (19 commits) is the **actual source repo** for the live backend at `https://stay-easy-sizw.onrender.com`
+- Its `main.py` uses `root_path="/api/v1"` and routers with correct prefixes:
+  - `properties_routers.py`: `prefix="/properties"` (no `/pms` — unlike Thadaw/StayEasy fork)
+  - `login_router.py`: `prefix="/auth"` → `/auth/login`
+  - `room_routers.py`: `prefix="/properties/{property_id}/rooms"`
+  - `discount_code_router.py`: `prefix="/properties/{property_id}/discount-codes"`
+  - `offers_routers.py`: `prefix="/properties/{property_id}/special-offers"`
+  - `booking_router.py`: `prefix="/bookings"`
+  - `tenants_routers.py`: `prefix="/tenants"`
+  - `image_routers.py`: `prefix="/properties"`
+  - `search_router.py`: `prefix="/search"`
+- `Thadaw/StayEasy` (11 commits, `/pms` prefix) is an older/different fork — does NOT match deployment
+
+**Cross-Reference Results (every frontend path vs live backend vs source repo)**
+- `constants/api-config.ts`: All 40+ paths verified correct — no changes needed
+- `lib/api/host-api.ts`: All 30+ functions use correct `API_ENDPOINTS.PROPERTIES.*` paths — no changes needed
+- `lib/context/auth-context.tsx`: Auth flow uses correct endpoints — no changes needed
+- `lib/context/host-context.tsx`: Properties, rooms, discounts, offers, bookings all fetch from correct API endpoints with mock fallback — no changes needed
+- `lib/api/operations-api.ts`: Uses `/pms/...` paths — intentional; no such endpoints exist on backend (pure mock fallback)
+- `lib/api.ts`: Search, available-rooms, property-detail, tenant functions all use correct paths — no changes needed
+
+**Verdict: All gaps closed. Zero frontend changes required.**

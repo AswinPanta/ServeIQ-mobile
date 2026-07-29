@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 import { operationsApi } from '@/lib/api/operations-api';
+import { loadOpsState, persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
 
 export type TableStatus = 'Free' | 'Occupied' | 'Reserved';
 
@@ -265,6 +266,7 @@ const RestaurantContext = createContext<RestaurantContextValue | null>(null);
 
 export function RestaurantProvider({ children }: { children: React.ReactNode }) {
   const [sections, setSections] = useState<SectionData[]>(INITIAL_SECTIONS);
+  const [loaded, setLoaded] = useState(false);
   const [cart, setCart] = useState<Record<string, CartItem[]>>({
     T2: [
       { id: 'f1', name: 'Butter Chicken', price: 450, qty: 1 },
@@ -286,26 +288,54 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       { id: 'd3', name: 'Kheer', price: 140, qty: 1 },
     ],
   });
-  const [tickets, setTickets] = useState<KDSTicketData[]>([
-    { id: '1', orderNumber: 'ORD-001', tableNumber: 'T2', items: [{ name: 'Butter Chicken', qty: 1 }, { name: 'Naan (2 pcs)', qty: 2 }, { name: 'Dal Makhani', qty: 1 }], status: 'Preparing', timeSinceOrdered: '8 min', createdAt: Date.now() - 480000 },
-    { id: '2', orderNumber: 'ORD-002', tableNumber: 'T5', items: [{ name: 'Biryani', qty: 2 }, { name: 'Gulab Jamun', qty: 2 }], status: 'Preparing', timeSinceOrdered: '12 min', createdAt: Date.now() - 720000 },
-    { id: '3', orderNumber: 'ORD-003', tableNumber: 'T7', items: [{ name: 'Paneer Tikka', qty: 1 }, { name: 'Masala Chai', qty: 2 }], status: 'New', timeSinceOrdered: '1 min', createdAt: Date.now() - 60000, notes: 'Extra spicy' },
-    { id: '4', orderNumber: 'ORD-004', tableNumber: 'T8', items: [{ name: 'Butter Chicken', qty: 2 }, { name: 'Naan (2 pcs)', qty: 4 }, { name: 'Soft Drink', qty: 2 }, { name: 'Kheer', qty: 1 }], status: 'New', timeSinceOrdered: '3 min', createdAt: Date.now() - 180000 },
-    { id: '5', orderNumber: 'ORD-005', tableNumber: 'T1', items: [{ name: 'Fresh Lime Soda', qty: 1 }], status: 'Ready', timeSinceOrdered: '15 min', createdAt: Date.now() - 900000 },
-  ]);
+  const [tickets, setTickets] = useState<KDSTicketData[]>(() => {
+    const now = Date.now();
+    return [
+      { id: '1', orderNumber: 'ORD-001', tableNumber: 'T2', items: [{ name: 'Butter Chicken', qty: 1 }, { name: 'Naan (2 pcs)', qty: 2 }, { name: 'Dal Makhani', qty: 1 }], status: 'Preparing', timeSinceOrdered: '8 min', createdAt: now - 480000 },
+      { id: '2', orderNumber: 'ORD-002', tableNumber: 'T5', items: [{ name: 'Biryani', qty: 2 }, { name: 'Gulab Jamun', qty: 2 }], status: 'Preparing', timeSinceOrdered: '12 min', createdAt: now - 720000 },
+      { id: '3', orderNumber: 'ORD-003', tableNumber: 'T7', items: [{ name: 'Paneer Tikka', qty: 1 }, { name: 'Masala Chai', qty: 2 }], status: 'New', timeSinceOrdered: '1 min', createdAt: now - 60000, notes: 'Extra spicy' },
+      { id: '4', orderNumber: 'ORD-004', tableNumber: 'T8', items: [{ name: 'Butter Chicken', qty: 2 }, { name: 'Naan (2 pcs)', qty: 4 }, { name: 'Soft Drink', qty: 2 }, { name: 'Kheer', qty: 1 }], status: 'New', timeSinceOrdered: '3 min', createdAt: now - 180000 },
+      { id: '5', orderNumber: 'ORD-005', tableNumber: 'T1', items: [{ name: 'Fresh Lime Soda', qty: 1 }], status: 'Ready', timeSinceOrdered: '15 min', createdAt: now - 900000 },
+    ];
+  });
   const [completedOrders, setCompletedOrders] = useState<CompletedOrder[]>([]);
 
-  // MN-004: Time-based menu
-  const [currentMealPeriod, setCurrentMealPeriod] = useState<MealPeriod>(getCurrentMealPeriod());
-
+  // Load persisted POS state on mount, fall back to seed data
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentMealPeriod(getCurrentMealPeriod());
-    }, 60000);
-    return () => clearInterval(interval);
+    (async () => {
+      const [savedSections, savedCart, savedTickets, savedOrders] = await Promise.all([
+        loadOpsState<SectionData[] | null>(OPS_STORAGE_KEYS.sections, null),
+        loadOpsState<Record<string, CartItem[]> | null>(OPS_STORAGE_KEYS.cart, null),
+        loadOpsState<KDSTicketData[] | null>(OPS_STORAGE_KEYS.tickets, null),
+        loadOpsState<CompletedOrder[] | null>(OPS_STORAGE_KEYS.completedOrders, null),
+      ]);
+      if (savedSections) setSections(savedSections);
+      if (savedCart) setCart(savedCart);
+      if (savedTickets) {
+        setTickets(savedTickets);
+        // Restore counters from persisted data to prevent ID collisions
+        let maxTicketId = 0;
+        let maxOrderNum = 0;
+        for (const t of savedTickets) {
+          const tid = parseInt(t.id, 10);
+          if (!isNaN(tid) && tid > maxTicketId) maxTicketId = tid;
+          const match = t.orderNumber.match(/ORD-(\d+)/);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num > maxOrderNum) maxOrderNum = num;
+          }
+        }
+        if (maxTicketId >= ticketCounter) ticketCounter = maxTicketId;
+        if (maxOrderNum >= orderCounter) orderCounter = maxOrderNum;
+      }
+      if (savedOrders) setCompletedOrders(savedOrders);
+      setLoaded(true);
+    })();
   }, []);
 
+  // Fetch from API if backend is live (only after local state is hydrated)
   useEffect(() => {
+    if (!loaded) return;
     operationsApi.getMenu(() => []).then(apiMenu => {
       if (apiMenu.length > 0) {
         // Menu shape differs — kept for future mapping
@@ -322,6 +352,16 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     operationsApi.getKdsTickets(() => []).then(apiTickets => {
       if (apiTickets.length > 0) setTickets(apiTickets as any);
     });
+  }, [loaded]);
+
+  // MN-004: Time-based menu
+  const [currentMealPeriod, setCurrentMealPeriod] = useState<MealPeriod>(getCurrentMealPeriod());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMealPeriod(getCurrentMealPeriod());
+    }, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const getMenuForPeriod = useCallback((period: MealPeriod): MenuItemDef[] => {
@@ -398,25 +438,33 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
   }, [sections]);
 
   const updateTableStatus = useCallback((id: string, status: TableStatus) => {
-    setSections(prev => prev.map(s => ({
-      ...s,
-      tables: s.tables.map(t => t.id === id ? { ...t, status } : t),
-    })));
+    setSections(prev => {
+      const next = prev.map(s => ({
+        ...s,
+        tables: s.tables.map(t => t.id === id ? { ...t, status } : t),
+      }));
+      persistOpsState(OPS_STORAGE_KEYS.sections, next);
+      return next;
+    });
   }, []);
 
   const addToCart = useCallback((tableId: string, item: MenuItemDef) => {
     setCart(prev => {
       const current = prev[tableId] || [];
       const existing = current.find(i => i.id === item.id);
+      let next: Record<string, CartItem[]>;
       if (existing) {
-        return { ...prev, [tableId]: current.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i) };
+        next = { ...prev, [tableId]: current.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i) };
+      } else {
+        // Start table-turn timer when first item is added
+        if (current.length === 0) {
+          setTableTurnTimers(prev => ({ ...prev, [tableId]: Date.now() }));
+        }
+        const cartItem: CartItem = { id: item.id, name: item.name, price: item.price, qty: 1 };
+        next = { ...prev, [tableId]: [...current, cartItem] };
       }
-      // Start table-turn timer when first item is added
-      if (current.length === 0) {
-        setTableTurnTimers(prev => ({ ...prev, [tableId]: Date.now() }));
-      }
-      const cartItem: CartItem = { id: item.id, name: item.name, price: item.price, qty: 1 };
-      return { ...prev, [tableId]: [...current, cartItem] };
+      persistOpsState(OPS_STORAGE_KEYS.cart, next);
+      return next;
     });
     updateTableStatus(tableId, 'Occupied');
   }, [updateTableStatus]);
@@ -433,14 +481,21 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             setTimeout(() => updateTableStatus(tableId, 'Free'), 0);
           }
         }
+        persistOpsState(OPS_STORAGE_KEYS.cart, updated);
         return updated;
       }
-      return { ...prev, [tableId]: current.map(i => i.id === itemId ? { ...i, qty: i.qty - 1 } : i) };
+      const next = { ...prev, [tableId]: current.map(i => i.id === itemId ? { ...i, qty: i.qty - 1 } : i) };
+      persistOpsState(OPS_STORAGE_KEYS.cart, next);
+      return next;
     });
   }, [getTable, updateTableStatus]);
 
   const clearCart = useCallback((tableId: string) => {
-    setCart(prev => ({ ...prev, [tableId]: [] }));
+    setCart(prev => {
+      const next = { ...prev, [tableId]: [] };
+      persistOpsState(OPS_STORAGE_KEYS.cart, next);
+      return next;
+    });
     const table = getTable(tableId);
     if (table && table.status === 'Occupied') {
       updateTableStatus(tableId, 'Free');
@@ -475,8 +530,16 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       })),
       notes,
     } as any, () => ({} as any));
-    setTickets(prev => [...prev, ticket]);
-    setCart(prev => ({ ...prev, [tableId]: [] }));
+    setTickets(prev => {
+      const next = [...prev, ticket];
+      persistOpsState(OPS_STORAGE_KEYS.tickets, next);
+      return next;
+    });
+    setCart(prev => {
+      const next = { ...prev, [tableId]: [] };
+      persistOpsState(OPS_STORAGE_KEYS.cart, next);
+      return next;
+    });
   }, [cart]);
 
   const advanceTicketStatus = useCallback((ticketId: string) => {
@@ -486,11 +549,13 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
         const apiStatus: Record<string, string> = { New: 'in_progress', Preparing: 'ready', Ready: 'ready' };
         operationsApi.updateKdsTicket(ticketId, { status: apiStatus[ticket.status] } as any, () => {});
       }
-      return prev.map(t => {
+      const next = prev.map(t => {
         if (t.id !== ticketId) return t;
-        const next: Record<string, 'New' | 'Preparing' | 'Ready'> = { New: 'Preparing', Preparing: 'Ready', Ready: 'Ready' };
-        return { ...t, status: next[t.status] };
+        const statusMap: Record<string, 'New' | 'Preparing' | 'Ready'> = { New: 'Preparing', Preparing: 'Ready', Ready: 'Ready' };
+        return { ...t, status: statusMap[t.status] };
       });
+      persistOpsState(OPS_STORAGE_KEYS.tickets, next);
+      return next;
     });
   }, []);
 
@@ -515,10 +580,22 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       paymentMethod,
       completedAt: Date.now(),
     };
-    setCompletedOrders(prev => [...prev, order]);
-    setCart(prev => ({ ...prev, [tableId]: [] }));
+    setCompletedOrders(prev => {
+      const next = [...prev, order];
+      persistOpsState(OPS_STORAGE_KEYS.completedOrders, next);
+      return next;
+    });
+    setCart(prev => {
+      const next = { ...prev, [tableId]: [] };
+      persistOpsState(OPS_STORAGE_KEYS.cart, next);
+      return next;
+    });
     updateTableStatus(tableId, 'Free');
-    setTickets(prev => prev.filter(t => t.tableNumber !== tableId));
+    setTickets(prev => {
+      const next = prev.filter(t => t.tableNumber !== tableId);
+      persistOpsState(OPS_STORAGE_KEYS.tickets, next);
+      return next;
+    });
   }, [cart, updateTableStatus]);
 
   const getTodayRevenue = useCallback(() => {

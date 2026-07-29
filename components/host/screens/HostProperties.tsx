@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image, Switch } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import { useHost } from '@/lib/context/host-context';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
 
 const ACCENT = '#2563EB';
@@ -10,7 +11,7 @@ const PHOTO_CATEGORIES = ['exterior', 'lobby', 'rooms', 'dining', 'amenities'];
 
 export function HostProperties() {
   const colors = useColors();
-  const { properties, roomTypes, updateProperty, updateRoomType, getFilteredRoomTypes } = useHost();
+  const { properties, roomTypes, updateProperty, updateRoomType, getFilteredRoomTypes, togglePropertyActivation, setPropertyCoverPhoto } = useHost();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Record<string, any>>({});
@@ -154,10 +155,13 @@ export function HostProperties() {
                     <Text className="text-xs text-muted mt-1">
                       {property.type} · {property.city} · {property.total_rooms} rooms
                     </Text>
-                    <View style={{
-                      alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 6,
-                      backgroundColor: property.is_active ? '#10B98120' : '#EF444420',
-                    }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                      <Switch
+                        value={property.is_active}
+                        onValueChange={() => togglePropertyActivation(property.id)}
+                        trackColor={{ false: '#FEE2E2', true: '#DCFCE7' }}
+                        thumbColor={property.is_active ? '#16A34A' : '#EF4444'}
+                      />
                       <Text style={{ fontSize: 10, fontWeight: '600', color: property.is_active ? '#10B981' : '#EF4444' }}>
                         {property.is_active ? 'Active' : 'Inactive'}
                       </Text>
@@ -290,7 +294,7 @@ export function HostProperties() {
                     <View className="mb-4">
                       <View className="flex-row items-center justify-between mb-2">
                         <Text className="text-xs text-muted">Branding</Text>
-                        <TouchableOpacity onPress={() => { setEditingBrand(!editingBrand); setBrandColorInput(property.brand_color); }}>
+                        <TouchableOpacity onPress={() => { setEditingBrand(!editingBrand); setBrandColorInput(property.brand_color ?? ''); }}>
                           <Text style={{ fontSize: 11, fontWeight: '600', color: editingBrand ? '#EF4444' : ACCENT }}>
                             {editingBrand ? 'Done' : 'Edit'}
                           </Text>
@@ -352,6 +356,38 @@ export function HostProperties() {
                       </View>
                     </View>
 
+                    {/* Cover Photo */}
+                    <View className="mb-4">
+                      <View className="flex-row items-center justify-between mb-2">
+                        <Text className="text-xs text-muted">Cover Photo</Text>
+                      </View>
+                      {(() => {
+                        const cover = property.photos.find(p => p.category === 'cover');
+                        return cover ? (
+                          <View>
+                            <Image source={{ uri: cover.photo_url }} style={{ width: '100%', height: 160, borderRadius: 12 }} resizeMode="cover" />
+                            <TouchableOpacity
+                              onPress={() => {
+                                setPhotoTargetId(property.id);
+                                setPhotoTargetCategory('cover');
+                                setShowPhotoPicker(true);
+                              }}
+                              style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>+</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <TouchableOpacity onPress={() => { setPhotoTargetId(property.id); setPhotoTargetCategory('cover'); setShowPhotoPicker(true); }}
+                            style={{ width: '100%', height: 120, borderRadius: 12, borderWidth: 1.5, borderColor: ACCENT + '40', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: ACCENT + '08' }}
+                          >
+                            <Ionicons name="camera-outline" size={24} color={ACCENT} />
+                            <Text style={{ fontSize: 12, color: ACCENT, fontWeight: '600', marginTop: 4 }}>Upload Cover Photo</Text>
+                          </TouchableOpacity>
+                        );
+                      })()}
+                    </View>
+
                     {/* Photo Gallery */}
                     <View className="mb-4">
                       <Text className="text-xs text-muted mb-2">Photo Gallery ({property.photos.length})</Text>
@@ -377,7 +413,7 @@ export function HostProperties() {
                         const catPhotos = property.photos.filter(p => p.category === photoCategory);
                         return catPhotos.length === 0 ? (
                           <View style={{ padding: 16, borderRadius: 12, backgroundColor: colors.border + '40', alignItems: 'center', marginBottom: 8 }}>
-                            <Text style={{ fontSize: 12, color: colors.muted }}>No photos in "{photoCategory}"</Text>
+                            <Text style={{ fontSize: 12, color: colors.muted }}>{'No photos in "' + photoCategory + '"'}</Text>
                           </View>
                         ) : (
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
@@ -507,9 +543,13 @@ export function HostProperties() {
       <ImagePickerOverlay
         visible={showPhotoPicker}
         onClose={() => setShowPhotoPicker(false)}
-        onImagePicked={(uri) => {
+        onImagePicked={async (uri) => {
           if (photoTargetId) {
-            handleAddPhoto(photoTargetId, photoTargetCategory, uri);
+            if (photoTargetCategory === 'cover') {
+              await setPropertyCoverPhoto(photoTargetId, uri);
+            } else {
+              handleAddPhoto(photoTargetId, photoTargetCategory, uri);
+            }
           }
         }}
       />

@@ -1,115 +1,107 @@
 /**
  * API Configuration
  * Centralized API endpoints, base URLs, and configuration
+ *
+ * Endpoints verified against live backend OpenAPI spec:
+ * https://stay-easy-sizw.onrender.com/api/v1/openapi.json
  */
 
 // API Base URL - Update based on environment
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://stayeasy-1-35ba.onrender.com/api/v1';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://stay-easy-sizw.onrender.com/api/v1';
 
-// API Endpoints
+// API Endpoints — only those confirmed in the live backend
 export const API_ENDPOINTS = {
-  // Authentication — Guest portal
+  // ─── Authentication — Guest portal ──────────────────────────────
   AUTH: {
+    // Unified login — tries guest first, then user
+    LOGIN: '/auth/login',
+    // Guest-specific auth
     GUEST_REGISTER: '/auth/guests/register',
-    GUEST_LOGIN: '/auth/guests/login',
     GUEST_VERIFY_OTP: '/auth/guests/verify-otp',
     GUEST_RESEND_OTP: '/auth/guests/resend-otp',
     GUEST_REFRESH: '/auth/guests/refresh',
     GUEST_ME: '/auth/guests/me',
-    // Host / User portal authentication
+    // User-specific auth (host, operations, superadmin)
     USER_REGISTER: '/auth/users/register',
-    USER_LOGIN: '/auth/users/login',
     USER_VERIFY_OTP: '/auth/users/verify-otp',
     USER_RESEND_OTP: '/auth/users/resend-otp',
     USER_REFRESH: '/auth/users/refresh',
     USER_ME: '/auth/users/me',
   },
 
-  // Properties/Hotels
-  PROPERTIES: {
-    GET_ALL: '/pms/properties/',
-    CREATE: '/pms/properties/',
-    UPDATE: (id: string) => `/pms/properties/${id}`,
-    DELETE: (id: string) => `/pms/properties/${id}`,
-    GET_BY_ID: (id: string) => `/pms/properties/${id}`,
-    GET_AMENITIES: '/pms/properties/amenities',
-    GET_ROOMS: (propertyId: string) => `/pms/properties/${propertyId}/rooms`,
-    GET_ROOM_BY_ID: (propertyId: string, roomId: string) =>
-      `/pms/properties/${propertyId}/rooms/${roomId}`,
-    CREATE_ROOM: (propertyId: string) => `/pms/properties/${propertyId}/rooms`,
-    UPDATE_ROOM: (propertyId: string, roomId: string) => `/pms/properties/${propertyId}/rooms/${roomId}`,
-    DELETE_ROOM: (propertyId: string, roomId: string) => `/pms/properties/${propertyId}/rooms/${roomId}`,
-  },
-
-  // Host-specific property management
-  HOST: {
-    PROPERTIES: '/pms/properties/',
-    PROPERTY_BY_ID: (id: string) => `/pms/properties/${id}`,
-    BOOKINGS: '/hosts/bookings',
-    CALENDAR: '/hosts/calendar',
-    MESSAGES: '/hosts/messages',
-  },
-
-  // Search & Availability
-  SEARCH: {
-    SEARCH_HOTELS: '/search/hotels',
-    CHECK_AVAILABILITY: (hotelId: string) => `/search/availability/${hotelId}`,
-  },
-
-  // Bookings
+  // ─── Bookings ─────────────────────────────────────────────────
   BOOKINGS: {
     CREATE: '/bookings/',
-    GET_ALL: '/bookings/',
-    GET_BY_ID: (id: string) => `/bookings/${id}`,
-    UPDATE: (id: string) => `/bookings/${id}`,
-    CANCEL: (id: string) => `/bookings/${id}/cancel`,
-    GET_HISTORY: '/bookings/history',
+    MY_BOOKINGS: '/bookings/me',
+    GET_BY_REF: (ref: string) => `/bookings/${ref}`,
+    PAYMENT_INTENT: (ref: string) => `/bookings/${ref}/payment-intent`,
+    CONFIRM_PAYMENT: (ref: string) => `/bookings/${ref}/confirm`,
+    APPLY_DISCOUNT: (ref: string) => `/bookings/${ref}/apply-discount`,
   },
 
-  // Reviews
-  REVIEWS: {
-    CREATE: '/reviews/',
-    GET_BY_BOOKING: (bookingId: string) => `/reviews/booking/${bookingId}`,
-    GET_BY_HOTEL: (hotelId: string) => `/reviews/hotel/${hotelId}`,
-  },
-
-  // Favorites
-  FAVORITES: {
-    GET_ALL: '/favorites/',
-    ADD: '/favorites/',
-    REMOVE: (hotelId: string) => `/favorites/${hotelId}`,
-  },
-
-  // Payments
-  PAYMENTS: {
-    CREATE_INTENT: '/payments/create-intent',
-    CONFIRM: '/payments/confirm',
-    GET_METHODS: '/payments/methods',
-  },
-
-  // User Profile
-  PROFILE: {
-    GET: '/guests/profile',
-    UPDATE: '/guests/profile',
-    GET_PREFERENCES: '/guests/preferences',
-    UPDATE_PREFERENCES: '/guests/preferences',
-  },
-
-  // Notifications
-  NOTIFICATIONS: {
-    GET_ALL: '/notifications/',
-    MARK_READ: (id: string) => `/notifications/${id}/read`,
-    MARK_ALL_READ: '/notifications/mark-all-read',
-    REGISTER_PUSH_TOKEN: '/notifications/push-token',
-  },
-
-  // Tenants
+  // ─── Tenants (SuperAdmin) ──────────────────────────────────────
   TENANTS: {
     GET: '/tenants/',
     CREATE: '/tenants/',
-    UPDATE: (id: string) => `/tenants/${id}`,
-    DELETE: (id: string) => `/tenants/${id}`,
+    UPDATE: '/tenants/',        // PATCH with ?tenant_id= query param
+    DELETE: '/tenants/',        // DELETE with ?tenant_id= query param
   },
+
+  // ─── Properties / PMS ─────────────────────────────────────────
+  PROPERTIES: {
+    GET_ALL: '/properties/',
+    GET_AMENITIES: '/properties/amenities',
+    CREATE_GENERAL_INFO: '/properties/general-information',
+    GET_BY_ID: (id: string) => `/properties/${id}`,
+    GET_BY_ID_PUBLIC: (id: string) => `/properties/${id}/public`,
+    DELETE: (id: string) => `/properties/${id}`,
+    TOGGLE_ACTIVATION: (id: string) => `/properties/${id}/toggle-property-activation`,
+    GET_NUMBER_OF_FLOORS: (id: string) => `/properties/${id}/number-of-floors`,
+    // Setup wizard steps
+    CREATE_LOCATION: (id: string) => `/properties/${id}/create-location`,
+    CREATE_PHOTOS_AMENITIES: (id: string) => `/properties/${id}/create-photos-and-amenities`,
+    CREATE_LOCALIZATION: (id: string) => `/properties/${id}/create-localization`,
+    CREATE_BRAND_VISUAL: (id: string) => `/properties/${id}/create-brand-visual`,
+    // Property bookings
+    GET_PROPERTY_BOOKINGS: (id: string) => `/properties/${id}/bookings`,
+    // Image uploads
+    UPLOAD_IMAGE: (id: string) => `/properties/${id}/image`,
+    UPLOAD_IMAGES: (id: string) => `/properties/${id}/images`,
+    // Room types & bed types
+    GET_ROOM_TYPES: (id: string) => `/properties/${id}/rooms/room-types`,
+    CREATE_ROOM_TYPE: (id: string) => `/properties/${id}/rooms/room-type`,
+    GET_BED_TYPES: (id: string) => `/properties/${id}/rooms/bed-types`,
+    CREATE_BED_TYPE: (id: string) => `/properties/${id}/rooms/bed-type`,
+    // Rooms
+    GET_ROOMS: (id: string) => `/properties/${id}/rooms`,
+    BULK_CREATE_ROOMS: (id: string) => `/properties/${id}/rooms`,
+    GET_ROOM: (id: string, roomId: string) => `/properties/${id}/rooms/${roomId}`,
+    UPDATE_ROOM: (id: string, roomId: string) => `/properties/${id}/rooms/${roomId}`,
+    DELETE_ROOM: (id: string, roomId: string) => `/properties/${id}/rooms/${roomId}`,
+    UPLOAD_ROOM_IMAGE: (id: string) => `/properties/${id}/rooms/image`,
+    UPLOAD_ROOM_IMAGES: (id: string) => `/properties/${id}/rooms/images`,
+    // Discount codes
+    GET_DISCOUNT_CODES: (id: string) => `/properties/${id}/discount-codes/`,
+    CREATE_DISCOUNT_CODE: (id: string) => `/properties/${id}/discount-codes/`,
+    GET_DISCOUNT_CODE: (id: string, discountId: string) => `/properties/${id}/discount-codes/${discountId}`,
+    UPDATE_DISCOUNT_CODE: (id: string, discountId: string) => `/properties/${id}/discount-codes/${discountId}`,
+    DELETE_DISCOUNT_CODE: (id: string, discountId: string) => `/properties/${id}/discount-codes/${discountId}`,
+    // Special offers
+    GET_SPECIAL_OFFERS: (id: string) => `/properties/${id}/special-offers/`,
+    CREATE_SPECIAL_OFFERS: (id: string) => `/properties/${id}/special-offers/`,
+    GET_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
+    UPDATE_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
+    DELETE_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
+  },
+
+  // ─── Search ────────────────────────────────────────────────────
+  SEARCH: {
+    SEARCH_HOTELS: '/search',
+  },
+
+  // ─── Available rooms for a property ──────────────────────────
+  AVAILABLE_ROOMS: (propertyId: string, checkin: string, checkout: string) =>
+    `/properties/${propertyId}/rooms/available-rooms?checkin_date=${checkin}&checkout_date=${checkout}`,
 };
 
 // Request/Response Configuration

@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { Animated } from 'react-native';
 
 interface SkeletonProps {
@@ -10,22 +10,23 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ width = '100%', height = 16, borderRadius = 8, style }: SkeletonProps) {
-  const opacity = useRef(new Animated.Value(0.3));
+  const opacityAnim = useMemo(() => new Animated.Value(0.3), []);
+  const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    const anim = Animated.loop(
+    animRef.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity.current, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity.current, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ])
     );
-    anim.start();
-    return () => anim.stop();
-  }, []);
+    animRef.current.start();
+    return () => animRef.current?.stop();
+  }, [opacityAnim]);
 
   return (
     <Animated.View
-      style={[{ width: width as any, height, borderRadius, backgroundColor: '#E2E8F0', opacity: opacity.current }, style]}
+      style={[{ width: width as any, height, borderRadius, backgroundColor: '#E2E8F0', opacity: opacityAnim }, style]}
     />
   );
 }

@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { SystemFlowBar } from '@/components/operations/SystemFlowBar';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 
 const TBL_COLORS: Record<string, string> = {
   available: SRS.green,
@@ -33,10 +33,14 @@ export default function POSScreen() {
   const tickets = useOrderStore((s) => s.tickets);
   const completedOrders = useOrderStore((s) => s.completedOrders);
 
+  const lastPidRef = useRef<string>('');
   useEffect(() => {
     const pid = operator?.property_id || 'prop-1';
-    setTablePropertyId(pid);
-    setOrderPropertyId(pid);
+    if (pid !== lastPidRef.current) {
+      lastPidRef.current = pid;
+      setTablePropertyId(pid);
+      setOrderPropertyId(pid);
+    }
   }, [operator?.property_id, setTablePropertyId, setOrderPropertyId]);
 
   const stats = useMemo(() => ({

@@ -1,0 +1,53 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { FONTS, SRS, RADIUS } from '@/constants/portal-theme';
+
+export default function AccountCreatedScreen() {
+  return (
+    <View style={s.container}>
+      <View style={s.content}>
+        <View style={s.iconWrap}>
+          <Ionicons name="checkmark-circle" size={100} color={SRS.green} />
+        </View>
+
+        <Text style={s.title}>Congratulation!</Text>
+        <Text style={s.subtitle}>
+          Your account has been successfully created. Welcome to StayEasy!
+        </Text>
+
+        <TouchableOpacity style={s.loginBtn} onPress={() => router.replace('/(auth)/login')} activeOpacity={0.8}>
+          <Text style={s.loginBtnText}>Log in</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={s.homeBtn} onPress={() => router.replace('/')} activeOpacity={0.8}>
+          <Text style={s.homeBtnText}>Back to Home</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  content: { alignItems: 'center', width: '100%' },
+  iconWrap: { marginBottom: 24 },
+  title: {
+    fontSize: 28, fontFamily: FONTS.calistoga, color: SRS.navy, marginBottom: 12, textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14, fontFamily: FONTS.inter.regular, color: '#6B7280', textAlign: 'center',
+    lineHeight: 22, marginBottom: 40, paddingHorizontal: 16,
+  },
+  loginBtn: {
+    width: '100%', backgroundColor: SRS.navy, borderRadius: RADIUS.button,
+    paddingVertical: 16, alignItems: 'center', marginBottom: 16,
+  },
+  loginBtnText: { fontSize: 20, fontFamily: FONTS.itim, color: '#FFFAFA' },
+  homeBtn: {
+    width: '100%', borderWidth: 1.5, borderColor: '#D9D9D9', borderRadius: RADIUS.button,
+    paddingVertical: 16, alignItems: 'center',
+  },
+  homeBtnText: { fontSize: 16, fontFamily: FONTS.inter.semiBold, color: '#6B7280' },
+});

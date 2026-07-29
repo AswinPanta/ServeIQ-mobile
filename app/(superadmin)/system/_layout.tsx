@@ -1,12 +1,11 @@
 import { Stack } from "expo-router";
-import { GRAY } from "@/constants/portal-theme";
 
 export default function SystemLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: GRAY[50] },
+        contentStyle: { backgroundColor: "#F8FAFC" },
       }}
     >
       <Stack.Screen name="health" />

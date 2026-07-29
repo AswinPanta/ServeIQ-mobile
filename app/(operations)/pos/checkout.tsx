@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Share } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTableStore } from '@/stores/useTableStore';
 import { useOrderStore } from '@/stores/useOrderStore';
@@ -10,6 +10,7 @@ import { useGuestStore } from '@/stores/useGuestStore';
 import { useFolioStore } from '@/stores/useFolioStore';
 import type { CompletedOrder } from '@/stores/useOrderStore';
 import { ACCENT, STATUS_COLORS, getAccentColor } from '@/constants/portal-theme';
+import { safeGoBack } from "@/lib/utils";
 
 const PAYMENT_METHODS = [
   { id: 'card', label: 'Card', icon: '💳', color: STATUS_COLORS.card },
@@ -145,6 +146,45 @@ export default function POSCheckoutScreen() {
     const discount = Math.round(pts * 1);
     setAppliedPointsDiscount(discount);
     Alert.alert('Points Applied', `${pts} points redeemed for ₹${discount} discount`);
+  };
+
+  // PO-008/PO-009 — share a plaintext receipt via the OS share sheet.
+  // The native share sheet offers AirPrint (Print) and Mail app (Email),
+  // so the same path covers both without bundling a PDF generator.
+  const buildReceiptText = (finalTotal: number) => {
+    const now = new Date();
+    const lines = cart.map(
+      (i) => `${i.name}${i.modifiers ? ` (${i.modifiers})` : ''} × ${i.quantity}   ₹${(i.unit_price * i.quantity).toLocaleString()}`
+    );
+    return [
+      'STAYEASY RESTAURANT',
+      `Table: ${table?.number || tableId}`,
+      `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      `Payment: ${paymentMethod.toUpperCase()}${paymentMethod === 'room_charge' && selectedGuest ? ` — ${selectedGuest.name} (Room ${selectedGuest.room})` : ''}`,
+      '----------------------------------',
+      ...lines,
+      '----------------------------------',
+      `Subtotal:           ₹${subtotal.toLocaleString()}`,
+      discountAmount > 0 ? `Discount:           -₹${discountAmount.toLocaleString()}` : null,
+      appliedPointsDiscount > 0 ? `Loyalty:            -₹${appliedPointsDiscount.toLocaleString()}` : null,
+      `Tax (10%):          ₹${tax.toLocaleString()}`,
+      `GRAND TOTAL:        ₹${finalTotal.toLocaleString()}`,
+      '',
+      'Thank you for dining with us!',
+    ]
+      .filter(Boolean)
+      .join('\n');
+  };
+
+  const handleShareReceipt = async () => {
+    try {
+      await Share.share({
+        message: buildReceiptText(grandTotal),
+        title: `Receipt_Table_${table?.number || tableId}`,
+      });
+    } catch (e) {
+      // user cancelled or share failed — silently ignore
+    }
   };
 
   const handlePayment = () => {
@@ -288,18 +328,20 @@ export default function POSCheckoutScreen() {
             <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: 16, fontStyle: 'italic' }}>Thank you!</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
-            <TouchableOpacity onPress={() => Alert.alert('Print', 'Print functionality coming soon')}
+            <TouchableOpacity onPress={handleShareReceipt}
               style={{ flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E2E8F0' }}
+              activeOpacity={0.85}
             >
               <Text style={{ fontSize: 14, fontWeight: '700', color: '#475569' }}>🖨️ Print</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => Alert.alert('Email', 'Email functionality coming soon')}
+            <TouchableOpacity onPress={handleShareReceipt}
               style={{ flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E2E8F0' }}
+              activeOpacity={0.85}
             >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#475569' }}>📧 Email</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#475569' }}>✉️ Email</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => router.back()}
+          <TouchableOpacity onPress={() => safeGoBack()}
             style={{ marginTop: 12, paddingVertical: 16, borderRadius: 16, alignItems: 'center', backgroundColor: ACCENT }}
           >
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFF' }}>Done</Text>
@@ -314,7 +356,7 @@ export default function POSCheckoutScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity onPress={() => safeGoBack()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18, color: '#475569' }}>←</Text>
             </TouchableOpacity>
             <View>

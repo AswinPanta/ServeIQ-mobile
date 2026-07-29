@@ -9,7 +9,8 @@ import { useActivityStore } from '@/stores/useActivityStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { ACCENT, getAccentColor } from '@/constants/portal-theme';
 import { Modal } from '@/components/ui/modal';
-import type { MenuItem } from '@/types/api';
+import type { MenuItem } from '@/stores/useMenuStore';
+import { safeGoBack } from "@/lib/utils";
 
 const TBL_COLORS: Record<string, string> = {
   available: '#22C55E',
@@ -47,7 +48,7 @@ export default function TableOrderScreen() {
   const [notes, setNotes] = useState('');
   const [modifierModal, setModifierModal] = useState<{ item: MenuItem } | null>(null);
   const [selectedMods, setSelectedMods] = useState<Record<string, string>>({});
-  const [dismissedReady, setDismissedReady] = useState(false);
+  const [dismissedReadyAtCount, setDismissedReadyAtCount] = useState(0);
 
   const isHappyHour = useMemo(() => {
     const now = new Date();
@@ -64,19 +65,8 @@ export default function TableOrderScreen() {
     return isHappyHourItem(item) ? Math.round(item.price * 0.8) : item.price;
   }, [isHappyHourItem]);
 
-  if (!table) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <Text style={{ fontSize: 18, fontWeight: '600', color: '#EF4444' }}>Table not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: ACCENT, borderRadius: 10 }}>
-          <Text style={{ color: '#FFF', fontWeight: '600' }}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const tableStatus = table.status;
-  const existingTickets = tickets.filter((t) => t.table_number === table.number && t.status !== 'ready');
+  const tableStatus = table?.status;
+  const existingTickets = tickets.filter((t) => t.table_number === (table?.number ?? '') && t.status !== 'ready');
   const cartTotal = cart.reduce((s, i) => s + i.unit_price * i.quantity, 0);
 
   const mealPeriod = useMemo(() => {
@@ -150,13 +140,13 @@ export default function TableOrderScreen() {
     const { placeOrder, clearCart } = useOrderStore.getState();
     const { addActivity } = useActivityStore.getState();
     const { addNotification } = useNotificationStore.getState();
-    placeOrder(tableId, table.number, notes.trim() || undefined);
+    placeOrder(tableId, table?.number ?? '', notes.trim() || undefined);
     useTableStore.getState().updateTableStatus(tableId, 'occupied');
-    addActivity({ type: 'order', title: `Order placed for Table ${table.number}`, description: `${cart.length} items`, icon: '🍽️', color: ACCENT, property_id: operator?.property_id || 'prop-1' });
-    addNotification({ type: 'new_order', title: `New Order — Table ${table.number}`, message: `${cart.length} items sent to kitchen`, data: { tableId } });
+    addActivity({ type: 'order', title: `Order placed for Table ${table?.number ?? ''}`, description: `${cart.length} items`, icon: '🍽️', color: ACCENT, property_id: operator?.property_id || 'prop-1' });
+    addNotification({ type: 'new_order', title: `New Order — Table ${table?.number ?? ''}`, message: `${cart.length} items sent to kitchen`, data: { tableId } });
     setNotes('');
-    Alert.alert('Order Placed', `Order sent to kitchen for Table ${table.number}`, [
-      { text: 'OK', onPress: () => router.back() },
+    Alert.alert('Order Placed', `Order sent to kitchen for Table ${table?.number ?? ''}`, [
+      { text: 'OK', onPress: () => safeGoBack() },
     ]);
   };
 
@@ -178,7 +168,7 @@ export default function TableOrderScreen() {
 
   const readyItems = useMemo(() => {
     const tableTickets = tickets.filter(
-      (t) => t.status === 'ready' && t.table_number === table.number
+      (t) => t.status === 'ready' && t.table_number === (table?.number ?? '')
     );
     const kitchenNotifs = notifications.filter(
       (n) => n.type === 'kitchen_ready' && n.data?.tableId === tableId
@@ -187,25 +177,35 @@ export default function TableOrderScreen() {
     return { count: readyCount, tickets: tableTickets, notifCount: kitchenNotifs.length };
   }, [tickets, notifications, table?.number, tableId]);
 
-  useEffect(() => {
-    setDismissedReady(false);
-  }, [readyItems.count]);
+  // Derive banner visibility: show when new ready items arrive after last dismiss
+  const showReadyBanner = readyItems.count > 0 && readyItems.count > dismissedReadyAtCount;
+
+  if (!table) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <Text style={{ fontSize: 18, fontWeight: '600', color: '#EF4444' }}>Table not found</Text>
+        <TouchableOpacity onPress={() => safeGoBack()} style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: ACCENT, borderRadius: 10 }}>
+          <Text style={{ color: '#FFF', fontWeight: '600' }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+            <TouchableOpacity onPress={() => safeGoBack()} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 18, color: '#475569' }}>←</Text>
             </TouchableOpacity>
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>Table {table.number}</Text>
-                <Text style={{ fontSize: 13, color: '#64748B' }}>Capacity: {table.capacity} · {table.shape}</Text>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>Table {table?.number ?? ''}</Text>
+                <Text style={{ fontSize: 13, color: '#64748B' }}>Capacity: {table?.capacity ?? 0} · {table?.shape ?? ''}</Text>
               </View>
-              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, backgroundColor: (TBL_COLORS[tableStatus] || ACCENT) + '18' }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: TBL_COLORS[tableStatus] || ACCENT, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, backgroundColor: (TBL_COLORS[tableStatus ?? ''] || ACCENT) + '18' }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: TBL_COLORS[tableStatus ?? ''] || ACCENT, textTransform: 'uppercase', letterSpacing: 0.3 }}>
                   {tableStatus}
                 </Text>
               </View>
@@ -219,11 +219,11 @@ export default function TableOrderScreen() {
               <Text style={{ fontSize: 12, fontWeight: '700', color: ACCENT }}>{mealPeriod.icon} {mealPeriod.label}</Text>
             </View>
           </View>
-          {!dismissedReady && readyItems.count > 0 && (
+          {showReadyBanner && (
             <View style={{ padding: 14, borderRadius: 14, backgroundColor: '#F59E0B20', borderWidth: 1, borderColor: '#D97706' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#B45309', flex: 1 }}>🍽️ ORDER READY — {readyItems.count} items ready for pickup!</Text>
-                <TouchableOpacity onPress={() => setDismissedReady(true)}
+                <TouchableOpacity onPress={() => setDismissedReadyAtCount(readyItems.count)}
                   style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6, backgroundColor: '#D97706' }}
                 >
                   <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFF' }}>Dismiss</Text>

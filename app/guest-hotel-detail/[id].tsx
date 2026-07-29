@@ -1,23 +1,41 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Share, Linking, StyleSheet,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { ReviewModal } from '@/components/feature/review-modal';
 import { ReviewList, type Review } from '@/components/feature/review-list';
 import { ScarcityBadge } from '@/components/feature/scarcity-badge';
+import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 import { useFavorites } from '@/lib/context/favorites-context';
-import { useRoomStore } from '@/stores/useRoomStore';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import { getPropertyById } from '@/lib/api';
+import { safeGoBack } from "@/lib/utils";
+import type { Hotel } from '@/types/api';
+import { FONTS } from '@/constants/portal-theme';
+
+const ACCENT = '#2E86AB';
 
 export default function GuestHotelDetail() {
   const { id, checkIn: urlCheckIn, checkOut: urlCheckOut, guests: urlGuests } = useLocalSearchParams();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
 
-  const hotel = useMemo(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0], [id]);
-  const roomStoreRooms = useRoomStore((s) => s.rooms);
+  const [hotel, setHotel] = useState<Hotel>(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0]);
+  const [isFetching, setIsFetching] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsFetching(true);
+      const result = await getPropertyById(id as string);
+      if (!cancelled && result) {
+        setHotel(result);
+      }
+      if (!cancelled) setIsFetching(false);
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const getRoomAvailability = useCallback((roomName: string): number => {
     const mt = hotel.roomTypes.find(r => r.name === roomName);
@@ -36,6 +54,7 @@ export default function GuestHotelDetail() {
   const [isLoading, setIsLoading] = useState(false);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [hotelReviews, setHotelReviews] = useState<Review[]>(
     () => hotel.reviews.map(r => ({ id: r.id, author: r.author, rating: r.rating, date: r.date, title: '', comment: r.comment, verified: true }))
   );
@@ -51,49 +70,53 @@ export default function GuestHotelDetail() {
 
   return (
     <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Header */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.headerBtn}>
-            <IconSymbol name="arrow.back" size={18} color={SRS.navy} />
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>Hotel Details</Text>
-          <TouchableOpacity onPress={async () => { try { await Share.share({ message: `Check out ${hotel.name} in ${hotel.city}!`, title: hotel.name }); } catch {} }} style={s.headerBtn}>
-            <IconSymbol name="share" size={18} color={SRS.navy} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => isFavorite(hotel.id) ? removeFavorite(hotel.id) : addFavorite(hotel.id)} style={s.headerBtn}>
-            <IconSymbol name={isFavorite(hotel.id) ? 'heart.fill' : 'heart.fill'} size={18} color={isFavorite(hotel.id) ? SRS.red : GRAY[300]} />
-          </TouchableOpacity>
-        </View>
-
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} contentInsetAdjustmentBehavior="automatic">
         {/* Photo Gallery */}
         <View style={s.gallery}>
           <Image source={{ uri: hotel.images[selectedImageIndex] }} style={s.mainImage} resizeMode="cover" />
           {hotel.images.length > 1 && (
             <>
-              <TouchableOpacity onPress={() => setSelectedImageIndex(p => p === 0 ? hotel.images.length - 1 : p - 1)} style={[s.galleryNav, { left: SPACING.md }]}>
+              <TouchableOpacity onPress={() => setSelectedImageIndex(p => p === 0 ? hotel.images.length - 1 : p - 1)} style={[s.galleryNav, { left: 12 }]}>
                 <IconSymbol name="chevron.left" size={18} color="#FFF" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setSelectedImageIndex(p => p === hotel.images.length - 1 ? 0 : p + 1)} style={[s.galleryNav, { right: SPACING.md }]}>
+              <TouchableOpacity onPress={() => setSelectedImageIndex(p => p === hotel.images.length - 1 ? 0 : p + 1)} style={[s.galleryNav, { right: 12 }]}>
                 <IconSymbol name="chevron.right" size={18} color="#FFF" />
               </TouchableOpacity>
               <View style={s.dotRow}>
                 {hotel.images.map((_, i) => (
-                  <View key={i} style={[s.dot, { backgroundColor: i === selectedImageIndex ? '#FFF' : 'rgba(255,255,255,0.5)' }]} />
+                  <View key={i} style={[s.dot, { backgroundColor: i === selectedImageIndex ? '#FFF' : 'rgba(255,255,255,0.4)' }]} />
                 ))}
               </View>
-              <TouchableOpacity onPress={() => setShowAllPhotos(!showAllPhotos)} style={s.photoCount}>
-                <IconSymbol name="photo" size={12} color={SRS.navy} />
-                <Text style={s.photoCountText}>{showAllPhotos ? 'Collapse' : `${hotel.images.length} photos`}</Text>
-              </TouchableOpacity>
             </>
+          )}
+
+          {/* Top Actions */}
+          <View style={s.topActions}>
+            <TouchableOpacity onPress={() => safeGoBack()} style={s.actionBtn}>
+              <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={async () => { try { await Share.share({ message: `Check out ${hotel.name}!`, title: hotel.name }); } catch {} }} style={s.actionBtn}>
+                <IconSymbol name="share" size={18} color="#1A3C5E" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => isFavorite(hotel.id) ? removeFavorite(hotel.id) : addFavorite(hotel.id)} style={s.actionBtn}>
+                <IconSymbol name="heart.fill" size={18} color={isFavorite(hotel.id) ? '#EF4444' : '#94A3B8'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {hotel.images.length > 1 && (
+            <TouchableOpacity onPress={() => setShowAllPhotos(!showAllPhotos)} style={s.photoCount}>
+              <IconSymbol name="photo" size={12} color="#1A3C5E" />
+              <Text style={s.photoCountText}>{showAllPhotos ? 'Collapse' : `${hotel.images.length} photos`}</Text>
+            </TouchableOpacity>
           )}
         </View>
 
         {showAllPhotos && (
-          <View style={{ padding: SPACING.lg, gap: SPACING.md }}>
+          <View style={{ padding: 16, gap: 12 }}>
             {hotel.images.map((img, i) => (
-              <Image key={i} source={{ uri: img }} style={{ width: '100%', height: 180, borderRadius: RADIUS.card }} resizeMode="cover" />
+              <Image key={i} source={{ uri: img }} style={s.fullImg} resizeMode="cover" />
             ))}
           </View>
         )}
@@ -102,21 +125,14 @@ export default function GuestHotelDetail() {
           <>
             {/* Hotel Info */}
             <View style={s.infoSection}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.hotelName}>{hotel.name}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: 4 }}>
-                    <View style={s.starBadge}><IconSymbol name="star" size={12} color="#FFF" /><Text style={s.starText}>{hotel.rating}</Text></View>
-                    <Text style={s.reviewCount}>({hotel.review_count} reviews)</Text>
-                    <Text style={s.dotSep}>·</Text>
-                    <Text style={s.locationText}>{hotel.city}, {hotel.country}</Text>
-                  </View>
-                </View>
+              <Text style={s.hotelName}>{hotel.name}</Text>
+              <View style={s.ratingRow}>
+                <View style={s.starBadge}><IconSymbol name="star" size={12} color="#FFF" /><Text style={s.starText}>{hotel.rating}</Text></View>
+                <Text style={s.reviewCount}>({hotel.review_count} reviews)</Text>
+                <Text style={s.dotSep}>·</Text>
+                <Text style={s.locationText}>{hotel.city}, {hotel.country}</Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: SPACING.lg, marginTop: SPACING.sm }}>
-                <Text style={s.metaText}>{hotel.roomTypes.length} rooms</Text>
-                <Text style={s.metaText}>Up to {Math.max(...hotel.roomTypes.map(r => r.occupancy))} guests</Text>
-              </View>
+              <Text style={s.metaText}>{hotel.roomTypes.length} rooms · Up to {Math.max(...hotel.roomTypes.map(r => r.occupancy))} guests</Text>
             </View>
 
             {/* Description */}
@@ -126,11 +142,11 @@ export default function GuestHotelDetail() {
 
             {/* Host Info */}
             <View style={s.section}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
-                <View style={s.hostAvatar}><IconSymbol name="person.fill" size={20} color={SRS.teal} /></View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={s.hostAvatar}><IconSymbol name="person.fill" size={20} color={ACCENT} /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy }}>Hosted by {hotel.name.split(' ')[0]}</Text>
-                  <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>2 years hosting · Verified</Text>
+                  <Text style={s.hostName}>Hosted by {hotel.name.split(' ')[0]}</Text>
+                  <Text style={s.hostMeta}>2 years hosting · Verified</Text>
                 </View>
                 <View style={s.superhostBadge}><Text style={s.superhostText}>★ Superhost</Text></View>
               </View>
@@ -138,149 +154,163 @@ export default function GuestHotelDetail() {
 
             {/* Amenities */}
             <View style={s.section}>
-              <Text style={s.sectionTitle}>What this place offers</Text>
+              <Text style={s.sectionTitle}>Amenities</Text>
               <View style={{ gap: 2 }}>
                 {(showAllAmenities ? hotel.amenities : hotel.amenities.slice(0, 8)).map(a => (
                   <View key={a.name} style={s.amenityRow}>
-                    <IconSymbol name={a.icon as any} size={16} color={SRS.navy} />
+                    <IconSymbol name={(a.icon || 'wifi') as any} size={16} color="#1A3C5E" />
                     <Text style={s.amenityText}>{a.name}</Text>
                   </View>
                 ))}
               </View>
               {hotel.amenities.length > 8 && (
                 <TouchableOpacity onPress={() => setShowAllAmenities(v => !v)} style={s.showMoreBtn}>
-                  <Text style={s.showMoreText}>{showAllAmenities ? 'Show less' : `Show all ${hotel.amenities.length} amenities`}</Text>
+                  <Text style={s.showMoreText}>{showAllAmenities ? 'Show less' : `Show all ${hotel.amenities.length}`}</Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* Select Dates */}
+            {/* Dates */}
             <View style={s.section}>
-              <Text style={s.sectionTitle}>Select Dates</Text>
-              <TouchableOpacity onPress={() => {
-                const today = new Date();
-                const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-                setCheckInDate(checkInDate || today);
-                setCheckOutDate(checkOutDate || tomorrow);
-              }} style={s.dateChip}>
-                <IconSymbol name="calendar" size={18} color={SRS.teal} />
-                <Text style={{ ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy, flex: 1 }}>
+              <Text style={s.sectionTitle}>Dates</Text>
+              <TouchableOpacity onPress={() => setShowCalendar(true)} style={s.dateChip}>
+                <IconSymbol name="calendar" size={18} color={ACCENT} />
+                <Text style={s.dateChipText}>
                   {checkInDate && checkOutDate
                     ? `${checkInDate.toLocaleDateString()} — ${checkOutDate.toLocaleDateString()}`
-                    : 'Add dates'}
+                    : 'Tap to select dates'}
                 </Text>
-                <IconSymbol name="chevron.down" size={16} color={GRAY[400]} />
+                <IconSymbol name="chevron.down" size={16} color="#94A3B8" />
               </TouchableOpacity>
               {checkInDate && checkOutDate && (
-                <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: SPACING.xs }}>{nights} night{nights > 1 ? 's' : ''}</Text>
+                <Text style={s.nightsText}>{nights} night{nights > 1 ? 's' : ''}</Text>
               )}
             </View>
 
-            {/* Guest Count */}
+            <DatePickerCalendar
+              visible={showCalendar}
+              onClose={() => setShowCalendar(false)}
+              onSelectDates={(inDate, outDate) => { setCheckInDate(inDate); setCheckOutDate(outDate); }}
+              initialCheckIn={checkInDate || undefined}
+              initialCheckOut={checkOutDate || undefined}
+            />
+
+            {/* Guests */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>Guests</Text>
               <View style={s.counterRow}>
-                <TouchableOpacity onPress={() => setGuestCount(Math.max(1, guestCount - 1))} style={s.counterCircle}>
-                  <IconSymbol name="minus" size={14} color={SRS.navy} />
+                <TouchableOpacity onPress={() => setGuestCount(Math.max(1, guestCount - 1))} style={s.counterBtn}>
+                  <IconSymbol name="minus" size={14} color="#1A3C5E" />
                 </TouchableOpacity>
                 <Text style={s.counterVal}>{guestCount}</Text>
-                <TouchableOpacity onPress={() => setGuestCount(Math.min(10, guestCount + 1))} style={s.counterCircle}>
-                  <IconSymbol name="add" size={14} color={SRS.navy} />
+                <TouchableOpacity onPress={() => setGuestCount(Math.min(10, guestCount + 1))} style={s.counterBtn}>
+                  <IconSymbol name="add" size={14} color="#1A3C5E" />
                 </TouchableOpacity>
-                <Text style={{ ...TYPOGRAPHY.body, color: GRAY[500], marginLeft: SPACING.md }}>{guestCount} guest{guestCount > 1 ? 's' : ''}</Text>
+                <Text style={s.guestLabel}>{guestCount} guest{guestCount > 1 ? 's' : ''}</Text>
               </View>
             </View>
 
-            {/* Select Room */}
+            {/* Rooms */}
             <View style={s.section}>
-              <Text style={s.sectionTitle}>Select Room Type</Text>
-              <View style={{ gap: SPACING.md }}>
-                {hotel.roomTypes.map(room => (
-                  <TouchableOpacity key={room.id} onPress={() => setSelectedRoom(room)}
-                    style={[s.roomCard, { borderColor: selectedRoom?.id === room.id ? SRS.teal : GRAY[200], backgroundColor: selectedRoom?.id === room.id ? SRS.teal + '06' : '#FFF' }]}
-                  >
-                    <Image source={{ uri: room.image }} style={s.roomImage} resizeMode="cover" />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.roomName}>{room.name}</Text>
-                      <Text style={s.roomMeta}>{room.bed} · Up to {room.occupancy} guests</Text>
-                      <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500], marginVertical: 2 }} numberOfLines={1}>{room.amenities.join(', ')}</Text>
-                      <Text style={s.roomPrice}>{hotel.currency} {room.price.toLocaleString()}</Text>
-                      <ScarcityBadge count={getRoomAvailability(room.name)} maxThreshold={3} position="relative" />
-                    </View>
-                    <View style={[s.radioCircle, { borderColor: selectedRoom?.id === room.id ? SRS.teal : GRAY[300], backgroundColor: selectedRoom?.id === room.id ? SRS.teal : 'transparent' }]}>
-                      {selectedRoom?.id === room.id && <IconSymbol name="check" size={10} color="#FFF" />}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+              <Text style={s.sectionTitle}>Room Type</Text>
+              {guestCount > Math.max(...hotel.roomTypes.map(r => r.occupancy)) && (
+                <View style={s.warningBox}>
+                  <Text style={s.warningText}>⚠️ {guestCount} guests selected — some rooms may not fit. Consider adding another room.</Text>
+                </View>
+              )}
+              <View style={{ gap: 12 }}>
+                {hotel.roomTypes.map(room => {
+                  const fitsGuests = room.occupancy >= guestCount;
+                  const isDisabled = !fitsGuests;
+                  return (
+                    <TouchableOpacity key={room.id} onPress={() => {
+                      if (isDisabled) { Alert.alert('Room Too Small', `This room fits up to ${room.occupancy} guests.`); return; }
+                      setSelectedRoom(room);
+                    }}
+                      activeOpacity={isDisabled ? 0.6 : 0.8}
+                      style={[s.roomCard, {
+                        borderColor: selectedRoom?.id === room.id ? ACCENT : '#E2E8F0',
+                        backgroundColor: selectedRoom?.id === room.id ? 'rgba(46,134,171,0.04)' : '#FFF',
+                        opacity: isDisabled ? 0.55 : 1,
+                      }]}
+                    >
+                      <Image source={{ uri: room.image }} style={s.roomCardImg} resizeMode="cover" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.roomCardName, isDisabled && { color: '#94A3B8' }]}>{room.name}</Text>
+                        <Text style={s.roomCardMeta}>{room.bed} · Up to {room.occupancy} guests</Text>
+                        {isDisabled && <Text style={s.roomDisabledNote}>✕ Fits {room.occupancy} guests only</Text>}
+                        <Text style={s.roomCardPrice}>{hotel.currency} {room.price.toLocaleString()}<Text style={s.perNight}>/night</Text></Text>
+                        <ScarcityBadge count={getRoomAvailability(room.name)} maxThreshold={3} position="relative" />
+                      </View>
+                      <View style={[s.radioCircle, { borderColor: selectedRoom?.id === room.id ? ACCENT : '#CBD5E1', backgroundColor: selectedRoom?.id === room.id ? ACCENT : 'transparent' }]}>
+                        {selectedRoom?.id === room.id && <IconSymbol name="check" size={10} color="#FFF" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
             {/* Cancellation */}
             <View style={s.section}>
-              <Text style={s.sectionTitle}>Cancellation Policy</Text>
+              <Text style={s.sectionTitle}>Cancellation</Text>
               <View style={s.policyBox}>
-                <IconSymbol name="info" size={14} color={SRS.orange} />
-                <Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy, flex: 1 }}>{hotel.cancellationPolicy}</Text>
+                <IconSymbol name="info" size={14} color="#D35400" />
+                <Text style={{ fontSize: 12, color: '#1A3C5E', flex: 1 }}>{hotel.cancellationPolicy}</Text>
               </View>
             </View>
 
             {/* Price Summary */}
-            <View style={[s.section, { backgroundColor: SRS.teal + '06', borderWidth: 1, borderColor: SRS.teal + '16' }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: SPACING.sm }}>
-                <Text style={s.priceTitle}>{hotel.currency} {roomPrice.toLocaleString()}<Text style={{ fontSize: 12, color: GRAY[400] }}>/night</Text></Text>
+            <View style={[s.section, { backgroundColor: 'rgba(46, 134, 171, 0.04)', borderWidth: 1, borderColor: 'rgba(46,134,171,0.12)' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={s.priceTitle}>{hotel.currency} {roomPrice.toLocaleString()} <Text style={{ fontSize: 12, color: '#94A3B8' }}>/night</Text></Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <IconSymbol name="star" size={12} color="#FFD700" />
-                  <Text style={{ ...TYPOGRAPHY.small, fontWeight: '700', color: SRS.navy }}>{hotel.rating}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#1A3C5E' }}>{hotel.rating}</Text>
                 </View>
               </View>
-              {checkInDate && checkOutDate && selectedRoom && (
-                <View style={{ gap: SPACING.xs }}>
-                  <View style={s.priceRow}><Text style={s.priceLabel}>{hotel.currency} {roomPrice.toLocaleString()} × {nights} night{nights > 1 ? 's' : ''}</Text><Text style={s.priceVal}>{hotel.currency} {subtotal.toLocaleString()}</Text></View>
-                  <View style={s.priceRow}><Text style={s.priceLabel}>Cleaning fee</Text><Text style={s.priceVal}>{hotel.currency} {Math.round(roomPrice * 0.15).toLocaleString()}</Text></View>
-                  <View style={s.priceRow}><Text style={s.priceLabel}>Service fee (12%)</Text><Text style={s.priceVal}>{hotel.currency} {Math.round(subtotal * 0.12).toLocaleString()}</Text></View>
-                  <View style={[s.priceRow, s.priceTotal]}><Text style={s.totalLabel}>Total</Text><Text style={s.totalVal}>{hotel.currency} {total.toLocaleString()}</Text></View>
+              {checkInDate && checkOutDate && selectedRoom ? (
+                <View style={{ gap: 4 }}>
+                  <PriceRow label={`${hotel.currency} ${roomPrice.toLocaleString()} × ${nights} night${nights > 1 ? 's' : ''}`} value={`${hotel.currency} ${subtotal.toLocaleString()}`} />
+                  <PriceRow label="Cleaning fee" value={`${hotel.currency} ${Math.round(roomPrice * 0.15).toLocaleString()}`} />
+                  <PriceRow label="Service fee (12%)" value={`${hotel.currency} ${Math.round(subtotal * 0.12).toLocaleString()}`} />
+                  <View style={[s.priceTotalRow, { borderTopColor: 'rgba(46,134,171,0.2)' }]}>
+                    <Text style={s.totalLabel}>Total</Text>
+                    <Text style={s.totalVal}>{hotel.currency} {total.toLocaleString()}</Text>
+                  </View>
                 </View>
-              )}
-              {(!checkInDate || !checkOutDate || !selectedRoom) && (
-                <Text style={{ ...TYPOGRAPHY.small, color: GRAY[400], textAlign: 'center', marginTop: SPACING.sm }}>Select dates and room to see pricing</Text>
+              ) : (
+                <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', paddingVertical: 8 }}>Select dates and room to see pricing</Text>
               )}
             </View>
 
             {/* Reviews */}
-            <View style={s.section}>
-              <ReviewList reviews={hotelReviews} onWriteReview={() => setShowReviewModal(true)} />
-            </View>
+            <ReviewList reviews={hotelReviews} onWriteReview={() => setShowReviewModal(true)} />
 
             {/* Contact */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>Contact</Text>
               <TouchableOpacity style={s.contactRow} onPress={() => Linking.openURL(`tel:${hotel.phone}`)}>
-                <IconSymbol name="phone" size={16} color={SRS.teal} /><Text style={s.contactText}>{hotel.phone}</Text>
+                <IconSymbol name="phone" size={16} color={ACCENT} /><Text style={s.contactText}>{hotel.phone}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.contactRow} onPress={() => Linking.openURL(`mailto:${hotel.email}`)}>
-                <IconSymbol name="email" size={16} color={SRS.teal} /><Text style={s.contactText}>{hotel.email}</Text>
+                <IconSymbol name="email" size={16} color={ACCENT} /><Text style={s.contactText}>{hotel.email}</Text>
               </TouchableOpacity>
-              <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 4 }}>Check-in: {hotel.checkInTime} · Check-out: {hotel.checkOutTime}</Text>
+              <Text style={s.checkText}>Check-in: {hotel.checkInTime} · Check-out: {hotel.checkOutTime}</Text>
             </View>
 
-            {/* Related Hotels */}
+            {/* Related */}
             {relatedHotels.length > 0 && (
               <View style={s.section}>
                 <Text style={s.sectionTitle}>More in {hotel.city}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: SPACING.md }}>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
                     {relatedHotels.map(h => (
-                      <TouchableOpacity key={h.id} onPress={() => router.replace({ pathname: '/guest-hotel-detail/[id]', params: { id: h.id } })}
-                        style={s.relatedCard}
-                      >
+                      <TouchableOpacity key={h.id} onPress={() => router.replace({ pathname: '/guest-hotel-detail/[id]', params: { id: h.id } })} style={s.relatedCard}>
                         <Image source={{ uri: h.images[0] }} style={s.relatedImg} resizeMode="cover" />
-                        <View style={{ padding: SPACING.sm, gap: 2 }}>
+                        <View style={{ padding: 10, gap: 2 }}>
                           <Text style={s.relatedName} numberOfLines={1}>{h.name}</Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <IconSymbol name="star" size={10} color="#FFD700" />
-                            <Text style={{ fontSize: 11, color: GRAY[500] }}>{h.rating} ({h.review_count})</Text>
-                          </View>
-                          <Text style={s.relatedPrice}>{h.currency} {h.price.toLocaleString()}<Text style={{ fontSize: 10, color: GRAY[400] }}> night</Text></Text>
+                          <Text style={s.relatedPrice}>{h.currency} {h.price.toLocaleString()}<Text style={{ fontSize: 10, color: '#94A3B8' }}> night</Text></Text>
                         </View>
                       </TouchableOpacity>
                     ))}
@@ -292,10 +322,10 @@ export default function GuestHotelDetail() {
         )}
       </ScrollView>
 
-      {/* Sticky Bottom Bar */}
+      {/* Sticky Bottom */}
       <View style={s.bottomBar}>
         {checkInDate && checkOutDate && (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: SPACING.sm }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
             <View>
               <Text style={s.bottomTotal}>{hotel.currency} {total.toLocaleString()}</Text>
               <Text style={s.bottomMeta}>{nights} night{nights > 1 ? 's' : ''}{selectedRoom ? ` · ${selectedRoom.name}` : ''}</Text>
@@ -311,12 +341,9 @@ export default function GuestHotelDetail() {
             setIsLoading(false);
             router.push({ pathname: '/booking-flow', params: { hotelName: hotel.name, id: hotel.id, checkIn: checkInDate!.toISOString(), checkOut: checkOutDate!.toISOString(), guests: String(guestCount), roomId: selectedRoom!.id, roomName: selectedRoom!.name, roomPrice: String(selectedRoom!.price) } });
           }, 500);
-        }} disabled={isLoading} style={[s.bookBtn, { opacity: isLoading ? 0.7 : 1 }]} activeOpacity={0.85}>
+        }} disabled={isLoading} style={[s.bookBtn, { opacity: isLoading ? 0.7 : 1 }]} activeOpacity={0.9}>
           {isLoading ? <ActivityIndicator color="#FFF" /> : (
-            <>
-              <IconSymbol name="booking" size={16} color="#FFF" />
-              <Text style={s.bookBtnText}>{checkInDate && checkOutDate && selectedRoom ? 'Book Now' : 'Select dates to book'}</Text>
-            </>
+            <Text style={s.bookBtnText}>{checkInDate && checkOutDate && selectedRoom ? 'Book Now' : 'Select dates to book'}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -328,64 +355,81 @@ export default function GuestHotelDetail() {
   );
 }
 
+function PriceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      <Text style={{ fontSize: 12, color: '#64748B' }}>{label}</Text>
+      <Text style={{ fontSize: 13, fontWeight: '600', color: '#1A3C5E' }}>{value}</Text>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: GRAY[100] },
-  headerBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: GRAY[50], alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...TYPOGRAPHY.h3, color: SRS.navy, flex: 1 },
-  gallery: { position: 'relative', backgroundColor: '#000' },
-  mainImage: { width: '100%', height: 300 },
+  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  gallery: { position: 'relative', backgroundColor: '#000', height: 320 },
+  mainImage: { width: '100%', height: '100%' },
   galleryNav: { position: 'absolute', top: '50%', marginTop: -18, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
-  dotRow: { position: 'absolute', bottom: SPACING.md, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  dotRow: { position: 'absolute', bottom: 16, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  photoCount: { position: 'absolute', bottom: SPACING.md, right: SPACING.md, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
-  photoCountText: { fontSize: 11, fontWeight: '600', color: SRS.navy },
-  infoSection: { padding: SPACING.lg, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: GRAY[100] },
-  hotelName: { ...TYPOGRAPHY.h2, color: SRS.navy },
-  starBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: '#FFD700', paddingHorizontal: 6, paddingVertical: 2, borderRadius: RADIUS.badge },
-  starText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
-  reviewCount: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  dotSep: { color: GRAY[300] },
-  locationText: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  metaText: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  section: { padding: SPACING.lg, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: GRAY[100] },
-  sectionTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.md },
-  bodyText: { ...TYPOGRAPHY.body, color: GRAY[600], lineHeight: 22 },
-  hostAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: SRS.teal + '12', alignItems: 'center', justifyContent: 'center' },
-  superhostBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: RADIUS.badge, backgroundColor: SRS.teal + '10' },
-  superhostText: { fontSize: 11, fontWeight: '600', color: SRS.teal },
-  amenityRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: SPACING.sm },
-  amenityText: { ...TYPOGRAPHY.body, color: SRS.navy },
-  showMoreBtn: { marginTop: SPACING.md, paddingVertical: 10, borderRadius: RADIUS.card, borderWidth: 1, borderColor: SRS.navy, alignItems: 'center' },
-  showMoreText: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy },
-  dateChip: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200] },
-  counterRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  counterCircle: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '12', alignItems: 'center', justifyContent: 'center' },
-  counterVal: { fontSize: 18, fontWeight: '700', color: SRS.navy, minWidth: 28, textAlign: 'center' },
-  roomCard: { flexDirection: 'row', gap: SPACING.md, padding: SPACING.md, borderRadius: RADIUS.card, borderWidth: 1.5 },
-  roomImage: { width: 72, height: 72, borderRadius: RADIUS.button },
-  roomName: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
-  roomMeta: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  roomPrice: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.teal, marginTop: 2 },
-  radioCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  policyBox: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: SRS.orange + '10' },
-  priceTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  priceLabel: { ...TYPOGRAPHY.small, color: GRAY[600] },
-  priceVal: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
-  priceTotal: { borderTopWidth: 1, borderTopColor: SRS.teal + '20', paddingTop: SPACING.sm, marginTop: SPACING.xs },
-  totalLabel: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy },
-  totalVal: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.teal },
-  contactRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingVertical: SPACING.sm },
-  contactText: { ...TYPOGRAPHY.body, color: SRS.teal, fontWeight: '600' },
-  relatedCard: { width: 180, borderRadius: RADIUS.card, backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[100], overflow: 'hidden' },
-  relatedImg: { width: '100%', height: 110 },
-  relatedName: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
-  relatedPrice: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.teal },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: SPACING.lg, paddingBottom: 40, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: GRAY[100] },
-  bottomTotal: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.teal },
-  bottomMeta: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  bottomPerNight: { ...TYPOGRAPHY.caption, color: GRAY[400] },
-  bookBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingVertical: 16, borderRadius: RADIUS.card, backgroundColor: SRS.navy },
-  bookBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  topActions: { position: 'absolute', top: 48, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12 },
+  actionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
+  photoCount: { position: 'absolute', bottom: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  photoCountText: { fontSize: 11, fontWeight: '600', color: '#1A3C5E' },
+  fullImg: { width: '100%', height: 180, borderRadius: 12 },
+  infoSection: { padding: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 6 },
+  hotelName: { fontSize: 22, fontWeight: '700', color: '#1A3C5E', letterSpacing: -0.5, fontFamily: FONTS.playfairDisplay.bold },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  starBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: '#FFD700', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  starText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  reviewCount: { fontSize: 11, color: '#94A3B8' },
+  dotSep: { color: '#CBD5E1' },
+  locationText: { fontSize: 11, color: '#94A3B8' },
+  metaText: { fontSize: 11, color: '#94A3B8' },
+  section: { padding: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A3C5E', marginBottom: 10, letterSpacing: -0.2, fontFamily: FONTS.sora },
+  bodyText: { fontSize: 13, color: '#64748B', lineHeight: 22, fontFamily: FONTS.inter.regular },
+  hostAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(46,134,171,0.1)', alignItems: 'center', justifyContent: 'center' },
+  hostName: { fontSize: 13, fontWeight: '600', color: '#1A3C5E' },
+  hostMeta: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
+  superhostBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, backgroundColor: 'rgba(46,134,171,0.1)' },
+  superhostText: { fontSize: 10, fontWeight: '600', color: ACCENT },
+  amenityRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  amenityText: { fontSize: 13, color: '#1A3C5E' },
+  showMoreBtn: { marginTop: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#1A3C5E', alignItems: 'center' },
+  showMoreText: { fontSize: 12, fontWeight: '600', color: '#1A3C5E' },
+  dateChip: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
+  dateChipText: { fontSize: 13, fontWeight: '500', color: '#1A3C5E', flex: 1 },
+  nightsText: { fontSize: 11, color: '#94A3B8', marginTop: 4, marginLeft: 2 },
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  counterBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: 'rgba(46,134,171,0.1)', alignItems: 'center', justifyContent: 'center' },
+  counterVal: { fontSize: 16, fontWeight: '700', color: '#1A3C5E', minWidth: 24, textAlign: 'center' },
+  guestLabel: { fontSize: 13, color: '#64748B', marginLeft: 8 },
+  warningBox: { padding: 12, borderRadius: 10, backgroundColor: 'rgba(211, 84, 0, 0.08)', borderWidth: 1, borderColor: 'rgba(211, 84, 0, 0.2)', marginBottom: 12 },
+  warningText: { fontSize: 11, color: '#D35400', fontWeight: '500', lineHeight: 16 },
+  roomCard: { flexDirection: 'row', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1.5 },
+  roomCardImg: { width: 72, height: 72, borderRadius: 10 },
+  roomCardName: { fontSize: 13, fontWeight: '700', color: '#1A3C5E' },
+  roomCardMeta: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
+  roomDisabledNote: { fontSize: 10, color: '#D35400', fontWeight: '600', marginTop: 1 },
+  roomCardPrice: { fontSize: 14, fontWeight: '700', color: ACCENT, marginTop: 4, fontFamily: FONTS.inter.bold },
+  perNight: { fontSize: 10, fontWeight: '400', color: '#94A3B8' },
+  radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 24 },
+  policyBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, backgroundColor: 'rgba(211, 84, 0, 0.08)' },
+  priceTitle: { fontSize: 14, fontWeight: '700', color: '#1A3C5E', fontFamily: FONTS.inter.bold },
+  priceTotalRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, paddingTop: 8, marginTop: 4 },
+  totalLabel: { fontSize: 14, fontWeight: '700', color: '#1A3C5E', fontFamily: FONTS.inter.bold },
+  totalVal: { fontSize: 16, fontWeight: '700', color: ACCENT, fontFamily: FONTS.inter.bold },
+  contactRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  contactText: { fontSize: 13, color: ACCENT, fontWeight: '500' },
+  checkText: { fontSize: 11, color: '#94A3B8', marginTop: 4 },
+  relatedCard: { width: 160, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
+  relatedImg: { width: '100%', height: 100 },
+  relatedName: { fontSize: 12, fontWeight: '600', color: '#1A3C5E' },
+  relatedPrice: { fontSize: 12, fontWeight: '700', color: ACCENT, marginTop: 1 },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 36, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  bottomTotal: { fontSize: 16, fontWeight: '700', color: ACCENT, fontFamily: FONTS.inter.bold },
+  bottomMeta: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
+  bottomPerNight: { fontSize: 11, color: '#94A3B8' },
+  bookBtn: { paddingVertical: 15, borderRadius: 12, backgroundColor: '#1A3C5E', alignItems: 'center', shadowColor: '#1A3C5E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  bookBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF', letterSpacing: 0.3, fontFamily: FONTS.inter.semiBold },
 });

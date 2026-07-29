@@ -1,381 +1,23 @@
-/**
- * API Response and Error Types
- * Defines all API request/response structures for Stay_Easy Guest Portal
- */
+// ─── Portal Types ───────────────────────────────────────────────────────────
 
-// ============================================================================
-// Authentication Types
-// ============================================================================
-
-export interface AuthCredentials {
-  email: string;
-  phone?: string;
-  password: string;
-}
-
-export interface OTPRequest {
-  email?: string;
-  phone?: string;
-}
-
-export interface OTPVerification {
-  email?: string;
-  phone?: string;
-  otp: string;
-}
-
-export type StandardResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: string;
-};
-
-export interface AuthResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in?: number;
-}
+export type PortalType = 'guest' | 'host' | 'operations' | 'superadmin';
 
 export interface GuestProfile {
   id: string;
   email: string;
-  phone?: string;
-  name?: string;
+  phone: string;
+  name: string;
   full_name?: string;
-  nationality?: string;
-  profile_photo?: string;
+  nationality: string;
   country?: string;
   currency?: string;
   profile_image?: string;
-  is_verified?: boolean;
-  loyalty_points?: number;
+  profile_photo?: string;
+  is_verified: boolean;
+  loyalty_points: number;
   created_at: string;
   updated_at: string;
 }
-
-// ============================================================================
-// Hotel/Property Types
-// ============================================================================
-
-export interface Amenity {
-  id: string;
-  name: string;
-  icon: string;
-  category: string;
-}
-
-export interface PropertyPhoto {
-  id: string;
-  url: string;
-  caption?: string;
-  order: number;
-}
-
-export interface Hotel {
-  id: string;
-  name: string;
-  description: string;
-  property_type: 'Hotel' | 'Resort' | 'Hostel' | 'Restaurant' | 'Mixed';
-  address: string;
-  city: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  phone: string;
-  email: string;
-  website?: string;
-  rating: number; // 1-5
-  review_count: number;
-  price: number;
-  photos: PropertyPhoto[];
-  amenities: Amenity[];
-  check_in_time: string; // HH:MM
-  check_out_time: string; // HH:MM
-  cancellation_policy: string;
-  currency: string;
-  brandColor?: string;
-  logoUrl?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RoomType {
-  id: string;
-  property_id: string;
-  name: string;
-  description: string;
-  max_occupancy: number;
-  bed_configuration: string;
-  base_price: number;
-  photos: PropertyPhoto[];
-  amenities: Amenity[];
-  available_count: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Room {
-  id: string;
-  room_type_id: string;
-  room_number: string;
-  floor: number;
-  status: 'Available' | 'Occupied' | 'Dirty' | 'Under Maintenance';
-  created_at: string;
-  updated_at: string;
-}
-
-// ============================================================================
-// Search & Availability Types
-// ============================================================================
-
-export interface SearchParams {
-  check_in_date: string; // YYYY-MM-DD
-  check_out_date: string; // YYYY-MM-DD
-  guests: number;
-  rooms: number;
-  location?: string;
-  country?: string;
-  currency?: string;
-  page?: number;
-  limit?: number;
-  sort_by?: 'price' | 'rating' | 'distance';
-  sort_order?: 'asc' | 'desc';
-}
-
-export interface SearchFilters {
-  price_min?: number;
-  price_max?: number;
-  rating_min?: number;
-  amenities?: string[]; // Amenity IDs
-  room_types?: string[]; // Room type names
-  bed_types?: string[]; // Bed type names
-}
-
-export interface AvailabilityResponse {
-  hotel: Hotel;
-  room_types: RoomTypeAvailability[];
-  total_price_range: {
-    min: number;
-    max: number;
-  };
-  currency: string;
-}
-
-export interface RoomTypeAvailability {
-  room_type: RoomType;
-  available_count: number;
-  price_per_night: number;
-  total_price: number; // For the entire stay
-  discount_percentage?: number;
-  original_price?: number;
-}
-
-export interface SearchResults {
-  hotels: AvailabilityResponse[];
-  total_count: number;
-  page: number;
-  limit: number;
-  has_more: boolean;
-}
-
-// ============================================================================
-// Booking Types
-// ============================================================================
-
-export interface BookingRequest {
-  hotel_id: string;
-  room_type_id: string;
-  check_in_date: string; // YYYY-MM-DD
-  check_out_date: string; // YYYY-MM-DD
-  number_of_guests: number;
-  number_of_rooms: number;
-  guest_name: string;
-  guest_email: string;
-  guest_phone: string;
-  guest_nationality?: string;
-  add_ons?: BookingAddOn[];
-  special_requests?: string;
-  discount_code?: string;
-  payment_method: string;
-}
-
-export interface BookingAddOn {
-  name: string;
-  price: number;
-  quantity: number;
-}
-
-export interface BookingResponse {
-  id: string;
-  booking_reference: string;
-  hotel_id: string;
-  room_type_id: string;
-  guest_id: string;
-  check_in_date: string;
-  check_out_date: string;
-  number_of_guests: number;
-  number_of_rooms: number;
-  status: 'Pending' | 'Confirmed' | 'Checked In' | 'Checked Out' | 'Cancelled';
-  total_price: number;
-  currency: string;
-  pricing_breakdown: {
-    base_price: number;
-    taxes: number;
-    discount: number;
-    add_ons: number;
-    total: number;
-  };
-  payment_status: 'Pending' | 'Completed' | 'Failed' | 'Refunded';
-  qr_code?: string;
-  confirmation_code: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BookingHistory {
-  id: string;
-  booking_reference: string;
-  hotel_name: string;
-  hotel_id: string;
-  check_in_date: string;
-  check_out_date: string;
-  status: string;
-  total_price: number;
-  currency: string;
-  created_at: string;
-}
-
-export interface BookingDetails extends BookingResponse {
-  hotel: Hotel;
-  room_type: RoomType;
-  guest: GuestProfile;
-  reviews?: Review[];
-}
-
-// ============================================================================
-// Review Types
-// ============================================================================
-
-export interface Review {
-  id: string;
-  booking_id: string;
-  guest_id: string;
-  hotel_id: string;
-  rating: number; // 1-5
-  title: string;
-  comment: string;
-  photos?: string[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ReviewRequest {
-  booking_id: string;
-  rating: number;
-  title: string;
-  comment: string;
-  photos?: string[];
-}
-
-// ============================================================================
-// Payment Types
-// ============================================================================
-
-export interface PaymentMethod {
-  id: string;
-  type: 'Card' | 'UPI' | 'NetBanking' | 'Wallet';
-  display_name: string;
-  is_default: boolean;
-}
-
-export interface PaymentRequest {
-  booking_id: string;
-  amount: number;
-  currency: string;
-  payment_method: string;
-}
-
-export interface PaymentResponse {
-  transaction_id: string;
-  status: 'Success' | 'Failed' | 'Pending';
-  amount: number;
-  currency: string;
-  timestamp: string;
-  receipt_url?: string;
-}
-
-// ============================================================================
-// Favorites Types
-// ============================================================================
-
-export interface FavoriteRequest {
-  hotel_id: string;
-}
-
-export interface FavoriteResponse {
-  hotel_id: string;
-  added_at: string;
-}
-
-export interface FavoritesList {
-  favorites: Hotel[];
-  total_count: number;
-}
-
-// ============================================================================
-// Error Types
-// ============================================================================
-
-export interface APIError {
-  status: number;
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-  timestamp: string;
-}
-
-export interface ValidationError extends APIError {
-  errors: Record<string, string[]>;
-}
-
-// ============================================================================
-// Pagination Types
-// ============================================================================
-
-export interface PaginationParams {
-  page: number;
-  limit: number;
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  has_more: boolean;
-}
-
-// ============================================================================
-// API Response Wrapper
-// ============================================================================
-
-export interface APIResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: APIError;
-  timestamp: string;
-}
-
-// ============================================================================
-// Notification Types
-// ============================================================================
-
-// ============================================================================
-// Portal / Multi-User Types
-// ============================================================================
-
-export type PortalType = 'guest' | 'host' | 'operations' | 'superadmin';
 
 export interface HostProfile {
   id: string;
@@ -384,8 +26,7 @@ export interface HostProfile {
   firstName: string;
   lastName: string;
   phone: string;
-  profile_image?: string;
-  is_verified?: boolean;
+  is_verified: boolean;
   properties_count: number;
   total_bookings: number;
   rating: number;
@@ -397,11 +38,10 @@ export interface OperatorProfile {
   id: string;
   email: string;
   name: string;
-  role: 'front_desk' | 'housekeeping' | 'pos' | 'kds' | 'manager';
+  role: OperatorRole;
   property_id: string;
   property_name: string;
-  profile_image?: string;
-  is_verified?: boolean;
+  is_verified: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -411,345 +51,204 @@ export interface SuperAdminProfile {
   email: string;
   name: string;
   role: 'SUPER_ADMIN';
-  profile_image?: string;
-  is_verified?: boolean;
+  is_verified: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export type PortalProfile = GuestProfile | HostProfile | OperatorProfile | SuperAdminProfile;
 
-export interface NotificationMessage {
-  id: string;
-  type: 'booking_confirmation' | 'booking_reminder' | 'review_request' | 'promotion';
-  title: string;
-  message: string;
-  data?: Record<string, unknown>;
-  read: boolean;
-  created_at: string;
+export interface AuthResponse {
+  access_token: string;
+  refresh_token?: string;
+  token_type?: string;
 }
 
-// ============================================================================
-// Analytics Types
-// ============================================================================
+// ─── CRM Types ──────────────────────────────────────────────────────────────
 
-export interface UserPreferences {
+export type LoyaltyTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+
+// ─── Role Types ─────────────────────────────────────────────────────────────
+
+export type OperatorRole =
+  | 'front_desk'
+  | 'housekeeping'
+  | 'pos'
+  | 'kds'
+  | 'manager';
+
+// ─── Search Types ───────────────────────────────────────────────────────────
+
+export interface SearchParams {
+  destination?: string;
+  checkIn?: string;
+  checkOut?: string;
+  guests?: number;
+  rooms?: number;
+  children?: number;
+}
+
+export interface SearchFilters {
+  priceRange?: [number, number];
+  starRating?: number[];
+  propertyType?: string[];
+  amenities?: string[];
+  freeCancellation?: boolean;
+}
+
+export interface SearchResults {
+  hotels: Hotel[];
+  totalCount: number;
+  filters: SearchFilters;
+}
+
+// ─── Hotel (Guest-Facing) ───────────────────────────────────────────────────
+
+export interface HotelPhoto {
+  url: string;
+  caption?: string;
+  id?: string;
+  order?: number;
+}
+
+export interface HotelAmenity {
+  name: string;
+  icon: string;
+  id?: string;
+  category?: string;
+}
+
+export interface Hotel {
+  id: string;
+  name: string;
+  location: string;
+  city: string;
+  country: string;
+  address: string;
+  rating: number;
+  review_count: number;
+  starRating: number;
+  price: number;
   currency: string;
-  language: string;
-  notifications_enabled: boolean;
-  email_notifications: boolean;
-  push_notifications: boolean;
-}
-
-export interface UserStats {
-  total_bookings: number;
-  total_spent: number;
-  favorite_hotels_count: number;
-  loyalty_points: number;
-  member_since: string;
-}
-
-// ============================================================================
-// Enhanced Operations Types (from my-react-app)
-// ============================================================================
-
-export type OperatorRole = 'front_desk' | 'housekeeping' | 'kds' | 'pos' | 'manager';
-
-export type RoomStatus = 'available' | 'occupied' | 'dirty' | 'cleaning' | 'inspected' | 'maintenance' | 'blocked';
-
-export interface OperationRoom {
-  id: string;
-  room_number: string;
-  room_type: string;
-  floor: number;
-  status: RoomStatus;
-  smoking: boolean;
-  accessible: boolean;
-  guest_name?: string;
-  booking_ref?: string;
-  checkin_date?: string;
-  checkout_date?: string;
-}
-
-export type BookingStatus = 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled';
-
-export interface OperationBooking {
-  ref: string;
-  guest_name: string;
+  description: string;
+  shortDescription: string;
+  property_type?: string;
+  images: string[];
+  photos?: HotelPhoto[];
+  amenities: HotelAmenity[];
+  roomTypes: any[];
+  reviews: any[];
+  cancellationPolicy: string;
+  cancellation_policy?: string;
+  checkInTime: string;
+  check_in_time?: string;
+  checkOutTime: string;
+  check_out_time?: string;
   phone: string;
   email: string;
-  room_type: string;
-  room_number?: string;
-  checkin: string;
-  checkout: string;
-  adults: number;
-  children: number;
-  status: BookingStatus;
-  total: number;
-  balance: number;
-  special_requests?: string;
-}
-
-export interface FolioCharge {
-  id: string;
-  description: string;
-  amount: number;
-  category: 'room' | 'minibar' | 'laundry' | 'restaurant' | 'service' | 'other';
-  posted_at: string;
-  posted_by: string;
-}
-
-export interface Folio {
-  booking_ref: string;
-  guest_name: string;
-  room_number: string;
-  charges: FolioCharge[];
-  subtotal: number;
-  tax: number;
-  discount: number;
-  total: number;
-  settled: boolean;
-}
-
-export interface HousekeepingTask {
-  id: string;
-  room_number: string;
-  room_type: string;
-  floor: number;
-  status: 'pending' | 'cleaning' | 'inspected';
-  priority: 'low' | 'medium' | 'high';
-  assigned_to?: string;
-  notes?: string;
-  updated_at: string;
-}
-
-export interface TableSection {
-  id: string;
-  name: string;
-  floor: number;
-}
-
-export interface TableItem {
-  id: string;
-  number: number;
-  capacity: number;
-  shape: 'round' | 'square' | 'rectangle';
-  status: 'available' | 'occupied' | 'reserved' | 'cleaning';
-  section_id: string;
-  waiter_name?: string;
-  guest_count?: number;
-  elapsed_minutes?: number;
-}
-
-export interface MenuModifier {
-  id: string;
-  name: string;
-  options: { label: string; price: number }[];
-}
-
-export interface MenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  is_veg: boolean;
-  is_available: boolean;
-  prep_time: number;
-  tags: string[];
-  modifiers?: MenuModifier[];
-}
-
-export interface OrderItem {
-  id: string;
-  menu_item_id: string;
-  name: string;
-  quantity: number;
-  unit_price: number;
-  modifiers: string;
-  item_status: 'pending' | 'in_progress' | 'ready' | 'served' | 'cancelled';
-}
-
-export interface Order {
-  id: string;
-  table_id: string;
-  table_number: number;
-  waiter_id: string;
-  waiter_name: string;
-  items: OrderItem[];
-  status: 'open' | 'submitted' | 'in_progress' | 'ready' | 'served' | 'billed' | 'paid' | 'voided';
-  subtotal: number;
-  tax: number;
-  total: number;
-  created_at: string;
-  paid_at?: string;
-}
-
-export interface KdsTicket {
-  id: string;
-  order_id: string;
-  table_number: number;
-  items: OrderItem[];
-  elapsed_seconds: number;
-  status: 'pending' | 'in_progress' | 'ready';
-  supplement_to?: string;
-}
-
-export interface FloorRoom {
-  id: string;
-  roomNumber: string;
-  roomType: string;
-  bedConfig: string;
-  maxOccupancy: number;
-  price: string;
-  smoking: boolean;
-  amenities: string[];
-}
-
-export interface Floor {
-  id: string;
-  name: string;
-  rooms: FloorRoom[];
-}
-
-export interface HotelDetailBase {
-  check_in_time_from: string;
-  check_in_time_to: string;
-  check_out_time_from: string;
-  check_out_time_to: string;
-  total_rooms: number;
-  year_built?: number;
-  number_of_floors: number;
-}
-
-export interface AmenityBase {
-  name: string;
-  is_default?: boolean;
-}
-
-export interface PropertyCreateRequest {
-  name: string;
-  type: string;
-  description?: string;
-  country: string;
-  state: string;
-  city: string;
-  zip_code: string;
-  address: string;
+  website?: string;
+  coordinates?: { lat: number; lng: number };
   latitude?: number;
   longitude?: number;
-  hotel_detail: HotelDetailBase;
-  amenities?: AmenityBase[];
-  photo_urls?: string[];
+  availableRooms: number;
+  brandColor?: string;
+  logoUrl?: string;
+  tags: string[];
+  isSuperhost?: boolean;
+  category?: string;
+  hostName?: string;
+  hostAvatar?: string;
+  hostJoined?: string;
+  hostReviews?: number;
+  lat?: number;
+  lng?: number;
+  tag?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface PropertyCreateResponse {
-  id: string;
-  tenant_id: string;
-  is_active: boolean;
-  name: string;
-  type: string;
-  description: string | null;
-  country: string;
-  state: string;
-  city: string;
-  zip_code: string;
-  address: string;
-  latitude: number | null;
-  longitude: number | null;
-  created_at: string;
-  updated_at: string;
-  hotel_detail: {
-    id: string;
-    property_id: string;
-    check_in_time_from: string;
-    check_in_time_to: string;
-    check_out_time_from: string;
-    check_out_time_to: string;
-    total_rooms: number;
-    year_built: number | null;
-    number_of_floors: number;
-    created_at: string;
-    updated_at: string;
-  };
-  photos: { id: string; property_id: string; photo_url: string; created_at: string; updated_at: string }[];
-  amenities: { id: string; name: string; is_default: boolean; created_at: string; updated_at: string }[];
-}
+// ─── Host Portal Types ──────────────────────────────────────────────────────
 
-export interface TenantCreateRequest {
-  brand_name: string;
-}
-
-export interface TenantCreateResponse {
-  id: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RoomCreateBase {
-  room_name: string;
-  floor_number: number;
-  max_adults: number;
-  max_children: number;
-  base_rate: number;
-  status?: string;
-  cancellation_policy?: string;
-  cancellation_notes?: string;
-  room_type: { room_type_name: string; is_default?: boolean };
-  bed_type: { bed_name: string; is_default?: boolean };
-  photos?: string[];
-  amenities?: string[];
-}
-
-export interface RoomCreateRequest {
-  rooms: RoomCreateBase[];
-}
-
-// ============================================================================
-// Admin / Host Portal Types (SRS 4.2)
-// ============================================================================
-
-export type PropertyType = 'HOTEL' | 'RESORT' | 'RESTAURANT' | 'HOSTEL' | 'MIXED' | 'VILLA' | 'APARTMENT' | 'BOUTIQUE';
+export type PropertyType =
+  | 'HOTEL'
+  | 'RESORT'
+  | 'VILLA'
+  | 'APARTMENT'
+  | 'BOUTIQUE'
+  | 'COTTAGE'
+  | 'HOSTEL'
+  | 'GUEST_HOUSE';
 
 export type CancellationPolicy = 'FLEXIBLE' | 'MODERATE' | 'STRICT';
 
-export type AdminRoomStatus = 'AVAILABLE' | 'OCCUPIED' | 'DIRTY' | 'CLEANING' | 'INSPECTED' | 'MAINTENANCE' | 'BLOCKED';
-
-export type StaffRole = 'manager' | 'front_desk' | 'housekeeping' | 'waiter' | 'kitchen' | 'maintenance';
-
-export type DiscountType = 'PERCENTAGE' | 'FIXED';
+export interface PropertyPhoto {
+  id: string;
+  photo_url: string;
+  category: string;
+}
 
 export interface Property {
   id: string;
   tenant_id: string;
   name: string;
   type: PropertyType;
-  description: string | null;
+  description: string;
   country: string;
   state: string;
   city: string;
   zip_code: string;
   address: string;
-  latitude: number | null;
-  longitude: number | null;
+  latitude: number;
+  longitude: number;
   check_in_time_from: string;
   check_in_time_to: string;
   check_out_time_from: string;
   check_out_time_to: string;
   number_of_floors: number;
   total_rooms: number;
-  year_built: number | null;
+  year_built: number;
   amenities: string[];
   is_active: boolean;
   currency: string;
   timezone: string;
-  brand_color: string;
-  min_rate_floor: number;
+  brand_color?: string;
+  min_rate_floor?: number;
   logo_url: string | null;
   custom_domain: string | null;
   cancellation_policy: CancellationPolicy;
-  photos: { id: string; photo_url: string; category: string }[];
+  photos: PropertyPhoto[];
+  created_at: string;
+  updated_at: string;
+}
+
+export type AdminRoomStatus =
+  | 'AVAILABLE'
+  | 'OCCUPIED'
+  | 'DIRTY'
+  | 'CLEANING'
+  | 'INSPECTED'
+  | 'MAINTENANCE'
+  | 'BLOCKED';
+
+export interface AdminRoom {
+  id: string;
+  property_id: string;
+  room_type_id: string;
+  room_name: string;
+  floor_number: number;
+  max_adults: number;
+  max_children: number;
+  max_occupancy: number;
+  base_rate: number;
+  status: AdminRoomStatus;
+  smoking: boolean;
+  accessible: boolean;
+  cancellation_policy: CancellationPolicy;
+  cancellation_notes: string | null;
+  photos: string[];
+  amenities: string[];
+  blocked_dates: { start: string; end: string; reason: string }[];
+  maintenance_return_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -780,28 +279,6 @@ export interface RoomTypeDef {
   updated_at: string;
 }
 
-export interface AdminRoom {
-  id: string;
-  property_id: string;
-  room_type_id: string;
-  room_name: string;
-  floor_number: number;
-  max_adults: number;
-  max_children: number;
-  base_rate: number;
-  status: AdminRoomStatus;
-  smoking: boolean;
-  accessible: boolean;
-  cancellation_policy: CancellationPolicy;
-  cancellation_notes: string | null;
-  photos: string[];
-  amenities: string[];
-  blocked_dates: { start: string; end: string; reason: string }[];
-  maintenance_return_date: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface RatePlan {
   id: string;
   property_id: string;
@@ -809,8 +286,8 @@ export interface RatePlan {
   description: string;
   base_rate_per_room_type: Record<string, number>;
   rate_type: 'standard' | 'day_of_week';
-  weekday_rate?: Record<string, number>; // Mon–Thu
-  weekend_rate?: Record<string, number>; // Fri–Sun
+  weekday_rate?: Record<string, number>;
+  weekend_rate?: Record<string, number>;
   min_stay: number;
   max_stay: number;
   is_active: boolean;
@@ -833,7 +310,7 @@ export interface AdminDiscountCode {
   id: string;
   property_id: string;
   code: string;
-  type: DiscountType;
+  type: 'PERCENTAGE' | 'FIXED';
   discount_value: number;
   min_amount: number;
   max_uses: number;
@@ -878,6 +355,14 @@ export interface TaxConfig {
   updated_at: string;
 }
 
+export type StaffRole =
+  | 'manager'
+  | 'front_desk'
+  | 'housekeeping'
+  | 'waiter'
+  | 'kitchen'
+  | 'maintenance';
+
 export interface StaffMember {
   id: string;
   tenant_id: string;
@@ -912,11 +397,279 @@ export interface StaffTask {
   assigned_to: string;
   assigned_name: string;
   title: string;
-  description: string | null;
+  description: string;
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'in_progress' | 'completed';
   due_date: string;
   completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Operations Portal Types ────────────────────────────────────────────────
+
+export type OperationRoomStatus =
+  | 'AVAILABLE'
+  | 'OCCUPIED'
+  | 'DIRTY'
+  | 'CLEANING'
+  | 'MAINTENANCE'
+  | 'BLOCKED';
+
+export interface OperationRoom {
+  id: string;
+  property_id: string;
+  room_name: string;
+  floor_number: number;
+  room_type: string;
+  status: OperationRoomStatus;
+  max_adults: number;
+  max_children: number;
+  base_rate: number;
+  amenities: string[];
+  is_smoking: boolean;
+  is_accessible: boolean;
+}
+
+export type BookingStatus =
+  | 'confirmed'
+  | 'checked_in'
+  | 'checked_out'
+  | 'cancelled';
+
+export interface OperationBooking {
+  ref: string;
+  guest_name: string;
+  email?: string;
+  phone?: string;
+  room_type: string;
+  room_number?: string;
+  checkin: string;
+  checkout: string;
+  adults: number;
+  children: number;
+  status: BookingStatus;
+  total: number;
+  balance: number;
+  special_requests?: string;
+}
+
+export interface FolioCharge {
+  id: string;
+  description: string;
+  amount: number;
+  category: 'room' | 'restaurant' | 'minibar' | 'laundry' | 'service' | 'other';
+  posted_at: string;
+  posted_by: string;
+}
+
+export interface Folio {
+  booking_ref: string;
+  guest_name: string;
+  room_number: string;
+  charges: FolioCharge[];
+  subtotal: number;
+  tax: number;
+  discount: number;
+  total: number;
+  settled: boolean;
+}
+
+export interface HousekeepingTask {
+  id: string;
+  room_id: string;
+  room_name: string;
+  status: 'dirty' | 'in_progress' | 'cleaned' | 'inspected';
+  assigned_cleaner?: string;
+  notes?: string;
+  property_id: string;
+  priority: 'high' | 'medium' | 'low';
+  due_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableItem {
+  id: string;
+  number: string;
+  section: string;
+  capacity: number;
+  status: 'available' | 'occupied' | 'reserved';
+  order_id?: string;
+  server_name?: string;
+}
+
+export interface MenuModifier {
+  id: string;
+  name: string;
+  type: 'single' | 'multi';
+  options: { label: string; price: number }[];
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  is_available: boolean;
+  is_veg: boolean;
+  tags: string[];
+  modifiers?: MenuModifier[];
+}
+
+export interface OrderItem {
+  id: string;
+  menu_item_id: string;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  notes?: string;
+  modifiers?: string;
+}
+
+export interface Order {
+  id: string;
+  table_id: string;
+  items: OrderItem[];
+  status: 'open' | 'submitted' | 'preparing' | 'ready' | 'served' | 'paid';
+  subtotal: number;
+  tax: number;
+  total: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KdsTicket {
+  id: string;
+  order_id: string;
+  table_number: string;
+  items: KdsTicketItem[];
+  status: 'pending' | 'in_progress' | 'ready';
+  notes?: string;
+  elapsed_seconds: number;
+}
+
+export interface KdsTicketItem {
+  id: string;
+  name: string;
+  quantity: number;
+  item_status: 'pending' | 'in_progress' | 'ready' | 'served' | 'cancelled';
+  modifiers?: string;
+}
+
+// ─── Booking API Types (matches live backend) ─────────────────────────────
+
+export interface BookingCreateRequest {
+  idempotency_key: string;
+  property_id: string;
+  room_ids: string[];
+  check_in: string;
+  check_out: string;
+  adults: number;
+  children?: number;
+}
+
+export interface PropertySummary {
+  id: string;
+  name: string;
+  type: string;
+  city?: string;
+  country?: string;
+  currency: string;
+}
+
+export interface RoomReservationDetail {
+  room_id: string;
+  room_name: string;
+  room_type: string;
+  bed_type: string;
+  max_adults: number;
+  max_children: number;
+  base_rate: number;
+  nights: number;
+  subtotal: number;
+}
+
+export interface BookingReservationResponse {
+  booking_id: string;
+  ref_number: string;
+  status: string;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  payment_gateway?: string;
+  property: PropertySummary;
+  rooms: RoomReservationDetail[];
+  total_amount: number;
+  subtotal: number;
+  special_offer_discount: number;
+  coupon_code?: string;
+  coupon_discount: number;
+  soft_lock_expires_at: string;
+}
+
+export interface BookingListItem {
+  id: string;
+  ref_number: string;
+  status: string;
+  checkin_date: string;
+  checkout_date: string;
+  total_amount: number;
+  created_at: string;
+}
+
+export interface PaginatedBookingsResponse {
+  items: BookingListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface PaymentIntentRequest {
+  payment_gateway: string;
+}
+
+export interface PaymentIntentResponse {
+  ref_number: string;
+  payment_gateway: string;
+  amount: number;
+  currency: string;
+  payment_intent_id?: string;
+  client_secret?: string;
+  order_id?: string;
+}
+
+export interface ConfirmPaymentRequest {
+  idempotency_key: string;
+  gateway_payload?: Record<string, unknown>;
+}
+
+export interface ConfirmPaymentResponse {
+  status: string;
+  message?: string;
+  booking_id?: string;
+  ref_number?: string;
+}
+
+// ─── Legacy Booking Types (for guest booking flow) ──────────────────────
+
+export interface BookingAddOn {
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+// ─── Tenant API Types ───────────────────────────────────────────────────────
+
+export interface TenantCreateRequest {
+  brand_name: string;
+}
+
+export interface TenantCreateResponse {
+  id: string;
+  name: string;
   created_at: string;
   updated_at: string;
 }

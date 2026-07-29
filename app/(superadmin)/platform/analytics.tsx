@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { safeGoBack } from "@/lib/utils";
 
-const SUPERADMIN = '#8E44AD';
+const ACCENT = '#7C3AED';
 const DATE_RANGES = ['Today', 'Week', 'Month', 'Custom'] as const;
 
 const KPIS = [
@@ -38,51 +37,55 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} contentInsetAdjustmentBehavior="automatic">
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color={SUPERADMIN} />
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
+            <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Platform Analytics</Text>
         </View>
 
+        {/* Date Range */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={s.filterRow}>
             {DATE_RANGES.map(r => (
               <TouchableOpacity key={r} onPress={() => setRange(r)}
-                style={[s.filterChip, { backgroundColor: range === r ? SUPERADMIN : GRAY[100] }]}>
-                <Text style={[s.filterText, { color: range === r ? '#FFF' : GRAY[500] }]}>{r}</Text>
+                style={[s.filterChip, range === r && s.filterActive]}>
+                <Text style={[s.filterText, range === r && s.filterTextActive]}>{r}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </ScrollView>
 
+        {/* KPI Cards */}
         <View style={s.kpiRow}>
           {KPIS.map(kpi => (
             <View key={kpi.label} style={[s.kpiCard, { borderLeftColor: kpi.color }]}>
               <Text style={s.kpiValue}>{kpi.value}</Text>
-              <View style={s.kpiChangeRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                 <Text style={[s.kpiChange, { color: kpi.up ? '#10B981' : '#EF4444' }]}>{kpi.change}</Text>
-                <Text style={{ fontSize: 12, color: kpi.up ? '#10B981' : '#EF4444' }}>{kpi.up ? '↑' : '↓'}</Text>
+                <Text style={{ fontSize: 11, color: kpi.up ? '#10B981' : '#EF4444' }}>{kpi.up ? '↑' : '↓'}</Text>
               </View>
               <Text style={s.kpiLabel}>{kpi.label}</Text>
             </View>
           ))}
         </View>
 
+        {/* Revenue Chart */}
         <View style={s.chartCard}>
           <Text style={s.chartTitle}>Revenue (NPR Lakhs)</Text>
           <View style={s.chartRow}>
             {MONTHLY_DATA.map(d => (
               <View key={d.month} style={s.chartCol}>
                 <Text style={s.chartVal}>{d.revenue.toFixed(1)}</Text>
-                <View style={[s.chartBar, { height: (d.revenue / maxRevenue) * 100, backgroundColor: SUPERADMIN }]} />
+                <View style={[s.chartBar, { height: (d.revenue / maxRevenue) * 100, backgroundColor: ACCENT }]} />
                 <Text style={s.chartLabel}>{d.month}</Text>
               </View>
             ))}
           </View>
         </View>
 
+        {/* Bookings Chart */}
         <View style={s.chartCard}>
           <Text style={s.chartTitle}>Bookings</Text>
           <View style={s.chartRow}>
@@ -96,18 +99,19 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
+        {/* Top Properties */}
         <View style={s.listCard}>
           <Text style={s.chartTitle}>Top 5 Properties</Text>
           {TOP_PROPERTIES.map((p, i) => (
-            <View key={p.name} style={[s.propertyRow, i < TOP_PROPERTIES.length - 1 && { borderBottomWidth: 1, borderBottomColor: GRAY[100] }]}>
-              <View style={[s.rankBadge, { backgroundColor: SUPERADMIN + '18' }]}>
-                <Text style={[s.rankText, { color: SUPERADMIN }]}>{i + 1}</Text>
+            <View key={p.name} style={[s.propertyRow, i < TOP_PROPERTIES.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }]}>
+              <View style={[s.rankBadge, { backgroundColor: ACCENT + '12' }]}>
+                <Text style={[s.rankText, { color: ACCENT }]}>{i + 1}</Text>
               </View>
-              <View style={s.propertyInfo}>
+              <View style={{ flex: 1 }}>
                 <Text style={s.propertyName}>{p.name}</Text>
                 <Text style={s.propertyOwner}>{p.owner}</Text>
               </View>
-              <View style={s.propertyStats}>
+              <View style={{ alignItems: 'flex-end' }}>
                 <Text style={s.propertyRevenue}>NPR {p.revenue.toLocaleString()}</Text>
                 <Text style={s.propertyBookings}>{p.bookings} bookings</Text>
               </View>
@@ -120,35 +124,34 @@ export default function AnalyticsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  scroll: { padding: SPACING.xl, paddingTop: 60, gap: SPACING.lg },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 44, height: 44, borderRadius: RADIUS.modal, backgroundColor: SUPERADMIN + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...TYPOGRAPHY.h2, color: SRS.navy, flex: 1 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
   filterRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  filterChip: { paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20 },
-  filterText: { ...TYPOGRAPHY.body, fontWeight: '600' },
-  kpiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  kpiCard: { width: '47%', padding: SPACING.lg, borderRadius: 16, backgroundColor: '#FFF', borderLeftWidth: 4, ...SHADOWS.card },
-  kpiValue: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.navy },
-  kpiChangeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  kpiChange: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  kpiLabel: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 4 },
-  chartCard: { padding: 20, borderRadius: 20, backgroundColor: '#FFF', ...SHADOWS.card },
-  chartTitle: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.lg },
-  chartRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 140, paddingTop: 10 },
+  filterChip: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  filterActive: { backgroundColor: ACCENT },
+  filterText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  filterTextActive: { color: '#FFF' },
+  kpiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  kpiCard: { width: '47%', padding: 14, borderRadius: 14, backgroundColor: '#FFF', borderLeftWidth: 4, borderWidth: 1, borderColor: '#F1F5F9' },
+  kpiValue: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  kpiChange: { fontSize: 12, fontWeight: '700' },
+  kpiLabel: { fontSize: 12, color: '#64748B', marginTop: 4 },
+  chartCard: { padding: 18, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
+  chartTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 16 },
+  chartRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 130, paddingTop: 8 },
   chartCol: { alignItems: 'center', flex: 1 },
-  chartVal: { ...TYPOGRAPHY.caption, color: GRAY[500], marginBottom: 4 },
-  chartBar: { width: '60%', borderRadius: 6 },
-  chartLabel: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 4 },
-  listCard: { padding: 20, borderRadius: 20, backgroundColor: '#FFF', ...SHADOWS.card },
+  chartVal: { fontSize: 11, color: '#64748B', marginBottom: 4 },
+  chartBar: { width: '55%', borderRadius: 6 },
+  chartLabel: { fontSize: 11, color: '#64748B', marginTop: 4 },
+  listCard: { padding: 18, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
   propertyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
-  rankBadge: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  rankText: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  propertyInfo: { flex: 1 },
-  propertyName: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
-  propertyOwner: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  propertyStats: { alignItems: 'flex-end' },
-  propertyRevenue: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
-  propertyBookings: { ...TYPOGRAPHY.caption, color: GRAY[500] },
+  rankBadge: { width: 26, height: 26, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  rankText: { fontSize: 12, fontWeight: '700' },
+  propertyName: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  propertyOwner: { fontSize: 12, color: '#64748B', marginTop: 1 },
+  propertyRevenue: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  propertyBookings: { fontSize: 12, color: '#64748B' },
 });

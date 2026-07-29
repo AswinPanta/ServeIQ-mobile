@@ -2,47 +2,32 @@ import { create } from 'zustand';
 
 export interface AppNotification {
   id: string;
-  type: 'checkin' | 'checkout' | 'hk_alert' | 'kitchen_ready' | 'new_order' | 'vip' | 'maintenance' | 'payment' | 'system';
+  type: string;
   title: string;
   message: string;
-  read: boolean;
-  createdAt: string;
-  data?: Record<string, string>;
+  data?: Record<string, unknown>;
+  read?: boolean;
+  created_at?: string;
 }
 
 interface NotificationStore {
   notifications: AppNotification[];
-  addNotification: (notif: Omit<AppNotification, 'id' | 'read' | 'createdAt'>) => void;
-  markRead: (id: string) => void;
-  markAllRead: () => void;
-  unreadCount: () => number;
-  getRecent: (limit?: number) => AppNotification[];
+  addNotification: (notification: { type: string; title: string; message: string; data?: Record<string, unknown> }) => void;
 }
 
-let notifCounter = 0;
-
-export const useNotificationStore = create<NotificationStore>((set, get) => ({
+export const useNotificationStore = create<NotificationStore>((set) => ({
   notifications: [],
 
-  addNotification: (notif) =>
+  addNotification: (data) =>
     set((state) => ({
       notifications: [
-        { ...notif, id: `notif-${++notifCounter}`, read: false, createdAt: new Date().toISOString() },
+        {
+          id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          ...data,
+          created_at: new Date().toISOString(),
+          read: false,
+        },
         ...state.notifications,
       ],
     })),
-
-  markRead: (id) =>
-    set((state) => ({
-      notifications: state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    })),
-
-  markAllRead: () =>
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, read: true })),
-    })),
-
-  unreadCount: () => get().notifications.filter((n) => !n.read).length,
-
-  getRecent: (limit = 10) => get().notifications.slice(0, limit),
 }));

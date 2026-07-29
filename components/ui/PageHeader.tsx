@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
 import { ACCENT, getAccentColor } from '@/constants/portal-theme';
+import { safeGoBack } from '@/lib/utils';
 
 interface PageHeaderProps {
   title: string;
@@ -17,7 +17,7 @@ export function PageHeader({ title, subtitle, count, showBack = true, rightActio
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           {showBack && (
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeGoBack()}
               style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontSize: 18, color: '#475569' }}>←</Text>

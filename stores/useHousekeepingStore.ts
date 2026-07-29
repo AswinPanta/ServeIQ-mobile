@@ -1,173 +1,223 @@
 import { create } from 'zustand';
+import { addToSyncQueue, processSyncQueue, getSyncQueueCount } from '@/lib/utils/offline-sync';
+import { persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
 
-export type HKStatus = 'Dirty' | 'In Progress' | 'Cleaned' | 'Inspected';
+export type HKTaskStatus = 'Dirty' | 'In Progress' | 'Cleaned' | 'Inspected';
 export type HKPriority = 'High' | 'Normal' | 'Low';
 
 export interface HKTask {
   id: string;
   room: string;
   floor: number;
-  status: HKStatus;
+  status: HKTaskStatus;
   priority: HKPriority;
   cleaner: string;
   lastCleaned: string;
   notes?: string;
+  taskType?: string;
+  property_id?: string;
   checklist?: Record<string, boolean>;
-  startedAt?: number;
-  taskType: 'cleaning' | 'turnover' | 'deep_clean' | 'inspection';
-  property_id: string;
+  synced?: boolean; // false when changes are pending sync
 }
 
-export const STATUS_ORDER: HKStatus[] = ['Dirty', 'In Progress', 'Cleaned', 'Inspected'];
+export const STATUS_ORDER: HKTaskStatus[] = ['Dirty', 'In Progress', 'Cleaned', 'Inspected'];
+
 export const STATUS_FLOW_COLORS: Record<string, string> = {
-  Dirty: '#F59E0B',
-  'In Progress': '#3B82F6',
-  Cleaned: '#10B981',
-  Inspected: '#8B5CF6',
+  Dirty: '#BA1A1A',
+  'In Progress': '#006687',
+  Cleaned: '#166534',
+  Inspected: '#002645',
 };
 
 export const CLEANING_CHECKLIST = [
-  'Make beds and change linens',
-  'Clean and sanitize bathroom',
+  'Strip and remake beds',
+  'Clean bathroom (toilet, sink, shower)',
   'Vacuum/mop floors',
   'Dust all surfaces',
-  'Restock amenities (soap, shampoo, etc.)',
+  'Restock amenities (soap, towels, etc.)',
   'Empty trash bins',
-  'Wipe down mirrors and glass',
-  'Arrange furniture properly',
-  'Check mini-bar and restock',
-  'Inspect for damages and report',
+  'Wipe windows and mirrors',
+  'Check mini-bar (if applicable)',
 ];
 
-/** Per-property initial housekeeping tasks */
-function getInitialTasksForProperty(propertyId: string): HKTask[] {
-  if (propertyId === 'prop-1') {
-    return [
-      { id: 'hk1', room: '102', floor: 1, status: 'Dirty', priority: 'High', cleaner: 'Rajesh', lastCleaned: '2 days ago', notes: 'Guest checked out late', taskType: 'turnover', startedAt: undefined, checklist: {}, property_id: 'prop-1' },
-      { id: 'hk2', room: '103', floor: 1, status: 'In Progress', priority: 'Normal', cleaner: 'Sita', lastCleaned: '3 days ago', taskType: 'cleaning', startedAt: Date.now() - 600000, checklist: { '0': true, '1': true, '2': false, '3': true, '4': false, '5': true, '6': false, '7': false, '8': false, '9': false }, property_id: 'prop-1' },
-      { id: 'hk3', room: '106', floor: 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: '1 day ago', taskType: 'deep_clean', startedAt: undefined, checklist: {}, property_id: 'prop-1' },
-      { id: 'hk4', room: '203', floor: 2, status: 'Dirty', priority: 'Normal', cleaner: 'Rajesh', lastCleaned: '4 days ago', taskType: 'cleaning', startedAt: undefined, checklist: {}, property_id: 'prop-1' },
-      { id: 'hk5', room: '303', floor: 3, status: 'Inspected', priority: 'Low', cleaner: 'Anita', lastCleaned: '5 days ago', notes: 'All good', taskType: 'inspection', startedAt: undefined, checklist: { '0': true, '1': true, '2': true, '3': true, '4': true, '5': true, '6': true, '7': true, '8': true, '9': true }, property_id: 'prop-1' },
-      { id: 'hk6', room: '305', floor: 3, status: 'In Progress', priority: 'Normal', cleaner: 'Sita', lastCleaned: '2 days ago', taskType: 'cleaning', startedAt: Date.now() - 120000, checklist: { '0': true, '1': true, '2': false, '3': false, '4': false, '5': false, '6': false, '7': false, '8': false, '9': false }, property_id: 'prop-1' },
-      { id: 'hk7', room: '206', floor: 2, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'turnover', startedAt: undefined, checklist: {}, property_id: 'prop-1' },
-      { id: 'hk8', room: '104', floor: 1, status: 'Cleaned', priority: 'Low', cleaner: 'Anita', lastCleaned: 'Today', taskType: 'cleaning', startedAt: undefined, checklist: { '0': true, '1': true, '2': true, '3': true, '4': true, '5': true, '6': true, '7': true, '8': true, '9': true }, property_id: 'prop-1' },
-    ];
-  }
-
-  if (propertyId === 'prop-2') {
-    return [
-      { id: 'hk-p2-1', room: '104', floor: 1, status: 'Dirty', priority: 'High', cleaner: 'Maya', lastCleaned: '1 day ago', notes: 'Express checkout', taskType: 'turnover', startedAt: undefined, checklist: {}, property_id: 'prop-2' },
-      { id: 'hk-p2-2', room: '204', floor: 2, status: 'Dirty', priority: 'Normal', cleaner: 'Unassigned', lastCleaned: '2 days ago', taskType: 'cleaning', startedAt: undefined, checklist: {}, property_id: 'prop-2' },
-      { id: 'hk-p2-3', room: '205', floor: 2, status: 'In Progress', priority: 'Normal', cleaner: 'Maya', lastCleaned: '3 days ago', taskType: 'cleaning', startedAt: Date.now() - 300000, checklist: { '0': true, '1': true, '2': true, '3': true, '4': false, '5': true, '6': false, '7': false, '8': false, '9': false }, property_id: 'prop-2' },
-      { id: 'hk-p2-4', room: '103', floor: 1, status: 'Cleaned', priority: 'Low', cleaner: 'Anita', lastCleaned: 'Today', taskType: 'inspection', startedAt: undefined, checklist: { '0': true, '1': true, '2': true, '3': true, '4': true, '5': true, '6': true, '7': true, '8': true, '9': true }, property_id: 'prop-2' },
-    ];
-  }
-
-  if (propertyId === 'prop-3') {
-    return [
-      { id: 'hk-p3-1', room: 'Villa D', floor: 2, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', notes: 'Guest checked out', taskType: 'turnover', startedAt: undefined, checklist: {}, property_id: 'prop-3' },
-      { id: 'hk-p3-2', room: 'Villa A', floor: 1, status: 'In Progress', priority: 'Normal', cleaner: 'Kiran', lastCleaned: '2 days ago', taskType: 'deep_clean', startedAt: Date.now() - 900000, checklist: { '0': true, '1': true, '2': true, '3': true, '4': true, '5': false, '6': false, '7': false, '8': false, '9': false }, property_id: 'prop-3' },
-    ];
-  }
-
-  // Dynamically created properties start with empty tasks
-  return [];
-}
-
 interface HousekeepingStore {
-  tasks: HKTask[];
   propertyId: string;
-  setTasks: (tasks: HKTask[]) => void;
+  tasks: HKTask[];
+  syncPendingCount: number;
+  isSyncing: boolean;
   setPropertyId: (id: string) => void;
-  getTask: (room: string) => HKTask | undefined;
-  updateTaskStatus: (room: string, status: HKStatus) => void;
   advanceStatus: (room: string) => void;
+  updateChecklist: (room: string, index: number, done: boolean) => void;
   assignCleaner: (room: string, cleaner: string) => void;
   updateNotes: (room: string, notes: string) => void;
-  updateChecklist: (room: string, itemIndex: number, done: boolean) => void;
-  createTask: (data: Omit<HKTask, 'id'>) => HKTask;
-  summaryStats: () => { dirty: number; inProgress: number; cleaned: number; inspected: number; total: number; cleaners: number };
-  getFilteredTasks: (statusFilter?: HKStatus | 'All') => HKTask[];
+  createTask: (data: { room: string; floor: number; status: HKTaskStatus; priority: HKPriority; cleaner: string; lastCleaned: string; taskType?: string; property_id?: string }) => void;
+  syncPendingChanges: () => Promise<void>;
+  refreshSyncCount: () => Promise<void>;
 }
 
+const INITIAL_TASKS: HKTask[] = [
+  { id: '1', room: '102', floor: 1, status: 'Dirty', priority: 'High', cleaner: 'Rajesh', lastCleaned: '2 days ago', property_id: 'prop-1', synced: true },
+  { id: '2', room: '103', floor: 1, status: 'In Progress', priority: 'Normal', cleaner: 'Sita', lastCleaned: '3 days ago', property_id: 'prop-1', synced: true },
+  { id: '3', room: '106', floor: 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: '1 day ago', property_id: 'prop-1', synced: true },
+  { id: '4', room: '203', floor: 2, status: 'Dirty', priority: 'Normal', cleaner: 'Rajesh', lastCleaned: '4 days ago', property_id: 'prop-1', synced: true },
+  { id: '5', room: '303', floor: 3, status: 'Inspected', priority: 'Low', cleaner: 'Anita', lastCleaned: '5 days ago', property_id: 'prop-1', synced: true },
+  { id: '6', room: '305', floor: 3, status: 'In Progress', priority: 'Normal', cleaner: 'Sita', lastCleaned: '2 days ago', property_id: 'prop-1', synced: true },
+  { id: '7', room: '206', floor: 2, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', property_id: 'prop-1', synced: true },
+  { id: '8', room: '104', floor: 1, status: 'Cleaned', priority: 'Low', cleaner: 'Anita', lastCleaned: 'Today', property_id: 'prop-1', synced: true },
+];
+
+let taskIdCounter = 100;
+
 export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
-  tasks: getInitialTasksForProperty('prop-1'),
   propertyId: 'prop-1',
+  tasks: INITIAL_TASKS,
+  syncPendingCount: 0,
+  isSyncing: false,
 
-  setTasks: (tasks) => set({ tasks }),
+  setPropertyId: (id) => set({ propertyId: id }),
 
-  setPropertyId: (id) => {
-    const currentTasks = get().tasks;
-    // Only reload initial data if switching to a different property
-    if (id !== get().propertyId) {
-      const newTasks = getInitialTasksForProperty(id);
-      set({ propertyId: id, tasks: newTasks });
+  advanceStatus: (room) => {
+    set((state) => {
+      const task = state.tasks.find(t => t.room === room);
+      if (!task) return state;
+      const idx = STATUS_ORDER.indexOf(task.status);
+      if (idx >= STATUS_ORDER.length - 1) return state;
+      const nextStatus = STATUS_ORDER[idx + 1];
+
+      // Add to sync queue for offline support
+      addToSyncQueue({
+        type: 'UPDATE_STATUS',
+        payload: { taskId: task.id, room, status: nextStatus },
+      });
+
+      const next = state.tasks.map((t) => {
+        if (t.room !== room) return t;
+        return { ...t, status: nextStatus, synced: false };
+      });
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+
+      return { tasks: next, syncPendingCount: state.syncPendingCount + 1 };
+    });
+  },
+
+  updateChecklist: (room, index, done) => {
+    set((state) => {
+      const task = state.tasks.find(t => t.room === room);
+      if (!task) return state;
+
+      addToSyncQueue({
+        type: 'UPDATE_CHECKLIST',
+        payload: { taskId: task.id, room, checklist: { ...(task.checklist || {}), [String(index)]: done } },
+      });
+
+      const next = state.tasks.map((t) => {
+        if (t.room !== room) return t;
+        return { ...t, checklist: { ...(t.checklist || {}), [String(index)]: done }, synced: false };
+      });
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+
+      return { tasks: next, syncPendingCount: state.syncPendingCount + 1 };
+    });
+  },
+
+  assignCleaner: (room, cleaner) => {
+    set((state) => {
+      const task = state.tasks.find(t => t.room === room);
+      if (!task) return state;
+
+      addToSyncQueue({
+        type: 'ASSIGN_CLEANER',
+        payload: { taskId: task.id, room, cleaner },
+      });
+
+      const next = state.tasks.map((t) => (t.room === room ? { ...t, cleaner, synced: false } : t));
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+
+      return { tasks: next, syncPendingCount: state.syncPendingCount + 1 };
+    });
+  },
+
+  updateNotes: (room, notes) => {
+    set((state) => {
+      const task = state.tasks.find(t => t.room === room);
+      if (!task) return state;
+
+      addToSyncQueue({
+        type: 'UPDATE_NOTES',
+        payload: { taskId: task.id, room, notes },
+      });
+
+      const next = state.tasks.map((t) => (t.room === room ? { ...t, notes, synced: false } : t));
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+
+      return { tasks: next, syncPendingCount: state.syncPendingCount + 1 };
+    });
+  },
+
+  createTask: (data) => {
+    set((state) => {
+      const newTask: HKTask = {
+        id: `hk-${++taskIdCounter}`,
+        room: data.room,
+        floor: data.floor,
+        status: data.status,
+        priority: data.priority,
+        cleaner: data.cleaner,
+        lastCleaned: data.lastCleaned,
+        taskType: data.taskType || 'turnover',
+        property_id: data.property_id,
+        synced: false,
+      };
+
+      addToSyncQueue({
+        type: 'UPDATE_STATUS',
+        payload: { taskId: newTask.id, room: data.room, status: data.status },
+      });
+
+      const next = [newTask, ...state.tasks];
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+
+      return { tasks: next, syncPendingCount: state.syncPendingCount + 1 };
+    });
+  },
+
+  syncPendingChanges: async () => {
+    const state = get();
+    if (state.isSyncing) return;
+
+    set({ isSyncing: true });
+
+    try {
+      await processSyncQueue(async (action) => {
+        // Simulate API call - in production, this would call the actual backend
+        // For now, we mark as synced after a small delay
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Mark the corresponding task as synced
+        set((state) => {
+          const next = state.tasks.map(t => {
+            if (t.id === action.payload.taskId || t.room === action.payload.room) {
+              return { ...t, synced: true };
+            }
+            return t;
+          });
+          persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+          return { tasks: next };
+        });
+
+        return true; // Success
+      });
+
+      // Refresh sync count
+      const count = await getSyncQueueCount();
+      set({ syncPendingCount: count });
+    } finally {
+      set({ isSyncing: false });
     }
   },
 
-  getTask: (room) => get().tasks.find((t) => t.room === room),
-
-  updateTaskStatus: (room, status) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.room === room ? { ...t, status, startedAt: status === 'In Progress' && !t.startedAt ? Date.now() : t.startedAt } : t
-      ),
-    })),
-
-  advanceStatus: (room) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) => {
-        if (t.room !== room) return t;
-        const currentIdx = STATUS_ORDER.indexOf(t.status);
-        if (currentIdx >= STATUS_ORDER.length - 1) return t;
-        const nextStatus = STATUS_ORDER[currentIdx + 1];
-        return {
-          ...t,
-          status: nextStatus,
-          startedAt: nextStatus === 'In Progress' && !t.startedAt ? Date.now() : t.startedAt,
-        };
-      }),
-    })),
-
-  assignCleaner: (room, cleaner) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.room === room ? { ...t, cleaner } : t)),
-    })),
-
-  updateNotes: (room, notes) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.room === room ? { ...t, notes } : t)),
-    })),
-
-  updateChecklist: (room, itemIndex, done) =>
-    set((state) => ({
-      tasks: state.tasks.map((t) => {
-        if (t.room !== room) return t;
-        return { ...t, checklist: { ...t.checklist, [itemIndex]: done } };
-      }),
-    })),
-
-  createTask: (data) => {
-    const newTask: HKTask = { id: 'hk-' + Date.now(), ...data, notes: data.notes || '', checklist: data.checklist || {}, startedAt: data.startedAt || undefined };
-    set((state) => ({ tasks: [...state.tasks, newTask] }));
-    return newTask;
-  },
-
-  summaryStats: () => {
-    const tasks = get().tasks;
-    return {
-      dirty: tasks.filter((t) => t.status === 'Dirty').length,
-      inProgress: tasks.filter((t) => t.status === 'In Progress').length,
-      cleaned: tasks.filter((t) => t.status === 'Cleaned').length,
-      inspected: tasks.filter((t) => t.status === 'Inspected').length,
-      total: tasks.length,
-      cleaners: [...new Set(tasks.map((t) => t.cleaner).filter((c) => c !== 'Unassigned'))].length,
-    };
-  },
-
-  getFilteredTasks: (statusFilter) => {
-    const tasks = get().tasks;
-    if (!statusFilter || statusFilter === 'All') return tasks;
-    return tasks.filter((t) => t.status === statusFilter);
+  refreshSyncCount: async () => {
+    const count = await getSyncQueueCount();
+    set({ syncPendingCount: count });
   },
 }));

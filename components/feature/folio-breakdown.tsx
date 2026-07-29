@@ -12,10 +12,15 @@ export interface FolioItem {
 interface FolioBreakdownProps {
   items: FolioItem[];
   subtotal: number;
+  /** Second-pass total. Pass 0 when there are no taxes, and provide a
+   *  `taxLabel` describing what those numbers actually are (e.g. "Service
+   *  fees") — leaving the default "Tax & Fees (13%)" prints a misleading
+   *  13% even when you're passing a non-tax total. */
   tax: number;
   discount?: number;
   total: number;
   currency?: string;
+  taxLabel?: string;
 }
 
 function Row({ label, value, bold, color, textColor }: { label: string; value: string; bold?: boolean; color?: string; textColor?: string }) {
@@ -50,6 +55,7 @@ export function FolioBreakdown({
   discount = 0,
   total,
   currency = 'NPR',
+  taxLabel = 'Tax & Fees (13%)',
 }: FolioBreakdownProps) {
   const colors = useColors();
 
@@ -77,7 +83,7 @@ export function FolioBreakdown({
 
       {/* Summary */}
       <Row label="Subtotal" value={`${currency} ${subtotal.toLocaleString()}`} textColor={colors.foreground} />
-      <Row label="Tax & Fees (13%)" value={`${currency} ${tax.toLocaleString()}`} textColor={colors.foreground} />
+      <Row label={taxLabel} value={`${currency} ${tax.toLocaleString()}`} textColor={colors.foreground} />
       {discount > 0 && (
         <Row label="Discount" value={`-${currency} ${discount.toLocaleString()}`} color={colors.success} textColor={colors.foreground} />
       )}

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 import { operationsApi } from '@/lib/api/operations-api';
+import { loadOpsState, persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
 
 export type HKTaskStatus = 'Dirty' | 'In Progress' | 'Cleaned' | 'Inspected';
 export type HKPriority = 'High' | 'Normal' | 'Low';
@@ -48,12 +49,23 @@ const HousekeepingContext = createContext<HousekeepingContextValue | null>(null)
 
 export function HousekeepingProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<HKTask[]>(INITIAL_TASKS);
+  const [loaded, setLoaded] = useState(false);
 
+  // Load persisted tasks on mount, fall back to INITIAL_TASKS
   useEffect(() => {
+    loadOpsState<HKTask[] | null>(OPS_STORAGE_KEYS.hkTasks, null).then(saved => {
+      if (saved) setTasks(saved);
+      setLoaded(true);
+    });
+  }, []);
+
+  // Fetch from API if backend is live
+  useEffect(() => {
+    if (!loaded) return;
     operationsApi.getHkTasks(() => []).then(apiTasks => {
       if (apiTasks.length > 0) setTasks(apiTasks as any);
     });
-  }, []);
+  }, [loaded]);
 
   const getTask = useCallback((room: string) => tasks.find(t => t.room === room), [tasks]);
 
@@ -63,7 +75,9 @@ export function HousekeepingProvider({ children }: { children: React.ReactNode }
       if (task) {
         operationsApi.updateHkTask(task.id, { status: status as any }, () => {});
       }
-      return prev.map(t => t.room === room ? { ...t, status } : t);
+      const next = prev.map(t => t.room === room ? { ...t, status } : t);
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+      return next;
     });
   }, []);
 
@@ -73,12 +87,18 @@ export function HousekeepingProvider({ children }: { children: React.ReactNode }
       if (task) {
         operationsApi.updateHkTask(task.id, { assigned_to: cleaner } as any, () => {});
       }
-      return prev.map(t => t.room === room ? { ...t, cleaner } : t);
+      const next = prev.map(t => t.room === room ? { ...t, cleaner } : t);
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+      return next;
     });
   }, []);
 
   const updateNotes = useCallback((room: string, notes: string) => {
-    setTasks(prev => prev.map(t => t.room === room ? { ...t, notes } : t));
+    setTasks(prev => {
+      const next = prev.map(t => t.room === room ? { ...t, notes } : t);
+      persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
+      return next;
+    });
   }, []);
 
   const summaryStats = {

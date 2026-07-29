@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { safeGoBack } from "@/lib/utils";
 
-const SUPERADMIN = '#8E44AD';
+const ACCENT = '#7C3AED';
 
 const INITIAL_FLAGS = [
   { id: '1', name: 'Multi-Language', description: 'Enable multi-language support across all tenant dashboards', enabled: true, environments: ['Production', 'Staging'], rollout: 100 },
@@ -19,45 +18,50 @@ export default function FeatureFlagsScreen() {
   const [flags, setFlags] = useState(INITIAL_FLAGS);
   const [search, setSearch] = useState('');
 
-  const toggleFlag = (id: string) => setFlags(prev => prev.map(f => f.id === id ? { ...f, enabled: !f.enabled } : f));
-  const setRollout = (id: string, val: number) => setFlags(prev => prev.map(f => f.id === id ? { ...f, rollout: Math.max(0, Math.min(100, val)) } : f));
+  const toggle = (id: string) => setFlags(prev => prev.map(f => f.id === id ? { ...f, enabled: !f.enabled } : f));
   const filtered = flags.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} contentInsetAdjustmentBehavior="automatic">
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color={SUPERADMIN} />
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
+            <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Feature Flags</Text>
         </View>
 
         <View style={s.searchBox}>
-          <IconSymbol name="search" size={16} color={GRAY[400]} />
-          <TextInput placeholder="Search flags..." placeholderTextColor={GRAY[400]} value={search} onChangeText={setSearch} style={s.searchInput} />
+          <IconSymbol name="search" size={16} color="#94A3B8" />
+          <TextInput placeholder="Search flags..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch} style={s.searchInput} />
         </View>
 
         {filtered.map(flag => (
-          <View key={flag.id} style={[s.flagCard, { borderLeftColor: flag.enabled ? '#10B981' : '#6B7280' }]}>
-            <View style={s.flagTop}>
-              <Text style={s.flagName}>{flag.name}</Text>
-              <Switch value={flag.enabled} onValueChange={() => toggleFlag(flag.id)}
-                trackColor={{ false: GRAY[200], true: SUPERADMIN + '60' }} thumbColor={flag.enabled ? SUPERADMIN : '#9CA3AF'} />
-            </View>
-            <Text style={s.flagDesc}>{flag.description}</Text>
-            <View style={s.envRow}>
-              {flag.environments.map(env => (
-                <View key={env} style={[s.envBadge, { backgroundColor: env === 'Production' ? '#10B98115' : '#F59E0B15' }]}>
-                  <Text style={[s.envText, { color: env === 'Production' ? '#10B981' : '#F59E0B' }]}>{env}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={s.rolloutRow}>
-              <Text style={s.rolloutLabel}>Rollout: {flag.rollout}%</Text>
-              <View style={s.rolloutBarBg}>
-                <View style={[s.rolloutBar, { width: `${flag.rollout}%`, backgroundColor: flag.enabled ? '#10B981' : '#9CA3AF' }]} />
+          <View key={flag.id} style={[s.card, { borderLeftColor: flag.enabled ? '#10B981' : '#CBD5E1' }]}>
+            <View style={s.cardTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.flagName}>{flag.name}</Text>
+                <Text style={s.flagDesc}>{flag.description}</Text>
               </View>
+              <Switch
+                value={flag.enabled}
+                onValueChange={() => toggle(flag.id)}
+                trackColor={{ false: '#E2E8F0', true: ACCENT + '50' }}
+                thumbColor={flag.enabled ? ACCENT : '#94A3B8'}
+              />
+            </View>
+            <View style={s.metaRow}>
+              <View style={s.envRow}>
+                {flag.environments.map(env => (
+                  <View key={env} style={[s.envBadge, { backgroundColor: env === 'Production' ? '#10B98112' : '#F59E0B12' }]}>
+                    <Text style={[s.envText, { color: env === 'Production' ? '#10B981' : '#F59E0B' }]}>{env}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={s.rolloutBar}>
+                <View style={[s.rolloutFill, { width: `${flag.rollout}%`, backgroundColor: flag.enabled ? '#10B981' : '#CBD5E1' }]} />
+              </View>
+              <Text style={s.rolloutLabel}>{flag.rollout}%</Text>
             </View>
           </View>
         ))}
@@ -67,22 +71,22 @@ export default function FeatureFlagsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  scroll: { padding: SPACING.xl, paddingTop: 60, gap: SPACING.lg },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 44, height: 44, borderRadius: RADIUS.modal, backgroundColor: SUPERADMIN + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...TYPOGRAPHY.h2, color: SRS.navy, flex: 1 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: GRAY[100], borderRadius: 14, paddingHorizontal: 14, height: 46 },
-  searchInput: { flex: 1, fontSize: 15, color: SRS.navy, padding: 0 },
-  flagCard: { padding: SPACING.lg, borderRadius: 20, backgroundColor: '#FFF', borderLeftWidth: 4, ...SHADOWS.card },
-  flagTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  flagName: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy, flex: 1 },
-  flagDesc: { ...TYPOGRAPHY.small, color: GRAY[500], marginBottom: 12 },
-  envRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  envBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  envText: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  rolloutRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rolloutLabel: { ...TYPOGRAPHY.caption, color: GRAY[500], width: 80 },
-  rolloutBarBg: { flex: 1, height: 8, borderRadius: 4, backgroundColor: GRAY[100], overflow: 'hidden' },
-  rolloutBar: { height: '100%', borderRadius: 4 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF', borderRadius: 14, paddingHorizontal: 14, height: 44, borderWidth: 1, borderColor: '#E2E8F0' },
+  searchInput: { flex: 1, fontSize: 15, color: '#0F172A', padding: 0 },
+  card: { padding: 16, borderRadius: 14, backgroundColor: '#FFF', borderLeftWidth: 4, borderWidth: 1, borderColor: '#F1F5F9' },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  flagName: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  flagDesc: { fontSize: 13, color: '#64748B', marginTop: 3 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  envRow: { flexDirection: 'row', gap: 6 },
+  envBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 },
+  envText: { fontSize: 11, fontWeight: '700' },
+  rolloutBar: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F1F5F9', overflow: 'hidden' },
+  rolloutFill: { height: '100%', borderRadius: 3 },
+  rolloutLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', width: 32, textAlign: 'right' },
 });

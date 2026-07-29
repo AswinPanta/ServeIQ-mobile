@@ -1,5 +1,5 @@
 import { PlatformPressable } from "expo-router/react-navigation";
-import { impactAsync } from "expo-haptics";
+import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import type { ReactNode } from "react";
 
 export function HapticTab({ children, ...rest }: Record<string, any>) {
@@ -8,7 +8,7 @@ export function HapticTab({ children, ...rest }: Record<string, any>) {
       {...rest}
       onPressIn={(ev: any) => {
         if (process.env.EXPO_OS === "ios") {
-          impactAsync("light");
+          impactAsync(ImpactFeedbackStyle.Light);
         }
         rest.onPressIn?.(ev);
       }}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,8 @@ import { ScarcityBadge } from '@/components/feature/scarcity-badge';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { useRoomStore } from '@/stores/useRoomStore';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import { getPropertyById } from '@/lib/api';
+import type { Hotel } from '@/types/api';
 import { cn, safeGoBack } from '@/lib/utils';
 
 export default function HotelDetailScreen() {
@@ -28,10 +30,16 @@ export default function HotelDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
 
-  const hotel = useMemo(
-    () => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0],
-    [id]
-  );
+  const [hotel, setHotel] = useState<Hotel>(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await getPropertyById(id as string);
+      if (!cancelled && result) setHotel(result);
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const roomStoreRooms = useRoomStore((s) => s.rooms);
 

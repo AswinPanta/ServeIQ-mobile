@@ -11,13 +11,14 @@ type TabKey = 'rate-plans' | 'pricing-calendar' | 'date-overrides' | 'discount-c
 function MinRateFloorCard({
   property, currency, colors, onSave, ratePlans, roomTypeMap,
 }: {
-  property: { id: string; name: string; min_rate_floor: number };
+  property: { id: string; name: string; min_rate_floor?: number };
   currency: string;
   colors: { surface: string; border: string; foreground: string; muted: string; background: string };
   onSave: (val: number) => void;
   ratePlans: { base_rate_per_room_type: Record<string, number>; rate_type: string; weekday_rate?: Record<string, number>; weekend_rate?: Record<string, number> }[];
   roomTypeMap: Map<string, string>;
 }) {
+  'use no memo';
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(property.min_rate_floor));
 
@@ -36,7 +37,7 @@ function MinRateFloorCard({
     }
   }
 
-  const floor = property.min_rate_floor;
+  const floor = property.min_rate_floor ?? 0;
   const violations = allRates.filter(r => r.rate < floor);
 
   return (
@@ -99,6 +100,7 @@ function MinRateFloorCard({
 }
 
 export function HostPricing() {
+  'use no memo';
   const colors = useColors();
   const {
     properties, activePropertyId, ratePlans, dateOverrides, discountCodes,
@@ -289,6 +291,7 @@ export function HostPricing() {
     if (isNaN(price) || price <= 0) { Alert.alert('Error', 'Enter a valid override price'); return; }
     const firstRp = filteredRatePlans[0];
     addDateOverride({
+      // eslint-disable-next-line react-hooks/purity
       id: `do-${Date.now()}`,
       property_id: activePropertyId || '',
       room_type_id: newOverrideRoomTypeId,

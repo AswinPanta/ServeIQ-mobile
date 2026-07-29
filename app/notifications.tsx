@@ -59,7 +59,7 @@ export default function NotificationsScreen() {
           <View style={{ padding: 40, alignItems: 'center' }}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔔</Text>
             <Text className="text-lg font-bold text-foreground">No notifications</Text>
-            <Text className="text-sm text-muted text-center mt-1">You're all caught up!</Text>
+            <Text className="text-sm text-muted text-center mt-1">{"You\u2019re all caught up!"}</Text>
           </View>
         ) : (
           <View className="gap-3">

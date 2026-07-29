@@ -5,11 +5,28 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useAuth } from '@/lib/context/auth-context';
 import { safeGoBack } from '@/lib/utils';
+
+const STORAGE_KEY = 'stayeasy_dining_reservations';
+
+interface DiningReservation {
+  id: string;
+  restaurantId: string;
+  restaurantName: string;
+  section: string;
+  date: string;
+  time: string;
+  partySize: number;
+  contactPhone: string;
+  specialRequests: string;
+  createdAt: string;
+  guestEmail?: string;
+}
 const ACCENT = '#E63946';
 
 const RESTAURANTS = [
@@ -81,11 +98,37 @@ export default function DiningReservationsScreen() {
 
   const handleConfirm = () => {
     if (!selectedRestaurant || !selectedSection || !timeSlot) return;
-    Alert.alert(
-      'Reservation Confirmed!',
-      `Table at ${selectedRestaurant.name}\n${selectedSection}\n${date} at ${timeSlot}\n${partySize} guest${partySize > 1 ? 's' : ''}\n\nA confirmation has been sent to your email and phone.`,
-      [{ text: 'Done', onPress: () => safeGoBack() }]
-    );
+    const reservation: DiningReservation = {
+      // eslint-disable-next-line react-hooks/purity
+      id: `DR-${Date.now().toString(36).toUpperCase()}`,
+      restaurantId: selectedRestaurant.id,
+      restaurantName: selectedRestaurant.name,
+      section: selectedSection,
+      date,
+      time: timeSlot,
+      partySize,
+      contactPhone,
+      specialRequests,
+      createdAt: new Date().toISOString(),
+      guestEmail: (user && 'email' in user ? (user as any).email : undefined) || undefined,
+    };
+
+    // RS-003 — persist locally so the guest sees it in their profile and
+    // can act on it (cancel / modify) on a subsequent session.
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then(raw => {
+        const list: DiningReservation[] = raw ? JSON.parse(raw) : [];
+        list.push(reservation);
+        return AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      })
+      .catch(() => {/* persistence is best-effort */})
+      .finally(() => {
+        Alert.alert(
+          'Reservation Confirmed!',
+          `${reservation.id}\n\n${selectedRestaurant.name}\n${selectedSection}\n${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${timeSlot}\n${partySize} guest${partySize > 1 ? 's' : ''}\n\nA confirmation has been sent to ${reservation.guestEmail || contactPhone || 'your account'}.`,
+          [{ text: 'Done', onPress: () => safeGoBack() }],
+        );
+      });
   };
 
   return (
@@ -98,10 +141,13 @@ export default function DiningReservationsScreen() {
             >
               <Text className="text-lg">←</Text>
             </TouchableOpacity>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text className="text-2xl font-bold text-foreground">Dining Reservations</Text>
               <Text className="text-sm text-muted">Book a table at your favorite restaurant</Text>
             </View>
+            <TouchableOpacity onPress={() => router.push('/restaurant-menu')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: ACCENT + '15' }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>View Menu</Text>
+            </TouchableOpacity>
           </View>
 
           {step === 'restaurant' && (

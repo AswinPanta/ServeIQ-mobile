@@ -1,34 +1,9 @@
-# Task 5 Report: Folio / Invoice Breakdown (BK-020)
+# Task 5: Coupons Screen — Complete
 
-## Status: DONE
+**Status:** ✅ Done
 
-## Commits
+**Files:**
+- `app/(tabs)/profile/coupons.tsx` — Full coupons screen with SectionList (Active / Expired), coupon cards with code (monospace bold), description, expiry countdown, copy via `expo-clipboard` with "Copied!" feedback, muted expired cards, empty states with ticket icon.
+- `components/ui/icon-symbol.tsx` — Added `confirmation-number` and `content.copy` icon mappings.
 
-| SHA | Subject |
-|-----|---------|
-| `75b83a7` | feat(BK-020): add folio breakdown and dynamic cancellation policy |
-
-## Files Created
-
-- `components/feature/folio-breakdown.tsx` — Reusable price breakdown component with line items, subtotal, tax, discount, and total display. Exports `FolioItem` interface and `FolioBreakdown` component.
-
-## Files Modified
-
-- `app/booking-confirmation.tsx`:
-  - Imported `FolioBreakdown` and `FolioItem` type
-  - Replaced simple "Price Breakdown" card (single total line) with `<FolioBreakdown>` showing per-line-item breakdown, subtotal, tax, and total
-  - Added dedicated "Cancellation Policy" section with dynamic text (free cancel 24h before check-in, 1 night charge otherwise)
-
-## Test Summary
-
-Metro bundler starts successfully; TypeScript reports no new errors in modified files (pre-existing error in `auth-context.tsx` unrelated to this task).
-
-## Code Style Compliance
-
-- No `className` on `TouchableOpacity` — all inline styles used
-- `useColors()` hook used for theme colors
-- Component follows existing patterns in `components/feature/`
-
-## Report Path
-
-`/Users/admin/Desktop/Stay_Easy/stayeasy/.superpowers/sdd/task-5-report.md`
+**Pattern:** Coral (#E63946) accent, matched card styling from profile/index.tsx coupon section. Back arrow header.

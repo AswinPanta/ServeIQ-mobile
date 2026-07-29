@@ -1,15 +1,16 @@
-# SRS 4.3 Booking Engine — Progress Ledger
+# StickySearchHeader + ScrollRestoration — Progress Ledger
 
-Base commit: 3d369d37b3dc7aa749126792c6789d6c32284375
+Base commit: 63e8ab124ab6e0acd69f680eaccc4eb34f279350
 
 | Task | Status | Commits | Review |
 |------|--------|---------|--------|
-| 1: Mock data layer | DONE | 9743829 | ✅ |
-| 2: BK-005 Discount codes | DONE | 4579a4c | ✅ |
-| 3: BK-007 Urgency badge | DONE | 91c6c42 | ✅ |
-| 4: BK-011 Checkout timer | DONE | c227485 | ✅ |
-| 5: BK-020 Folio breakdown | DONE | 75b83a7 | ✅ |
-| 6: BK-017 Cancel with policy | DONE | f3dd9e7 | ✅ |
-| 7: BK-001 Children/rooms search | DONE | fbc6136 | ✅ |
-| 8: BK-003 Filter logic | DONE | 9134874 | ✅ |
-| 9: BK-016 Modify booking | DONE | 870eb88 | ✅ |
+| 1: Create StickySearchHeader component | DONE | 2bc16a5 | ✅ |
+| 2: Create useScrollRestoration hook | DONE | 8c216f1 | ✅ |
+| 3: Wire into guest-search-results.tsx | DONE | dc8aa47 | ✅ |
+| 4: Wire into search-results.tsx | DONE | b3c7f33 | ✅ |
+| 5: Wire into (tabs)/search.tsx | DONE | 4e144fa | ✅ |
+| 6: Wire into (tabs)/index.tsx | DONE | 24d7dd1 | ✅ |
+| 7: Install react-native-razorpay | DONE | d045545 | ✅ |
+| 8: Create Razorpay types | DONE | 595086d | ✅ |
+| 9: Create useRazorpay hook | DONE | 35d4307 | ✅ |
+| 10: Wire Razorpay into booking-flow.tsx | DONE | f3841a2 | ✅ |

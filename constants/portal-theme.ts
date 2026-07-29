@@ -11,7 +11,7 @@
 /** Semantic color tokens per portal */
 export const PORTAL_ACCENTS = {
   guest: '#E74C3C',
-  host: '#2980B9',
+  host: '#2E86AB',
   operations: '#2E86AB',
   superadmin: '#8E44AD',
 } as const;
@@ -64,15 +64,36 @@ export const STATUS_COLORS = {
   platinum: '#E5E4E2',
 } as const;
 
-/** Typography scale per SRS */
+/** Typography scale per SRS + Figma fonts */
 export const TYPOGRAPHY = {
-  h1: { fontSize: 32, lineHeight: 38.4, fontFamily: 'PlayfairDisplay' },
-  h2: { fontSize: 24, lineHeight: 28.8, fontFamily: 'PlayfairDisplay' },
-  h3: { fontSize: 20, lineHeight: 24, fontFamily: 'Inter' },
-  subtitle: { fontSize: 16, lineHeight: 24, fontFamily: 'Inter' },
-  body: { fontSize: 14, lineHeight: 21, fontFamily: 'Inter' },
-  small: { fontSize: 12, lineHeight: 18, fontFamily: 'Inter' },
-  caption: { fontSize: 10, lineHeight: 14, fontFamily: 'Inter' },
+  h1: { fontSize: 32, lineHeight: 38.4, fontFamily: 'PlayfairDisplay_700Bold' },
+  h2: { fontSize: 24, lineHeight: 28.8, fontFamily: 'PlayfairDisplay_700Bold' },
+  h3: { fontSize: 20, lineHeight: 24, fontFamily: 'PlayfairDisplay_700Bold' },
+  subtitle: { fontSize: 16, lineHeight: 24, fontFamily: 'Inter_400Regular' },
+  body: { fontSize: 14, lineHeight: 21, fontFamily: 'Inter_400Regular' },
+  small: { fontSize: 12, lineHeight: 18, fontFamily: 'Inter_400Regular' },
+  caption: { fontSize: 10, lineHeight: 14, fontFamily: 'Inter_400Regular' },
+} as const;
+
+/** Figma-specific font families */
+export const FONTS = {
+  russoOne: 'RussoOne_400Regular',
+  inknutAntiqua: 'InknutAntiqua_400Regular',
+  itim: 'Itim_400Regular',
+  abhayaLibre: 'AbhayaLibre_500Medium',
+  calistoga: 'Calistoga_400Regular',
+  sora: 'Sora_700Bold',
+  playfairDisplay: {
+    regular: 'PlayfairDisplay_400Regular',
+    semiBold: 'PlayfairDisplay_600SemiBold',
+    bold: 'PlayfairDisplay_700Bold',
+  },
+  inter: {
+    regular: 'Inter_400Regular',
+    medium: 'Inter_500Medium',
+    semiBold: 'Inter_600SemiBold',
+    bold: 'Inter_700Bold',
+  },
 } as const;
 
 /** Gray palette tokens for consistency */
@@ -102,16 +123,17 @@ export const SPACING = {
   huge: 64,
 } as const;
 
-/** Border radius tokens per SRS */
+/** Border radius tokens per SRS + Figma */
 export const RADIUS = {
   badge: 4,
   button: 6,
   card: 8,
   modal: 12,
+  input: 8,
   full: 9999,
 } as const;
 
-/** Shadow tokens per SRS */
+/** Shadow tokens per SRS + Figma */
 export const SHADOWS = {
   card: {
     shadowColor: '#000',
@@ -134,6 +156,25 @@ export const SHADOWS = {
     shadowRadius: 12,
     elevation: 6,
   },
+} as const;
+
+/** Figma-exact border & background tokens */
+export const FIGMA_COLORS = {
+  cardBorder: '#F3F4F6',
+  pageBg: '#F9FAFB',
+  inputBg: '#FFFFFF',
+  inputBorder: '#E5E7EB',
+  sectionBg: '#F3F4F6',
+  infoBg: '#EFF6FF',
+  infoBorder: '#BFDBFE',
+  successBg: '#F0FDF4',
+  successBorder: '#DCFCE7',
+  successText: '#1E8449',
+  dangerBg: '#FEF2F2',
+  headingText: '#1A3C5E',
+  bodyText: '#4B5563',
+  secondaryText: '#6B7280',
+  mutedText: '#9CA3AF',
 } as const;
 
 export const ACCENT = PORTAL_ACCENTS.operations;

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/lib/context/auth-context';
 import type {
   Property,
   RoomTypeDef,
@@ -74,9 +75,13 @@ interface HostContextType {
   bookings: typeof mockBookings;
   activePropertyId: string | null;
   setActivePropertyId: (id: string | null) => void;
+  isDataLoading: boolean;
+  fetchHostData: () => void;
+  refreshRooms: (propertyId?: string) => void;
 
   addProperty: (p: Property) => void;
   updateProperty: (id: string, updates: Partial<Property>) => void;
+  togglePropertyActivation: (id: string) => void;
   removeProperty: (id: string) => void;
 
   addRoomType: (rt: RoomTypeDef) => void;
@@ -123,6 +128,10 @@ interface HostContextType {
   getFilteredRoomTypes: (propertyId: string) => RoomTypeDef[];
   getFilteredStaff: (propertyId: string) => StaffMember[];
   getFilteredBookings: (propertyId: string) => typeof mockBookings;
+
+  setPropertyCoverPhoto: (propertyId: string, imageUri: string) => Promise<void>;
+  addPropertyGalleryPhotos: (propertyId: string, imageUris: string[]) => Promise<void>;
+  removePropertyGalleryPhoto: (propertyId: string, photoUrl: string) => Promise<void>;
 }
 
 const HostContext = createContext<HostContextType | undefined>(undefined);
@@ -137,6 +146,7 @@ function genId(prefix: string) {
 }
 
 export function HostProvider({ children }: { children: React.ReactNode }) {
+  const { isSignedIn, portal, isLoading: authLoading } = useAuth();
   const [properties, setProperties] = useState<Property[]>([...mockProperties]);
   const [roomTypes, setRoomTypes] = useState<RoomTypeDef[]>([...mockRoomTypeDefs]);
   const [rooms, setRooms] = useState<AdminRoom[]>([...mockAdminRooms]);
@@ -149,7 +159,11 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   const [shifts, setShifts] = useState<Shift[]>([...mockShifts]);
   const [staffTasks, setStaffTasks] = useState<StaffTask[]>([...mockStaffTasks]);
   const [bookings] = useState([...mockBookings]);
+  const [apiBookings, setApiBookings] = useState<any[]>([]);
   const [activePropertyId, setActivePropertyIdState] = useState<string | null>('prop-1');
+  const [isDataLoading, setIsDataLoading] = useState(true);
+
+  const isHostReady = isSignedIn && portal === 'host';
 
   /**
    * Wrapper that saves the host's selected property to AsyncStorage so the
@@ -166,20 +180,108 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     }
   }, [properties]);
 
-  // Try loading real data from backend on mount, fall back to mock data
-  useEffect(() => {
+  // Transform API property shape to our Property type
+  const mapApiProperty = useCallback((p: any): Property => ({
+    id: p.id,
+    tenant_id: p.tenant_id || '',
+    name: p.name || '',
+    type: p.type || 'HOTEL',
+    description: p.description || '',
+    country: p.country || '',
+    state: p.state || '',
+    city: p.city || '',
+    zip_code: p.zip_code || '',
+    address: p.address || '',
+    latitude: p.latitude ?? 0,
+    longitude: p.longitude ?? 0,
+    check_in_time_from: p.check_in_time || '2:00 PM',
+    check_in_time_to: '12:00 AM',
+    check_out_time_from: '12:00 AM',
+    check_out_time_to: p.check_out_time || '11:00 AM',
+    number_of_floors: p.number_of_floors || 1,
+    total_rooms: p.total_rooms || 0,
+    year_built: p.year_built || 0,
+    amenities: [
+      ...(p.system_amenities || []).map((a: any) => a.name),
+      ...(p.custom_amenities || []).map((a: any) => a.name),
+    ],
+    is_active: p.is_active ?? true,
+    currency: p.currency || 'USD',
+    timezone: p.timezone || 'UTC',
+    brand_color: p.brand_color,
+    min_rate_floor: p.min_rate_floor || 0,
+    logo_url: p.brand_logo_url || null,
+    custom_domain: p.custom_domain || null,
+    cancellation_policy: p.cancellation_policy || 'MODERATE',
+    photos: [
+      ...(p.photos?.cover ? [{ id: 'cover', photo_url: p.photos.cover, category: 'cover' }] : []),
+      ...(p.photos?.gallery || []).map((url: string, i: number) => ({
+        id: `gallery-${i}`, photo_url: url, category: 'gallery',
+      })),
+    ],
+    created_at: p.created_at || new Date().toISOString(),
+    updated_at: p.updated_at || new Date().toISOString(),
+  }), []);
+
+  // Load real data from backend when host auth is ready, fall back to mock data
+  const fetchHostData = useCallback(() => {
+    setIsDataLoading(true);
     hostApi.getProperties(() => []).then(apiProps => {
       if (apiProps.length > 0) {
-        setProperties(apiProps);
-        setActivePropertyIdState(apiProps[0].id);
+        const mapped = apiProps.map(mapApiProperty);
+        setProperties(mapped);
+        setActivePropertyIdState(mapped[0].id);
       }
+    }).finally(() => setIsDataLoading(false));
+  }, [mapApiProperty]);
+
+  useEffect(() => {
+    if (isHostReady && !authLoading) {
+      fetchHostData();
+    }
+  }, [isHostReady, authLoading, fetchHostData]);
+
+  // Transform API room to AdminRoom shape
+  const mapApiRoom = useCallback((r: any): AdminRoom => ({
+    id: r.id,
+    property_id: r.property_id || activePropertyId || '',
+    room_type_id: r.room_type_id || '',
+    room_name: r.room_name || '',
+    floor_number: r.floor_number ?? 1,
+    max_adults: r.max_adults ?? 2,
+    max_children: r.max_children ?? 0,
+    max_occupancy: r.max_occupancy ?? (r.max_adults ?? 2) + (r.max_children ?? 0),
+    base_rate: parseFloat(r.base_rate) || 0,
+    status: r.status || 'AVAILABLE',
+    smoking: r.smoking ?? false,
+    accessible: r.accessible ?? false,
+    cancellation_policy: r.cancellation_policy || 'MODERATE',
+    cancellation_notes: r.cancellation_description || null,
+    photos: [
+      ...(r.photos?.cover ? [r.photos.cover] : []),
+      ...(r.photos?.gallery || []),
+    ],
+    amenities: [
+      ...(r.custom_amenities || []).map((a: any) => a.name),
+    ],
+    blocked_dates: [],
+    maintenance_return_date: null,
+    created_at: r.created_at || new Date().toISOString(),
+    updated_at: r.updated_at || new Date().toISOString(),
+  }), [activePropertyId]);
+
+  const refreshRooms = useCallback((propertyId?: string) => {
+    const pid = propertyId || activePropertyId;
+    if (!pid) return;
+    hostApi.getRooms(pid, () => []).then(apiRooms => {
+      if (apiRooms.length > 0) setRooms(apiRooms.map(r => mapApiRoom({ ...r, property_id: pid })));
     });
-  }, []);
+  }, [activePropertyId, mapApiRoom]);
 
   useEffect(() => {
     if (activePropertyId) {
       hostApi.getRooms(activePropertyId, () => []).then(apiRooms => {
-        if (apiRooms.length > 0) setRooms(apiRooms);
+        if (apiRooms.length > 0) setRooms(apiRooms.map(r => mapApiRoom({ ...r, property_id: activePropertyId })));
       });
       hostApi.getDiscountCodes(activePropertyId, () => []).then(apiCodes => {
         if (apiCodes.length > 0) setDiscountCodes(apiCodes);
@@ -187,8 +289,23 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
       hostApi.getSpecialOffers(activePropertyId, () => []).then(apiOffers => {
         if (apiOffers.length > 0) setSpecialOffers(apiOffers);
       });
+      hostApi.getPropertyBookings(activePropertyId, () => []).then(apiData => {
+        if (apiData.length > 0) {
+          setApiBookings(apiData.map((b: any) => ({
+            id: b.id,
+            property_id: activePropertyId,
+            guest_name: b.guest_name || 'Guest',
+            room_name: (b.room_names || []).join(', '),
+            check_in: b.checkin_date || '',
+            check_out: b.checkout_date || '',
+            status: b.status || 'pending',
+            total: parseFloat(b.total_amount) || 0,
+            created_at: b.created_at || new Date().toISOString(),
+          })));
+        }
+      });
     }
-  }, [activePropertyId]);
+  }, [activePropertyId, mapApiRoom]);
 
   const now = () => new Date().toISOString();
 
@@ -292,6 +409,100 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const togglePropertyActivation = useCallback((id: string) => {
+    hostApi.toggleActivation(id, () => ({})).then(() => {
+      setProperties(prev => prev.map(p =>
+        p.id === id ? { ...p, is_active: !p.is_active, updated_at: now() } : p
+      ));
+    });
+  }, []);
+
+  const setPropertyCoverPhoto = useCallback(async (propertyId: string, imageUri: string) => {
+    const formData = new FormData();
+    formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'cover.jpg' } as any);
+    const result = await hostApi.uploadPropertyImage(propertyId, formData);
+    const url = result?.data || result;
+    if (url) {
+      const current = properties.find(p => p.id === propertyId);
+      const existingGallery = current?.photos
+        .filter(ph => ph.category === 'gallery')
+        .map(ph => ph.photo_url) || [];
+      await hostApi.createPhotosAndAmenities(propertyId, {
+        photos: { cover: url, gallery: existingGallery },
+      }, () => null);
+      setProperties(prev => prev.map(p =>
+        p.id === propertyId ? {
+          ...p,
+          photos: [
+            ...p.photos.filter(ph => ph.category !== 'cover'),
+            { id: 'cover', photo_url: url, category: 'cover' },
+          ],
+          updated_at: now(),
+        } : p
+      ));
+    }
+  }, [properties]);
+
+  const addPropertyGalleryPhotos = useCallback(async (propertyId: string, imageUris: string[]) => {
+    const formData = new FormData();
+    imageUris.forEach(uri => {
+      formData.append('files', { uri, type: 'image/jpeg', name: `photo_${Date.now()}.jpg` } as any);
+    });
+    const result = await hostApi.uploadPropertyImages(propertyId, formData);
+    const newUrls: string[] = result?.data || result;
+    if (newUrls && Array.isArray(newUrls) && newUrls.length > 0) {
+      const current = properties.find(p => p.id === propertyId);
+      const existingGallery = current?.photos
+        .filter(ph => ph.category === 'gallery')
+        .map(ph => ph.photo_url) || [];
+      const allGallery = [...existingGallery, ...newUrls];
+      await hostApi.createPhotosAndAmenities(propertyId, {
+        photos: {
+          cover: current?.photos.find(p => p.category === 'cover')?.photo_url || null,
+          gallery: allGallery,
+        },
+      }, () => null);
+      setProperties(prev => prev.map(p =>
+        p.id === propertyId ? {
+          ...p,
+          photos: [
+            ...p.photos.filter(ph => ph.category === 'cover'),
+            ...allGallery.map((url: string, i: number) => ({
+              id: `gallery-${Date.now()}-${i}`, photo_url: url, category: 'gallery',
+            })),
+          ],
+          updated_at: now(),
+        } : p
+      ));
+    }
+  }, [properties]);
+
+  const removePropertyGalleryPhoto = useCallback(async (propertyId: string, photoUrl: string) => {
+    const current = properties.find(p => p.id === propertyId);
+    if (!current) return;
+    const existingGallery = current.photos
+      .filter(ph => ph.category === 'gallery' && ph.photo_url !== photoUrl)
+      .map(ph => ph.photo_url);
+    await hostApi.createPhotosAndAmenities(propertyId, {
+      photos: {
+        cover: current.photos.find(p => p.category === 'cover')?.photo_url || null,
+        gallery: existingGallery,
+      },
+    }, () => null);
+    setProperties(prev => prev.map(p =>
+      p.id === propertyId ? {
+        ...p,
+        photos: [
+          ...p.photos.filter(ph => ph.category === 'cover'),
+          ...existingGallery.map((url: string, i: number) => ({
+            id: `gallery-${Date.now()}-${i}`, photo_url: url, category: 'gallery',
+          })),
+        ],
+        updated_at: now(),
+      } : p
+    ));
+  }, [properties]);
+
   const addRoomType = useCallback((rt: RoomTypeDef) => setRoomTypes(prev => [...prev, rt]), []);
   const updateRoomType = useCallback((id: string, updates: Partial<RoomTypeDef>) => {
     setRoomTypes(prev => prev.map(rt => rt.id === id ? { ...rt, ...updates, updated_at: now() } : rt));
@@ -328,7 +539,7 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addSpecialOffer = useCallback((so: SpecialOffer) => {
-    hostApi.createSpecialOffer(activePropertyId || 'prop-1', so, () => so).then(created => {
+    hostApi.createSpecialOffers(activePropertyId || 'prop-1', { offers: [so] }, () => so).then((created: any) => {
       setSpecialOffers(prev => [...prev, created]);
     });
   }, [activePropertyId]);
@@ -394,14 +605,18 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   const getFilteredRooms = useCallback((propertyId: string) => rooms.filter(r => r.property_id === propertyId), [rooms]);
   const getFilteredRoomTypes = useCallback((propertyId: string) => roomTypes.filter(rt => rt.property_id === propertyId), [roomTypes]);
   const getFilteredStaff = useCallback((propertyId: string) => staff.filter(s => s.property_id === propertyId), [staff]);
-  const getFilteredBookings = useCallback((propertyId: string) => bookings.filter(b => b.property_id === propertyId), [bookings]);
+  const getFilteredBookings = useCallback((propertyId: string) => {
+    const api = apiBookings.filter(b => b.property_id === propertyId);
+    const mock = bookings.filter(b => b.property_id === propertyId);
+    return api.length > 0 ? api : mock;
+  }, [bookings, apiBookings]);
 
   const value: HostContextType = {
     properties, roomTypes, rooms, ratePlans, dateOverrides,
     discountCodes, specialOffers, taxConfigs, staff, shifts, staffTasks, bookings,
-    activePropertyId, setActivePropertyId,
+    activePropertyId, setActivePropertyId, isDataLoading, fetchHostData, refreshRooms,
 
-    addProperty, updateProperty, removeProperty,
+    addProperty, updateProperty, togglePropertyActivation, removeProperty,
     addRoomType, updateRoomType, removeRoomType,
     addRoom, updateRoom, removeRoom, updateRoomStatus,
     addRatePlan, updateRatePlan, removeRatePlan,
@@ -414,6 +629,7 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     addStaffTask, updateStaffTask, removeStaffTask,
 
     getFilteredRooms, getFilteredRoomTypes, getFilteredStaff, getFilteredBookings,
+    setPropertyCoverPhoto, addPropertyGalleryPhotos, removePropertyGalleryPhoto,
   };
 
   return <HostContext.Provider value={value}>{children}</HostContext.Provider>;

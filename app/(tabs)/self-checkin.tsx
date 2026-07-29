@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Image, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -8,6 +8,7 @@ import { useBookings } from '@/lib/context/booking-context';
 import { useCRM } from '@/lib/context/crm-context';
 import * as ImagePicker from 'expo-image-picker';
 import type { GuestProfile } from '@/types/api';
+import { safeGoBack } from "@/lib/utils";
 
 const STEPS = [
   { key: 'select' as const, label: 'Booking' },
@@ -29,6 +30,8 @@ export default function SelfCheckinScreen() {
   const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
   const selectedBooking = selectedBookingId ? bookings.find(b => b.id === selectedBookingId) : null;
   const currentIdx = STEPS.findIndex(s => s.key === step);
+  // eslint-disable-next-line react-hooks/purity
+  const nowTimestamp = useMemo(() => Date.now(), []);
 
   const handleUploadID = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -40,7 +43,7 @@ export default function SelfCheckinScreen() {
   const handleCompleteCheckin = () => {
     if (!idUploaded || !confirmedDetails) { Alert.alert('Incomplete', 'Please upload your ID and confirm your details'); return; }
     if (guest?.id) earnPoints(guest.id, 50);
-    Alert.alert('Self Check-in Complete!', `You have been checked in successfully.\n\n50 bonus loyalty points awarded!\n\nYour digital key has been sent to your registered email.`, [{ text: 'Done', onPress: () => router.back() }]);
+    Alert.alert('Self Check-in Complete!', `You have been checked in successfully.\n\n50 bonus loyalty points awarded!\n\nYour digital key has been sent to your registered email.`, [{ text: 'Done', onPress: () => safeGoBack() }]);
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
@@ -49,7 +52,7 @@ export default function SelfCheckinScreen() {
     <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 40 }}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="arrow.back" size={18} color={SRS.navy} />
         </TouchableOpacity>
         <View>
@@ -85,7 +88,7 @@ export default function SelfCheckinScreen() {
               </View>
             ) : (
               upcomingBookings.map(b => {
-                const isWithin48h = (new Date(b.checkIn).getTime() - Date.now()) < 48 * 60 * 60 * 1000;
+                const isWithin48h = (new Date(b.checkIn).getTime() - nowTimestamp) < 48 * 60 * 60 * 1000;
                 return (
                   <TouchableOpacity key={b.id} onPress={() => { setSelectedBookingId(b.id); setStep('verify'); }}
                     style={[s.bookingCard, { borderColor: selectedBookingId === b.id ? SRS.teal : GRAY[200], opacity: isWithin48h ? 1 : 0.5 }]}
@@ -128,7 +131,7 @@ export default function SelfCheckinScreen() {
             <TouchableOpacity onPress={handleUploadID} style={[s.uploadBox, { borderColor: idUploaded ? SRS.green : GRAY[200], backgroundColor: idUploaded ? SRS.green + '06' : 'transparent' }]}>
               <IconSymbol name="photo" size={28} color={idUploaded ? SRS.green : GRAY[400]} />
               <Text style={{ ...TYPOGRAPHY.body, fontWeight: '600', color: idUploaded ? SRS.green : SRS.navy, marginTop: 4 }}>{idUploaded ? 'ID Uploaded' : 'Tap to Upload ID'}</Text>
-              <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[400] }}>Passport, driver's license, or national ID</Text>
+              <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[400] }}>{'Passport, driver\u2019s license, or national ID'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setConfirmedDetails(!confirmedDetails)} style={[s.confirmRow, { borderColor: confirmedDetails ? SRS.green : GRAY[200], backgroundColor: confirmedDetails ? SRS.green + '06' : '#FFF' }]}>

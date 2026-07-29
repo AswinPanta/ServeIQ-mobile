@@ -41,66 +41,67 @@ async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string
   };
 }
 
+async function fetchCurrentLocation(
+  setLocation: (loc: UserLocation) => void,
+  setError: (err: string | null) => void,
+  setLoading: (loading: boolean) => void
+) {
+  setLoading(true);
+  setError(null);
+  try {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+      if (newStatus !== 'granted') {
+        setError('Location permission denied');
+        setLoading(false);
+        return;
+      }
+    }
+    const loc = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+    const { latitude, longitude } = loc.coords;
+    const geo = await reverseGeocode(latitude, longitude);
+    setLocation({ latitude, longitude, city: geo.city, country: geo.country });
+  } catch (err) {
+    setError('Failed to get location');
+    console.error('Location error:', err);
+  } finally {
+    setLoading(false);
+  }
+}
+
 export function useLocation(): UseLocationResult {
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLocation = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
-        if (newStatus !== 'granted') {
-          setError('Location permission denied');
-          setLoading(false);
-          return;
-        }
-      }
-
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const { latitude, longitude } = loc.coords;
-      const geo = await reverseGeocode(latitude, longitude);
-
-      setLocation({
-        latitude,
-        longitude,
-        city: geo.city,
-        country: geo.country,
-      });
-    } catch (err) {
-      setError('Failed to get location');
-      console.error('Location error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCurrentLocation(
+      (loc) => { if (!cancelled) setLocation(loc); },
+      (err) => { if (!cancelled) setError(err); },
+      (loading) => { if (!cancelled) setLoading(loading); },
+    );
+    return () => { cancelled = true; };
+  }, []);
 
   const requestPermission = async (): Promise<boolean> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status === 'granted') {
-      await fetchLocation();
+      await fetchCurrentLocation(setLocation, setError, setLoading);
       return true;
     }
     return false;
   };
-
-  useEffect(() => {
-    fetchLocation();
-  }, []);
 
   return {
     location,
     loading,
     error,
     requestPermission,
-    refresh: fetchLocation,
+    refresh: () => fetchCurrentLocation(setLocation, setError, setLoading),
   };
 }
 

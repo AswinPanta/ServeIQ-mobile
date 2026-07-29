@@ -25,6 +25,30 @@ export default function AuthLayout() {
           presentation: 'card',
         }}
       />
+      <Stack.Screen
+        name="splash"
+        options={{
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="account-created"
+        options={{
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="forgot-password"
+        options={{
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="create-new-password"
+        options={{
+          presentation: 'card',
+        }}
+      />
     </Stack>
   );
 }

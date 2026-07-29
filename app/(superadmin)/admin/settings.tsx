@@ -2,119 +2,313 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, Alert, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { useSuperAdmin } from '@/lib/context/superadmin-context';
+import { AdminCard } from '@/components/superadmin/AdminCard';
 
-const SUPERADMIN = '#8E44AD';
+const ACCENT = '#7C3AED';
 
 export default function SettingsScreen() {
-  const [platformName, setPlatformName] = useState('StayEasy');
-  const [supportEmail, setSupportEmail] = useState('support@stayeasy.com');
-  const [defaultCurrency, setDefaultCurrency] = useState('NPR');
-  const [mfaEnabled, setMfaEnabled] = useState(false);
-  const [sessionTimeout, setSessionTimeout] = useState('30');
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [maintenanceMessage, setMaintenanceMessage] = useState('Platform is under scheduled maintenance.');
-  const [webhookUrl, setWebhookUrl] = useState('https://hooks.stayeasy.com/events');
-  const handleSave = () => Alert.alert('Settings Saved', 'Platform settings have been updated successfully.');
+  const { settings, updateSettings } = useSuperAdmin();
+  const [local, setLocal] = useState(settings);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    general: true,
+    security: false,
+    notifications: false,
+    maintenance: false,
+  });
+
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const update = (key: keyof typeof local, value: string | boolean) => {
+    setLocal(prev => ({ ...prev, [key]: value }));
+    setHasChanges(true);
+  };
+
+  // Real persistence path: write to superadmin context *and* mirror to
+  // AsyncStorage so refresh / cold-restart keeps the values.
+  const handleSave = async () => {
+    try {
+      updateSettings(local);
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.setItem('stayeasy_superadmin_settings', JSON.stringify(local));
+      setHasChanges(false);
+      Alert.alert('Settings Saved', 'Platform settings have been updated successfully.');
+    } catch (e) {
+      Alert.alert('Save Failed', 'Could not persist settings to local storage.');
+    }
+  };
 
   return (
-    <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color={SUPERADMIN} />
-          </TouchableOpacity>
-          <Text style={s.headerTitle}>Platform Settings</Text>
-        </View>
-
-        {/* General */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>General</Text>
-          <SettingRow label="Platform Name" last={false}>
-            <TextInput value={platformName} onChangeText={setPlatformName} style={s.inputInline} />
-          </SettingRow>
-          <SettingRow label="Support Email" last={false}>
-            <TextInput value={supportEmail} onChangeText={setSupportEmail} style={s.inputInline} keyboardType="email-address" />
-          </SettingRow>
-          <SettingRow label="Default Currency" last={true}>
-            <TextInput value={defaultCurrency} onChangeText={setDefaultCurrency} style={s.inputInline} />
-          </SettingRow>
-        </View>
-
-        {/* Security */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Security</Text>
-          <SettingRow label="Multi-Factor Auth" last={false}>
-            <Switch value={mfaEnabled} onValueChange={setMfaEnabled} trackColor={{ false: GRAY[200], true: SUPERADMIN + '60' }} thumbColor={mfaEnabled ? SUPERADMIN : '#9CA3AF'} />
-          </SettingRow>
-          <SettingRow label="Session Timeout (min)" last={false}>
-            <TextInput value={sessionTimeout} onChangeText={setSessionTimeout} style={[s.inputInline, { width: 50 }]} keyboardType="number-pad" />
-          </SettingRow>
-          <SettingRow label="Password Policy" last={true}>
-            <TouchableOpacity style={s.configBtn} activeOpacity={0.7}>
-              <Text style={[s.configBtnText, { color: SUPERADMIN }]}>Configure</Text>
-            </TouchableOpacity>
-          </SettingRow>
-        </View>
-
-        {/* Notifications */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Notifications</Text>
-          <SettingRow label="Default Email Template" last={false}>
-            <TouchableOpacity style={s.configBtn} activeOpacity={0.7}>
-              <Text style={[s.configBtnText, { color: SUPERADMIN }]}>Edit</Text>
-            </TouchableOpacity>
-          </SettingRow>
-          <SettingRow label="Webhook URL" last={true}>
-            <TextInput value={webhookUrl} onChangeText={setWebhookUrl} style={[s.inputInline, { fontSize: 12 }]} autoCapitalize="none" />
-          </SettingRow>
-        </View>
-
-        {/* Maintenance */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Maintenance</Text>
-          <SettingRow label="Maintenance Mode" last={false}>
-            <Switch value={maintenanceMode} onValueChange={setMaintenanceMode} trackColor={{ false: GRAY[200], true: '#EF444460' }} thumbColor={maintenanceMode ? '#EF4444' : '#9CA3AF'} />
-          </SettingRow>
-          <SettingRow label="Status Message" last={true}>
-            <TextInput value={maintenanceMessage} onChangeText={setMaintenanceMessage} style={[s.inputInline, { fontSize: 12, flex: 1 }]} />
-          </SettingRow>
-        </View>
-
-        <TouchableOpacity onPress={handleSave} style={s.saveBtn} activeOpacity={0.7}>
-          <Text style={s.saveBtnText}>Save Changes</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}
+      contentInsetAdjustmentBehavior="automatic"
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <IconSymbol name="arrow.back" size={18} color={ACCENT} />
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+        <Text style={styles.headerTitle}>Platform Settings</Text>
+      </View>
+
+      {/* General Section */}
+      <TouchableOpacity onPress={() => toggleSection('general')} activeOpacity={0.8}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLeft}>
+            <View style={[styles.sectionIcon, { backgroundColor: '#3B82F612' }]}>
+              <IconSymbol name="settings" size={18} color="#3B82F6" />
+            </View>
+            <Text style={styles.sectionTitle}>General</Text>
+          </View>
+          <IconSymbol name={expandedSections.general ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+        </View>
+      </TouchableOpacity>
+      {expandedSections.general && (
+        <AdminCard style={styles.card}>
+          <Text style={styles.inputLabel}>Platform Name</Text>
+          <TextInput
+            value={local.platformName}
+            onChangeText={v => update('platformName', v)}
+            style={styles.input}
+            placeholder="Platform name"
+            placeholderTextColor="#94A3B8"
+          />
+          <Text style={styles.inputLabel}>Support Email</Text>
+          <TextInput
+            value={local.supportEmail}
+            onChangeText={v => update('supportEmail', v)}
+            style={styles.input}
+            placeholder="Support email"
+            placeholderTextColor="#94A3B8"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Text style={styles.inputLabel}>Default Currency</Text>
+          <TextInput
+            value={local.defaultCurrency}
+            onChangeText={v => update('defaultCurrency', v)}
+            style={[styles.input, { width: 100 }]}
+            placeholder="NPR"
+            placeholderTextColor="#94A3B8"
+          />
+        </AdminCard>
+      )}
+
+      {/* Security Section */}
+      <TouchableOpacity onPress={() => toggleSection('security')} activeOpacity={0.8}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLeft}>
+            <View style={[styles.sectionIcon, { backgroundColor: '#10B98112' }]}>
+              <IconSymbol name="lock" size={18} color="#10B981" />
+            </View>
+            <Text style={styles.sectionTitle}>Security</Text>
+          </View>
+          <IconSymbol name={expandedSections.security ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+        </View>
+      </TouchableOpacity>
+      {expandedSections.security && (
+        <AdminCard style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.switchLabel}>Multi-Factor Authentication</Text>
+              <Text style={styles.switchDesc}>Require MFA for all admin accounts</Text>
+            </View>
+            <Switch
+              value={local.mfaEnabled}
+              onValueChange={v => update('mfaEnabled', v)}
+              trackColor={{ false: '#E2E8F0', true: ACCENT + '50' }}
+              thumbColor={local.mfaEnabled ? ACCENT : '#94A3B8'}
+            />
+          </View>
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.switchLabel}>Session Timeout</Text>
+              <Text style={styles.switchDesc}>Auto-logout after inactivity</Text>
+            </View>
+            <View style={styles.timeoutRow}>
+              <TextInput
+                value={local.sessionTimeout}
+                onChangeText={v => update('sessionTimeout', v)}
+                style={styles.timeoutInput}
+                keyboardType="number-pad"
+              />
+              <Text style={styles.timeoutUnit}>min</Text>
+            </View>
+          </View>
+        </AdminCard>
+      )}
+
+      {/* Notifications Section */}
+      <TouchableOpacity onPress={() => toggleSection('notifications')} activeOpacity={0.8}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLeft}>
+            <View style={[styles.sectionIcon, { backgroundColor: '#F59E0B12' }]}>
+              <IconSymbol name="notifications" size={18} color="#F59E0B" />
+            </View>
+            <Text style={styles.sectionTitle}>Notifications</Text>
+          </View>
+          <IconSymbol name={expandedSections.notifications ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+        </View>
+      </TouchableOpacity>
+      {expandedSections.notifications && (
+        <AdminCard style={styles.card}>
+          <Text style={styles.inputLabel}>Webhook URL</Text>
+          <TextInput
+            value={local.webhookUrl}
+            onChangeText={v => update('webhookUrl', v)}
+            style={styles.input}
+            placeholder="https://hooks.example.com/events"
+            placeholderTextColor="#94A3B8"
+            autoCapitalize="none"
+          />
+          <TouchableOpacity style={styles.configBtn} activeOpacity={0.7}>
+            <IconSymbol name="file" size={16} color={ACCENT} />
+            <Text style={styles.configText}>Edit Email Template</Text>
+          </TouchableOpacity>
+        </AdminCard>
+      )}
+
+      {/* Maintenance Section */}
+      <TouchableOpacity onPress={() => toggleSection('maintenance')} activeOpacity={0.8}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLeft}>
+            <View style={[styles.sectionIcon, { backgroundColor: '#EF444412' }]}>
+              <IconSymbol name="warning" size={18} color="#EF4444" />
+            </View>
+            <Text style={styles.sectionTitle}>Maintenance</Text>
+          </View>
+          <IconSymbol name={expandedSections.maintenance ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+        </View>
+      </TouchableOpacity>
+      {expandedSections.maintenance && (
+        <AdminCard style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.switchLabel}>Maintenance Mode</Text>
+              <Text style={styles.switchDesc}>Temporarily disable platform access</Text>
+            </View>
+            <Switch
+              value={local.maintenanceMode}
+              onValueChange={v => update('maintenanceMode', v)}
+              trackColor={{ false: '#E2E8F0', true: '#EF444450' }}
+              thumbColor={local.maintenanceMode ? '#EF4444' : '#94A3B8'}
+            />
+          </View>
+          {local.maintenanceMode && (
+            <>
+              <Text style={styles.inputLabel}>Status Message</Text>
+              <TextInput
+                value={local.maintenanceMessage}
+                onChangeText={v => update('maintenanceMessage', v)}
+                style={styles.input}
+                placeholder="Maintenance message"
+                placeholderTextColor="#94A3B8"
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </>
+          )}
+        </AdminCard>
+      )}
+
+      {/* Save Button */}
+      {hasChanges && (
+        <TouchableOpacity onPress={handleSave} style={styles.saveBtn} activeOpacity={0.7}>
+          <IconSymbol name="check" size={18} color="#FFF" />
+          <Text style={styles.saveText}>Save Changes</Text>
+        </TouchableOpacity>
+      )}
+    </ScrollView>
   );
 }
 
-function SettingRow({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
-  return (
-    <View style={[rowS.row, !last && rowS.bordered]}>
-      <Text style={rowS.label}>{label}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>{children}</View>
-    </View>
-  );
-}
-
-const rowS = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
-  bordered: { borderBottomWidth: 1, borderBottomColor: GRAY[100] },
-  label: { ...TYPOGRAPHY.body, color: SRS.navy },
-});
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  scroll: { padding: SPACING.xl, paddingTop: 60, gap: SPACING.lg },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 44, height: 44, borderRadius: RADIUS.modal, backgroundColor: SUPERADMIN + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...TYPOGRAPHY.h2, color: SRS.navy, flex: 1 },
-  card: { padding: 18, borderRadius: 20, backgroundColor: '#FFF', ...SHADOWS.card },
-  cardTitle: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.lg },
-  inputInline: { textAlign: 'right', color: SRS.navy, fontSize: 14, fontWeight: '600', padding: 0 },
-  configBtn: { paddingHorizontal: 12, paddingVertical: 14, borderRadius: 8, backgroundColor: SUPERADMIN + '12' },
-  configBtnText: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  saveBtn: { marginTop: 8, paddingVertical: 16, borderRadius: 16, backgroundColor: SUPERADMIN, alignItems: 'center' },
-  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { padding: 20, paddingTop: 8, gap: 6, paddingBottom: 100 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+  },
+  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  card: { marginBottom: 8 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 6, marginTop: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#0F172A',
+    marginBottom: 12,
+    backgroundColor: '#FAFAFA',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  switchLabel: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  switchDesc: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  timeoutRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  timeoutInput: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+    width: 50,
+    textAlign: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  timeoutUnit: { fontSize: 13, color: '#64748B' },
+  configBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: ACCENT + '08',
+    borderWidth: 1,
+    borderColor: ACCENT + '18',
+    marginTop: 4,
+  },
+  configText: { fontSize: 14, fontWeight: '600', color: ACCENT },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: ACCENT,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
 });

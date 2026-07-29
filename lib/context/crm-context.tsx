@@ -170,7 +170,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         email: guest.email,
         phone: guest.phone || '',
         name: guest.name,
-        nationality: guest.nationality,
+        nationality: guest.nationality || '',
         is_verified: false,
         loyalty_points: 0,
         totalStays: 0,

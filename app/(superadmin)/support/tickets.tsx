@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { safeGoBack } from "@/lib/utils";
 
-const SUPERADMIN = '#8E44AD';
+const ACCENT = '#7C3AED';
 const FILTERS = ['All', 'Open', 'In Progress', 'Resolved', 'Closed'] as const;
 
 const TICKETS = [
@@ -19,8 +18,10 @@ const TICKETS = [
 ];
 
 const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  Open: { bg: '#3B82F615', text: '#3B82F6' }, 'In Progress': { bg: '#F59E0B15', text: '#F59E0B' },
-  Resolved: { bg: '#10B98115', text: '#10B981' }, Closed: { bg: '#6B728015', text: '#6B7280' },
+  Open: { bg: '#3B82F612', text: '#3B82F6' },
+  'In Progress': { bg: '#F59E0B12', text: '#F59E0B' },
+  Resolved: { bg: '#10B98112', text: '#10B981' },
+  Closed: { bg: '#6B728012', text: '#6B7280' },
 };
 
 export default function TicketsScreen() {
@@ -29,13 +30,13 @@ export default function TicketsScreen() {
 
   return (
     <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} contentInsetAdjustmentBehavior="automatic">
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color={SUPERADMIN} />
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
+            <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Support Tickets</Text>
-          <View style={[s.urgentBadge, { backgroundColor: '#EF444415' }]}>
+          <View style={[s.urgentBadge, { backgroundColor: '#EF444412' }]}>
             <Text style={s.urgentText}>{TICKETS.filter(t => t.priority === 'Urgent').length} urgent</Text>
           </View>
         </View>
@@ -44,8 +45,8 @@ export default function TicketsScreen() {
           <View style={s.filterRow}>
             {FILTERS.map(f => (
               <TouchableOpacity key={f} onPress={() => setFilter(f)}
-                style={[s.filterChip, { backgroundColor: filter === f ? SUPERADMIN : GRAY[100] }]}>
-                <Text style={[s.filterText, { color: filter === f ? '#FFF' : GRAY[500] }]}>{f}</Text>
+                style={[s.filterChip, filter === f && s.filterActive]}>
+                <Text style={[s.filterText, filter === f && s.filterTextActive]}>{f}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -54,23 +55,23 @@ export default function TicketsScreen() {
         {filtered.map(ticket => {
           const st = STATUS_STYLES[ticket.status];
           return (
-            <TouchableOpacity key={ticket.id} style={[s.ticketCard, { borderLeftColor: ticket.priorityColor }]} activeOpacity={0.7}>
-              <View style={s.ticketTop}>
+            <TouchableOpacity key={ticket.id} style={[s.card, { borderLeftColor: ticket.priorityColor }]} activeOpacity={0.7}>
+              <View style={s.cardTop}>
                 <Text style={s.ticketId}>#{ticket.id}</Text>
-                <View style={[s.ticketStatus, { backgroundColor: st.bg }]}>
-                  <Text style={[s.ticketStatusText, { color: st.text }]}>{ticket.status}</Text>
+                <View style={[s.statusBadge, { backgroundColor: st.bg }]}>
+                  <Text style={[s.statusText, { color: st.text }]}>{ticket.status}</Text>
                 </View>
               </View>
-              <Text style={s.ticketSubject}>{ticket.subject}</Text>
-              <Text style={s.ticketTenant}>{ticket.tenant}</Text>
-              <View style={s.ticketBottom}>
-                <View style={s.ticketMeta}>
-                  <View style={[s.priorityBadge, { backgroundColor: ticket.priorityColor + '15' }]}>
+              <Text style={s.subject}>{ticket.subject}</Text>
+              <Text style={s.tenant}>{ticket.tenant}</Text>
+              <View style={s.cardBottom}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={[s.priorityBadge, { backgroundColor: ticket.priorityColor + '12' }]}>
                     <Text style={[s.priorityText, { color: ticket.priorityColor }]}>{ticket.priority}</Text>
                   </View>
-                  <Text style={s.ticketDate}>{ticket.date}</Text>
+                  <Text style={s.meta}>{ticket.date}</Text>
                 </View>
-                <Text style={s.ticketAssignee}>{ticket.assignee}</Text>
+                <Text style={s.meta}>{ticket.assignee}</Text>
               </View>
             </TouchableOpacity>
           );
@@ -81,27 +82,27 @@ export default function TicketsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  scroll: { padding: SPACING.xl, paddingTop: 60, gap: SPACING.lg },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 44, height: 44, borderRadius: RADIUS.modal, backgroundColor: SUPERADMIN + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...TYPOGRAPHY.h2, color: SRS.navy, flex: 1 },
-  urgentBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  urgentText: { ...TYPOGRAPHY.caption, fontWeight: '700', color: '#EF4444' },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  urgentBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  urgentText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
   filterRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  filterChip: { paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20 },
-  filterText: { ...TYPOGRAPHY.body, fontWeight: '600' },
-  ticketCard: { padding: SPACING.lg, borderRadius: 16, backgroundColor: '#FFF', borderLeftWidth: 4, ...SHADOWS.card },
-  ticketTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  ticketId: { ...TYPOGRAPHY.caption, fontWeight: '700', color: GRAY[400] },
-  ticketStatus: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  ticketStatusText: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  ticketSubject: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy, marginBottom: 4 },
-  ticketTenant: { ...TYPOGRAPHY.caption, color: GRAY[500], marginBottom: 8 },
-  ticketBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  ticketMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  priorityBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  priorityText: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  ticketDate: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  ticketAssignee: { ...TYPOGRAPHY.caption, color: GRAY[500] },
+  filterChip: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  filterActive: { backgroundColor: ACCENT },
+  filterText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  filterTextActive: { color: '#FFF' },
+  card: { padding: 16, borderRadius: 14, backgroundColor: '#FFF', borderLeftWidth: 4, borderWidth: 1, borderColor: '#F1F5F9' },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  ticketId: { fontSize: 12, fontWeight: '700', color: '#94A3B8' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  subject: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 3 },
+  tenant: { fontSize: 13, color: '#64748B', marginBottom: 8 },
+  cardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  priorityBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 5 },
+  priorityText: { fontSize: 11, fontWeight: '700' },
+  meta: { fontSize: 12, color: '#64748B' },
 });

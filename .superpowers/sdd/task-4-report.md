@@ -1,32 +1,29 @@
-# Task 4: Checkout Timer (BK-011) — Report
+# Task 4: Wire Razorpay into booking-flow.tsx — Report
 
 ## Status: DONE
 
 ## Changes Made
 
-### Created
-- `components/feature/checkout-timer.tsx` — 10-minute countdown timer component
-  - Accepts `durationSeconds` (default 600) and `onExpired` callback
-  - Displays `⏱️ Rooms held for MM:SS` with urgent styling when ≤2 min remaining
-  - Uses `useColors()` for theme colors, no `className` on TouchableOpacity
-  - Properly cleans up interval on unmount
-
 ### Modified
 - `app/booking-flow.tsx`:
-  - Imported `CheckoutTimer`
-  - Added `timerExpired` state
-  - Timer displayed at top of booking flow content (before step content)
-  - When timer expires: shows alert and navigates back via `router.back()`
-  - Continue button disabled with 50% opacity when `timerExpired` is true
+  - Added `import { useRazorpay } from '@/lib/razorpay/use-razorpay'`
+  - Extended `paymentMethod` state type to include `'razorpay'`
+  - Added `razorpaySubMethod`, `upiId`, `selectedBank` state variables
+  - Added `const { openCheckout } = useRazorpay()` hook
+  - Added Razorpay as 4th payment method option with `id: 'razorpay'`
+  - Added Razorpay sub-methods UI: UPI (text input), Card (card fields), Net Banking (bank selector: SBI, HDFC, ICICI, Axis, Yes Bank) — each with a Pay button
+  - Modified `handleCompleteBooking` to branch on Razorpay: creates booking → opens Razorpay checkout via `openCheckout()` → confirms payment via `confirmPayment({ gateway_payload: response })`
+  - Updated bottom button text to "Pay with Razorpay" when that method is selected
+  - Added sub-method-related styles: `subMethodCard`, `subMethodHeader`, `subPayBtn`, `bankOption`, etc.
 
-## Commits
-- `c227485` feat(BK-011): add 10-minute checkout timer with countdown
+- `.env`:
+  - Added `EXPO_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx`
 
-## Test Summary
-- TypeScript check: No errors in checkout-timer.tsx or booking-flow.tsx (pre-existing error in auth-context.tsx unrelated)
-- File structure verified: imports, state, component usage, disabled prop all present
-- Expo start attempted — port conflict with running instance (normal in dev environment)
+## Verification
+- `npx tsc --noEmit` — zero errors in booking-flow.tsx
+- Build passes with only 3 pre-existing errors in `search-results.tsx` (unrelated)
 
 ## Notes
-- Task 2 (discount code) and Task 3 (urgency badge) were committed after this task — no merge conflicts since they modify different sections of booking-flow.tsx
-- Timer sits above the step content area as specified
+- Sub-method Pay buttons and bottom "Pay with Razorpay" button both trigger `handleCompleteBooking`
+- Razorpay flow falls back to `order_id: ''` if `intent.order_id` is undefined
+- `gateway_payload` cast through `unknown` to satisfy `Record<string, unknown>` constraint

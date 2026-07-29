@@ -1,141 +1,245 @@
-/**
- * Login Screen — SRS Design System
- * Email/phone login with OTP verification option
- */
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform,
+} from 'react-native';
+import { router, usePathname } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/context/auth-context';
 
+const NAVY = '#1A3C5E';
+const TEAL = '#2E86AB';
+
 export default function LoginScreen() {
-  const { login, demoLogin, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
+  const pathname = usePathname();
+  const isHostRoute = pathname.includes('/host');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPw, setShowPw] = useState(false);
+  const [remember, setRemember] = useState(false);
+  const [error, setError] = useState('');
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Please enter a valid email';
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const heading = isHostRoute ? 'Welcome Back, Host' : 'Welcome back!';
+  const subtitle = isHostRoute ? 'Manage your properties' : 'Please enter your details';
 
   const handleLogin = async () => {
-    if (!validateForm()) return;
+    setError('');
+    if (!email.trim()) { setError('Email is required.'); return; }
+    if (!password.trim()) { setError('Password is required.'); return; }
     try {
-      await login(email, password);
-      router.replace('/(tabs)');
-    } catch (error) {
-      Alert.alert('Login Failed', error instanceof Error ? error.message : 'An error occurred');
+      const portal = await login(email, password);
+      if (portal === 'host') router.replace('/(host)');
+      else if (portal === 'guest') router.replace('/(tabs)');
+      else if (portal === 'operations') router.replace('/(operations)');
+      else if (portal === 'superadmin') router.replace('/(superadmin)');
+      else router.replace('/(tabs)');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Invalid email or password.');
     }
   };
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-      <View style={s.body}>
-        {/* Header */}
-        <View style={s.headerSection}>
-          <View style={s.logoCircle}>
-            <IconSymbol name="hotel" size={36} color={SRS.teal} />
+    <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        style={s.container}
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Navy header area */}
+        <View style={s.headerArea}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Ionicons name="arrow-back" size={22} color="#FFF" />
+          </TouchableOpacity>
+          <Text style={s.logo}>
+            <Text style={{ color: '#FFF' }}>Stay</Text>
+            <Text style={{ color: TEAL }}>Easy</Text>
+          </Text>
+          <View style={s.buildingRow}>
+            <Text style={{ fontSize: 48 }}>🏛️</Text>
+            <Text style={{ fontSize: 40 }}>🏨</Text>
+            <Text style={{ fontSize: 44 }}>🏪</Text>
+            <Text style={{ fontSize: 36 }}>🏢</Text>
           </View>
-          <Text style={s.title}>Welcome Back</Text>
-          <Text style={s.sub}>Sign in to your account to continue</Text>
         </View>
 
-        {/* Form */}
-        <View style={{ gap: SPACING.lg }}>
-          {[
-            { label: 'Email Address', val: email, set: setEmail, placeholder: 'your@email.com', key: 'email', secure: false, keyboard: 'email-address' as const },
-            { label: 'Password', val: password, set: setPassword, placeholder: '••••••••', key: 'password', secure: !showPassword },
-          ].map((f) => (
-            <View key={f.key}>
-              <Text style={s.fieldLabel}>{f.label}</Text>
-              <View style={[s.inputRow, { borderColor: errors[f.key] ? SRS.red : GRAY[200] }]}>
-                <IconSymbol name={f.key === 'email' ? 'email' : 'key'} size={18} color={GRAY[400]} style={{ marginRight: SPACING.sm }} />
-                <TextInput
-                  placeholder={f.placeholder} placeholderTextColor={GRAY[400]}
-                  value={f.val} onChangeText={(t) => { f.set(t); if (errors[f.key]) setErrors({ ...errors, [f.key]: '' }); }}
-                  editable={!isLoading} secureTextEntry={f.secure}
-                  keyboardType={f.keyboard || 'default'} autoCapitalize="none"
-                  style={s.input}
-                />
-                {f.key === 'password' && (
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} disabled={isLoading} style={s.toggleBtn}>
-                    <Text style={s.toggleText}>{showPassword ? 'Hide' : 'Show'}</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {errors[f.key] && <Text style={s.errorText}>{errors[f.key]}</Text>}
+        {/* White form card */}
+        <View style={s.card}>
+          <View style={s.tabRow}>
+            <View>
+              <Text style={[s.tab, s.tabActive]}>Login</Text>
+              <View style={s.tabLine} />
             </View>
-          ))}
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <Text style={s.tab}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity disabled={isLoading} onPress={() => Alert.alert('Coming Soon', 'Password reset will be available soon')}>
-            <Text style={s.forgotLink}>Forgot Password?</Text>
-          </TouchableOpacity>
+          <Text style={s.heading}>{heading}</Text>
+          <Text style={s.subtitle}>{subtitle}</Text>
 
-          <TouchableOpacity onPress={handleLogin} disabled={isLoading}
-            style={[s.primaryBtn, { opacity: isLoading ? 0.7 : 1 }]} activeOpacity={0.85}>
-            {isLoading ? <ActivityIndicator color="#FFF" /> : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
-                <IconSymbol name="checkin" size={18} color="#FFF" />
-                <Text style={s.primaryBtnText}>Sign In</Text>
+          <View style={s.field}>
+            <Text style={s.label}>Email</Text>
+            <TextInput
+              style={s.input}
+              placeholder="Enter your email"
+              placeholderTextColor="#bbb"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
+            />
+            <View style={s.inputLine} />
+          </View>
+
+          <View style={s.field}>
+            <Text style={s.label}>Password</Text>
+            <View style={s.pwRow}>
+              <TextInput
+                style={s.input}
+                placeholder="Set your password"
+                placeholderTextColor="#bbb"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPw}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.eyeBtn}>
+                <Ionicons name={showPw ? 'eye-off' : 'eye'} size={18} color="#bbb" />
+              </TouchableOpacity>
+            </View>
+            <View style={s.inputLine} />
+          </View>
+
+          <View style={s.optionsRow}>
+            <TouchableOpacity style={s.rememberRow} onPress={() => setRemember(!remember)}>
+              <View style={[s.checkbox, remember && s.checkboxChecked]}>
+                {remember && <Ionicons name="checkmark" size={10} color="#FFF" />}
               </View>
+              <Text style={s.rememberText}>Remember for 30 days</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
+              <Text style={s.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          {error ? <Text style={s.error}>{error}</Text> : null}
+
+          <TouchableOpacity
+            style={[s.loginBtn, isLoading && { opacity: 0.7 }]}
+            onPress={handleLogin}
+            disabled={isLoading}
+            activeOpacity={0.85}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={s.loginBtnText}>Log In</Text>
             )}
           </TouchableOpacity>
 
-          <View style={s.dividerRow}>
-            <View style={s.divider} />
-            <Text style={s.dividerText}>or</Text>
-            <View style={s.divider} />
+          <View style={s.footer}>
+            <Text style={s.footerText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <Text style={s.footerLink}>Sign up</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity onPress={() => demoLogin()} disabled={isLoading}
-            style={[s.secondaryBtn, { opacity: isLoading ? 0.7 : 1 }]} activeOpacity={0.85}>
-            <IconSymbol name="person.fill" size={18} color={SRS.teal} />
-            <Text style={s.secondaryBtnText}>Continue as Demo User</Text>
-          </TouchableOpacity>
         </View>
-
-        {/* Footer */}
-        <View style={s.footerRow}>
-          <Text style={s.footerText}>Don't have an account?</Text>
-          <TouchableOpacity disabled={isLoading} onPress={() => router.push('/(auth)/register')}>
-            <Text style={s.footerLink}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  body: { paddingHorizontal: SPACING.xl, gap: SPACING.xl },
-  headerSection: { alignItems: 'center', gap: SPACING.sm },
-  logoCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: SRS.teal + '12', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm },
-  title: { ...TYPOGRAPHY.h2, color: SRS.navy },
-  sub: { ...TYPOGRAPHY.body, color: GRAY[500] },
-  fieldLabel: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy, marginBottom: 4 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1, borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 2 },
-  input: { flex: 1, fontSize: 14, color: SRS.navy, paddingVertical: 10 },
-  toggleBtn: { paddingHorizontal: 8, paddingVertical: 12 },
-  toggleText: { fontSize: 12, fontWeight: '600', color: SRS.teal },
-  errorText: { ...TYPOGRAPHY.caption, color: SRS.red, marginTop: 2 },
-  forgotLink: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.teal, textAlign: 'right' },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: RADIUS.card, backgroundColor: SRS.navy },
-  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  divider: { flex: 1, height: 1, backgroundColor: GRAY[200] },
-  dividerText: { ...TYPOGRAPHY.small, color: GRAY[400] },
-  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingVertical: 16, borderRadius: RADIUS.card, borderWidth: 1.5, borderColor: SRS.teal, backgroundColor: SRS.teal + '08' },
-  secondaryBtnText: { fontSize: 15, fontWeight: '700', color: SRS.teal },
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  footerText: { ...TYPOGRAPHY.body, color: GRAY[500] },
-  footerLink: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.teal },
+  wrap: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#E8E8E8' },
+  scroll: { flexGrow: 1, paddingBottom: 40 },
+
+  headerArea: {
+    backgroundColor: NAVY,
+    paddingTop: 60,
+    paddingBottom: 32,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    alignItems: 'center',
+  },
+  backBtn: {
+    position: 'absolute',
+    top: 54,
+    left: 20,
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  logo: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, marginBottom: 12, marginTop: 4 },
+  buildingRow: {
+    flexDirection: 'row', justifyContent: 'center',
+    gap: 6, opacity: 0.6,
+  },
+
+  card: {
+    backgroundColor: '#FFF',
+    marginHorizontal: 20,
+    marginTop: -24,
+    borderRadius: 20,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+
+  tabRow: { flexDirection: 'row', gap: 24, marginBottom: 20 },
+  tab: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
+    textTransform: 'uppercase', color: '#ccc',
+  },
+  tabActive: { color: '#111' },
+  tabLine: { height: 2, backgroundColor: '#111', marginTop: 3, borderRadius: 1 },
+
+  heading: { fontSize: 20, fontWeight: '700', color: '#111', marginBottom: 3 },
+  subtitle: { fontSize: 12, color: '#999', marginBottom: 24 },
+
+  field: { marginBottom: 16 },
+  label: {
+    fontSize: 11, color: '#666', marginBottom: 4,
+    textTransform: 'uppercase', letterSpacing: 0.4,
+  },
+  input: { flex: 1, fontSize: 14, color: '#111', paddingVertical: 8, paddingRight: 8 },
+  pwRow: { flexDirection: 'row', alignItems: 'center' },
+  inputLine: { height: 1.5, backgroundColor: '#ddd' },
+  eyeBtn: { padding: 4 },
+
+  optionsRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 16,
+  },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  checkbox: {
+    width: 16, height: 16, borderRadius: 3,
+    borderWidth: 1.5, borderColor: '#ddd',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
+  rememberText: { fontSize: 11, color: '#999' },
+  forgotText: { fontSize: 11, color: '#bbb' },
+
+  error: { color: '#e94560', fontSize: 12, marginBottom: 12 },
+
+  loginBtn: {
+    paddingVertical: 12, backgroundColor: '#111',
+    borderRadius: 8, alignItems: 'center',
+    justifyContent: 'center', marginBottom: 16,
+  },
+  loginBtnText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  footerText: { fontSize: 12, color: '#aaa' },
+  footerLink: { fontSize: 12, color: '#111', fontWeight: '600' },
 });

@@ -1,56 +1,148 @@
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
-import { useColors } from '@/hooks/use-colors';
-
-const TESTIMONIALS = [
-  { id: '1', name: 'Rahul Sharma', location: 'New Delhi, India', rating: 5, quote: 'Absolutely stunning property! The staff was incredibly welcoming and the views were breathtaking. Will definitely be coming back.', avatar: '👨‍💼' },
-  { id: '2', name: 'Emily Chen', location: 'Singapore', rating: 5, quote: 'StayEasy made our honeymoon unforgettable. The booking process was seamless and the property exceeded our expectations.', avatar: '👩‍💼' },
-  { id: '3', name: 'James Wilson', location: 'London, UK', rating: 4, quote: 'Great experience overall. Beautiful property with excellent amenities. The only minor issue was the check-in process which was slightly delayed.', avatar: '👨‍💼' },
-  { id: '4', name: 'Priya Patel', location: 'Mumbai, India', rating: 5, quote: 'Perfect family getaway! The kids loved the pool and the staff arranged a wonderful local tour for us. Highly recommended!', avatar: '👩‍💼' },
-];
-
-function Stars({ count }: { count: number }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 2 }}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Text key={i} style={{ fontSize: 12 }}>{i < count ? '⭐' : '☆'}</Text>
-      ))}
-    </View>
-  );
-}
+import React, { useState, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { TESTIMONIALS } from '@/lib/mock/landing-data';
 
 export function Testimonials() {
-  const colors = useColors();
+  const [current, setCurrent] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const totalPages = Math.ceil(TESTIMONIALS.length / 2);
+
+  const scrollTo = (index: number) => {
+    setCurrent(index);
+    scrollRef.current?.scrollTo({ x: index * 320, animated: true });
+  };
 
   return (
-    <View className="py-8">
-      <View className="px-6 mb-6">
-        <Text className="text-2xl font-bold text-foreground">What Our Guests Say</Text>
-        <Text className="text-sm text-muted mt-1">Real reviews from real travelers</Text>
-      </View>
+    <View style={s.container}>
+      <Text style={s.title}>What travelers say</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.scrollContent}
+        onMomentumScrollEnd={(e) => {
+          const page = Math.round(e.nativeEvent.contentOffset.x / 320);
+          setCurrent(page);
+        }}
+      >
         {TESTIMONIALS.map((t) => (
-          <View key={t.id} style={{
-            width: 280, padding: 20, borderRadius: 20,
-            backgroundColor: colors.surface,
-            borderWidth: 1, borderColor: colors.border,
-            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3,
-          }}>
-            <View className="flex-row items-center gap-3 mb-3">
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 20 }}>{t.avatar}</Text>
+          <View key={t.id} style={s.card}>
+            {/* Quote mark */}
+            <Text style={s.quoteMark}>"</Text>
+            <Text style={s.quote}>{t.quote}</Text>
+            <View style={s.authorRow}>
+              <View style={s.avatar}>
+                <Text style={s.avatarText}>
+                  {t.name.split(' ').map(n => n[0]).join('')}
+                </Text>
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-bold text-foreground">{t.name}</Text>
-                <Text className="text-xs text-muted">{t.location}</Text>
+              <View>
+                <Text style={s.authorName}>{t.name}</Text>
+                <Text style={s.authorRole}>{t.role}</Text>
               </View>
-              <Stars count={t.rating} />
             </View>
-            <Text className="text-sm text-foreground leading-5">{t.quote}</Text>
           </View>
         ))}
       </ScrollView>
+
+      {/* Pagination dots */}
+      <View style={s.dots}>
+        {Array.from({ length: totalPages }).map((_, i) => (
+          <TouchableOpacity
+            key={i}
+            onPress={() => scrollTo(i)}
+            style={[s.dot, current === i && s.dotActive]}
+          />
+        ))}
+      </View>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  container: {
+    paddingTop: 24,
+    paddingBottom: 8,
+    backgroundColor: '#F8F9FB',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A3C5E',
+    textAlign: 'center',
+    marginBottom: 20,
+    letterSpacing: -0.3,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  card: {
+    width: 300,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  quoteMark: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: 'rgba(46,134,171,0.2)',
+    lineHeight: 32,
+    marginBottom: 4,
+  },
+  quote: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2E86AB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  authorName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A3C5E',
+  },
+  authorRole: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D1D5DB',
+  },
+  dotActive: {
+    backgroundColor: '#2E86AB',
+    width: 24,
+  },
+});

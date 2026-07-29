@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, LayoutChangeEvent } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { cn } from '@/lib/utils';
 
 interface Tab {
@@ -21,20 +21,11 @@ export function Tabs({ tabs, active, onChange, variant = 'underline', className 
   const [positions, setPositions] = useState<Record<string, number>>({});
   const [widths, setWidths] = useState<Record<string, number>>({});
   const scrollRef = useRef<ScrollView>(null);
-  const indicatorLeft = useSharedValue(0);
-  const indicatorWidth = useSharedValue(0);
 
   const indicatorStyle = useAnimatedStyle(() => ({
-    left: indicatorLeft.value,
-    width: indicatorWidth.value,
+    left: withSpring(positions[active] ?? 0, { stiffness: 300, damping: 30 }),
+    width: withSpring(widths[active] ?? 0, { stiffness: 300, damping: 30 }),
   }));
-
-  useEffect(() => {
-    const left = positions[active] ?? 0;
-    const w = widths[active] ?? 0;
-    indicatorLeft.value = withSpring(left, { stiffness: 300, damping: 30 });
-    indicatorWidth.value = withSpring(w, { stiffness: 300, damping: 30 });
-  }, [active, positions, widths]);
 
   const handleLayout = (tabId: string, event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;

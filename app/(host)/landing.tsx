@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from "@/constants/portal-theme";
+import { safeGoBack } from "@/lib/utils";
 
 const BRAND_NAVY = "#16233A";
 const BRAND_GOLD = "#E8B84B";
@@ -48,7 +49,7 @@ export default function HostLandingPage() {
       <ScrollView contentContainerStyle={s.scroll}>
         {/* HERO */}
         <View style={s.hero}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backLink}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backLink}>
             <IconSymbol name="arrow.back" size={14} color="rgba(255,255,255,0.7)" />
             <Text style={s.backText}>Back</Text>
           </TouchableOpacity>
@@ -66,7 +67,7 @@ export default function HostLandingPage() {
             <Text style={s.heroDesc}>
               List your space, set your own price, and keep every rupee you earn. No commission, no fine print.
             </Text>
-            <TouchableOpacity onPress={() => router.push("/(host)/login")} style={s.heroCta}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/login")} style={s.heroCta}>
               <Text style={s.heroCtaText}>List your space</Text>
               <IconSymbol name="arrow.forward" size={14} color={BRAND_DARK} />
             </TouchableOpacity>
@@ -78,7 +79,7 @@ export default function HostLandingPage() {
           <View style={s.sectionHeader}>
             <Text style={s.sectionLabel}>WHY HOST HERE</Text>
             <Text style={s.sectionTitle}>
-              Hosting that doesn't take a cut{'\n'}to take an interest.
+              {"Hosting that doesn\u2019t take a cut\nto take an interest."}
             </Text>
           </View>
 
@@ -143,7 +144,7 @@ export default function HostLandingPage() {
         {/* CTA */}
         <View style={s.ctaSection}>
           <Text style={s.ctaTitle}>Your first guest is closer than you think.</Text>
-          <TouchableOpacity onPress={() => router.push("/(host)/login")} style={s.ctaBtn}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")} style={s.ctaBtn}>
             <Text style={s.ctaBtnText}>List your space</Text>
             <IconSymbol name="arrow.forward" size={14} color={BRAND_DARK} />
           </TouchableOpacity>

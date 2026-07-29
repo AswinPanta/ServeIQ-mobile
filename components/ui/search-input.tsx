@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useCallback } from 'react';
 import { View, TextInput, TouchableOpacity, Text } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
@@ -19,33 +19,32 @@ export function SearchInput({
   className,
 }: SearchInputProps) {
   const colors = useColors();
-  const [local, setLocal] = useState(value);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-
-  const handleChange = (val: string) => {
-    setLocal(val);
+  const handleChange = useCallback((val: string) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => onChange(val), debounce);
-  };
+  }, [onChange, debounce]);
+
+  const handleClear = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    onChange('');
+  }, [onChange]);
 
   return (
     <View className={cn('relative flex-row items-center', className)}>
       <Text className="absolute left-3 text-muted-foreground pointer-events-none text-lg">⌕</Text>
       <TextInput
-        value={local}
+        value={value}
         onChangeText={handleChange}
         placeholder={placeholder}
         placeholderTextColor={colors.muted + '80'}
         className="flex-1 h-10 pl-9 pr-8 text-sm bg-card border border-border rounded-xl text-foreground"
         style={{ paddingVertical: 0 }}
       />
-      {local ? (
+      {value ? (
         <TouchableOpacity
-          onPress={() => { setLocal(''); onChange(''); }}
+          onPress={handleClear}
           className="absolute right-3"
         >
           <Text className="text-muted-foreground text-sm">✕</Text>

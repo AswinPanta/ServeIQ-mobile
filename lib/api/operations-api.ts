@@ -1,10 +1,13 @@
-import { api, handleResponse } from '@/lib/api';
+import { api, handleResponse, isDemoMode } from '@/lib/api';
 import type {
   OperationRoom, OperationBooking, Folio, FolioCharge,
   HousekeepingTask, TableItem, MenuItem, MenuModifier,
   Order, OrderItem, KdsTicket,
 } from '@/types/api';
 
+// ─── Operations API — ALL endpoints below are mock-only ──────
+// The live backend does NOT have /pms/*, /pos/*, /kds/* endpoints yet.
+// All functions in this module fall back to mock data automatically.
 const OPS_ENDPOINTS = {
   ROOMS: '/pms/rooms',
   ROOM_BY_ID: (id: string) => `/pms/rooms/${id}`,
@@ -32,6 +35,7 @@ const OPS_ENDPOINTS = {
 };
 
 async function apiGet<T>(endpoint: string, fallback: () => T): Promise<T> {
+  if (await isDemoMode()) return fallback();
   try {
     const response = await api.get(endpoint);
     return await handleResponse<T>(response);
@@ -41,6 +45,7 @@ async function apiGet<T>(endpoint: string, fallback: () => T): Promise<T> {
 }
 
 async function apiPost<T, D>(endpoint: string, data: D, fallback: () => T): Promise<T> {
+  if (await isDemoMode()) return fallback();
   try {
     const response = await api.post(endpoint, data);
     return await handleResponse<T>(response);

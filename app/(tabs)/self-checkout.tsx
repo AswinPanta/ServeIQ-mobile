@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { useBookings } from '@/lib/context/booking-context';
 import { useCRM } from '@/lib/context/crm-context';
 import type { GuestProfile } from '@/types/api';
+import { safeGoBack } from "@/lib/utils";
 
 const STEPS = [
   { key: 'select' as const, label: 'Stay' },
@@ -45,7 +46,7 @@ export default function SelfCheckoutScreen() {
     <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 40 }}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="arrow.back" size={18} color={SRS.navy} />
         </TouchableOpacity>
         <View>
@@ -162,9 +163,12 @@ export default function SelfCheckoutScreen() {
               ))}
             </View>
 
-            <TouchableOpacity onPress={() => router.push('/(tabs)')} style={s.doneBtn} activeOpacity={0.85}>
-              <IconSymbol name="hotel" size={16} color="#FFF" />
-              <Text style={s.doneBtnText}>Back to Home</Text>
+            <TouchableOpacity onPress={() => router.push('/post-stay-review')} style={s.doneBtn} activeOpacity={0.85}>
+              <IconSymbol name="star" size={16} color="#FFF" />
+              <Text style={s.doneBtnText}>Write a Review</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(tabs)')} style={[s.doneBtn, { backgroundColor: GRAY[200] }]} activeOpacity={0.85}>
+              <Text style={[s.doneBtnText, { color: SRS.navy }]}>Back to Home</Text>
             </TouchableOpacity>
           </View>
         )}

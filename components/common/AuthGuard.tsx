@@ -5,11 +5,13 @@ import { useRouter, useSegments } from 'expo-router';
 import { useColors } from '@/hooks/use-colors';
 import type { PortalType } from '@/types/api';
 
+const UNIFIED_LOGIN = '/(auth)/login';
+
 const PORTAL_LOGIN_MAP: Record<PortalType, string> = {
-  guest: '/(auth)/login',
-  host: '/(host)/login',
-  operations: '/(operations)/login',
-  superadmin: '/(superadmin)/login',
+  guest: UNIFIED_LOGIN,
+  host: UNIFIED_LOGIN,
+  operations: UNIFIED_LOGIN,
+  superadmin: UNIFIED_LOGIN,
 };
 
 const PORTAL_HOME_MAP: Record<PortalType, string> = {

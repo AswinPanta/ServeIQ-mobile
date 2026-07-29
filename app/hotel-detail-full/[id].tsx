@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,12 +16,23 @@ import { ReviewList, type Review } from '@/components/feature/review-list';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { cn } from '@/lib/utils';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import { getPropertyById } from '@/lib/api';
+import type { Hotel } from '@/types/api';
 
 export default function HotelDetailFullScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
 
-  const hotel = useMemo(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0], [id]);
+  const [hotel, setHotel] = useState<Hotel>(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await getPropertyById(id as string);
+      if (!cancelled && result) setHotel(result);
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const relatedHotels = useMemo(
     () => MOCK_PROPERTIES.filter(h => h.city === hotel.city && h.id !== hotel.id).slice(0, 3),

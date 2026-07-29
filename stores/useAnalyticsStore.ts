@@ -36,8 +36,8 @@ export const useAnalyticsStore = create<AnalyticsStore>(() => ({
     orders.forEach((o) => {
       o.items.forEach((item) => {
         if (!itemCount[item.name]) itemCount[item.name] = { count: 0, revenue: 0 };
-        itemCount[item.name].count += item.quantity;
-        itemCount[item.name].revenue += item.unit_price * item.quantity;
+        itemCount[item.name].count += (item as any).qty || (item as any).quantity || 1;
+        itemCount[item.name].revenue += ((item as any).price || (item as any).unit_price || 0) * ((item as any).qty || (item as any).quantity || 1);
       });
     });
     return Object.entries(itemCount)
@@ -52,7 +52,7 @@ export const useAnalyticsStore = create<AnalyticsStore>(() => ({
     orders.forEach((o) => {
       o.items.forEach((item) => {
         const cat = item.name.includes('Pizza') || item.name.includes('Burger') || item.name.includes('Salad') || item.name.includes('Fries') || item.name.includes('Pasta') || item.name.includes('Sandwich') || item.name.includes('Chicken') ? 'Food' : item.name.includes('Tea') || item.name.includes('Juice') || item.name.includes('Coffee') || item.name.includes('Lassi') || item.name.includes('Water') ? 'Beverages' : 'Desserts';
-        categoryRev[cat] = (categoryRev[cat] || 0) + item.unit_price * item.quantity;
+        categoryRev[cat] = (categoryRev[cat] || 0) + ((item as any).price || (item as any).unit_price || 0) * ((item as any).qty || (item as any).quantity || 1);
       });
     });
     return Object.entries(categoryRev).map(([category, revenue]) => ({ category, revenue }));

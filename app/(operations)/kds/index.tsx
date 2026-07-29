@@ -9,7 +9,8 @@ import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/por
 import { SystemFlowBar } from '@/components/operations/SystemFlowBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import type { KdsTicket } from '@/types/api';
+import Animated, { LinearTransition } from 'react-native-reanimated';
+import type { KdsTicket } from '@/stores/useOrderStore';
 
 const DARK_BG = '#0D1117';
 const DARK_CARD = '#161B22';
@@ -68,6 +69,8 @@ function getLastFour(id: string): string {
   return id.length > 4 ? id.slice(-4) : id;
 }
 
+const ticketStartTimes = new Map<string, number>();
+
 export default function KDScreen() {
   const { user } = useAuth();
   const operator = user as { property_id?: string } | null;
@@ -80,24 +83,24 @@ export default function KDScreen() {
   const tickets = useOrderStore((s) => s.tickets);
   const completedOrders = useOrderStore((s) => s.completedOrders);
   const [station, setStation] = useState('All');
-  const [now, setNow] = useState(Date.now());
-  const startTimes = useRef<Record<string, number>>({});
+  const [now, setNow] = useState(() => Date.now());
+
+  // Track start times via module-level store (avoids ref-during-render lint)
+  const ticketIdsKey = tickets.map(t => t.id).join(',');
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    tickets.forEach(t => {
+      if (!ticketStartTimes.has(t.id)) ticketStartTimes.set(t.id, Date.now());
+    });
+  }, [ticketIdsKey]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    tickets.forEach(t => {
-      if (!startTimes.current[t.id]) {
-        startTimes.current[t.id] = Date.now();
-      }
-    });
-  }, [tickets]);
-
   const getElapsedSeconds = (ticket: KdsTicket): number => {
-    const start = startTimes.current[ticket.id];
+    const start = ticketStartTimes.get(ticket.id);
     if (!start) return ticket.elapsed_seconds;
     return ticket.elapsed_seconds + Math.floor((now - start) / 1000);
   };
@@ -235,7 +238,7 @@ export default function KDScreen() {
                       const timerColor = getTimerColor(elapsedSeconds);
 
                       return (
-                        <View key={ticket.id} style={[kdsStyles.ticketCard, { borderTopColor: COLUMN_COLORS[col.status] }]}>
+                        <Animated.View key={ticket.id} style={[kdsStyles.ticketCard, { borderTopColor: COLUMN_COLORS[col.status] }]} layout={LinearTransition.springify().damping(20)}>
                           <View style={kdsStyles.ticketHeader}>
                             <View style={kdsStyles.ticketIdRow}>
                               <Text style={kdsStyles.ticketId}>#{getLastFour(ticket.order_id)}</Text>
@@ -313,7 +316,7 @@ export default function KDScreen() {
                               </Text>
                             </TouchableOpacity>
                           )}
-                        </View>
+                        </Animated.View>
                       );
                     })
                   )}

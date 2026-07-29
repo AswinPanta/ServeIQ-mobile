@@ -1,184 +1,180 @@
-/**
- * OTP Verification Screen
- * Verify OTP sent to email/phone during login or registration
- */
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScreenContainer } from '@/components/screen-container';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/context/auth-context';
-import { useColors } from '@/hooks/use-colors';
-import { cn, safeGoBack } from '@/lib/utils';
+
+const NAVY = '#1A3C5E';
+const TEAL = '#2E86AB';
 
 export default function OTPVerifyScreen() {
-  const colors = useColors();
-  const { email = '' } = useLocalSearchParams<{ email: string; mode: string }>();
   const { verifyOTP, resendOTP, isLoading } = useAuth();
+  const { email, portal: portalParam } = useLocalSearchParams<{ email: string; portal?: string }>();
+  const portal = (portalParam as 'guest' | 'host' | undefined) || 'guest';
 
-  const [otp, setOtp] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const inputs = useRef<(TextInput | null)[]>([]);
+  const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
-  const otpInputRef = useRef<TextInput>(null);
 
-  // Timer for resend OTP
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
-    if (resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    if (resendTimer <= 0) return;
+    const id = setInterval(() => setResendTimer(t => t - 1), 1000);
+    return () => clearInterval(id);
   }, [resendTimer]);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!otp) {
-      newErrors.otp = 'OTP is required';
-    } else if (!/^\d{6}$/.test(otp)) {
-      newErrors.otp = 'OTP must be 6 digits';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleChange = (text: string, index: number) => {
+    if (text.length > 1) text = text.slice(-1);
+    const newCode = [...code];
+    newCode[index] = text;
+    setCode(newCode);
+    if (text && index < 5) inputs.current[index + 1]?.focus();
+    if (error) setError('');
   };
 
-  const handleVerifyOTP = async () => {
-    if (!validateForm()) return;
-
-    try {
-      await verifyOTP(email, otp);
-      router.replace('/(tabs)');
-    } catch (error) {
-      Alert.alert('Verification Failed', error instanceof Error ? error.message : 'An error occurred');
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
+      inputs.current[index - 1]?.focus();
     }
   };
 
-  const handleResendOTP = async () => {
+  const handleVerify = async () => {
+    const otp = code.join('');
+    if (otp.length < 6) { setError('Enter the 6-digit code'); return; }
     try {
-      setResendLoading(true);
-      await resendOTP(email);
-      setResendTimer(60);
-      setOtp('');
-      Alert.alert('Success', 'OTP has been resent to your email');
-    } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to resend OTP');
+      await verifyOTP(email || '', otp, portal);
+      router.replace('/(auth)/account-created');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Verification failed');
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email || resendTimer > 0) return;
+    setError('');
+    setResendLoading(true);
+    try {
+      await resendOTP(email, portal);
+      setResendTimer(30);
+    } catch {
+      setError('Failed to resend code');
     } finally {
       setResendLoading(false);
     }
   };
 
-  const handleOTPChange = (text: string) => {
-    // Only allow digits
-    const numericText = text.replace(/[^0-9]/g, '');
-    if (numericText.length <= 6) {
-      setOtp(numericText);
-      if (errors.otp) setErrors({ ...errors, otp: '' });
-    }
-  };
-
   return (
-    <ScreenContainer containerClassName={cn('bg-background')} className="flex-1">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <View className="flex-1 justify-between px-6 py-8">
-          {/* Header */}
-          <View className="gap-2">
-            <Text className="text-4xl font-bold text-foreground">Verify OTP</Text>
-            <Text className="text-base text-muted">
-              We&apos;ve sent a 6-digit code to {email}
-            </Text>
+    <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={s.container}>
+        <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={22} color="#FFF" />
+        </TouchableOpacity>
+
+        <View style={s.card}>
+          <Text style={s.title}>Verification code</Text>
+          <Text style={s.subtitle}>Enter the 6-digit code sent to your email</Text>
+
+          <View style={s.codeRow}>
+            {code.map((digit, i) => (
+              <TextInput
+                key={i}
+                ref={(ref) => { inputs.current[i] = ref; }}
+                style={[s.codeInput, digit ? s.codeInputFilled : null]}
+                value={digit}
+                onChangeText={(t) => handleChange(t, i)}
+                onKeyPress={(e) => handleKeyPress(e, i)}
+                keyboardType="number-pad"
+                maxLength={1}
+                selectTextOnFocus
+              />
+            ))}
           </View>
 
-          {/* Form */}
-          <View className="gap-6">
-            {/* OTP Input */}
-            <View className="gap-2">
-              <Text className="text-sm font-semibold text-foreground">Enter OTP</Text>
-              <View
-                className={cn(
-                  'flex-row items-center justify-center px-4 py-4 rounded-lg border',
-                  errors.otp ? 'border-error bg-error/5' : 'border-border bg-surface'
-                )}
-              >
-                <TextInput
-                  ref={otpInputRef}
-                  placeholder="000000"
-                  placeholderTextColor={colors.muted}
-                  value={otp}
-                  onChangeText={handleOTPChange}
-                  editable={!isLoading}
-                  className="flex-1 text-3xl font-bold text-center text-foreground tracking-widest"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  selectTextOnFocus
-                />
-              </View>
-              {errors.otp && <Text className="text-xs text-error">{errors.otp}</Text>}
-            </View>
+          {error ? <Text style={s.error}>{error}</Text> : null}
 
-            {/* Verify Button */}
-            <TouchableOpacity
-              onPress={handleVerifyOTP}
-              disabled={isLoading || otp.length !== 6}
-              className={cn(
-                'flex-row items-center justify-center px-6 py-4 rounded-lg',
-                isLoading || otp.length !== 6 ? 'bg-primary/70' : 'bg-primary'
-              )}
-              activeOpacity={0.8}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-base font-semibold text-white">Verify OTP</Text>
-              )}
-            </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.verifyBtn, (isLoading || code.join('').length < 6) && { opacity: 0.7 }]}
+            onPress={handleVerify}
+            disabled={isLoading || code.join('').length < 6}
+            activeOpacity={0.85}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={s.verifyBtnText}>Verify</Text>
+            )}
+          </TouchableOpacity>
 
-            {/* Resend OTP Section */}
-            <View className="gap-2">
-              <Text className="text-sm text-muted text-center">Didn&apos;t receive the code?</Text>
-              <TouchableOpacity
-                onPress={handleResendOTP}
-                disabled={resendTimer > 0 || resendLoading}
-                className="flex-row items-center justify-center"
-              >
-                {resendLoading ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : (
-                  <Text
-                    className={cn(
-                      'text-sm font-semibold',
-                      resendTimer > 0 ? 'text-muted' : 'text-primary'
-                    )}
-                  >
-                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Footer */}
-          <View className="flex-row items-center justify-center gap-2">
-            <Text className="text-base text-muted">Wrong email?</Text>
-            <TouchableOpacity disabled={isLoading} onPress={() => safeGoBack('/(auth)/login')}>
-              <Text className="text-base font-semibold text-primary">Go Back</Text>
+          <View style={s.resendRow}>
+            <Text style={s.resendText}>Didn't receive a code? </Text>
+            <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0 || resendLoading}>
+              <Text style={[s.resendLink, (resendTimer > 0 || resendLoading) && { color: '#ccc' }]}>
+                {resendLoading ? 'Sending...' : resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-    </ScreenContainer>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
+
+const s = StyleSheet.create({
+  wrap: { flex: 1 },
+  container: {
+    flex: 1, backgroundColor: '#E8E8E8',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  backBtn: {
+    position: 'absolute', top: 60, left: 20,
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 10,
+  },
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  title: { fontSize: 20, fontWeight: '700', color: '#111', marginBottom: 6 },
+  subtitle: { fontSize: 13, color: '#999', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+
+  codeRow: { flexDirection: 'row', gap: 10, marginBottom: 28 },
+  codeInput: {
+    width: 44, height: 52,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#ddd',
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111',
+  },
+  codeInputFilled: { borderColor: '#111', backgroundColor: '#F8F8F8' },
+
+  error: { color: '#e94560', fontSize: 12, marginBottom: 12 },
+
+  verifyBtn: {
+    width: '100%', paddingVertical: 12,
+    backgroundColor: '#111', borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 16,
+  },
+  verifyBtnText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+
+  resendRow: { flexDirection: 'row', alignItems: 'center' },
+  resendText: { fontSize: 12, color: '#aaa' },
+  resendLink: { fontSize: 12, color: '#111', fontWeight: '600' },
+});

@@ -4,6 +4,8 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/lib/context/auth-context';
 import { useColors } from '@/hooks/use-colors';
+import { useOpsStatus } from '@/hooks/use-ops-status';
+import { SyncIndicator } from '@/components/operations/SyncIndicator';
 import { NotificationBell } from '@/components/ui/notification-bell';
 import type { OperatorProfile } from '@/types/api';
 
@@ -19,6 +21,7 @@ export function OperationsHeader() {
   const colors = useColors();
   const { user, logout, setUser } = useAuth();
   const operator = user as OperatorProfile | null;
+  const opsStatus = useOpsStatus();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showMenu, setShowMenu] = useState(false);
   const [showPropMenu, setShowPropMenu] = useState(false);
@@ -78,9 +81,11 @@ export function OperationsHeader() {
           >
             <Text className="text-sm font-bold text-foreground">{operator?.property_name || 'Operations'}</Text>
             <Text style={{ fontSize: 10, color: '#64748B' }}>▼</Text>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />
           </TouchableOpacity>
-          <Text className="text-xs text-muted">{operator?.name || 'Staff'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+            <Text className="text-xs text-muted">{operator?.name || 'Staff'}</Text>
+            <SyncIndicator />
+          </View>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>

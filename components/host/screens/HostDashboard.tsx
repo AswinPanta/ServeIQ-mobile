@@ -3,7 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import { useHost } from '@/lib/context/host-context';
 
-const ACCENT = '#2563EB';
+const ACCENT = '#2E86AB';
+const NAVY = '#1A3C5E';
 
 export function HostDashboard() {
   const colors = useColors();
@@ -32,15 +33,15 @@ export function HostDashboard() {
     <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       {/* Property Selector */}
       {properties.length > 1 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4 -mx-2 px-2">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16, marginLeft: -2, marginRight: -2 }}>
           {properties.map(p => (
             <TouchableOpacity key={p.id} onPress={() => setActivePropertyId(p.id)}
               style={{
-                paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, marginRight: 8,
-                backgroundColor: p.id === activePropertyId ? ACCENT : colors.border,
+                paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, marginRight: 8,
+                backgroundColor: p.id === activePropertyId ? ACCENT : '#F1F5F9',
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: p.id === activePropertyId ? '#fff' : colors.foreground }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: p.id === activePropertyId ? '#FFF' : '#475569' }}>
                 {p.name}
               </Text>
             </TouchableOpacity>
@@ -49,62 +50,64 @@ export function HostDashboard() {
       )}
 
       {/* Welcome */}
-      <Text className="text-2xl font-bold text-foreground mb-1">{activeProperty?.name || 'Dashboard'}</Text>
-      <Text className="text-sm text-muted mb-5">{activeProperty?.city}, {activeProperty?.country}</Text>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: NAVY, letterSpacing: -0.3, marginBottom: 4 }}>
+        {activeProperty?.name || 'Dashboard'}
+      </Text>
+      <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 20 }}>
+        {activeProperty?.city}{activeProperty?.city && activeProperty?.country ? ', ' : ''}{activeProperty?.country}
+      </Text>
 
       {/* KPI Row */}
-      <View className="flex-row flex-wrap gap-3 mb-5">
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
         {[
-          { label: 'Available', value: available, color: '#10B981' },
-          { label: 'Occupied', value: occupied, color: '#F59E0B' },
-          { label: 'Cleaning', value: dirty, color: '#3B82F6' },
-          { label: 'Maint.', value: maintenance, color: '#EF4444' },
-          { label: 'Room Types', value: propRoomTypes.length, color: '#8B5CF6' },
+          { label: 'Available', value: available, color: '#27AE60' },
+          { label: 'Occupied', value: occupied, color: '#F39C12' },
+          { label: 'Cleaning', value: dirty, color: '#2E86AB' },
+          { label: 'Maint.', value: maintenance, color: '#C0392B' },
         ].map((item, i) => (
-          <View key={i}
-            style={{ flex: 1, minWidth: '18%', padding: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}
-          >
+          <View key={i} style={{ flex: 1, padding: 12, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
             <Text style={{ fontSize: 22, fontWeight: '700', color: item.color }}>{item.value}</Text>
-            <Text className="text-xs text-muted mt-1 text-center">{item.label}</Text>
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4, textAlign: 'center' }}>{item.label}</Text>
           </View>
         ))}
       </View>
 
-      {/* Revenue & Bookings */}
-      <View className="flex-row gap-3 mb-5">
-        <View style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-          <Text className="text-sm text-muted">Monthly Revenue</Text>
-          <Text style={{ fontSize: 24, fontWeight: '700', color: ACCENT }}>रू{revenue.toLocaleString()}</Text>
+      {/* Stats Cards */}
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+        <View style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+          <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 4 }}>Monthly Revenue</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: ACCENT }}>रू{revenue.toLocaleString()}</Text>
+          <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{propRoomTypes.length} room types</Text>
         </View>
-        <View style={{ flex: 1, padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-          <Text className="text-sm text-muted">Active Bookings</Text>
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#F59E0B' }}>{activeBookings}</Text>
+        <View style={{ flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+          <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 4 }}>Active Bookings</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: '#F39C12' }}>{activeBookings}</Text>
           {pendingBookings > 0 && (
-            <Text className="text-xs text-muted mt-1">{pendingBookings} pending</Text>
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{pendingBookings} pending</Text>
           )}
         </View>
       </View>
 
-      {/* Occupancy Rate */}
+      {/* Occupancy Overview */}
       {propRooms.length > 0 && (
-        <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 20 }}>
-          <Text className="text-sm font-semibold text-foreground mb-3">Occupancy Overview</Text>
-          <View className="flex-row h-3 rounded-full overflow-hidden bg-gray-200">
-            {occupied > 0 && <View style={{ flex: occupied, backgroundColor: '#F59E0B' }} />}
-            {available > 0 && <View style={{ flex: available, backgroundColor: '#10B981' }} />}
-            {dirty > 0 && <View style={{ flex: dirty, backgroundColor: '#3B82F6' }} />}
-            {maintenance > 0 && <View style={{ flex: maintenance, backgroundColor: '#EF4444' }} />}
+        <View style={{ padding: 16, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: NAVY, marginBottom: 12 }}>Occupancy Overview</Text>
+          <View style={{ flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#F1F5F9' }}>
+            {occupied > 0 && <View style={{ flex: occupied, backgroundColor: '#F39C12' }} />}
+            {available > 0 && <View style={{ flex: available, backgroundColor: '#27AE60' }} />}
+            {dirty > 0 && <View style={{ flex: dirty, backgroundColor: '#2E86AB' }} />}
+            {maintenance > 0 && <View style={{ flex: maintenance, backgroundColor: '#C0392B' }} />}
           </View>
-          <View className="flex-row flex-wrap gap-4 mt-3">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 12 }}>
             {[
-              { label: 'Occupied', value: occupied, color: '#F59E0B' },
-              { label: 'Available', value: available, color: '#10B981' },
-              { label: 'Cleaning', value: dirty, color: '#3B82F6' },
-              { label: 'Maintenance', value: maintenance, color: '#EF4444' },
+              { label: 'Occupied', value: occupied, color: '#F39C12' },
+              { label: 'Available', value: available, color: '#27AE60' },
+              { label: 'Cleaning', value: dirty, color: '#2E86AB' },
+              { label: 'Maintenance', value: maintenance, color: '#C0392B' },
             ].map((item, i) => (
-              <View key={i} className="flex-row items-center gap-1.5">
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }} />
-                <Text className="text-xs text-muted">{item.label}: {item.value}</Text>
+                <Text style={{ fontSize: 11, color: '#64748B' }}>{item.label}: {item.value}</Text>
               </View>
             ))}
           </View>
@@ -112,22 +115,22 @@ export function HostDashboard() {
       )}
 
       {/* Recent Bookings */}
-      <Text className="text-base font-bold text-foreground mb-3">Recent Bookings</Text>
-      <View style={{ borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+      <Text style={{ fontSize: 15, fontWeight: '700', color: NAVY, marginBottom: 12 }}>Recent Bookings</Text>
+      <View style={{ borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 }}>
         {propBookings.slice(0, 5).map((b, i) => (
-          <View key={b.id} style={{ padding: 14, borderBottomWidth: i < propBookings.slice(0, 5).length - 1 ? 1 : 0, borderBottomColor: colors.border }}>
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-sm font-semibold text-foreground">{b.guest_name}</Text>
-                <Text className="text-xs text-muted mt-0.5">Room {b.room_name} · {b.check_in} → {b.check_out}</Text>
+          <View key={b.id} style={{ padding: 14, borderBottomWidth: i < Math.min(propBookings.length, 5) - 1 ? 1 : 0, borderBottomColor: '#F1F5F9' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: NAVY }}>{b.guest_name}</Text>
+                <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>Room {b.room_name} · {b.check_in} → {b.check_out}</Text>
               </View>
-              <View className="items-end">
-                <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>रू{b.total.toLocaleString()}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: ACCENT }}>रू{b.total.toLocaleString()}</Text>
                 <View style={{
                   paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4,
-                  backgroundColor: b.status === 'checked_in' ? '#10B98120' : b.status === 'checked_out' ? '#6B728020' : '#F59E0B20',
+                  backgroundColor: b.status === 'checked_in' ? '#27AE6020' : b.status === 'checked_out' ? '#6B728020' : '#F39C1220',
                 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '600', color: b.status === 'checked_in' ? '#10B981' : b.status === 'checked_out' ? '#6B7280' : '#F59E0B' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: b.status === 'checked_in' ? '#27AE60' : b.status === 'checked_out' ? '#6B7280' : '#F39C12' }}>
                     {b.status.replace('_', ' ')}
                   </Text>
                 </View>
@@ -137,7 +140,7 @@ export function HostDashboard() {
         ))}
         {propBookings.length === 0 && (
           <View style={{ padding: 24, alignItems: 'center' }}>
-            <Text className="text-sm text-muted">No bookings yet</Text>
+            <Text style={{ fontSize: 13, color: '#94A3B8' }}>No bookings yet</Text>
           </View>
         )}
       </View>

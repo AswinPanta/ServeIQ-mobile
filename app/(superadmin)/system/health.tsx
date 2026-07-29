@@ -1,10 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { safeGoBack } from "@/lib/utils";
 
-const SUPERADMIN = '#8E44AD';
+const ACCENT = '#7C3AED';
 
 const SERVICES = [
   { name: 'API Server', status: 'Operational', uptime: '99.97%', response: '45ms', lastIncident: '2025-04-15', color: '#10B981' },
@@ -22,42 +21,53 @@ const RECENT_INCIDENTS = [
   { title: 'Database Connection Pool Exhaustion', date: '2025-05-10', status: 'Resolved', duration: '2h 10m' },
 ];
 
-const STATUS_MAP: Record<string, { bg: string; text: string }> = {
-  Operational: { bg: '#10B98115', text: '#10B981' }, Degraded: { bg: '#F59E0B15', text: '#F59E0B' }, Down: { bg: '#EF444415', text: '#EF4444' },
+const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
+  Operational: { bg: '#10B98112', text: '#10B981' },
+  Degraded: { bg: '#F59E0B12', text: '#F59E0B' },
+  Down: { bg: '#EF444412', text: '#EF4444' },
 };
 
 export default function HealthScreen() {
   return (
     <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} contentInsetAdjustmentBehavior="automatic">
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color={SUPERADMIN} />
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
+            <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>System Health</Text>
         </View>
 
         <View style={s.statusBanner}>
           <View style={[s.statusDot, { backgroundColor: '#F59E0B' }]} />
-          <Text style={s.statusTitle}>Degraded Performance</Text>
-          <Text style={s.statusDesc}>1 service experiencing degraded performance</Text>
+          <Text style={s.bannerTitle}>Degraded Performance</Text>
+          <Text style={s.bannerDesc}>1 service experiencing degraded performance</Text>
         </View>
 
         {SERVICES.map(svc => {
-          const si = STATUS_MAP[svc.status] || STATUS_MAP.Operational;
+          const si = STATUS_STYLES[svc.status] || STATUS_STYLES.Operational;
           return (
-            <View key={svc.name} style={s.svcCard}>
-              <View style={s.svcHead}>
-                <View style={[s.svcDot, { backgroundColor: svc.color }]} />
+            <View key={svc.name} style={s.card}>
+              <View style={s.cardHead}>
+                <View style={[s.dot, { backgroundColor: svc.color }]} />
                 <Text style={s.svcName}>{svc.name}</Text>
-                <View style={[s.svcStatus, { backgroundColor: si.bg }]}>
-                  <Text style={[s.svcStatusText, { color: si.text }]}>{svc.status}</Text>
+                <View style={[s.statusBadge, { backgroundColor: si.bg }]}>
+                  <Text style={[s.statusText, { color: si.text }]}>{svc.status}</Text>
                 </View>
               </View>
-              <View style={s.svcMetrics}>
-                <View><Text style={s.metricLabel}>Uptime</Text><Text style={s.metricValue}>{svc.uptime}</Text></View>
-                <View><Text style={s.metricLabel}>Response</Text><Text style={s.metricValue}>{svc.response}</Text></View>
-                <View><Text style={s.metricLabel}>Last Incident</Text><Text style={s.metricValue}>{svc.lastIncident}</Text></View>
+              <View style={s.metricsRow}>
+                <View>
+                  <Text style={s.metricLabel}>Uptime</Text>
+                  <Text style={s.metricValue}>{svc.uptime}</Text>
+                </View>
+                <View>
+                  <Text style={s.metricLabel}>Response</Text>
+                  <Text style={s.metricValue}>{svc.response}</Text>
+                </View>
+                <View>
+                  <Text style={s.metricLabel}>Last Incident</Text>
+                  <Text style={s.metricValue}>{svc.lastIncident}</Text>
+                </View>
               </View>
             </View>
           );
@@ -66,14 +76,14 @@ export default function HealthScreen() {
         <View style={s.incidentCard}>
           <Text style={s.sectionTitle}>Recent Incidents</Text>
           {RECENT_INCIDENTS.map((inc, i) => (
-            <View key={inc.title} style={[s.incidentRow, i < RECENT_INCIDENTS.length - 1 && { borderBottomWidth: 1, borderBottomColor: GRAY[100] }]}>
-              <View style={s.incidentDot} />
-              <View style={s.incidentInfo}>
+            <View key={inc.title} style={[s.incidentRow, i < RECENT_INCIDENTS.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }]}>
+              <View style={[s.incidentDot, { backgroundColor: '#10B981' }]} />
+              <View style={{ flex: 1 }}>
                 <Text style={s.incidentTitle}>{inc.title}</Text>
-                <Text style={s.incidentMeta}>{inc.date} • Duration: {inc.duration}</Text>
+                <Text style={s.incidentMeta}>{inc.date} · Duration: {inc.duration}</Text>
               </View>
-              <View style={[s.incidentStatus, { backgroundColor: '#10B98115' }]}>
-                <Text style={s.incidentStatusText}>{inc.status}</Text>
+              <View style={[s.incidentStatus, { backgroundColor: '#10B98112' }]}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#10B981' }}>{inc.status}</Text>
               </View>
             </View>
           ))}
@@ -84,31 +94,29 @@ export default function HealthScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  scroll: { padding: SPACING.xl, paddingTop: 60, gap: SPACING.lg },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 44, height: 44, borderRadius: RADIUS.modal, backgroundColor: SUPERADMIN + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...TYPOGRAPHY.h2, color: SRS.navy, flex: 1 },
-  statusBanner: { padding: 20, borderRadius: 20, backgroundColor: '#FFF', ...SHADOWS.card, gap: 8 },
-  statusDot: { width: 16, height: 16, borderRadius: 8 },
-  statusTitle: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.navy },
-  statusDesc: { ...TYPOGRAPHY.small, color: GRAY[500] },
-  svcCard: { padding: SPACING.lg, borderRadius: 16, backgroundColor: '#FFF', ...SHADOWS.card },
-  svcHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  svcDot: { width: 10, height: 10, borderRadius: 5 },
-  svcName: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy, flex: 1 },
-  svcStatus: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  svcStatusText: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  svcMetrics: { flexDirection: 'row', gap: SPACING.lg },
-  metricLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  metricValue: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
-  incidentCard: { padding: 20, borderRadius: 20, backgroundColor: '#FFF', ...SHADOWS.card, marginTop: 4 },
-  sectionTitle: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.lg },
-  incidentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 },
-  incidentDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
-  incidentInfo: { flex: 1 },
-  incidentTitle: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
-  incidentMeta: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  incidentStatus: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  incidentStatusText: { ...TYPOGRAPHY.caption, fontWeight: '700', color: '#10B981' },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  statusBanner: { padding: 18, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', gap: 8 },
+  statusDot: { width: 14, height: 14, borderRadius: 7 },
+  bannerTitle: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  bannerDesc: { fontSize: 13, color: '#64748B' },
+  card: { padding: 16, borderRadius: 14, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
+  cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  svcName: { fontSize: 15, fontWeight: '700', color: '#0F172A', flex: 1 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  metricsRow: { flexDirection: 'row', gap: 16 },
+  metricLabel: { fontSize: 11, color: '#64748B' },
+  metricValue: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginTop: 2 },
+  incidentCard: { padding: 18, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 14 },
+  incidentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
+  incidentDot: { width: 8, height: 8, borderRadius: 4 },
+  incidentTitle: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  incidentMeta: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  incidentStatus: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5 },
 });

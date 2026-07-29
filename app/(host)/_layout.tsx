@@ -13,11 +13,10 @@ export default function HostLayout() {
             contentStyle: { backgroundColor: GRAY[50] },
           }}
         >
-          <Stack.Screen name="login" />
-          <Stack.Screen name="register" />
-          <Stack.Screen name="landing" />
           <Stack.Screen name="index" />
+          <Stack.Screen name="landing" />
           <Stack.Screen name="listing-wizard" options={{ presentation: "fullScreenModal" }} />
+          <Stack.Screen name="property/[id]" options={{ animation: "slide_from_right" }} />
         </Stack>
       </HostProvider>
     </AuthGuard>

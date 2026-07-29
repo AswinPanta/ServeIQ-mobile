@@ -10,14 +10,14 @@ export const destinations: Destination[] = [
   {
     id: '1',
     name: 'Kathmandu',
-    image: 'https://images.unsplash.com/photo-1529094344530-42b4571ac6b8?w=600&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=600&h=400&fit=crop',
     hotelCount: 120,
     experiences: ['Temple Hopping', 'Street Food', 'Heritage Walk', 'Boudhanath Stupa', 'Pashupatinath'],
   },
   {
     id: '2',
     name: 'Pokhara',
-    image: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=600&h=400&fit=crop',
+    image: 'https://images.unsplash.com/photo-1609766934003-2efa4ac75236?w=600&h=400&fit=crop',
     hotelCount: 85,
     experiences: ['Paragliding', 'Phewa Lake', 'Sunrise Views', 'Zip-lining', 'Annapurna Views'],
   },

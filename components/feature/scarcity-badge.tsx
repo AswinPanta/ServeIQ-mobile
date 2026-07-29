@@ -52,7 +52,7 @@ export function ScarcityBadge({ count, maxThreshold = 3, position = 'absolute' }
         withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
         withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
       ),
-      -1, // infinite
+      3, // pulse 3 times then settle (~7.2s total)
       true, // reverse
     );
     // Subtle scale breathe
@@ -61,7 +61,7 @@ export function ScarcityBadge({ count, maxThreshold = 3, position = 'absolute' }
         withTiming(1.05, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
         withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
       ),
-      -1,
+      3,
       true,
     );
     return () => {

@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
 import { useBookings } from '@/lib/context/booking-context';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { useCoupons } from '@/lib/context/coupon-context';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
-import { BookingModifyModal } from "@/components/feature/booking-modify-modal";
 import type { GuestProfile } from '@/types/api';
+import { BookingModifyModal } from "@/components/feature/booking-modify-modal";
 import { FONTS } from '@/constants/portal-theme';
 
 const ACCENT = '#2E86AB';
@@ -24,8 +23,32 @@ interface DiningReservation {
   partySize: number;
 }
 
-// NOTE: Same key used in app/(tabs)/dining-reservations.tsx (那里叫 STORAGE_KEY)
 const DINING_KEY = 'stayeasy_dining_reservations';
+
+function SectionRow({
+  icon,
+  label,
+  subtitle,
+  onPress,
+}: {
+  icon: IconSymbolName;
+  label: string;
+  subtitle?: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={s.settingRow} onPress={onPress}>
+      <View style={s.rowIcon}>
+        <IconSymbol name={icon} size={18} color={ACCENT} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.settingLabel}>{label}</Text>
+        {subtitle ? <Text style={s.rowSubtitle}>{subtitle}</Text> : null}
+      </View>
+      <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
+    </TouchableOpacity>
+  );
+}
 
 export default function ProfileScreen() {
   const { user: authUser, logout } = useAuth();
@@ -42,11 +65,9 @@ export default function ProfileScreen() {
   const displayInitials = (firstName?.[0] || user?.email?.[0] || 'U').toUpperCase();
   const loyaltyPoints = user && 'loyalty_points' in user ? (user as any).loyalty_points || 0 : 0;
   const tier = loyaltyPoints >= 5000 ? 'PLATINUM' : loyaltyPoints >= 2000 ? 'GOLD' : loyaltyPoints >= 500 ? 'SILVER' : 'BRONZE';
-  const favoriteHotels = MOCK_PROPERTIES.filter(h => favorites.has(h.id));
   const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
+  const favoritesCount = favorites.size;
 
-  // RS-003 — pull confirmed dining reservations from AsyncStorage so the
-  // guest can see (and act on) them in their profile.
   const [diningReservations, setDiningReservations] = useState<DiningReservation[]>([]);
   const [modifyBooking, setModifyBooking] = useState<any>(null);
   useEffect(() => {
@@ -55,12 +76,11 @@ export default function ProfileScreen() {
         if (!raw) return;
         try {
           const list = JSON.parse(raw) as DiningReservation[];
-          // Filter out anything in the past so the list is "upcoming-only".
           const today = new Date().toISOString().slice(0, 10);
           setDiningReservations(list.filter(r => r.date >= today));
-        } catch { /* ignore parse failures */ }
+        } catch { }
       })
-      .catch(() => {/* persistence read is best-effort */});
+      .catch(() => {});
   }, []);
 
   const tierColor = tier === 'PLATINUM' ? '#E5E4E2' : tier === 'GOLD' ? '#FFD700' : tier === 'SILVER' ? '#C0C0C0' : '#CD7F32';
@@ -87,8 +107,12 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Profile Card */}
-      <View style={s.profileCard}>
+      {/* Profile Card — tappable to About */}
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)/profile/about')}
+        style={s.profileCard}
+        activeOpacity={0.7}
+      >
         <View style={{ flexDirection: 'row', gap: 16 }}>
           <View style={s.avatarBox}>
             {photoData ? (
@@ -107,11 +131,11 @@ export default function ProfileScreen() {
               <Text style={[s.tierLabel, { color: tierColor }]}>{tier}</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={() => router.push('/profile-edit')} style={s.editBtn}>
-            <IconSymbol name="edit" size={16} color={ACCENT} />
-          </TouchableOpacity>
+          <View style={s.editBtn}>
+            <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Loyalty */}
       <View style={s.loyaltyCard}>
@@ -132,141 +156,90 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      {/* Bookings */}
+      {/* Quick Links */}
       <View style={s.section}>
-        <Text style={s.sectionTitle}>Upcoming Stays</Text>
-        {upcomingBookings.length === 0 ? (
-          <View style={s.emptyBox}>
-            <Text style={s.emptyText}>No upcoming reservations</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/search')} style={s.browseBtn}>
-              <Text style={s.browseBtnText}>Book a stay</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          upcomingBookings.slice(0, 2).map(b => (
-            <View key={b.id} style={s.bookingCard}>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <Image source={{ uri: b.hotelImage }} style={s.bookingImg} resizeMode="cover" />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.bookingHotel}>{b.hotelName}</Text>
-                  <Text style={s.bookingMeta}>
-                    {new Date(b.checkIn).toLocaleDateString()} — {new Date(b.checkOut).toLocaleDateString()}
-                  </Text>
-                  <Text style={s.bookingPrice}>NPR {b.totalPrice?.toLocaleString()}</Text>
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity onPress={() => setModifyBooking(b)} style={s.modifyBtn}>
-                  <Text style={s.modifyBtnText}>Modify</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => {
-                  Alert.alert(
-                    'Cancel booking?',
-                    `Cancel your stay at ${b.hotelName}? This action cannot be undone.`,
-                    [
-                      { text: 'Keep Booking', style: 'cancel' },
-                      {
-                        text: 'Cancel Booking',
-                        style: 'destructive',
-                        onPress: () => cancelBooking(b.id),
-                      },
-                    ],
-                  );
-                }} style={s.cancelBtn}>
-                  <Text style={s.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
+        <Text style={s.sectionTitle}>Quick Links</Text>
 
-      {/* Favorites preview */}
-      {favoriteHotels.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Saved Hotels ({favoriteHotels.length})</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-            {favoriteHotels.slice(0, 4).map(h => (
-              <TouchableOpacity
-                key={h.id}
-                onPress={() => router.push({ pathname: '/guest-hotel-detail/[id]', params: { id: h.id } })}
-                style={s.favCard}
-              >
-                <Image source={{ uri: h.images?.[0] }} style={s.favImg} resizeMode="cover" />
-                <View style={{ padding: 8 }}>
-                  <Text style={s.favName} numberOfLines={1}>{h.name}</Text>
-                  <Text style={s.favPrice}>NPR {h.price.toLocaleString()}</Text>
+        <SectionRow
+          icon="calendar"
+          label="My Bookings"
+          subtitle={upcomingBookings.length > 0 ? `${upcomingBookings.length} upcoming` : undefined}
+          onPress={() => router.push('/(tabs)/profile/bookings')}
+        />
+
+        <SectionRow
+          icon="heart"
+          label="Saved Hotels"
+          subtitle={favoritesCount > 0 ? `${favoritesCount} saved` : undefined}
+          onPress={() => router.push('/(tabs)/profile/favorites')}
+        />
+
+        <SectionRow
+          icon="discount"
+          label="My Coupons"
+          subtitle={activeCoupons.length > 0 ? `${activeCoupons.length} active` : undefined}
+          onPress={() => router.push('/(tabs)/profile/coupons')}
+        />
+
+        <SectionRow
+          icon="star"
+          label="My Reviews"
+          onPress={() => router.push('/(tabs)/profile/reviews')}
+        />
+
+        {diningReservations.length > 0 && (
+          <View style={{ borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingVertical: 12 }}>
+            <Text style={[s.settingLabel, { marginBottom: 8 }]}>
+              Upcoming Dining ({diningReservations.length})
+            </Text>
+            {diningReservations.slice(0, 3).map(r => (
+              <View key={r.id} style={s.diningCard}>
+                <View style={s.diningIcon}>
+                  <IconSymbol name="restaurant" size={18} color={ACCENT} />
                 </View>
-              </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.diningRestaurant}>{r.restaurantName} · {r.section}</Text>
+                  <Text style={s.diningMeta}>
+                    {r.date} · {r.time} · {r.partySize} guest{r.partySize === 1 ? '' : 's'}
+                  </Text>
+                  <Text style={s.diningRef}>Ref {r.id}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() =>
+                    Alert.alert(
+                      'Cancel reservation?',
+                      `Cancel your table at ${r.restaurantName} (${r.date} at ${r.time})?`,
+                      [
+                        { text: 'Keep', style: 'cancel' },
+                        {
+                          text: 'Cancel',
+                          style: 'destructive',
+                          onPress: () =>
+                            AsyncStorage.getItem(DINING_KEY).then(raw => {
+                              const list: DiningReservation[] = raw ? JSON.parse(raw) : [];
+                              const next = list.filter(x => x.id !== r.id);
+                              AsyncStorage.setItem(DINING_KEY, JSON.stringify(next));
+                              setDiningReservations(prev => prev.filter(x => x.id !== r.id));
+                            }),
+                        },
+                      ],
+                    )
+                  }
+                  style={s.diningCancelBtn}
+                >
+                  <Text style={s.diningCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
-        </View>
-      )}
+        )}
 
-      {/* RS-003 — Upcoming dining reservations surfaced from local persistence */}
-      {diningReservations.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Upcoming Dining ({diningReservations.length})</Text>
-          {diningReservations.slice(0, 3).map(r => (
-            <View key={r.id} style={s.diningCard}>
-              <View style={s.diningIcon}>
-                <IconSymbol name="restaurant" size={18} color={ACCENT} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.diningRestaurant}>{r.restaurantName} · {r.section}</Text>
-                <Text style={s.diningMeta}>
-                  {r.date} · {r.time} · {r.partySize} guest{r.partySize === 1 ? '' : 's'}
-                </Text>
-                <Text style={s.diningRef}>Ref {r.id}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() =>
-                  Alert.alert(
-                    'Cancel reservation?',
-                    `Cancel your table at ${r.restaurantName} (${r.date} at ${r.time})?`,
-                    [
-                      { text: 'Keep', style: 'cancel' },
-                      {
-                        text: 'Cancel',
-                        style: 'destructive',
-                        onPress: () =>
-                          AsyncStorage.getItem(DINING_KEY).then(raw => {
-                            const list: DiningReservation[] = raw ? JSON.parse(raw) : [];
-                            const next = list.filter(x => x.id !== r.id);
-                            AsyncStorage.setItem(DINING_KEY, JSON.stringify(next));
-                            setDiningReservations(prev => prev.filter(x => x.id !== r.id));
-                          }),
-                      },
-                    ],
-                  )
-                }
-                style={s.diningCancelBtn}
-              >
-                <Text style={s.diningCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Coupons preview */}
-      {activeCoupons.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Active Coupons ({activeCoupons.length})</Text>
-          {activeCoupons.slice(0, 2).map(c => (
-            <View key={c.id} style={s.couponCard}>
-              <View style={s.couponIcon}>
-                <IconSymbol name="discount" size={18} color={ACCENT} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.couponCode}>{c.code}</Text>
-                <Text style={s.couponDesc}>{c.description}</Text>
-              </View>
-              <Text style={s.couponValue}>{c.discountType === 'percentage' ? `${c.discount}%` : `NPR ${c.discount}`}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+        <SectionRow
+          icon="notifications"
+          label="Notifications"
+          onPress={() => router.push('/(tabs)/profile/notifications')}
+        />
+      </View>
 
       {/* Settings */}
       <View style={s.section}>
@@ -296,13 +269,8 @@ export default function ProfileScreen() {
           <Text style={s.settingLabel}>Write a Review</Text>
           <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
         </TouchableOpacity>
-        <TouchableOpacity style={s.settingRow} onPress={() => router.push("/notifications")}>
-          <IconSymbol name="notifications" size={18} color={NAVY} />
-          <Text style={s.settingLabel}>Notifications</Text>
-          <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
-        </TouchableOpacity>
-
       </View>
+
       {modifyBooking && (
         <BookingModifyModal
           visible={!!modifyBooking}
@@ -340,7 +308,7 @@ const s = StyleSheet.create({
   userEmail: { fontSize: 12, color: '#94A3B8', marginTop: 1, fontFamily: FONTS.inter.regular },
   tierDot: { width: 8, height: 8, borderRadius: 4 },
   tierLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, fontFamily: FONTS.inter.bold },
-  editBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' },
+  editBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   loyaltyCard: { marginHorizontal: 16, padding: 16, borderRadius: 16, backgroundColor: NAVY, marginBottom: 12, gap: 4 },
   loyaltyTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   loyaltyLabel: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '500', fontFamily: FONTS.inter.regular },
@@ -352,31 +320,11 @@ const s = StyleSheet.create({
   progressText: { fontSize: 10, color: 'rgba(255,255,255,0.5)', fontFamily: FONTS.inter.regular },
   section: { marginHorizontal: 16, marginBottom: 12, padding: 16, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', gap: 12 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: NAVY, letterSpacing: -0.2, fontFamily: FONTS.inter.semiBold },
-  emptyBox: { alignItems: 'center', paddingVertical: 16, gap: 12 },
-  emptyText: { fontSize: 13, color: '#94A3B8', fontFamily: FONTS.inter.regular },
-  browseBtn: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, backgroundColor: ACCENT },
-  browseBtnText: { fontSize: 12, fontWeight: '600', color: '#FFF', fontFamily: FONTS.inter.semiBold },
-  bookingCard: { padding: 12, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9', gap: 8 },
-  bookingImg: { width: 56, height: 56, borderRadius: 8 },
-  bookingHotel: { fontSize: 13, fontWeight: '600', color: NAVY, fontFamily: FONTS.inter.semiBold },
-  bookingMeta: { fontSize: 11, color: '#94A3B8', marginTop: 1, fontFamily: FONTS.inter.regular },
-  bookingPrice: { fontSize: 13, fontWeight: '700', color: ACCENT, marginTop: 4, fontFamily: FONTS.inter.bold },
-  modifyBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: ACCENT + '40', alignSelf: 'flex-start' },
-  modifyBtnText: { fontSize: 11, fontWeight: '600', color: ACCENT, fontFamily: FONTS.inter.semiBold },
-  cancelBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5', alignSelf: 'flex-start' },
-  cancelBtnText: { fontSize: 11, fontWeight: '600', color: '#EF4444', fontFamily: FONTS.inter.semiBold },
-  favCard: { width: '47%', borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
-  favImg: { width: '100%', height: 80 },
-  favName: { fontSize: 12, fontWeight: '600', color: NAVY, fontFamily: FONTS.inter.semiBold },
-  favPrice: { fontSize: 11, fontWeight: '700', color: ACCENT, marginTop: 2, fontFamily: FONTS.inter.bold },
-  couponCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: ACCENT + '06', borderWidth: 1, borderColor: ACCENT + '12' },
-  couponIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' },
-  couponCode: { fontSize: 13, fontWeight: '700', color: NAVY, letterSpacing: 1, fontFamily: FONTS.inter.bold },
-  couponDesc: { fontSize: 11, color: '#94A3B8', fontFamily: FONTS.inter.regular },
-  couponValue: { fontSize: 13, fontWeight: '700', color: ACCENT, fontFamily: FONTS.inter.bold },
+  rowIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' },
+  rowSubtitle: { fontSize: 11, color: '#94A3B8', marginTop: 1, fontFamily: FONTS.inter.regular },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   settingLabel: { fontSize: 13, color: NAVY, flex: 1, fontFamily: FONTS.inter.regular },
-  diningCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: ACCENT + '06', borderWidth: 1, borderColor: ACCENT + '14' },
+  diningCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: ACCENT + '06', borderWidth: 1, borderColor: ACCENT + '14', marginTop: 8 },
   diningIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' },
   diningRestaurant: { fontSize: 13, fontWeight: '600', color: NAVY, fontFamily: FONTS.inter.semiBold },
   diningMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: FONTS.inter.regular },

@@ -3,9 +3,11 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { getTenants } from '@/lib/api';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { FilterChips } from '@/components/superadmin/FilterChips';
+import { StatusBadge } from '@/components/superadmin/StatusBadge';
+import { EmptyState } from '@/components/superadmin/EmptyState';
 
-const SUPERADMIN = '#8E44AD';
+const ACCENT = '#7C3AED';
 const FILTERS = ['All', 'Active', 'Suspended', 'Trial'] as const;
 
 const TENANTS_DATA = [
@@ -19,8 +21,11 @@ const TENANTS_DATA = [
   { id: '8', company: 'Garden Retreat', plan: 'Trial', status: 'Trial', properties: 1, users: 1, mrr: 0, avatar: 'GR' },
 ];
 
-const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
-  Active: { bg: '#10B98115', text: '#10B981' }, Suspended: { bg: '#EF444415', text: '#EF4444' }, Trial: { bg: '#F59E0B15', text: '#F59E0B' },
+const PLAN_COLORS: Record<string, string> = {
+  Enterprise: '#7C3AED',
+  Pro: '#3B82F6',
+  Basic: '#10B981',
+  Trial: '#F59E0B',
 };
 
 export default function TenantsScreen() {
@@ -28,7 +33,9 @@ export default function TenantsScreen() {
   const [activeFilter, setActiveFilter] = useState<string>('All');
   const [tenants, setTenants] = useState(TENANTS_DATA);
 
-  useEffect(() => { getTenants().then(data => { if (data.length > 0) setTenants(data); }); }, []);
+  useEffect(() => {
+    getTenants().then(data => { if (data.length > 0) setTenants(data); });
+  }, []);
 
   const filtered = tenants.filter(t => {
     const matchSearch = t.company.toLowerCase().includes(search.toLowerCase());
@@ -37,88 +44,152 @@ export default function TenantsScreen() {
   });
 
   return (
-    <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color={SUPERADMIN} />
-          </TouchableOpacity>
-          <View>
-            <Text style={s.headerTitle}>Tenants</Text>
-            <Text style={s.headerCount}>{filtered.length} total</Text>
+    <View style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        contentInsetAdjustmentBehavior="automatic"
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Tenants</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{filtered.length}</Text>
           </View>
         </View>
 
-        <View style={s.searchBox}>
-          <IconSymbol name="search" size={16} color={GRAY[400]} />
-          <TextInput placeholder="Search tenants..." placeholderTextColor={GRAY[400]} value={search} onChangeText={setSearch} style={s.searchInput} />
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={s.filterRow}>
-            {FILTERS.map(f => (
-              <TouchableOpacity key={f} onPress={() => setActiveFilter(f)}
-                style={[s.filterChip, { backgroundColor: activeFilter === f ? SUPERADMIN : GRAY[100] }]}>
-                <Text style={[s.filterText, { color: activeFilter === f ? '#FFF' : GRAY[500] }]}>{f}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-
-        {filtered.map(tenant => {
-          const statusStyle = STATUS_STYLES[tenant.status];
-          return (
-            <TouchableOpacity key={tenant.id} onPress={() => router.push(`/(superadmin)/tenants/${tenant.id}`)}
-              style={s.tenantCard} activeOpacity={0.7}>
-              <View style={s.tenantHead}>
-                <View style={[s.tenantAvatar, { backgroundColor: SUPERADMIN + '18' }]}>
-                  <Text style={[s.avatarText, { color: SUPERADMIN }]}>{tenant.avatar}</Text>
-                </View>
-                <View style={s.tenantInfo}>
-                  <Text style={s.tenantName}>{tenant.company}</Text>
-                  <Text style={s.tenantPlan}>{tenant.plan}</Text>
-                </View>
-                <View style={[s.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                  <Text style={[s.statusText, { color: statusStyle.text }]}>{tenant.status}</Text>
-                </View>
-              </View>
-              <View style={s.statsRow}>
-                <IconSymbol name="hotel" size={12} color={GRAY[400]} />
-                <Text style={s.statValue}>{tenant.properties}</Text>
-                <IconSymbol name="person.fill" size={12} color={GRAY[400]} />
-                <Text style={s.statValue}>{tenant.users}</Text>
-                <IconSymbol name="payment" size={12} color={SUPERADMIN} />
-                <Text style={[s.statValue, { color: SUPERADMIN }]}>NPR {tenant.mrr.toLocaleString()}</Text>
-              </View>
+        {/* Search */}
+        <View style={styles.searchBox}>
+          <IconSymbol name="search" size={18} color="#94A3B8" />
+          <TextInput
+            placeholder="Search tenants..."
+            placeholderTextColor="#94A3B8"
+            value={search}
+            onChangeText={setSearch}
+            style={styles.searchInput}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <IconSymbol name="close" size={16} color="#94A3B8" />
             </TouchableOpacity>
-          );
-        })}
+          )}
+        </View>
+
+        {/* Filters */}
+        <FilterChips filters={FILTERS} active={activeFilter} onChange={setActiveFilter} />
+
+        {/* Tenant List */}
+        {filtered.length === 0 ? (
+          <EmptyState
+            icon="group"
+            title="No tenants found"
+            message="Try adjusting your search or filter criteria."
+          />
+        ) : (
+          filtered.map(tenant => (
+            <TouchableOpacity
+              key={tenant.id}
+              onPress={() => router.push(`/(superadmin)/tenants/${tenant.id}`)}
+              style={styles.card}
+              activeOpacity={0.7}
+            >
+              {/* Top row: avatar + info + status */}
+              <View style={styles.cardTop}>
+                <View style={[styles.avatar, { backgroundColor: (PLAN_COLORS[tenant.plan] || ACCENT) + '15' }]}>
+                  <Text style={[styles.avatarText, { color: PLAN_COLORS[tenant.plan] || ACCENT }]}>{tenant.avatar}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{tenant.company}</Text>
+                  <View style={styles.planRow}>
+                    <View style={[styles.planDot, { backgroundColor: PLAN_COLORS[tenant.plan] || ACCENT }]} />
+                    <Text style={styles.planText}>{tenant.plan}</Text>
+                  </View>
+                </View>
+                <StatusBadge status={tenant.status} />
+              </View>
+
+              {/* Stats row */}
+              <View style={styles.statsRow}>
+                <View style={styles.stat}>
+                  <IconSymbol name="home" size={12} color="#94A3B8" />
+                  <Text style={styles.statValue}>{tenant.properties}</Text>
+                  <Text style={styles.statLabel}>properties</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.stat}>
+                  <IconSymbol name="guest" size={12} color="#94A3B8" />
+                  <Text style={styles.statValue}>{tenant.users}</Text>
+                  <Text style={styles.statLabel}>users</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.stat}>
+                  <Text style={[styles.statValue, { color: ACCENT }]}>
+                    {tenant.mrr > 0 ? `NPR ${(tenant.mrr / 1000).toFixed(0)}K` : 'Free'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Chevron */}
+              <IconSymbol name="arrow.forward" size={14} color="#CBD5E1" style={styles.chevron} />
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GRAY[50] },
-  scroll: { padding: SPACING.xl, paddingTop: 60, gap: SPACING.lg },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { padding: 20, paddingTop: 8, gap: 14, paddingBottom: 120 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 44, height: 44, borderRadius: RADIUS.modal, backgroundColor: SUPERADMIN + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...TYPOGRAPHY.h2, color: SRS.navy },
-  headerCount: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: GRAY[100], borderRadius: 14, paddingHorizontal: 14, height: 46 },
-  searchInput: { flex: 1, fontSize: 15, color: SRS.navy, padding: 0 },
-  filterRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  filterChip: { paddingHorizontal: 18, paddingVertical: 14, borderRadius: 20 },
-  filterText: { ...TYPOGRAPHY.body, fontWeight: '600' },
-  tenantCard: { padding: SPACING.lg, borderRadius: 16, backgroundColor: '#FFF', ...SHADOWS.card },
-  tenantHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  tenantAvatar: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { ...TYPOGRAPHY.body, fontWeight: '700' },
-  tenantInfo: { flex: 1 },
-  tenantName: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
-  tenantPlan: { ...TYPOGRAPHY.caption, color: GRAY[500] },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  statusText: { ...TYPOGRAPHY.caption, fontWeight: '700' },
-  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  statValue: { ...TYPOGRAPHY.caption, color: GRAY[500], marginRight: 12 },
+  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5, flex: 1 },
+  countBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, backgroundColor: ACCENT + '12' },
+  countText: { fontSize: 14, fontWeight: '700', color: ACCENT },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchInput: { flex: 1, fontSize: 15, color: '#0F172A', padding: 0 },
+  card: {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 15, fontWeight: '700' },
+  cardInfo: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  planRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  planDot: { width: 6, height: 6, borderRadius: 3 },
+  planText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statValue: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  statLabel: { fontSize: 12, color: '#94A3B8' },
+  statDivider: { width: 1, height: 16, backgroundColor: '#E2E8F0' },
+  chevron: { position: 'absolute', right: 16, top: 20 },
 });

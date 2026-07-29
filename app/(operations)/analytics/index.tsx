@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, Alert, Share } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { useAnalyticsStore } from '@/stores/useAnalyticsStore';
 import { useHotelAnalyticsStore } from '@/stores/useHotelAnalyticsStore';
+import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/lib/context/auth-context';
+import { safeGoBack } from "@/lib/utils";
 
 const DATE_RANGES = ['Today', 'This Week', 'This Month', 'Custom'] as const;
 
@@ -31,12 +33,17 @@ export default function AnalyticsScreen() {
   const operator = user as { property_id?: string } | null;
   const hotelData = useHotelAnalyticsStore((s) => s.data);
   const setPropertyId = useHotelAnalyticsStore((s) => s.setPropertyId);
+  const refresh = useHotelAnalyticsStore((s) => s.refresh);
 
   useEffect(() => {
+    refresh();
     if (operator?.property_id) {
       setPropertyId(operator.property_id);
     }
-  }, [operator?.property_id, setPropertyId]);
+  }, [operator?.property_id, setPropertyId, refresh]);
+
+  // Subscribe to order store to re-render when POS orders change
+  const completedOrders = useOrderStore((s) => s.completedOrders);
 
   const store = useAnalyticsStore.getState();
   const revenue = store.getTodayRevenue();
@@ -89,13 +96,44 @@ export default function AnalyticsScreen() {
   };
 
   const handleExport = () => {
+    // Compute CSV once so every share option reuses the same payload (fixes
+    // closure bug where inner callbacks could not see `csv`).
+    const csv = generateCSV();
     Alert.alert('Export Data', 'Choose export format', [
-      { text: '📊 Export as CSV', onPress: () => {
-        const csv = generateCSV();
-        Alert.alert('CSV Generated', `Analytics data (${csv.split('\n').length} rows) ready for download.\n\nPreview:\n${csv.split('\n').slice(0, 5).join('\n')}\n...`);
+      { text: '📊 Export as CSV', onPress: async () => {
+        try {
+          await Share.share({ message: csv, title: `stayeasy_analytics_${activeRange.replace(/\s+/g, '')}.csv` });
+        } catch {/* share cancelled */}
       }},
-      { text: '📋 Copy to Clipboard', onPress: () => Alert.alert('Copied', 'Analytics summary copied to clipboard (simulated).') },
-      { text: '📄 Generate Report', onPress: () => Alert.alert('Report Ready', `${'📈'} Occupancy: ${hotelData.occupancyRate}%\n${'💰'} ADR: ₹${hotelData.adr.toLocaleString()}\n${'🏨'} Room Revenue: ₹${hotelData.totalRoomRevenue.toLocaleString()}\n${'📦'} Orders: ${orderCount}\n\nPeriod: ${activeRange}\nDate: ${new Date().toLocaleDateString()}`) },
+      {
+        text: '📋 Preview & Share CSV',
+        onPress: () =>
+          Alert.alert(
+            'Analytics CSV (first 8 lines)',
+            csv.split('\n').slice(0, 8).join('\n') + '\n…',
+            [
+              { text: 'Share full CSV', onPress: () => Share.share({ message: csv, title: `stayeasy_analytics_${activeRange.replace(/\s+/g, '')}.csv` }).catch(() => {}) },
+              { text: 'OK' },
+            ],
+          ),
+      },
+      {
+        text: '📄 Generate Report',
+        onPress: async () => {
+          const reportText =
+            `StayEasy Analytics Report\n` +
+            `Period: ${activeRange}\n` +
+            `Generated: ${new Date().toLocaleDateString()}\n\n` +
+            `📈 Occupancy: ${hotelData.occupancyRate}%\n` +
+            `💰 ADR: ₹${hotelData.adr.toLocaleString()}\n` +
+            `🏨 Room Revenue: ₹${hotelData.totalRoomRevenue.toLocaleString()}\n` +
+            `📦 Restaurant Orders: ${orderCount}\n\n` +
+            `— StayEasy Operations`;
+          try {
+            await Share.share({ message: reportText, title: `stayeasy_report_${activeRange.replace(/\s+/g, '')}.txt` });
+          } catch {/* share cancelled */}
+        },
+      },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -108,7 +146,7 @@ export default function AnalyticsScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
             <IconSymbol name="arrow.back" size={18} color={GRAY[500]} />
           </TouchableOpacity>
           <View>

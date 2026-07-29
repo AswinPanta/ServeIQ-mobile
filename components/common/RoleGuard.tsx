@@ -22,7 +22,7 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
           className="text-lg font-semibold text-center"
           style={{ color: colors.icon }}
         >
-          You don't have permission to access this section.
+          {"You don\u2019t have permission to access this section."}
         </Text>
         <Text
           className="text-sm mt-2 text-center"

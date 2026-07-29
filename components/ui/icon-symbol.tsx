@@ -5,7 +5,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ComponentProps } from "react";
 import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
 
-type IconSymbolName = keyof typeof MAPPING;
+export type IconSymbolName = keyof typeof MAPPING;
 
 const MAPPING = {
   // Navigation & common UI
@@ -17,6 +17,7 @@ const MAPPING = {
   "chevron.down": "expand-more",
   "chevron.up": "expand-less",
   "heart.fill": "favorite",
+  "heart": "favorite-border",
   "person.fill": "person",
   "person.add": "person-add",
   "person.search": "person-search",
@@ -55,6 +56,10 @@ const MAPPING = {
 
   // Portal / Property
   "hotel": "hotel",
+  "apartment": "apartment",
+  "villa": "villa",
+  "cottage": "cottage",
+  "resort": "pool",
   "restaurant": "restaurant",
   "store": "store",
   "business": "business",
@@ -94,6 +99,7 @@ const MAPPING = {
   "room.dirty": "cleaning-services",
   "room.cleaning": "cleaning-services",
   "room.maintenance": "build",
+  "maintenance": "build",
   "room.blocked": "lock",
   "room.inspected": "verified",
 
@@ -150,6 +156,8 @@ const MAPPING = {
   "revenue": "payments",
   "occupancy": "hotel",
   "report": "assessment",
+  "confirmation-number": "confirmation-number",
+  "content.copy": "content-copy",
   "export": "file-download",
   "csv": "table-chart",
   "pdf": "picture-as-pdf",
@@ -181,6 +189,7 @@ const MAPPING = {
   "confirm": "check-circle",
   "approve": "verified",
   "reject": "cancel",
+  "approval": "verified",
   "lock": "lock",
   "unlock": "lock-open",
   "visibility": "visibility",

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Modal, TouchableOpacity, Alert, TextInput, StyleSheet } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 
 interface BookingModifyModalProps {
@@ -19,16 +19,14 @@ interface BookingModifyModalProps {
 
 export function BookingModifyModal({ visible, onClose, booking, onSave }: BookingModifyModalProps) {
   const colors = useColors();
-  const newCheckIn = booking.checkIn;
-  const newCheckOut = booking.checkOut;
+  const [newCheckIn, setNewCheckIn] = useState(booking.checkIn);
+  const [newCheckOut, setNewCheckOut] = useState(booking.checkOut);
 
-  const originalNights = booking.nights;
   const newNights = Math.max(1, Math.ceil(
     (new Date(newCheckOut).getTime() - new Date(newCheckIn).getTime()) / (1000 * 60 * 60 * 24)
   ));
-
-  const nightDifference = newNights - originalNights;
-  const pricePerNight = Math.round(booking.totalPrice / originalNights);
+  const nightDifference = newNights - booking.nights;
+  const pricePerNight = Math.round(booking.totalPrice / Math.max(booking.nights, 1));
   const priceDifference = nightDifference * pricePerNight;
   const newTotal = booking.totalPrice + priceDifference;
 
@@ -37,7 +35,6 @@ export function BookingModifyModal({ visible, onClose, booking, onSave }: Bookin
       Alert.alert('Error', 'Check-out must be after check-in');
       return;
     }
-
     onSave({
       ...booking,
       checkIn: newCheckIn,
@@ -64,20 +61,38 @@ export function BookingModifyModal({ visible, onClose, booking, onSave }: Bookin
             Modify Booking
           </Text>
 
-          <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 8 }}>
-            New Check-in: {newCheckIn}
-          </Text>
-          <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>
-            New Check-out: {newCheckOut}
-          </Text>
+          {/* Check-in Date Input */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.muted, marginBottom: 4 }}>Check-in Date (YYYY-MM-DD)</Text>
+            <TextInput
+              value={newCheckIn}
+              onChangeText={setNewCheckIn}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.muted}
+              style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: colors.foreground, fontSize: 14 }}
+            />
+          </View>
 
+          {/* Check-out Date Input */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.muted, marginBottom: 4 }}>Check-out Date (YYYY-MM-DD)</Text>
+            <TextInput
+              value={newCheckOut}
+              onChangeText={setNewCheckOut}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.muted}
+              style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: colors.foreground, fontSize: 14 }}
+            />
+          </View>
+
+          {/* Price Summary */}
           <View style={{ backgroundColor: colors.surface, borderRadius: 8, padding: 16, marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
               <Text style={{ color: colors.muted }}>Original Total</Text>
               <Text style={{ color: colors.foreground }}>Rs {booking.totalPrice.toLocaleString()}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ color: colors.muted }}>Price Difference ({nightDifference} nights)</Text>
+              <Text style={{ color: colors.muted }}>Nights: {booking.nights} → {newNights}</Text>
               <Text style={{ color: priceDifference >= 0 ? colors.foreground : colors.success }}>
                 {priceDifference >= 0 ? '+' : ''} Rs {priceDifference.toLocaleString()}
               </Text>

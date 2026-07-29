@@ -1,38 +1,29 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { useAuth } from '@/lib/context/auth-context';
-import { useColors } from '@/hooks/use-colors';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { AnimatedPressable } from '@/components/ui/motion';
 import { useHotelAnalyticsStore } from '@/stores/useHotelAnalyticsStore';
 import { useActivityStore } from '@/stores/useActivityStore';
-import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '@/constants/portal-theme';
 import type { OperatorProfile } from '@/types/api';
 
-/** Quick-access module cards */
+const ACCENT = '#0D9488';
+const DARK = '#0F172A';
+
 const MODULES = [
-  { id: 'front-desk', label: 'Front Desk', icon: 'front.desk' as const, desc: 'Check-in, check-out, bookings', color: '#2980B9' },
-  { id: 'housekeeping', label: 'Housekeeping', icon: 'cleaning' as const, desc: 'Room cleaning tasks', color: '#16A085' },
-  { id: 'pos', label: 'POS', icon: 'pos' as const, desc: 'Restaurant & orders', color: '#D35400' },
-  { id: 'kds', label: 'KDS', icon: 'kds' as const, desc: 'Kitchen display system', color: '#8E44AD' },
-  { id: 'analytics', label: 'Analytics', icon: 'analytics' as const, desc: 'Performance reports', color: '#2E86AB' },
+  { id: 'front-desk', label: 'Front Desk', icon: 'front.desk' as const, desc: 'Check-in, check-out', color: '#2563EB' },
+  { id: 'housekeeping', label: 'Housekeeping', icon: 'cleaning' as const, desc: 'Room cleaning', color: '#16A085' },
+  { id: 'pos', label: 'POS', icon: 'pos' as const, desc: 'Restaurant orders', color: '#D35400' },
+  { id: 'kds', label: 'KDS', icon: 'kds' as const, desc: 'Kitchen display', color: '#7C3AED' },
+  { id: 'analytics', label: 'Analytics', icon: 'analytics' as const, desc: 'Reports', color: '#2E86AB' },
+  { id: 'admin/staff', label: 'Staff', icon: 'person.add' as const, desc: 'Team management', color: '#0D9488' },
+  { id: 'admin/approvals', label: 'Approvals', icon: 'approval' as const, desc: 'Discounts & refunds', color: '#DC2626' },
+  { id: 'admin/shifts', label: 'Shifts', icon: 'shift' as const, desc: 'Schedule & coverage', color: '#7C3AED' },
 ];
 
-const ACTIVITY_ICONS: Record<string, string> = {
-  checkin: 'checkin',
-  checkout: 'checkout',
-  booking: 'booking',
-  payment: 'payment',
-  hk: 'cleaning',
-  order: 'order',
-  maintenance: 'room.maintenance',
-  note: 'edit',
-  email: 'email',
-};
-
 export default function OperationsDashboard() {
-  const colors = useColors();
   const { user } = useAuth();
   const operator = user as OperatorProfile | null;
 
@@ -50,288 +41,115 @@ export default function OperationsDashboard() {
   const todayStats = useMemo(() => {
     const { bookingStatusCounts, occupancyRate } = analyticsData;
     return [
-      { label: 'Arriving', value: bookingStatusCounts.arriving, icon: 'checkin' as const, color: '#2980B9' },
-      { label: 'In House', value: bookingStatusCounts.inHouse, icon: 'hotel' as const, color: '#1E8449' },
-      { label: 'Departing', value: bookingStatusCounts.departed, icon: 'checkout' as const, color: '#D35400' },
-      { label: 'Occupancy', value: `${occupancyRate}%`, icon: 'occupancy' as const, color: '#8E44AD' },
+      { label: 'Arriving', value: bookingStatusCounts.arriving, color: '#2563EB' },
+      { label: 'In House', value: bookingStatusCounts.inHouse, color: '#16A085' },
+      { label: 'Departing', value: bookingStatusCounts.departed, color: '#D35400' },
+      { label: 'Occupancy', value: `${occupancyRate}%`, color: '#7C3AED' },
     ];
   }, [analyticsData]);
 
-  const recentActivity = useMemo(() => {
-    const pid = operator?.property_id || 'prop-1';
-    const today = new Date().toDateString();
-    const todayActs = allActivities.filter(
-      (a) => a.property_id === pid && new Date(a.createdAt).toDateString() === today
-    );
-    if (todayActs.length === 0) {
-      return [
-        { action: 'hk' as const, title: 'Housekeeping summary', subtitle: `${analyticsData.statusDistribution.find(s => s.label === 'Dirty')?.count || 0} dirty rooms need attention`, time: 'Today' },
-        { action: 'booking' as const, title: `${analyticsData.bookingStatusCounts.arriving} arrivals today`, subtitle: `${analyticsData.bookingStatusCounts.inHouse} guests in house`, time: 'Today' },
-      ];
-    }
-    return todayActs.slice(0, 6).map((a) => ({
-      action: a.type as keyof typeof ACTIVITY_ICONS,
-      title: a.title,
-      subtitle: a.description || '',
-      time: new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }));
-  }, [allActivities, analyticsData, operator?.property_id]);
+  // Animations
+  const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+  }, []);
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: SPACING.xxxl }}>
-        {/* ─── Header ─── */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={[styles.avatar, { backgroundColor: SRS.teal + '18' }]}>
-              <IconSymbol name="person.fill" size={20} color={SRS.teal} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        contentInsetAdjustmentBehavior="automatic"
+      >
+        <Animated.View style={{ opacity: fadeAnim }}>
+          {/* Header */}
+          <View style={s.header}>
+            <View>
+              <Text style={s.propertyName}>{operator?.property_name || 'Dashboard'}</Text>
+              <Text style={s.staffName}>{operator?.name || 'Staff'} · {operator?.role || 'front_desk'}</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.propertyName}>{operator?.property_name || 'Operations'}</Text>
-              <Text style={styles.staffName}>{operator?.name || 'Staff'} · {operator?.role || 'front_desk'}</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => router.replace('/')}
-              style={[styles.switchBtn, { backgroundColor: colors.border }]}
-            >
-              <Text style={styles.switchBtnText}>Switch</Text>
+            <TouchableOpacity onPress={() => router.replace('/')} style={s.switchBtn}>
+              <IconSymbol name="arrow.back" size={16} color="#94A3B8" />
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* ─── Room Status ─── */}
-        <View style={styles.section}>
-          <View style={styles.statusRow}>
-            {analyticsData.statusDistribution.map((s) => (
-              <View key={s.label} style={[styles.statusCard, { backgroundColor: s.color + '12' }]}>
-                <Text style={[styles.statusCount, { color: s.color }]}>{s.count}</Text>
-                <Text style={styles.statusLabel}>{s.label}</Text>
+          {/* Status row */}
+          <View style={s.statusRow}>
+            {analyticsData.statusDistribution.map((s: any) => (
+              <View key={s.label} style={[s.statusCard, { backgroundColor: s.color + '12' }]}>
+                <Text style={[s.statusCount, { color: s.color }]}>{s.count}</Text>
+                <Text style={s.statusLabel}>{s.label}</Text>
               </View>
             ))}
           </View>
-        </View>
 
-        {/* ─── Today's Stats ─── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Today's Overview</Text>
-          <View style={styles.statsGrid}>
-            {todayStats.map((stat) => (
-              <View key={stat.label} style={[styles.statCard, SHADOWS.card, { backgroundColor: colors.surface }]}>
-                <View style={styles.statHeader}>
-                  <View style={[styles.statIconWrap, { backgroundColor: stat.color + '14' }]}>
-                    <IconSymbol name={stat.icon} size={16} color={stat.color} />
+          {/* Today's stats */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Today</Text>
+            <View style={s.statsGrid}>
+              {todayStats.map((stat) => (
+                <View key={stat.label} style={[s.statCard, { backgroundColor: '#FFF' }]}>
+                  <Text style={[s.statValue, { color: stat.color }]}>{stat.value}</Text>
+                  <Text style={s.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Quick Access */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Modules</Text>
+            <View style={s.modulesGrid}>
+              {MODULES.map((mod) => (
+                <AnimatedPressable
+                  key={mod.id}
+                  portal="operations"
+                  haptic="medium"
+                  scaleTo={0.94}
+                  onPress={() => router.push(`/(operations)/${mod.id}` as any)}
+                  style={[s.moduleCard, { borderColor: '#F1F5F9' }]}
+                >
+                  <View style={[s.moduleIcon, { backgroundColor: mod.color + '12' }]}>
+                    <IconSymbol name={mod.icon} size={20} color={mod.color} />
                   </View>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
-                <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
-              </View>
-            ))}
+                  <Text style={s.moduleLabel}>{mod.label}</Text>
+                </AnimatedPressable>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* ─── Quick Access ─── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
-          <View style={styles.modulesGrid}>
-            {MODULES.map((mod) => (
-              <TouchableOpacity
-                key={mod.id}
-                onPress={() => router.push(`/(operations)/${mod.id}` as any)}
-                style={[styles.moduleCard, { backgroundColor: colors.surface, borderColor: colors.border }, SHADOWS.card]}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.moduleIconWrap, { backgroundColor: mod.color + '14' }]}>
-                  <IconSymbol name={mod.icon} size={24} color={mod.color} />
-                </View>
-                <Text style={styles.moduleLabel}>{mod.label}</Text>
-                <Text style={styles.moduleDesc}>{mod.desc}</Text>
-              </TouchableOpacity>
-            ))}
+          {/* Recent Activity */}
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Activity</Text>
+            <View style={s.activityCard}>
+              <Text style={s.activityEmpty}>No recent activity</Text>
+            </View>
           </View>
-        </View>
-
-        {/* ─── Recent Activity ─── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          {recentActivity.map((item, i) => {
-            const iconName = ACTIVITY_ICONS[item.action] || 'info';
-            return (
-              <View key={i} style={[styles.activityRow, { backgroundColor: colors.surface }, i < recentActivity.length - 1 ? { borderBottomWidth: 1, borderBottomColor: colors.border } : null]}>
-                <View style={[styles.activityIcon, { backgroundColor: SRS.teal + '12' }]}>
-                  <IconSymbol name={iconName as any} size={16} color={SRS.teal} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.activityTitle}>{item.title}</Text>
-                  {item.subtitle ? <Text style={styles.activitySub}>{item.subtitle}</Text> : null}
-                </View>
-                <Text style={styles.activityTime}>{item.time}</Text>
-              </View>
-            );
-          })}
-        </View>
+        </Animated.View>
       </ScrollView>
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xxl,
-    paddingBottom: SPACING.lg,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  propertyName: {
-    ...TYPOGRAPHY.h2,
-    color: SRS.navy,
-  },
-  staffName: {
-    ...TYPOGRAPHY.small,
-    color: '#6B7280',
-    marginTop: 2,
-    textTransform: 'capitalize' as const,
-  },
-  switchBtn: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.button,
-  },
-  switchBtnText: {
-    ...TYPOGRAPHY.small,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  section: {
-    paddingHorizontal: SPACING.lg,
-    marginBottom: SPACING.xl,
-  },
-  sectionTitle: {
-    ...TYPOGRAPHY.h3,
-    color: SRS.navy,
-    marginBottom: SPACING.md,
-    fontWeight: '700',
-  },
-  statusRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  statusCard: {
-    flex: 1,
-    padding: SPACING.md,
-    borderRadius: RADIUS.card,
-    alignItems: 'center',
-  },
-  statusCount: {
-    fontSize: 22,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums' as any],
-  },
-  statusLabel: {
-    ...TYPOGRAPHY.caption,
-    color: '#6B7280',
-    marginTop: 4,
-    fontWeight: '600',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-  },
-  statCard: {
-    width: '47%',
-    padding: SPACING.lg,
-    borderRadius: RADIUS.card,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
-  statIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: RADIUS.button,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statLabel: {
-    ...TYPOGRAPHY.small,
-    color: '#6B7280',
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    fontVariant: ['tabular-nums' as any],
-  },
-  modulesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.md,
-  },
-  moduleCard: {
-    width: '47%',
-    padding: SPACING.lg,
-    borderRadius: RADIUS.card,
-    borderWidth: 1,
-  },
-  moduleIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.md,
-  },
-  moduleLabel: {
-    ...TYPOGRAPHY.subtitle,
-    fontWeight: '700',
-    color: SRS.navy,
-  },
-  moduleDesc: {
-    ...TYPOGRAPHY.caption,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  activityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    gap: SPACING.md,
-  },
-  activityIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: RADIUS.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activityTitle: {
-    ...TYPOGRAPHY.body,
-    fontWeight: '600',
-    color: SRS.navy,
-  },
-  activitySub: {
-    ...TYPOGRAPHY.small,
-    color: '#6B7280',
-    marginTop: 1,
-  },
-  activityTime: {
-    ...TYPOGRAPHY.caption,
-    color: '#9CA3AF',
-  },
+const s = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 16 },
+  propertyName: { fontSize: 20, fontWeight: '700', color: DARK, letterSpacing: -0.3 },
+  staffName: { fontSize: 12, color: '#94A3B8', marginTop: 2, textTransform: 'capitalize' },
+  switchBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+  statusRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 20 },
+  statusCard: { flex: 1, padding: 12, borderRadius: 10, alignItems: 'center' },
+  statusCount: { fontSize: 20, fontWeight: '800', fontVariant: ['tabular-nums' as any] },
+  statusLabel: { fontSize: 9, fontWeight: '600', color: '#64748B', marginTop: 4, letterSpacing: 0.5, textTransform: 'uppercase' },
+  section: { paddingHorizontal: 16, marginBottom: 20 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: DARK, marginBottom: 12, letterSpacing: -0.2 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statCard: { width: '48%', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  statValue: { fontSize: 24, fontWeight: '800', fontVariant: ['tabular-nums' as any] },
+  statLabel: { fontSize: 11, color: '#94A3B8', marginTop: 4 },
+  modulesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  moduleCard: { width: '31%', padding: 16, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, alignItems: 'center', gap: 8 },
+  moduleIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  moduleLabel: { fontSize: 11, fontWeight: '600', color: DARK, textAlign: 'center' },
+  activityCard: { padding: 20, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', alignItems: 'center' },
+  activityEmpty: { fontSize: 12, color: '#94A3B8' },
 });

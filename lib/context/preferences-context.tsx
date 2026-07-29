@@ -39,10 +39,6 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    loadPreferences();
-  }, []);
-
   const loadPreferences = async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
@@ -55,6 +51,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       setLoaded(true);
     }
   };
+
+  useEffect(() => {
+    loadPreferences();
+  }, []);
 
   const updatePreferences = useCallback(async (updates: Partial<UserPreferences>) => {
     const newPrefs = { ...preferences, ...updates };

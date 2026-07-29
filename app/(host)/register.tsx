@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { safeGoBack } from "@/lib/utils";
 
 export default function HostRegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +35,7 @@ export default function HostRegisterScreen() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       Alert.alert('Success', 'Account created! Please check your email to verify.', [
-        { text: 'OK', onPress: () => router.replace('/(host)/login') },
+        { text: 'OK', onPress: () => router.replace('/(auth)/login') },
       ]);
     } catch (error) {
       Alert.alert('Error', 'Registration failed');
@@ -48,7 +49,7 @@ export default function HostRegisterScreen() {
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={s.headerSection}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
             <IconSymbol name="arrow.back" size={20} color={SRS.navy} />
           </TouchableOpacity>
           <Text style={s.title}>Create Account</Text>
@@ -128,7 +129,7 @@ export default function HostRegisterScreen() {
         {/* Sign In Link */}
         <View style={s.linkRow}>
           <Text style={s.linkLabel}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => router.push('/(host)/login')}>
+          <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
             <Text style={s.linkAction}>Sign In</Text>
           </TouchableOpacity>
         </View>

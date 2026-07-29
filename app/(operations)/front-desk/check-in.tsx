@@ -8,6 +8,7 @@ import { useActivityStore } from '@/stores/useActivityStore';
 import { useShiftStore } from '@/stores/useShiftStore';
 import { Stepper } from '@/components/ui/Stepper';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { safeGoBack } from "@/lib/utils";
 
 const STEPS = [
   { label: 'Search', description: 'Find guest' },
@@ -67,7 +68,7 @@ export default function CheckInScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
           <IconSymbol name="arrow.back" size={18} color={GRAY[500]} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Check-in</Text>
@@ -263,7 +264,7 @@ export default function CheckInScreen() {
                 </View>
               ))}
             </View>
-            <TouchableOpacity onPress={() => router.back()} style={styles.doneBtn}>
+            <TouchableOpacity onPress={() => safeGoBack()} style={styles.doneBtn}>
               <Text style={styles.doneBtnText}>Done</Text>
             </TouchableOpacity>
           </View>

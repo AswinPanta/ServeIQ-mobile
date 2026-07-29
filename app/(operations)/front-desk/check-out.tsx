@@ -13,6 +13,7 @@ import { useGuestStore } from '@/stores/useGuestStore';
 import { useHousekeepingStore } from '@/stores/useHousekeepingStore';
 import { Stepper } from '@/components/ui/Stepper';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { safeGoBack } from "@/lib/utils";
 
 const STEPS = [
   { label: 'Search', description: 'Find guest' },
@@ -25,7 +26,7 @@ const CATEGORY_ICONS: Record<string, string> = { room: 'room', restaurant: 'food
 const CATEGORY_LABELS: Record<string, string> = { room: 'Room', restaurant: 'Restaurant', minibar: 'Minibar', laundry: 'Laundry', service: 'Service', other: 'Other' };
 
 export default function CheckOutScreen() {
-  const { rooms, bookings, updateRoomStatus } = useFrontDesk();
+  const { rooms, bookings, updateRoomStatus, checkOut: frontDeskCheckOut } = useFrontDesk();
   const { user } = useAuth();
   const operator = user as { property_id?: string } | null;
   const checkedInGuests = useMemo(() => bookings.filter((b) => b.status === 'checked_in'), [bookings]);
@@ -46,7 +47,9 @@ export default function CheckOutScreen() {
   const handleComplete = () => {
     if (!selectedBooking || !paymentMethod) return;
     const room = rooms.find((r) => r.room_number === selectedBooking.room_number);
-    if (room) updateRoomStatus(room.room_number, 'dirty');
+    // Use the front desk context's checkOut method to properly transition booking to checked_out
+    // (also marks room as dirty, updates booking status to checked_out, and calls the API)
+    frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number!);
     useFolioStore.getState().settleFolio(selectedBooking.ref);
     useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: '#3B82F6', property_id: operator?.property_id || 'prop-1' });
     useShiftStore.getState().incrementCheckOuts();
@@ -64,7 +67,7 @@ export default function CheckOutScreen() {
   return (
     <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}><IconSymbol name="arrow.back" size={18} color={GRAY[500]} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}><IconSymbol name="arrow.back" size={18} color={GRAY[500]} /></TouchableOpacity>
         <Text style={s.title}>Check-out</Text>
         <Text style={s.sub}>Process guest departure</Text>
       </View>
@@ -184,7 +187,7 @@ export default function CheckOutScreen() {
               <IconSymbol name="cleaning" size={18} color={SRS.orange} />
               <View style={{ flex: 1 }}><Text style={{ ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy }}>Housekeeping Notified</Text><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Room {selectedBooking.room_number} marked for cleaning</Text></View>
             </View>
-            <TouchableOpacity onPress={() => router.back()} style={doneStyles.doneBtn}><Text style={doneStyles.doneBtnText}>Done</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => safeGoBack()} style={doneStyles.doneBtn}><Text style={doneStyles.doneBtnText}>Done</Text></TouchableOpacity>
           </View>
         )}
         {step > 0 && step < 3 && (
