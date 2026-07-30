@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ImageBackground, StyleSheet, ImageStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PROPERTY_TYPES } from '@/lib/mock/landing-data';
 
@@ -9,9 +10,10 @@ interface Props {
 }
 
 export function PropertyTypeBrowser({ onSelect, selected }: Props) {
+  const { t } = useTranslation();
   return (
     <View>
-      <Text style={s.title}>Browse by property type</Text>
+      <Text style={s.title}>{t('components.propertyType.title')}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

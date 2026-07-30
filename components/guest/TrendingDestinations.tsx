@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ImageBackground, StyleSheet, ImageStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TRENDING_DESTINATIONS } from '@/lib/mock/landing-data';
 
@@ -8,9 +9,10 @@ interface Props {
 }
 
 export function TrendingDestinations({ onSelect }: Props) {
+  const { t } = useTranslation();
   return (
     <View>
-      <Text style={s.title}>Trending destinations</Text>
+      <Text style={s.title}>{t('components.destinations.trending')}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -42,7 +44,7 @@ export function TrendingDestinations({ onSelect }: Props) {
                 <Text style={s.cardLocation}>{dest.location}</Text>
                 <View style={s.priceRow}>
                   <Text style={s.priceStrike}>${dest.price + 30}</Text>
-                  <Text style={s.price}>${dest.price} <Text style={s.priceUnit}>/ night</Text></Text>
+                  <Text style={s.price}>${dest.price}                   <Text style={s.priceUnit}>{t('components.destinations.perNight')}</Text></Text>
                 </View>
                 <View style={s.ratingRow}>
                   <Text style={s.star}>⭐</Text>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ImageBackground, StyleSheet, ImageStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { POPULAR_DESTINATIONS } from '@/lib/mock/landing-data';
 
@@ -8,12 +9,13 @@ interface Props {
 }
 
 export function PopularDestinations({ onSelect }: Props) {
+  const { t } = useTranslation();
   return (
     <View>
       <View style={s.header}>
-        <Text style={s.title}>Popular destinations</Text>
+        <Text style={s.title}>{t('components.destinations.popular')}</Text>
         <TouchableOpacity>
-          <Text style={s.viewAll}>View all →</Text>
+          <Text style={s.viewAll}>{t('components.destinations.viewAll')}</Text>
         </TouchableOpacity>
       </View>
       <ScrollView
@@ -41,7 +43,7 @@ export function PopularDestinations({ onSelect }: Props) {
                 <Text style={s.cardCity}>{dest.city}</Text>
                 <Text style={s.cardCountry}>{dest.country}</Text>
                 <View style={s.metaRow}>
-                  <Text style={s.properties}>{dest.properties} properties</Text>
+                  <Text style={s.properties}>{t('components.destinations.properties', { n: dest.properties })}</Text>
                   <View style={s.ratingBadge}>
                     <Text style={s.star}>⭐</Text>
                     <Text style={s.rating}>{dest.rating}</Text>

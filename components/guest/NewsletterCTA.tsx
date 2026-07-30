@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export function NewsletterCTA() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
 
   return (
@@ -14,13 +16,13 @@ export function NewsletterCTA() {
     >
       <View style={s.inner}>
         <View style={s.textBlock}>
-          <Text style={s.title}>Ready for your next adventure?</Text>
-          <Text style={s.subtitle}>Sign up now and receive exclusive deals straight to your inbox.</Text>
+          <Text style={s.title}>{t('components.newsletter.title')}</Text>
+          <Text style={s.subtitle}>{t('components.newsletter.subtitle')}</Text>
         </View>
         <View style={s.inputBlock}>
           <TextInput
             style={s.input}
-            placeholder="Enter your email"
+            placeholder={t('components.newsletter.emailPlaceholder')}
             placeholderTextColor="rgba(255,255,255,0.4)"
             value={email}
             onChangeText={setEmail}
@@ -28,11 +30,11 @@ export function NewsletterCTA() {
             autoCapitalize="none"
           />
           <TouchableOpacity style={s.btn} activeOpacity={0.85}>
-            <Text style={s.btnText}>Get started →</Text>
+            <Text style={s.btnText}>{t('components.newsletter.cta')}</Text>
           </TouchableOpacity>
           <View style={s.checkboxRow}>
             <View style={s.checkbox} />
-            <Text style={s.disclaimer}>I agree to receive email updates. Unsubscribe anytime.</Text>
+            <Text style={s.disclaimer}>{t('components.newsletter.agree')}</Text>
           </View>
         </View>
       </View>

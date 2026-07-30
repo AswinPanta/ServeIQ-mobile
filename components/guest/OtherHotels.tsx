@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColors } from '@/hooks/use-colors';
 
 const SIMILAR_PROPERTIES = [
@@ -10,8 +11,10 @@ const SIMILAR_PROPERTIES = [
   { id: 'h4', name: 'Jungle Safari Lodge', location: 'Chitwan, Nepal', rating: 4.5, price: 'NPR 7,800', image: '🌿', reviews: 67 },
 ];
 
-export function OtherHotels({ title = 'Explore More Properties' }: { title?: string }) {
+export function OtherHotels({ title: titleProp }: { title?: string } = {}) {
+  const { t } = useTranslation();
   const colors = useColors();
+  const title = titleProp ?? t('components.otherHotels.title');
 
   return (
     <View className="py-8">
@@ -19,7 +22,7 @@ export function OtherHotels({ title = 'Explore More Properties' }: { title?: str
         <View className="flex-row items-center justify-between">
           <Text className="text-2xl font-bold text-foreground">{title}</Text>
           <TouchableOpacity>
-            <Text className="text-sm font-semibold" style={{ color: '#E63946' }}>See All</Text>
+            <Text className="text-sm font-semibold" style={{ color: '#E63946' }}>{t('components.otherHotels.seeAll')}</Text>
           </TouchableOpacity>
         </View>
       </View>

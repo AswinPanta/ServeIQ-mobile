@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { TESTIMONIALS } from '@/lib/mock/landing-data';
 
 export function Testimonials() {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const totalPages = Math.ceil(TESTIMONIALS.length / 2);
@@ -14,7 +16,7 @@ export function Testimonials() {
 
   return (
     <View style={s.container}>
-      <Text style={s.title}>What travelers say</Text>
+      <Text style={s.title}>{t('components.testimonials.title')}</Text>
 
       <ScrollView
         ref={scrollRef}
