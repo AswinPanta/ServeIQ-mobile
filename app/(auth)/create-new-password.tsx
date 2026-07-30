@@ -32,9 +32,7 @@ export default function CreateNewPasswordScreen() {
   return (
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.inner}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/')} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
+
 
         <Text style={s.title}>{t('auth.reset.title')}</Text>
 

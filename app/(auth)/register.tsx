@@ -92,9 +92,7 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={s.headerArea}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={s.backBtn}>
-            <Ionicons name="arrow-back" size={22} color="#FFF" />
-          </TouchableOpacity>
+
           <Text style={s.logo}>
             <Text style={{ color: '#FFF' }}>Stay</Text>
             <Text style={{ color: TEAL }}>Easy</Text>
