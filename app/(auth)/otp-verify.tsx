@@ -72,7 +72,7 @@ export default function OTPVerifyScreen() {
   return (
     <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.container}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity style={s.backBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/')} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color="#FFF" />
         </TouchableOpacity>
 
