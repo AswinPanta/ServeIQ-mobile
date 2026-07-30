@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { useNotifications } from '@/lib/context/notification-context';
 import { FONTS } from '@/constants/portal-theme';
+import type { TFunction } from 'i18next';
 
 const ACCENT = '#E63946';
 
@@ -15,21 +17,22 @@ const TYPE_CONFIG: Record<string, { icon: IconSymbolName; color: string }> = {
   system: { icon: 'settings', color: '#94A3B8' },
 };
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, t: TFunction): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1) return t('profile.notifications.justNow');
+  if (diffMins < 60) return t('profile.notifications.minutesAgo', { n: diffMins });
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return t('profile.notifications.hoursAgo', { n: diffHours });
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 7) return t('profile.notifications.daysAgo', { n: diffDays });
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const { notifications, unreadCount, markAllAsRead, refreshNotifications } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -53,7 +56,7 @@ export default function NotificationsScreen() {
         <View style={s.itemBody}>
           <View style={s.itemTop}>
             <Text style={s.itemTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={s.itemTime}>{formatTime(item.created_at)}</Text>
+            <Text style={s.itemTime}>{formatTime(item.created_at, t)}</Text>
           </View>
           <Text style={s.itemMsg} numberOfLines={2}>{item.message}</Text>
         </View>
@@ -68,10 +71,10 @@ export default function NotificationsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color="#1A3C5E" />
         </TouchableOpacity>
-        <Text style={s.title}>Notifications</Text>
+        <Text style={s.title}>{t('profile.notifications.title')}</Text>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllAsRead} style={s.markAllBtn}>
-            <Text style={s.markAllText}>Mark all read</Text>
+            <Text style={s.markAllText}>{t('profile.notifications.markAllRead')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -87,8 +90,8 @@ export default function NotificationsScreen() {
         ListEmptyComponent={
           <View style={s.emptyBox}>
             <IconSymbol name="notifications" size={48} color="#D1D5DB" />
-            <Text style={s.emptyTitle}>No notifications</Text>
-            <Text style={s.emptySub}>You're all caught up!</Text>
+            <Text style={s.emptyTitle}>{t('profile.notifications.empty')}</Text>
+            <Text style={s.emptySub}>{t('profile.notifications.allCaughtUp')}</Text>
           </View>
         }
       />

@@ -1,29 +1,27 @@
 import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useBookings } from '@/lib/context/booking-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
 
 type BookingTab = 'upcoming' | 'completed' | 'cancelled';
 
-const TABS: { key: BookingTab; label: string }[] = [
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'cancelled', label: 'Cancelled' },
-];
+const TABS: BookingTab[] = ['upcoming', 'completed', 'cancelled'];
 
 const CORAL = '#E63946';
 const NAVY = '#1A3C5E';
 
 const STATUS_BADGE = {
-  upcoming: { bg: CORAL + '14', text: CORAL, label: 'Upcoming' },
-  completed: { bg: '#1E844914', text: '#1E8449', label: 'Completed' },
-  cancelled: { bg: '#C0392B14', text: '#C0392B', label: 'Cancelled' },
+  upcoming: { bg: CORAL + '14', text: CORAL },
+  completed: { bg: '#1E844914', text: '#1E8449' },
+  cancelled: { bg: '#C0392B14', text: '#C0392B' },
 } as const;
 
 export default function BookingsScreen() {
   const { bookings } = useBookings();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<BookingTab>('upcoming');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,20 +38,20 @@ export default function BookingsScreen() {
         <Text style={s.hotelName} numberOfLines={1}>{item.hotelName}</Text>
         <View style={[s.badge, { backgroundColor: STATUS_BADGE[item.status].bg }]}>
           <Text style={[s.badgeText, { color: STATUS_BADGE[item.status].text }]}>
-            {STATUS_BADGE[item.status].label}
+            {t('profile.bookings.' + item.status)}
           </Text>
         </View>
       </View>
       <View style={s.dateRow}>
         <View style={s.dateBlock}>
-          <Text style={s.dateLabel}>Check-in</Text>
+          <Text style={s.dateLabel}>{t('profile.bookings.checkin')}</Text>
           <Text style={s.dateValue}>
             {new Date(item.checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </Text>
         </View>
         <IconSymbol name="chevron.right" size={14} color="#CBD5E1" />
         <View style={s.dateBlock}>
-          <Text style={s.dateLabel}>Check-out</Text>
+          <Text style={s.dateLabel}>{t('profile.bookings.checkout')}</Text>
           <Text style={s.dateValue}>
             {new Date(item.checkOut).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </Text>
@@ -67,27 +65,24 @@ export default function BookingsScreen() {
           style={s.detailBtn}
           onPress={() => router.push(`/(tabs)/profile/bookings/${item.id}`)}
         >
-          <Text style={s.detailBtnText}>View Details</Text>
+          <Text style={s.detailBtnText}>{t('profile.bookings.viewDetails')}</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  const renderEmpty = () => (
-    <View style={s.emptyState}>
-      <View style={s.emptyIcon}>
-        <IconSymbol name={activeTab === 'cancelled' ? 'cancel' : 'calendar'} size={32} color="#E2E8F0" />
+  const renderEmpty = () => {
+    const tabLabel = t('profile.bookings.' + activeTab);
+    return (
+      <View style={s.emptyState}>
+        <View style={s.emptyIcon}>
+          <IconSymbol name={activeTab === 'cancelled' ? 'cancel' : 'calendar'} size={32} color="#E2E8F0" />
+        </View>
+        <Text style={s.emptyTitle}>{t('profile.bookings.empty', { tab: tabLabel })}</Text>
+        <Text style={s.emptyDesc}>{t('profile.bookings.emptyDesc', { tab: tabLabel })}</Text>
       </View>
-      <Text style={s.emptyTitle}>No {activeTab} bookings</Text>
-      <Text style={s.emptyDesc}>
-        {activeTab === 'upcoming'
-          ? 'You have no upcoming reservations'
-          : activeTab === 'completed'
-          ? 'You have no completed stays yet'
-          : 'No cancelled bookings'}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={s.container}>
@@ -95,19 +90,19 @@ export default function BookingsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
-        <Text style={s.title}>My Bookings</Text>
+        <Text style={s.title}>{t('profile.bookings.title')}</Text>
         <View style={s.backBtn} />
       </View>
 
       <View style={s.tabBar}>
         {TABS.map(tab => (
           <TouchableOpacity
-            key={tab.key}
-            style={[s.tab, activeTab === tab.key && s.tabActive]}
-            onPress={() => setActiveTab(tab.key)}
+            key={tab}
+            style={[s.tab, activeTab === tab && s.tabActive]}
+            onPress={() => setActiveTab(tab)}
           >
-            <Text style={[s.tabText, activeTab === tab.key && s.tabTextActive]}>
-              {tab.label}
+            <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>
+              {t('profile.bookings.' + tab)}
             </Text>
           </TouchableOpacity>
         ))}

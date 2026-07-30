@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, Alert, TextInput, StyleSheet, Modal, FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
 import { PHONE_CODES } from '@/lib/mock/phone-codes';
@@ -15,6 +16,7 @@ const NAVY = '#1A3C5E';
 
 export default function AboutScreen() {
   const { user: authUser } = useAuth();
+  const { t } = useTranslation();
   const user = authUser as GuestProfile | null;
 
   const initials = (user?.name || 'U').slice(0, 2).toUpperCase();
@@ -32,7 +34,7 @@ export default function AboutScreen() {
   const phoneNumber = phone.replace(selectedDial, '');
 
   const handleSave = () => {
-    Alert.alert('Saved', 'Profile updated successfully');
+    Alert.alert(t('profile.about.saved'), t('profile.about.savedMessage'));
   };
 
   return (
@@ -41,7 +43,7 @@ export default function AboutScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
-        <Text style={s.title}>About Me</Text>
+        <Text style={s.title}>{t('profile.about.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -55,30 +57,30 @@ export default function AboutScreen() {
               <IconSymbol name="edit" size={14} color="#FFF" />
             </TouchableOpacity>
           </View>
-          <Text style={s.profileName}>{user?.name || 'User'}</Text>
+          <Text style={s.profileName}>{user?.name || t('profile.userLabel')}</Text>
         </View>
 
         <View style={s.formSection}>
           <View style={s.field}>
-            <Text style={s.fieldLabel}>Full Name</Text>
+            <Text style={s.fieldLabel}>{t('profile.about.fullName')}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="Your full name"
+              placeholder={t('profile.about.namePlaceholder')}
               placeholderTextColor="#94A3B8"
               style={s.input}
             />
           </View>
 
           <View style={s.field}>
-            <Text style={s.fieldLabel}>Email</Text>
+            <Text style={s.fieldLabel}>{t('profile.about.email')}</Text>
             <View style={[s.input, s.readOnlyInput]}>
               <Text style={s.readOnlyText}>{email}</Text>
             </View>
           </View>
 
           <View style={s.field}>
-            <Text style={s.fieldLabel}>Phone</Text>
+            <Text style={s.fieldLabel}>{t('profile.about.phone')}</Text>
             <View style={s.phoneRow}>
               <TouchableOpacity style={s.dialPicker} onPress={() => setShowPhonePicker(true)}>
                 <Text style={s.dialText}>{selectedDial}</Text>
@@ -87,7 +89,7 @@ export default function AboutScreen() {
               <TextInput
                 value={phoneNumber}
                 onChangeText={(v) => setPhone(selectedDial + v)}
-                placeholder="Phone number"
+                placeholder={t('profile.about.phonePlaceholder')}
                 placeholderTextColor="#94A3B8"
                 keyboardType="phone-pad"
                 style={[s.input, s.phoneInput]}
@@ -96,21 +98,21 @@ export default function AboutScreen() {
           </View>
 
           <View style={s.field}>
-            <Text style={s.fieldLabel}>Date of Birth</Text>
+            <Text style={s.fieldLabel}>{t('profile.about.dob')}</Text>
             <TextInput
               value={dob}
               onChangeText={setDob}
-              placeholder="YYYY-MM-DD"
+              placeholder={t('profile.about.dobPlaceholder')}
               placeholderTextColor="#94A3B8"
               style={s.input}
             />
           </View>
 
           <View style={s.field}>
-            <Text style={s.fieldLabel}>Nationality</Text>
+            <Text style={s.fieldLabel}>{t('profile.about.nationality')}</Text>
             <TouchableOpacity style={s.pickerBtn} onPress={() => setShowNationalityPicker(true)}>
               <Text style={[s.pickerText, !nationality && s.pickerPlaceholder]}>
-                {nationality || 'Select nationality'}
+                {nationality || t('profile.about.nationalityPlaceholder')}
               </Text>
               <IconSymbol name="chevron.down" size={14} color="#94A3B8" />
             </TouchableOpacity>
@@ -118,13 +120,13 @@ export default function AboutScreen() {
 
           <View style={s.field}>
             <View style={s.bioHeader}>
-              <Text style={s.fieldLabel}>Bio</Text>
+              <Text style={s.fieldLabel}>{t('profile.about.bio')}</Text>
               <Text style={s.charCount}>{bio.length}/500</Text>
             </View>
             <TextInput
               value={bio}
               onChangeText={(v) => setBio(v.slice(0, 500))}
-              placeholder="Tell us about yourself..."
+              placeholder={t('profile.about.bioPlaceholder')}
               placeholderTextColor="#94A3B8"
               multiline
               numberOfLines={4}
@@ -135,7 +137,7 @@ export default function AboutScreen() {
         </View>
 
         <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.8}>
-          <Text style={s.saveBtnText}>Save</Text>
+          <Text style={s.saveBtnText}>{t('profile.about.save')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -143,7 +145,7 @@ export default function AboutScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Select Country Code</Text>
+              <Text style={s.modalTitle}>{t('profile.about.selectCountryCode')}</Text>
               <TouchableOpacity onPress={() => setShowPhonePicker(false)}>
                 <IconSymbol name="close" size={20} color={NAVY} />
               </TouchableOpacity>
@@ -170,7 +172,7 @@ export default function AboutScreen() {
         <View style={s.modalOverlay}>
           <View style={s.modalContent}>
             <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Select Nationality</Text>
+              <Text style={s.modalTitle}>{t('profile.about.selectNationality')}</Text>
               <TouchableOpacity onPress={() => setShowNationalityPicker(false)}>
                 <IconSymbol name="close" size={20} color={NAVY} />
               </TouchableOpacity>

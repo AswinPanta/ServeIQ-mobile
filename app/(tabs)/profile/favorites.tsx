@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { MOCK_PROPERTIES, Hotel } from '@/lib/mock/properties';
@@ -25,6 +26,7 @@ function StarRating({ rating, size = 12 }: { rating: number; size?: number }) {
 }
 
 function FavoriteCard({ hotel }: { hotel: Hotel }) {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity
       activeOpacity={0.7}
@@ -37,7 +39,7 @@ function FavoriteCard({ hotel }: { hotel: Hotel }) {
       <View style={s.cardBody}>
         <Text style={s.cardName} numberOfLines={1}>{hotel.name}</Text>
         <StarRating rating={hotel.rating} />
-        <Text style={s.cardPrice}>NPR {hotel.price.toLocaleString()}<Text style={s.cardPerNight}> /night</Text></Text>
+        <Text style={s.cardPrice}>NPR {hotel.price.toLocaleString()}<Text style={s.cardPerNight}> {t('profile.favorites.perNight')}</Text></Text>
       </View>
     </TouchableOpacity>
   );
@@ -45,6 +47,7 @@ function FavoriteCard({ hotel }: { hotel: Hotel }) {
 
 export default function FavoritesScreen() {
   const { favorites } = useFavorites();
+  const { t } = useTranslation();
   const favoriteHotels = MOCK_PROPERTIES.filter(h => favorites.has(h.id));
   const [refreshing, setRefreshing] = useState(false);
 
@@ -59,7 +62,7 @@ export default function FavoritesScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
-        <Text style={s.title}>Favourites</Text>
+        <Text style={s.title}>{t('profile.favorites.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -68,10 +71,10 @@ export default function FavoritesScreen() {
           <View style={s.emptyIcon}>
             <IconSymbol name="heart.fill" size={48} color={CORAL} />
           </View>
-          <Text style={s.emptyTitle}>No favorites yet</Text>
-          <Text style={s.emptyDesc}>Tap the heart on any hotel to save it here</Text>
+          <Text style={s.emptyTitle}>{t('profile.favorites.empty')}</Text>
+          <Text style={s.emptyDesc}>{t('profile.favorites.emptyDesc')}</Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)')} style={s.exploreBtn}>
-            <Text style={s.exploreBtnText}>Start exploring</Text>
+            <Text style={s.exploreBtnText}>{t('profile.favorites.emptyCTA')}</Text>
           </TouchableOpacity>
         </View>
       ) : (

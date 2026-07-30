@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
 
@@ -53,6 +54,7 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
 }
 
 export default function ReviewsScreen() {
+  const { t } = useTranslation();
   return (
     <ScrollView
       style={s.container}
@@ -63,17 +65,15 @@ export default function ReviewsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color="#1A3C5E" />
         </TouchableOpacity>
-        <Text style={s.title}>My Reviews</Text>
+        <Text style={s.title}>{t('profile.reviews.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       {MOCK_REVIEWS.length === 0 ? (
         <View style={s.emptyState}>
           <IconSymbol name="star" size={64} color={CORAL + '30'} />
-          <Text style={s.emptyTitle}>No reviews yet</Text>
-          <Text style={s.emptyDesc}>
-            Your reviews will appear here after you complete a stay
-          </Text>
+          <Text style={s.emptyTitle}>{t('profile.reviews.empty')}</Text>
+          <Text style={s.emptyDesc}>{t('profile.reviews.emptyDesc')}</Text>
         </View>
       ) : (
         <View style={{ paddingHorizontal: 16, gap: 12 }}>

@@ -1,23 +1,26 @@
 import { useState } from 'react';
 import { View, Text, SectionList, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useCoupons } from '@/lib/context/coupon-context';
 import type { Coupon } from '@/types/coupon';
 import { FONTS } from '@/constants/portal-theme';
+import type { TFunction } from 'i18next';
 
 const ACCENT = '#E63946';
 const NAVY = '#1A3C5E';
 
-function getExpiryText(expiresAt: string): string {
+function getExpiryText(expiresAt: string, t: TFunction): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
-  if (diff <= 0) return 'Expired';
+  if (diff <= 0) return t('profile.coupons.expired');
   const days = Math.ceil(diff / 86400000);
-  return `Expires in ${days} day${days === 1 ? '' : 's'}`;
+  return t('profile.coupons.expiresIn', { count: days, days });
 }
 
 function CouponCard({ coupon }: { coupon: Coupon }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const expired = coupon.status === 'expired' || new Date(coupon.expiresAt).getTime() <= Date.now();
 
@@ -36,7 +39,7 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
         <Text style={[styles.couponCode, expired && { color: '#94A3B8' }]}>{coupon.code}</Text>
         <Text style={[styles.couponDesc, expired && { color: '#CBD5E1' }]}>{coupon.description}</Text>
         <Text style={[styles.expiryText, expired && { color: '#CBD5E1' }]}>
-          {getExpiryText(coupon.expiresAt)}
+          {getExpiryText(coupon.expiresAt, t)}
         </Text>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -45,7 +48,7 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
         </Text>
         <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
           {copied ? (
-            <Text style={styles.copiedText}>Copied!</Text>
+            <Text style={styles.copiedText}>{t('profile.coupons.copied')}</Text>
           ) : (
             <IconSymbol name="content.copy" size={16} color={expired ? '#94A3B8' : ACCENT} />
           )}
@@ -68,14 +71,15 @@ function EmptyState({ label }: { label: string }) {
 
 export default function CouponsScreen() {
   const { coupons } = useCoupons();
+  const { t } = useTranslation();
 
   const now = Date.now();
   const active = coupons.filter(c => c.status === 'active' && new Date(c.expiresAt).getTime() > now);
   const expired = coupons.filter(c => c.status !== 'active' || new Date(c.expiresAt).getTime() <= now);
 
   const sections: { title: string; data: Coupon[]; empty: string }[] = [
-    { title: 'Active', data: active, empty: 'No active coupons' },
-    { title: 'Expired', data: expired, empty: 'No expired coupons' },
+    { title: t('profile.coupons.active'), data: active, empty: t('profile.coupons.empty') },
+    { title: t('profile.coupons.expired'), data: expired, empty: t('profile.coupons.empty') },
   ];
 
   return (
@@ -84,7 +88,7 @@ export default function CouponsScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol name="arrow.back" size={22} color={NAVY} />
         </TouchableOpacity>
-        <Text style={styles.title}>My Coupons</Text>
+        <Text style={styles.title}>{t('profile.coupons.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
