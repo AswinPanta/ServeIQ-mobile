@@ -7,17 +7,19 @@ import { HotelCard } from '@/components/feature/hotel-card';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useTranslation } from 'react-i18next';
 
 export default function FavoritesScreen() {
+  const { t } = useTranslation();
   const { favoritesList, removeFavorite } = useFavorites();
   const favoriteHotels = MOCK_PROPERTIES.filter(h => favoritesList.includes(h.id));
 
   return (
     <ScreenContainer className="flex-1" containerClassName="bg-background">
       <View style={s.header}>
-        <Text style={s.title}>Saved</Text>
+        <Text style={s.title}>{t('profile.favorites.title')}</Text>
         <Text style={s.count}>
-          {favoriteHotels.length} hotel{favoriteHotels.length !== 1 ? 's' : ''}
+          {t('profile.favorites.count', { n: favoriteHotels.length, count: favoriteHotels.length })}
         </Text>
       </View>
 
@@ -26,8 +28,8 @@ export default function FavoritesScreen() {
           <View style={s.emptyIcon}>
             <IconSymbol name="heart.fill" size={32} color="#E2E8F0" />
           </View>
-          <Text style={s.emptyTitle}>No saved hotels yet</Text>
-          <Text style={s.emptyDesc}>Tap the heart icon on any hotel to save it here</Text>
+          <Text style={s.emptyTitle}>{t('profile.favorites.empty')}</Text>
+          <Text style={s.emptyDesc}>{t('profile.favorites.emptyDesc')}</Text>
         </View>
       ) : (
         <FlatList

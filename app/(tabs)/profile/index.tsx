@@ -8,6 +8,7 @@ import { useBookings } from '@/lib/context/booking-context';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { useCoupons } from '@/lib/context/coupon-context';
 import type { GuestProfile } from '@/types/api';
+import { useTranslation } from 'react-i18next';
 import { BookingModifyModal } from "@/components/feature/booking-modify-modal";
 import { FONTS } from '@/constants/portal-theme';
 
@@ -51,6 +52,7 @@ function SectionRow({
 }
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { user: authUser, logout } = useAuth();
   const user = authUser as GuestProfile | null;
   const { bookings, cancelBooking } = useBookings();
@@ -93,12 +95,12 @@ export default function ProfileScreen() {
     >
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.title}>Profile</Text>
+        <Text style={s.title}>{t('profile.title')}</Text>
         <TouchableOpacity
           onPress={() => {
-            Alert.alert('Logout', 'Are you sure?', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Logout', style: 'destructive', onPress: async () => { await logout(); router.replace('/(auth)/login'); } },
+            Alert.alert(t('profile.logout'), t('profile.logoutConfirmMessage'), [
+              { text: t('common.cancel'), style: 'cancel' },
+              { text: t('profile.logout'), style: 'destructive', onPress: async () => { await logout(); router.replace('/(auth)/login'); } },
             ]);
           }}
           style={s.logoutBtn}
@@ -124,11 +126,11 @@ export default function ProfileScreen() {
             )}
           </View>
           <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={s.userName}>{user?.name || 'User'}</Text>
+            <Text style={s.userName}>{user?.name || t('profile.userLabel')}</Text>
             <Text style={s.userEmail}>{user?.email || ''}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
               <View style={[s.tierDot, { backgroundColor: tierColor }]} />
-              <Text style={[s.tierLabel, { color: tierColor }]}>{tier}</Text>
+              <Text style={[s.tierLabel, { color: tierColor }]}>{t('profile.' + tier.toLowerCase())}</Text>
             </View>
           </View>
           <View style={s.editBtn}>
@@ -140,8 +142,8 @@ export default function ProfileScreen() {
       {/* Loyalty */}
       <View style={s.loyaltyCard}>
         <View style={s.loyaltyTop}>
-          <Text style={s.loyaltyLabel}>Loyalty Points</Text>
-          <Text style={[s.tierBadge, { color: tierColor, backgroundColor: tierColor + '18' }]}>{tier}</Text>
+          <Text style={s.loyaltyLabel}>{t('profile.loyaltyPoints')}</Text>
+          <Text style={[s.tierBadge, { color: tierColor, backgroundColor: tierColor + '18' }]}>{t('profile.' + tier.toLowerCase())}</Text>
         </View>
         <Text style={s.pointsValue}>{loyaltyPoints.toLocaleString()}</Text>
         {loyaltyPoints < 5000 && (
@@ -150,7 +152,7 @@ export default function ProfileScreen() {
               <View style={[s.progressFill, { width: `${Math.min((loyaltyPoints / 5000) * 100, 100)}%` }]} />
             </View>
             <Text style={s.progressText}>
-              {loyaltyPoints < 500 ? `${500 - loyaltyPoints} to SILVER` : loyaltyPoints < 2000 ? `${2000 - loyaltyPoints} to GOLD` : `${5000 - loyaltyPoints} to PLATINUM`}
+              {loyaltyPoints < 500 ? t('profile.pointsToNext', { n: 500 - loyaltyPoints, tier: t('profile.silver') }) : loyaltyPoints < 2000 ? t('profile.pointsToNext', { n: 2000 - loyaltyPoints, tier: t('profile.gold') }) : t('profile.pointsToNext', { n: 5000 - loyaltyPoints, tier: t('profile.platinum') })}
             </Text>
           </View>
         )}
@@ -158,39 +160,39 @@ export default function ProfileScreen() {
 
       {/* Quick Links */}
       <View style={s.section}>
-        <Text style={s.sectionTitle}>Quick Links</Text>
+        <Text style={s.sectionTitle}>{t('profile.quickLinks')}</Text>
 
         <SectionRow
           icon="calendar"
-          label="My Bookings"
-          subtitle={upcomingBookings.length > 0 ? `${upcomingBookings.length} upcoming` : undefined}
+          label={t('profile.myBookings')}
+          subtitle={upcomingBookings.length > 0 ? t('profile.upcomingCount', { n: upcomingBookings.length }) : undefined}
           onPress={() => router.push('/(tabs)/profile/bookings')}
         />
 
         <SectionRow
           icon="heart"
-          label="Saved Hotels"
-          subtitle={favoritesCount > 0 ? `${favoritesCount} saved` : undefined}
+          label={t('profile.savedHotels')}
+          subtitle={favoritesCount > 0 ? t('profile.savedCount', { n: favoritesCount }) : undefined}
           onPress={() => router.push('/(tabs)/profile/favorites')}
         />
 
         <SectionRow
           icon="discount"
-          label="My Coupons"
-          subtitle={activeCoupons.length > 0 ? `${activeCoupons.length} active` : undefined}
+          label={t('profile.myCoupons')}
+          subtitle={activeCoupons.length > 0 ? t('profile.activeCount', { n: activeCoupons.length }) : undefined}
           onPress={() => router.push('/(tabs)/profile/coupons')}
         />
 
         <SectionRow
           icon="star"
-          label="My Reviews"
+          label={t('profile.myReviews')}
           onPress={() => router.push('/(tabs)/profile/reviews')}
         />
 
         {diningReservations.length > 0 && (
           <View style={{ borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingVertical: 12 }}>
             <Text style={[s.settingLabel, { marginBottom: 8 }]}>
-              Upcoming Dining ({diningReservations.length})
+              {t('profile.upcomingDining', { n: diningReservations.length })}
             </Text>
             {diningReservations.slice(0, 3).map(r => (
               <View key={r.id} style={s.diningCard}>
@@ -200,19 +202,19 @@ export default function ProfileScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.diningRestaurant}>{r.restaurantName} · {r.section}</Text>
                   <Text style={s.diningMeta}>
-                    {r.date} · {r.time} · {r.partySize} guest{r.partySize === 1 ? '' : 's'}
+                    {r.date} · {r.time} · {r.partySize} {r.partySize === 1 ? t('profile.guest') : t('profile.guests')}
                   </Text>
                   <Text style={s.diningRef}>Ref {r.id}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() =>
                     Alert.alert(
-                      'Cancel reservation?',
-                      `Cancel your table at ${r.restaurantName} (${r.date} at ${r.time})?`,
+                      t('profile.cancelReservation'),
+                      t('profile.cancelTable', { restaurant: r.restaurantName, date: r.date, time: r.time }),
                       [
-                        { text: 'Keep', style: 'cancel' },
+                        { text: t('profile.keep'), style: 'cancel' },
                         {
-                          text: 'Cancel',
+                          text: t('profile.cancel'),
                           style: 'destructive',
                           onPress: () =>
                             AsyncStorage.getItem(DINING_KEY).then(raw => {
@@ -236,37 +238,37 @@ export default function ProfileScreen() {
 
         <SectionRow
           icon="notifications"
-          label="Notifications"
+          label={t('profile.notifications')}
           onPress={() => router.push('/(tabs)/profile/notifications')}
         />
       </View>
 
       {/* Settings */}
       <View style={s.section}>
-        <Text style={s.sectionTitle}>Settings</Text>
+        <Text style={s.sectionTitle}>{t('profile.settings')}</Text>
         <TouchableOpacity style={s.settingRow} onPress={() => router.push('/profile-edit')}>
           <IconSymbol name="person.fill" size={18} color={NAVY} />
-          <Text style={s.settingLabel}>Edit Profile</Text>
+          <Text style={s.settingLabel}>{t('profile.editProfile')}</Text>
           <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
         </TouchableOpacity>
         <TouchableOpacity style={s.settingRow} onPress={() => router.push("/(tabs)/self-checkin")}>
           <IconSymbol name="checkin" size={18} color={ACCENT} />
-          <Text style={s.settingLabel}>Self Check-in</Text>
+          <Text style={s.settingLabel}>{t('profile.selfCheckin')}</Text>
           <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
         </TouchableOpacity>
         <TouchableOpacity style={s.settingRow} onPress={() => router.push("/(tabs)/self-checkout")}>
           <IconSymbol name="checkout" size={18} color={ACCENT} />
-          <Text style={s.settingLabel}>Self Check-out</Text>
+          <Text style={s.settingLabel}>{t('profile.selfCheckout')}</Text>
           <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
         </TouchableOpacity>
         <TouchableOpacity style={s.settingRow} onPress={() => router.push("/(tabs)/services")}>
           <IconSymbol name="waiter" size={18} color={ACCENT} />
-          <Text style={s.settingLabel}>Hotel Services</Text>
+          <Text style={s.settingLabel}>{t('profile.hotelServices')}</Text>
           <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
         </TouchableOpacity>
         <TouchableOpacity style={s.settingRow} onPress={() => router.push("/post-stay-review")}>
           <IconSymbol name="star" size={18} color="#FFD700" />
-          <Text style={s.settingLabel}>Write a Review</Text>
+          <Text style={s.settingLabel}>{t('profile.writeReview')}</Text>
           <IconSymbol name="chevron.right" size={16} color="#94A3B8" />
         </TouchableOpacity>
       </View>
@@ -286,7 +288,7 @@ export default function ProfileScreen() {
           }}
           onSave={(updated) => {
             setModifyBooking(null);
-            Alert.alert('Booking Updated', 'Your booking has been updated successfully.');
+            Alert.alert(t('profile.bookingUpdatedTitle'), t('profile.bookingUpdatedMessage'));
           }}
         />
       )}

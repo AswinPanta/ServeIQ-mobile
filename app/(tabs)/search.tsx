@@ -5,15 +5,17 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
-
-const QUICK_FILTERS = [
-  { label: 'Budget', param: 'budget', icon: 'wallet' as const },
-  { label: 'Luxury', param: 'luxury', icon: 'star' as const },
-  { label: 'Near Me', param: 'nearby', icon: 'location' as const },
-  { label: 'Best Rated', param: 'rated', icon: 'star.border' as const },
-];
+import { useTranslation } from 'react-i18next';
 
 export default function SearchScreen() {
+  const { t } = useTranslation();
+
+  const QUICK_FILTERS = [
+    { label: t('search.budget'), param: 'budget', icon: 'wallet' as const },
+    { label: t('search.luxury'), param: 'luxury', icon: 'star' as const },
+    { label: t('search.nearMe'), param: 'nearby', icon: 'location' as const },
+    { label: t('search.bestRated'), param: 'rated', icon: 'star.border' as const },
+  ];
   const [location, setLocation] = useState('');
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
@@ -48,18 +50,18 @@ export default function SearchScreen() {
     >
       {/* Header */}
       <View style={s.headerSection}>
-        <Text style={s.title}>Find Hotels</Text>
-        <Text style={s.sub}>Search and book your perfect stay</Text>
+        <Text style={s.title}>{t('home.title')}</Text>
+        <Text style={s.sub}>{t('home.subtitle')}</Text>
       </View>
 
       <View style={s.form}>
         {/* Location */}
         <View style={s.field}>
-          <Text style={s.fieldLabel}>Location</Text>
+          <Text style={s.fieldLabel}>{t('search.location')}</Text>
           <View style={s.inputRow}>
             <IconSymbol name="search" size={18} color="#94A3B8" />
             <TextInput
-              placeholder="City or hotel name"
+              placeholder={t('search.locationPlaceholder')}
               placeholderTextColor="#94A3B8"
               value={location}
               onChangeText={setLocation}
@@ -70,19 +72,19 @@ export default function SearchScreen() {
 
         {/* Date */}
         <View style={s.field}>
-          <Text style={s.fieldLabel}>Check-in / Check-out</Text>
+          <Text style={s.fieldLabel}>{t('search.dates')}</Text>
           <TouchableOpacity onPress={() => setShowDatePicker(true)} style={s.inputRow}>
             <IconSymbol name="calendar" size={18} color="#94A3B8" />
             <Text style={[s.dateText, selectedCheckIn && s.dateTextFilled]}>
               {selectedCheckIn && selectedCheckOut
                 ? `${selectedCheckIn.toLocaleDateString()} — ${selectedCheckOut.toLocaleDateString()}`
-                : 'Select dates'}
+                : t('search.datesPlaceholder')}
             </Text>
             <IconSymbol name="chevron.down" size={16} color="#94A3B8" />
           </TouchableOpacity>
           {selectedCheckIn && selectedCheckOut && (
             <Text style={s.nightsText}>
-              {Math.ceil((selectedCheckOut.getTime() - selectedCheckIn.getTime()) / 86400000)} night(s)
+              {Math.ceil((selectedCheckOut.getTime() - selectedCheckIn.getTime()) / 86400000)} {t('search.nights')}
             </Text>
           )}
         </View>
@@ -100,9 +102,9 @@ export default function SearchScreen() {
 
         {/* Adults, Children & Rooms */}
         <View style={s.counterRow}>
-          {[{ label: 'Adults', val: adults, set: setAdults, min: 1, max: 10 },
-            { label: 'Children', val: children, set: setChildren, min: 0, max: 6 },
-            { label: 'Rooms', val: rooms, set: setRooms, min: 1, max: 5 },
+          {[{ label: t('search.adults'), val: adults, set: setAdults, min: 1, max: 10 },
+            { label: t('search.children'), val: children, set: setChildren, min: 0, max: 6 },
+            { label: t('search.rooms'), val: rooms, set: setRooms, min: 1, max: 5 },
           ].map((item) => (
             <View key={item.label} style={{ flex: 1 }}>
               <Text style={s.fieldLabel}>{item.label}</Text>
@@ -122,12 +124,12 @@ export default function SearchScreen() {
         {/* Search CTA */}
         <TouchableOpacity onPress={handleSearch} style={s.searchBtn} activeOpacity={0.9}>
           <IconSymbol name="search" size={18} color="#FFF" />
-          <Text style={s.searchBtnText}>Search Hotels</Text>
+          <Text style={s.searchBtnText}>{t('search.button')}</Text>
         </TouchableOpacity>
 
         {/* Quick Filters */}
         <View>
-          <Text style={[s.fieldLabel, { marginBottom: 12 }]}>Quick Filters</Text>
+          <Text style={[s.fieldLabel, { marginBottom: 12 }]}>{t('search.filters')}</Text>
           <View style={s.filterRow}>
             {QUICK_FILTERS.map((f) => (
               <TouchableOpacity

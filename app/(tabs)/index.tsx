@@ -15,9 +15,11 @@ import { GuestFooter } from '@/components/guest/GuestFooter';
 import { useAuth } from '@/lib/context/auth-context';
 import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
 import { FONTS } from '@/constants/portal-theme';
+import { useTranslation } from 'react-i18next';
 
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { isSignedIn } = useAuth();
   const [showSearch, setShowSearch] = useState(false);
   const [selectedPropertyType, setSelectedPropertyType] = useState('');
@@ -32,14 +34,14 @@ export default function HomeScreen() {
           <View style={s.signedOutIcon}>
             <IconSymbol name="hotel" size={40} color="#FFF" />
           </View>
-          <Text style={s.signedOutTitle}>Welcome to StayEasy</Text>
-          <Text style={s.signedOutDesc}>Discover amazing hotels and restaurants curated for you</Text>
+          <Text style={s.signedOutTitle}>{t('home.welcome')}</Text>
+          <Text style={s.signedOutDesc}>{t('home.welcomeDesc')}</Text>
           <TouchableOpacity
             onPress={() => router.push('/(auth)/login')}
             style={s.signedOutBtn}
             activeOpacity={0.85}
           >
-            <Text style={s.signedOutBtnText}>Get Started</Text>
+            <Text style={s.signedOutBtnText}>{t('home.getStarted')}</Text>
           </TouchableOpacity>
         </View>
       </ScreenContainer>
@@ -66,7 +68,7 @@ export default function HomeScreen() {
           </View>
           <View style={s.headerRight}>
             <TouchableOpacity style={s.hostBtn} onPress={() => router.push('/(host)/landing')}>
-              <Text style={s.hostBtnText}>Become a Host</Text>
+              <Text style={s.hostBtnText}>{t('home.becomeHost')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.notifBtn}>
               <IconSymbol name="notifications" size={18} color="#1A3C5E" />
@@ -91,15 +93,15 @@ export default function HomeScreen() {
           <View style={s.sectionHeader}>
             <View style={s.sectionTitleRow}>
               <IconSymbol name="location" size={18} color="#2E86AB" />
-              <Text style={s.sectionTitle}>Stays nearby</Text>
+              <Text style={s.sectionTitle}>{t('home.staysNearby')}</Text>
             </View>
             <TouchableOpacity onPress={() => setShowSearch(true)}>
               <View style={s.seeAllBtn}>
-                <Text style={s.seeAll}>View all →</Text>
+                <Text style={s.seeAll}>{t('components.destinations.viewAll')}</Text>
               </View>
             </TouchableOpacity>
           </View>
-          <Text style={s.sectionHint}>Enable location to discover properties close to you.</Text>
+          <Text style={s.sectionHint}>{t('home.staysNearbyHint')}</Text>
         </View>
 
         {/* Trending destinations */}

@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
 import { safeGoBack } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 const ACCENT = '#2E86AB';
 
@@ -71,6 +72,7 @@ const MOCK_REQUESTS: ServiceRequest[] = [
 ];
 
 export default function ServicesScreen() {
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [requestDetails, setRequestDetails] = useState('');
@@ -80,7 +82,7 @@ export default function ServicesScreen() {
 
   const handleSubmit = () => {
     if (!selectedCategory || !selectedService) {
-      Alert.alert('Select Service', 'Please choose a category and service');
+      Alert.alert(t('services.selectService'), t('services.selectServiceDesc'));
       return;
     }
     const cat = SERVICE_CATEGORIES.find(c => c.id === selectedCategory);
@@ -97,7 +99,7 @@ export default function ServicesScreen() {
     setSelectedCategory(null);
     setSelectedService(null);
     setRequestDetails('');
-    Alert.alert('Request Submitted', 'Your service request has been received. We will fulfill it shortly.');
+    Alert.alert(t('services.requestSubmitted'), t('services.requestSubmittedDesc'));
   };
 
   const activeRequests = requests.filter(r => r.status !== 'completed');
@@ -110,7 +112,7 @@ export default function ServicesScreen() {
           <TouchableOpacity onPress={() => setShowHistory(false)} style={s.backBtn}>
             <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Request History</Text>
+          <Text style={s.headerTitle}>{t('services.requestHistory')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -118,8 +120,8 @@ export default function ServicesScreen() {
           {requests.length === 0 ? (
             <View style={s.emptyState}>
               <IconSymbol name="invoice" size={48} color="#CBD5E1" />
-              <Text style={s.emptyTitle}>No requests yet</Text>
-              <Text style={s.emptyDesc}>Your service requests will appear here</Text>
+              <Text style={s.emptyTitle}>{t('services.noRequests')}</Text>
+              <Text style={s.emptyDesc}>{t('services.noRequestsDesc')}</Text>
             </View>
           ) : (
             requests.map(req => (
@@ -131,7 +133,7 @@ export default function ServicesScreen() {
                   </View>
                   <View style={[s.statusBadge, req.status === 'completed' ? s.statusCompleted : req.status === 'in_progress' ? s.statusProgress : s.statusPending]}>
                     <Text style={[s.statusText, req.status === 'completed' ? s.statusTextCompleted : req.status === 'in_progress' ? s.statusTextProgress : s.statusTextPending]}>
-                      {req.status === 'completed' ? 'Completed' : req.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                      {req.status === 'completed' ? t('services.completed') : req.status === 'in_progress' ? t('services.inProgress') : t('services.pending')}
                     </Text>
                   </View>
                 </View>
@@ -153,7 +155,7 @@ export default function ServicesScreen() {
           <TouchableOpacity onPress={() => { setSelectedCategory(null); setSelectedService(null); }} style={s.backBtn}>
             <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>{cat?.name || 'Service'}</Text>
+          <Text style={s.headerTitle}>{cat?.name || t('services.title')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -291,9 +293,9 @@ export default function ServicesScreen() {
 
           {selectedService && (
             <View style={{ gap: 8 }}>
-              <Text style={s.fieldLabel}>Additional Details (optional)</Text>
+              <Text style={s.fieldLabel}>{t('services.additionalDetails')}</Text>
               <TextInput
-                placeholder="Any special instructions..." placeholderTextColor="#94A3B8"
+                placeholder={t('services.specialInstructions')} placeholderTextColor="#94A3B8"
                 value={requestDetails} onChangeText={setRequestDetails}
                 multiline numberOfLines={3}
                 style={[s.input, { minHeight: 72, textAlignVertical: 'top' }]}
@@ -303,7 +305,7 @@ export default function ServicesScreen() {
 
           <View style={s.etaRow}>
             <IconSymbol name="shift" size={16} color="#64748B" />
-            <Text style={s.etaText}>Estimated time: {cat?.estimatedTime}</Text>
+            <Text style={s.etaText}>{t('services.estimatedTime', { time: cat?.estimatedTime })}</Text>
           </View>
         </ScrollView>
 
@@ -314,7 +316,7 @@ export default function ServicesScreen() {
             style={[s.submitBtn, { opacity: selectedService ? 1 : 0.5 }]}
             activeOpacity={0.9}
           >
-            <Text style={s.submitBtnText}>Submit Request</Text>
+            <Text style={s.submitBtnText}>{t('services.submitRequest')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -327,21 +329,21 @@ export default function ServicesScreen() {
         <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Hotel Services</Text>
+        <Text style={s.headerTitle}>{t('services.title')}</Text>
         <TouchableOpacity onPress={() => setShowHistory(true)} style={s.historyBtn}>
           <IconSymbol name="shift" size={18} color="#1A3C5E" />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 100 }}>
-        <Text style={s.pageDesc}>Request services for your stay. Tap a category to get started.</Text>
+        <Text style={s.pageDesc}>{t('services.pageDesc')}</Text>
 
         {/* Active Requests Banner */}
         {activeRequests.length > 0 && (
           <View style={s.activeBanner}>
             <View style={s.activeBannerDot} />
             <View style={{ flex: 1 }}>
-              <Text style={s.activeBannerTitle}>{activeRequests.length} active request{activeRequests.length > 1 ? 's' : ''}</Text>
+              <Text style={s.activeBannerTitle}>{t('services.activeRequests', { n: activeRequests.length, count: activeRequests.length })}</Text>
               <Text style={s.activeBannerSub}>{activeRequests.map(r => r.service).join(', ')}</Text>
             </View>
             <TouchableOpacity onPress={() => setShowHistory(true)}>

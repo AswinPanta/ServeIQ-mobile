@@ -11,6 +11,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useAuth } from '@/lib/context/auth-context';
 import { safeGoBack } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 const STORAGE_KEY = 'stayeasy_dining_reservations';
 
@@ -75,6 +76,7 @@ const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 8, 10];
 export default function DiningReservationsScreen() {
   const colors = useColors();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [step, setStep] = useState<'restaurant' | 'details' | 'confirm'>('restaurant');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
@@ -124,9 +126,9 @@ export default function DiningReservationsScreen() {
       .catch(() => {/* persistence is best-effort */})
       .finally(() => {
         Alert.alert(
-          'Reservation Confirmed!',
-          `${reservation.id}\n\n${selectedRestaurant.name}\n${selectedSection}\n${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${timeSlot}\n${partySize} guest${partySize > 1 ? 's' : ''}\n\nA confirmation has been sent to ${reservation.guestEmail || contactPhone || 'your account'}.`,
-          [{ text: 'Done', onPress: () => safeGoBack() }],
+          t('dining.reservationConfirmed'),
+          `${reservation.id}\n\n${selectedRestaurant.name}\n${selectedSection}\n${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${timeSlot}\n${partySize} ${t('dining.guests')}\n\nA confirmation has been sent to ${reservation.guestEmail || contactPhone || 'your account'}.`,
+          [{ text: t('dining.done'), onPress: () => safeGoBack() }],
         );
       });
   };
@@ -142,17 +144,17 @@ export default function DiningReservationsScreen() {
               <Text className="text-lg">←</Text>
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text className="text-2xl font-bold text-foreground">Dining Reservations</Text>
-              <Text className="text-sm text-muted">Book a table at your favorite restaurant</Text>
+              <Text className="text-2xl font-bold text-foreground">{t('dining.title')}</Text>
+              <Text className="text-sm text-muted">{t('dining.bookTable')}</Text>
             </View>
             <TouchableOpacity onPress={() => router.push('/restaurant-menu')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: ACCENT + '15' }}>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>View Menu</Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: ACCENT }}>{t('dining.viewMenu')}</Text>
             </TouchableOpacity>
           </View>
 
           {step === 'restaurant' && (
             <View>
-              <Text className="text-lg font-bold text-foreground mb-4">Select a Restaurant</Text>
+              <Text className="text-lg font-bold text-foreground mb-4">{t('dining.selectRestaurant')}</Text>
               {RESTAURANTS.map(restaurant => (
                 <TouchableOpacity key={restaurant.id} onPress={() => { setSelectedRestaurantId(restaurant.id); setStep('details'); }}
                   style={{
@@ -189,11 +191,11 @@ export default function DiningReservationsScreen() {
 
           {step === 'details' && selectedRestaurant && (
             <View>
-              <Text className="text-lg font-bold text-foreground mb-4">Reservation Details</Text>
+              <Text className="text-lg font-bold text-foreground mb-4">{t('dining.reservationDetails')}</Text>
 
               {/* Section Selection */}
               <View style={{ marginBottom: 16 }}>
-                <Text className="text-sm font-semibold text-muted mb-2">Dining Section</Text>
+                <Text className="text-sm font-semibold text-muted mb-2">{t('dining.diningSection')}</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {selectedRestaurant.sections.map(s => (
                     <TouchableOpacity key={s.name} onPress={() => setSelectedSection(s.name)}
@@ -207,7 +209,7 @@ export default function DiningReservationsScreen() {
                         {s.name}
                       </Text>
                       <Text className="text-xs" style={{ color: selectedSection === s.name ? '#fff' : colors.muted }}>
-                        Up to {s.capacity} guests
+                        {t('dining.upToGuests', { n: s.capacity })}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -216,7 +218,7 @@ export default function DiningReservationsScreen() {
 
               {/* Date */}
               <View style={{ marginBottom: 16 }}>
-                <Text className="text-sm font-semibold text-muted mb-2">Date</Text>
+                <Text className="text-sm font-semibold text-muted mb-2">{t('dining.date')}</Text>
                 <TextInput
                   value={date}
                   onChangeText={setDate}
@@ -230,7 +232,7 @@ export default function DiningReservationsScreen() {
 
               {/* Time Slot */}
               <View style={{ marginBottom: 16 }}>
-                <Text className="text-sm font-semibold text-muted mb-2">Time</Text>
+                <Text className="text-sm font-semibold text-muted mb-2">{t('dining.time')}</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {TIME_SLOTS.map(slot => (
                     <TouchableOpacity key={slot} onPress={() => setTimeSlot(slot)}
@@ -250,7 +252,7 @@ export default function DiningReservationsScreen() {
 
               {/* Party Size */}
               <View style={{ marginBottom: 16 }}>
-                <Text className="text-sm font-semibold text-muted mb-2">Party Size</Text>
+                <Text className="text-sm font-semibold text-muted mb-2">{t('dining.partySize')}</Text>
                 <View className="flex-row flex-wrap gap-2">
                   {PARTY_SIZES.map(size => (
                     <TouchableOpacity key={size} onPress={() => setPartySize(size)}
@@ -268,11 +270,11 @@ export default function DiningReservationsScreen() {
 
               {/* Contact Phone */}
               <View style={{ marginBottom: 16 }}>
-                <Text className="text-sm font-semibold text-muted mb-2">Contact Phone</Text>
+                <Text className="text-sm font-semibold text-muted mb-2">{t('dining.contactPhone')}</Text>
                 <TextInput
                   value={contactPhone}
                   onChangeText={setContactPhone}
-                  placeholder="Phone number for confirmation"
+                  placeholder={t('dining.phonePlaceholder')}
                   placeholderTextColor={colors.muted}
                   keyboardType="phone-pad"
                   className="text-sm text-foreground px-4 py-3 rounded-xl"
@@ -282,11 +284,11 @@ export default function DiningReservationsScreen() {
 
               {/* Special Requests */}
               <View style={{ marginBottom: 24 }}>
-                <Text className="text-sm font-semibold text-muted mb-2">Special Requests</Text>
+                <Text className="text-sm font-semibold text-muted mb-2">{t('dining.specialRequests')}</Text>
                 <TextInput
                   value={specialRequests}
                   onChangeText={setSpecialRequests}
-                  placeholder="Allergies, preferences, celebrations..."
+                  placeholder={t('dining.specialRequestsPlaceholder')}
                   placeholderTextColor={colors.muted}
                   multiline
                   numberOfLines={3}
@@ -298,7 +300,7 @@ export default function DiningReservationsScreen() {
               {/* Continue Button */}
               <TouchableOpacity onPress={() => {
                 if (!selectedSection || !timeSlot) {
-                  Alert.alert('Missing Info', 'Please select a section, date, and time slot.');
+                  Alert.alert(t('dining.missingInfo'), t('dining.missingInfoDesc'));
                   return;
                 }
                 setStep('confirm');
@@ -309,14 +311,14 @@ export default function DiningReservationsScreen() {
                   shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
                 }}
               >
-                <Text className="text-base font-semibold text-white">Review Reservation</Text>
+                <Text className="text-base font-semibold text-white">{t('dining.reviewReservation')}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {step === 'confirm' && selectedRestaurant && (
             <View>
-              <Text className="text-lg font-bold text-foreground mb-4">Confirm Reservation</Text>
+              <Text className="text-lg font-bold text-foreground mb-4">{t('dining.confirmReservation')}</Text>
 
               <View style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
                 <View className="items-center mb-4">
@@ -329,28 +331,28 @@ export default function DiningReservationsScreen() {
 
                 <View className="gap-3">
                   <View className="flex-row justify-between">
-                    <Text className="text-sm text-muted">Section</Text>
+                    <Text className="text-sm text-muted">{t('dining.section')}</Text>
                     <Text className="text-sm font-semibold text-foreground">{selectedSection}</Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-sm text-muted">Date</Text>
+                    <Text className="text-sm text-muted">{t('dining.date')}</Text>
                     <Text className="text-sm font-semibold text-foreground">{new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-sm text-muted">Time</Text>
+                    <Text className="text-sm text-muted">{t('dining.time')}</Text>
                     <Text className="text-sm font-semibold text-foreground">{timeSlot}</Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-sm text-muted">Guests</Text>
+                    <Text className="text-sm text-muted">{t('dining.guests')}</Text>
                     <Text className="text-sm font-semibold text-foreground">{partySize}</Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-sm text-muted">Contact</Text>
+                    <Text className="text-sm text-muted">{t('dining.contact')}</Text>
                     <Text className="text-sm font-semibold text-foreground">{contactPhone || user?.email || '—'}</Text>
                   </View>
                   {specialRequests ? (
                     <View className="flex-row justify-between">
-                      <Text className="text-sm text-muted">Requests</Text>
+                      <Text className="text-sm text-muted">{t('dining.requests')}</Text>
                       <Text className="text-sm font-semibold text-foreground text-right flex-1">{specialRequests}</Text>
                     </View>
                   ) : null}
@@ -364,13 +366,13 @@ export default function DiningReservationsScreen() {
                   shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
                 }}
               >
-                <Text className="text-base font-semibold text-white">Confirm Reservation</Text>
+                <Text className="text-base font-semibold text-white">{t('dining.confirmReservation')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => setStep('details')}
                 style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: colors.border }}
               >
-                <Text className="text-sm font-semibold text-muted">Edit Details</Text>
+                <Text className="text-sm font-semibold text-muted">{t('dining.editDetails')}</Text>
               </TouchableOpacity>
             </View>
           )}
