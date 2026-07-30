@@ -1,9 +1,12 @@
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColors } from '@/hooks/use-colors';
 import { useNotifications, AppNotification } from '@/lib/context/notification-context';
 import { ScreenContainer } from '@/components/screen-container';
 import { safeGoBack } from '@/lib/utils';
+import type { TFunction } from 'i18next';
+
 const TYPE_ICONS: Record<string, string> = {
   booking_confirmation: '✅',
   booking_reminder: '📅',
@@ -12,19 +15,20 @@ const TYPE_ICONS: Record<string, string> = {
   system: '⚙️',
 };
 
-const TIME_AGO = (dateStr: string): string => {
+const TIME_AGO = (dateStr: string, t: TFunction): string => {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('profile.notifications.justNow');
+  if (mins < 60) return t('profile.notifications.minutesAgo', { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('profile.notifications.hoursAgo', { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return t('profile.notifications.daysAgo', { n: days });
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const colors = useColors();
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
 
@@ -39,7 +43,7 @@ export default function NotificationsScreen() {
             >
               <Text className="text-lg">←</Text>
             </TouchableOpacity>
-            <Text className="text-2xl font-bold text-foreground">Notifications</Text>
+            <Text className="text-2xl font-bold text-foreground">{t('notificationsScreen.title')}</Text>
             {unreadCount > 0 && (
               <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: '#EF4444' }}>
                 <Text className="text-xs font-bold text-white">{unreadCount}</Text>
@@ -48,7 +52,7 @@ export default function NotificationsScreen() {
           </View>
           {unreadCount > 0 && (
             <TouchableOpacity onPress={markAllAsRead} style={{ padding: 4 }}>
-              <Text className="text-sm font-semibold text-primary">Mark all read</Text>
+              <Text className="text-sm font-semibold text-primary">{t('notificationsScreen.markAllRead')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -58,8 +62,8 @@ export default function NotificationsScreen() {
         {notifications.length === 0 ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>🔔</Text>
-            <Text className="text-lg font-bold text-foreground">No notifications</Text>
-            <Text className="text-sm text-muted text-center mt-1">{"You\u2019re all caught up!"}</Text>
+            <Text className="text-lg font-bold text-foreground">{t('notificationsScreen.empty')}</Text>
+            <Text className="text-sm text-muted text-center mt-1">{t('notificationsScreen.allCaughtUp')}</Text>
           </View>
         ) : (
           <View className="gap-3">
@@ -90,7 +94,7 @@ export default function NotificationsScreen() {
                       <Text className={`text-sm font-bold ${notification.read ? 'text-foreground' : 'text-foreground'}`}>
                         {notification.title}
                       </Text>
-                      <Text className="text-[10px] text-muted">{TIME_AGO(notification.created_at)}</Text>
+                      <Text className="text-[10px] text-muted">{TIME_AGO(notification.created_at, t)}</Text>
                     </View>
                     <Text className="text-xs text-muted mt-1 leading-5">{notification.message}</Text>
                   </View>

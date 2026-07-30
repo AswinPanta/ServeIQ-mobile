@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, Image, Alert, TextInput, StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -12,6 +13,7 @@ import type { GuestProfile } from '@/types/api';
 import { safeGoBack } from '@/lib/utils';
 
 export default function ProfileEditScreen() {
+  const { t } = useTranslation();
   const { user: authUser, setUser, portal } = useAuth();
   const user = authUser as GuestProfile | null;
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profile_photo || null);
@@ -22,7 +24,7 @@ export default function ProfileEditScreen() {
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission Required', 'Please grant gallery access'); return; }
+    if (status !== 'granted') { Alert.alert(t('profileEdit.permissionTitle'), t('profileEdit.permissionMessage')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8,
     });
@@ -30,8 +32,8 @@ export default function ProfileEditScreen() {
   };
 
   const handleSave = async () => {
-    if (!name.trim() || !email.trim()) { Alert.alert('Error', 'Name and email are required'); return; }
-    if (!user) { Alert.alert('Error', 'No user logged in'); return; }
+    if (!name.trim() || !email.trim()) { Alert.alert(t('common.error'), t('profileEdit.nameEmailRequired')); return; }
+    if (!user) { Alert.alert(t('common.error'), t('profileEdit.noUser')); return; }
     try {
       const updatedUser: GuestProfile = {
         ...user, name, email, phone, nationality,
@@ -42,10 +44,10 @@ export default function ProfileEditScreen() {
         const keys = getPortalStorageKeys(portal);
         await AsyncStorage.setItem(keys.USER_PROFILE, JSON.stringify(updatedUser));
       }
-      Alert.alert('Saved', 'Profile updated successfully', [
-        { text: 'OK', onPress: () => safeGoBack() },
+      Alert.alert(t('common.ok'), t('profileEdit.saved'), [
+        { text: t('common.ok'), onPress: () => safeGoBack() },
       ]);
-    } catch { Alert.alert('Error', 'Failed to save'); }
+    } catch { Alert.alert(t('common.error'), t('profileEdit.failedSave')); }
   };
 
   return (
@@ -53,11 +55,11 @@ export default function ProfileEditScreen() {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => safeGoBack()}>
-          <Text style={s.cancelText}>Cancel</Text>
+          <Text style={s.cancelText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Edit Profile</Text>
+        <Text style={s.headerTitle}>{t('profileEdit.title')}</Text>
         <TouchableOpacity onPress={handleSave}>
-          <Text style={s.saveText}>Save</Text>
+          <Text style={s.saveText}>{t('profileEdit.save')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -76,16 +78,16 @@ export default function ProfileEditScreen() {
               <IconSymbol name="camera" size={14} color="#FFF" />
             </View>
           </TouchableOpacity>
-          <Text style={s.photoHint}>Tap to change photo</Text>
+          <Text style={s.photoHint}>{t('profileEdit.photoHint')}</Text>
         </View>
 
         {/* Form */}
         <View style={s.form}>
           {[
-            { label: 'Full Name', val: name, set: setName, placeholder: 'Your name' },
-            { label: 'Email', val: email, set: setEmail, placeholder: 'your@email.com', keyboard: 'email-address' as const },
-            { label: 'Phone', val: phone, set: setPhone, placeholder: '+977-...', keyboard: 'phone-pad' as const },
-            { label: 'Nationality', val: nationality, set: setNationality, placeholder: 'e.g. Nepali' },
+            { label: t('profileEdit.fullName'), val: name, set: setName, placeholder: t('profileEdit.namePlaceholder') },
+            { label: t('profileEdit.email'), val: email, set: setEmail, placeholder: t('profileEdit.emailPlaceholder'), keyboard: 'email-address' as const },
+            { label: t('profileEdit.phone'), val: phone, set: setPhone, placeholder: t('profileEdit.phonePlaceholder'), keyboard: 'phone-pad' as const },
+            { label: t('profileEdit.nationality'), val: nationality, set: setNationality, placeholder: t('profileEdit.nationalityPlaceholder') },
           ].map(f => (
             <View key={f.label} style={s.field}>
               <Text style={s.fieldLabel}>{f.label}</Text>

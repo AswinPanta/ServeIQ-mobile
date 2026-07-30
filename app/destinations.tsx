@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { destinations } from '@/lib/mock/destinations';
 import { safeGoBack } from '@/lib/utils';
 
 export default function DestinationsPage() {
+  const { t } = useTranslation();
   return (
     <ScrollView
       style={s.container}
@@ -19,8 +21,8 @@ export default function DestinationsPage() {
           <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.title}>Destinations</Text>
-          <Text style={s.sub}>{destinations.length} stunning places to explore</Text>
+          <Text style={s.title}>{t('destinations.title')}</Text>
+          <Text style={s.sub}>{t('destinations.subtitle', { count: destinations.length })}</Text>
         </View>
       </View>
 
@@ -40,7 +42,7 @@ export default function DestinationsPage() {
             />
             <View style={s.cardContent}>
               <Text style={s.cardName}>{d.name}</Text>
-              <Text style={s.cardCount}>{d.hotelCount} hotels</Text>
+              <Text style={s.cardCount}>{t('destinations.hotelCount', { count: d.hotelCount })}</Text>
               <View style={s.tagRow}>
                 {d.experiences.slice(0, 3).map((exp, i) => (
                   <View key={i} style={s.tag}>

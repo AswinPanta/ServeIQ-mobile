@@ -389,5 +389,42 @@
   "country.perNight": "/night",
 
   "destinations.title": "Destinations",
-  "destinations.searchPlaceholder": "Search destinations..."
+  "destinations.searchPlaceholder": "Search destinations...",
+  "destinations.subtitle": "{{count}} stunning places to explore",
+  "destinations.hotelCount": "{{count}} hotels",
+
+  "country.notFound": "Country not found",
+  "country.backToHome": "Back to home",
+  "country.popularCities": "Popular cities & places in {{name}}",
+  "country.allOf": "All of {{name}}",
+  "country.about": "About {{name}}",
+  "country.topAttractions": "Top Attractions",
+  "country.localCuisine": "Local Cuisine",
+  "country.mustTry": "Must Try",
+  "country.stays": "Stays in {{name}}",
+  "country.hotelInfo": "{{reviews}} reviews · {{bedrooms}} bed · {{bathrooms}} bath",
+  "country.superhost": "SUPERHOST",
+
+  "notificationsScreen.title": "Notifications",
+  "notificationsScreen.markAllRead": "Mark all read",
+  "notificationsScreen.empty": "No notifications",
+  "notificationsScreen.allCaughtUp": "You're all caught up!",
+
+  "profileEdit.title": "Edit Profile",
+  "profileEdit.save": "Save",
+  "profileEdit.photoHint": "Tap to change photo",
+  "profileEdit.fullName": "Full Name",
+  "profileEdit.email": "Email",
+  "profileEdit.phone": "Phone",
+  "profileEdit.nationality": "Nationality",
+  "profileEdit.namePlaceholder": "Your name",
+  "profileEdit.emailPlaceholder": "your@email.com",
+  "profileEdit.phonePlaceholder": "+977-...",
+  "profileEdit.nationalityPlaceholder": "e.g. Nepali",
+  "profileEdit.permissionTitle": "Permission Required",
+  "profileEdit.permissionMessage": "Please grant gallery access",
+  "profileEdit.nameEmailRequired": "Name and email are required",
+  "profileEdit.noUser": "No user logged in",
+  "profileEdit.saved": "Profile updated successfully",
+  "profileEdit.failedSave": "Failed to save"
 }
