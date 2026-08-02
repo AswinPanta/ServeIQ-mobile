@@ -222,7 +222,7 @@ export default function BookingFlowScreen() {
     }
   };
 
-  // ── Complete booking: POST /bookings/ → payment-intent → confirm ──
+  // ── Complete booking: POST /bookings/ → payment-intent → apply-discount → confirm ──
   const handleComplete = async () => {
     if (isSubmitting || isProcessing) return;
     setIsSubmitting(true);
@@ -288,7 +288,12 @@ export default function BookingFlowScreen() {
         }),
       );
 
-      // Step 3: Confirm payment
+      // Step 3: Apply discount (must be BEFORE confirm)
+      if (appliedPromo) {
+        await bookingApi.applyDiscount(ref, appliedPromo.code, () => result);
+      }
+
+      // Step 4: Confirm payment
       await bookingApi.confirmPayment(
         ref,
         {
@@ -303,11 +308,6 @@ export default function BookingFlowScreen() {
           ref_number: ref,
         }),
       );
-
-      // Step 4: Apply discount if any (after booking is confirmed)
-      if (appliedPromo) {
-        await bookingApi.applyDiscount(ref, appliedPromo.code, () => result);
-      }
 
       // Save to local context
       addBooking({

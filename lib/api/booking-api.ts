@@ -51,10 +51,14 @@ export const bookingApi = {
   confirmPayment: (ref: string, data: ConfirmPaymentRequest, fallback: () => ConfirmPaymentResponse) =>
     apiPost<ConfirmPaymentResponse, ConfirmPaymentRequest>(API_ENDPOINTS.BOOKINGS.CONFIRM_PAYMENT(ref), data, fallback),
 
-  applyDiscount: (ref: string, code: string, fallback: () => BookingReservationResponse) =>
-    apiPost<BookingReservationResponse, { code: string }>(
-      API_ENDPOINTS.BOOKINGS.APPLY_DISCOUNT(ref),
-      { code },
-      fallback,
-    ),
+  applyDiscount: async (ref: string, code: string, fallback: () => BookingReservationResponse) => {
+    if (await isDemoMode()) return fallback();
+    try {
+      const response = await api.post(`${API_ENDPOINTS.BOOKINGS.APPLY_DISCOUNT(ref)}?coupon_code=${encodeURIComponent(code)}`);
+      const json = await handleResponse<{ success?: boolean; data?: BookingReservationResponse }>(response);
+      return (json.success !== false && json.data !== undefined) ? json.data : (json as unknown as BookingReservationResponse);
+    } catch {
+      return fallback();
+    }
+  },
 };
