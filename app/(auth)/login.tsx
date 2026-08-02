@@ -50,7 +50,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Navy header area */}
+        {/* Header area */}
         <View style={s.headerArea}>
           <Image
             source={require('@/assets/images/auth/stayeasy_login_background.png')}
@@ -70,7 +70,7 @@ export default function LoginScreen() {
           <Text style={s.tagline}>Find your perfect stay</Text>
         </View>
 
-        {/* White form card */}
+        {/* Form card */}
         <View style={s.card}>
           <View style={s.tabRow}>
             <View>
@@ -90,7 +90,7 @@ export default function LoginScreen() {
             <TextInput
               style={s.input}
               placeholder={t('auth.login.emailPlaceholder')}
-              placeholderTextColor="#bbb"
+              placeholderTextColor="#B0B8C4"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -106,7 +106,7 @@ export default function LoginScreen() {
               <TextInput
                 style={s.input}
                 placeholder={t('auth.login.passwordPlaceholder')}
-                placeholderTextColor="#bbb"
+                placeholderTextColor="#B0B8C4"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPw}
@@ -114,7 +114,7 @@ export default function LoginScreen() {
                 autoCorrect={false}
               />
               <TouchableOpacity onPress={() => setShowPw(!showPw)} style={s.eyeBtn}>
-                <Ionicons name={showPw ? 'eye-off' : 'eye'} size={18} color="#bbb" />
+                <Ionicons name={showPw ? 'eye-off' : 'eye'} size={18} color="#8896A6" />
               </TouchableOpacity>
             </View>
             <View style={s.inputLine} />
@@ -132,10 +132,15 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {error ? <Text style={s.error}>{error}</Text> : null}
+          {error ? (
+            <View style={s.errorBox}>
+              <Ionicons name="alert-circle" size={14} color="#DC2626" />
+              <Text style={s.error}>{error}</Text>
+            </View>
+          ) : null}
 
           <TouchableOpacity
-            style={[s.loginBtn, isLoading && { opacity: 0.7 }]}
+            style={[s.loginBtn, isLoading && s.loginBtnDisabled]}
             onPress={handleLogin}
             disabled={isLoading}
             activeOpacity={0.85}
@@ -146,6 +151,23 @@ export default function LoginScreen() {
               <Text style={s.loginBtnText}>{t('auth.login.button')}</Text>
             )}
           </TouchableOpacity>
+
+          <View style={s.dividerRow}>
+            <View style={s.dividerLine} />
+            <Text style={s.dividerText}>or continue with</Text>
+            <View style={s.dividerLine} />
+          </View>
+
+          <View style={s.socialRow}>
+            <TouchableOpacity style={s.socialBtn}>
+              <Ionicons name="logo-google" size={18} color="#EA4335" />
+              <Text style={s.socialBtnText}>Google</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.socialBtn}>
+              <Ionicons name="logo-apple" size={18} color="#000" />
+              <Text style={s.socialBtnText}>Apple</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={s.footer}>
             <Text style={s.footerText}>{t('auth.login.noAccount')} </Text>
@@ -161,16 +183,16 @@ export default function LoginScreen() {
 
 const s = StyleSheet.create({
   wrap: { flex: 1 },
-  container: { flex: 1, backgroundColor: '#E8E8E8' },
+  container: { flex: 1, backgroundColor: '#F0F2F5' },
   scroll: { flexGrow: 1, paddingBottom: 40 },
 
   headerArea: {
     backgroundColor: NAVY,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingTop: 56,
+    paddingBottom: 44,
     paddingHorizontal: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     alignItems: 'center',
     overflow: 'hidden',
     position: 'relative',
@@ -184,78 +206,95 @@ const s = StyleSheet.create({
   headerOverlay: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(26, 60, 94, 0.75)',
+    backgroundColor: 'rgba(26, 60, 94, 0.8)',
   },
-  backBtn: {
-    position: 'absolute',
-    top: 54,
-    left: 20,
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  landmarksImg: { width: 160, height: 80, marginBottom: 8, zIndex: 2 },
-  logo: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4, marginTop: 4, zIndex: 2 },
-  tagline: { fontSize: 13, color: 'rgba(255,255,255,0.7)', zIndex: 2, letterSpacing: 0.5 },
+  landmarksImg: { width: 140, height: 70, marginBottom: 6, zIndex: 2 },
+  logo: { fontSize: 30, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4, zIndex: 2 },
+  tagline: { fontSize: 13, color: 'rgba(255,255,255,0.65)', zIndex: 2, letterSpacing: 0.5 },
 
   card: {
     backgroundColor: '#FFF',
     marginHorizontal: 20,
-    marginTop: -24,
-    borderRadius: 20,
+    marginTop: -20,
+    borderRadius: 24,
     padding: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
   },
 
-  tabRow: { flexDirection: 'row', gap: 24, marginBottom: 20 },
+  tabRow: { flexDirection: 'row', gap: 28, marginBottom: 24 },
   tab: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
-    textTransform: 'uppercase', color: '#ccc',
+    fontSize: 11, fontWeight: '700', letterSpacing: 1,
+    textTransform: 'uppercase', color: '#C0C8D4',
   },
-  tabActive: { color: '#111' },
-  tabLine: { height: 2, backgroundColor: '#111', marginTop: 3, borderRadius: 1 },
+  tabActive: { color: NAVY },
+  tabLine: { height: 2.5, backgroundColor: NAVY, marginTop: 4, borderRadius: 2 },
 
-  heading: { fontSize: 20, fontWeight: '700', color: '#111', marginBottom: 3 },
-  subtitle: { fontSize: 12, color: '#999', marginBottom: 24 },
+  heading: { fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 4, letterSpacing: -0.3 },
+  subtitle: { fontSize: 13, color: '#8896A6', marginBottom: 28 },
 
-  field: { marginBottom: 16 },
+  field: { marginBottom: 18 },
   label: {
-    fontSize: 11, color: '#666', marginBottom: 4,
-    textTransform: 'uppercase', letterSpacing: 0.4,
+    fontSize: 11, color: '#64748B', marginBottom: 6,
+    textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: '600',
   },
-  input: { flex: 1, fontSize: 14, color: '#111', paddingVertical: 8, paddingRight: 8 },
+  input: { flex: 1, fontSize: 15, color: '#0F172A', paddingVertical: 10, paddingRight: 8 },
   pwRow: { flexDirection: 'row', alignItems: 'center' },
-  inputLine: { height: 1.5, backgroundColor: '#ddd' },
-  eyeBtn: { padding: 4 },
+  inputLine: { height: 1.5, backgroundColor: '#E2E8F0', borderRadius: 1 },
+  eyeBtn: { padding: 6 },
 
   optionsRow: {
     flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 16,
+    justifyContent: 'space-between', marginBottom: 20,
   },
-  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkbox: {
-    width: 16, height: 16, borderRadius: 3,
-    borderWidth: 1.5, borderColor: '#ddd',
+    width: 18, height: 18, borderRadius: 4,
+    borderWidth: 1.5, borderColor: '#D1D9E6',
     alignItems: 'center', justifyContent: 'center',
   },
-  checkboxChecked: { backgroundColor: '#111', borderColor: '#111' },
-  rememberText: { fontSize: 11, color: '#999' },
-  forgotText: { fontSize: 11, color: '#bbb' },
+  checkboxChecked: { backgroundColor: NAVY, borderColor: NAVY },
+  rememberText: { fontSize: 12, color: '#64748B' },
+  forgotText: { fontSize: 12, color: TEAL, fontWeight: '600' },
 
-  error: { color: '#e94560', fontSize: 12, marginBottom: 12 },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16,
+  },
+  error: { color: '#DC2626', fontSize: 12, flex: 1 },
 
   loginBtn: {
-    paddingVertical: 12, backgroundColor: '#111',
-    borderRadius: 8, alignItems: 'center',
-    justifyContent: 'center', marginBottom: 16,
+    paddingVertical: 15, backgroundColor: NAVY,
+    borderRadius: 12, alignItems: 'center',
+    justifyContent: 'center', marginBottom: 20,
+    shadowColor: NAVY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  loginBtnText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+  loginBtnDisabled: { opacity: 0.6 },
+  loginBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF', letterSpacing: 0.3 },
+
+  dividerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
+  dividerText: { fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  socialRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  socialBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 13, borderRadius: 12,
+    borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#FFF',
+  },
+  socialBtnText: { fontSize: 13, fontWeight: '600', color: '#334155' },
 
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  footerText: { fontSize: 12, color: '#aaa' },
-  footerLink: { fontSize: 12, color: '#111', fontWeight: '600' },
+  footerText: { fontSize: 13, color: '#94A3B8' },
+  footerLink: { fontSize: 13, color: NAVY, fontWeight: '700' },
 });

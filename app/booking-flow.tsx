@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput, Image,
   ActivityIndicator, StyleSheet, Platform, Alert, KeyboardAvoidingView,
@@ -69,7 +69,7 @@ export default function BookingFlowScreen() {
   const [guestInfo, setGuestInfo] = useState({ firstName: '', lastName: '', email: '', phone: '', country: 'Nepal' });
   const [guestErrors, setGuestErrors] = useState<Record<string, string>>({});
 
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'razorpay'>('stripe');
+  const [paymentMethod] = useState<'stripe'>('stripe');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -190,12 +190,6 @@ export default function BookingFlowScreen() {
   };
 
   // ── Navigation ──
-  const canProceed = (): boolean => {
-    if (step === 0) return selectedRooms.length > 0;
-    if (step === 1) return validateGuest();
-    return true;
-  };
-
   const handleNext = () => {
     if (step === 0 && selectedRooms.length === 0) {
       Alert.alert('Select Rooms', 'Please select at least one room');
@@ -208,21 +202,19 @@ export default function BookingFlowScreen() {
   // ── Apply promo code ──
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
+    if (!bookingResult?.ref_number) {
+      Alert.alert('Note', 'Promo codes can be applied after creating the booking');
+      return;
+    }
     setPromoLoading(true);
     try {
-      // Apply discount to existing booking if we have one
-      if (bookingResult?.ref_number) {
-        const updated = await bookingApi.applyDiscount(
-          bookingResult.ref_number,
-          promoCode,
-          () => bookingResult,
-        );
-        setAppliedPromo({ code: promoCode, discount: updated.coupon_discount || 0 });
-        setBookingResult(updated);
-      } else {
-        // No booking yet, apply after creation
-        setAppliedPromo({ code: promoCode, discount: Math.round(roomSubtotal * 0.1) });
-      }
+      const updated = await bookingApi.applyDiscount(
+        bookingResult.ref_number,
+        promoCode,
+        () => bookingResult,
+      );
+      setAppliedPromo({ code: promoCode, discount: updated.coupon_discount || 0 });
+      setBookingResult(updated);
     } catch {
       Alert.alert('Invalid Code', 'This promo code is not valid or has expired');
     } finally {
@@ -319,7 +311,7 @@ export default function BookingFlowScreen() {
 
       // Save to local context
       addBooking({
-        hotelId: parseInt(pid) || 0,
+        hotelId: 0,
         hotelName,
         hotelCity: result.property?.city || '',
         hotelCountry: result.property?.country || '',
@@ -369,10 +361,10 @@ export default function BookingFlowScreen() {
   };
 
   // ── Progress indicator ──
-  const steps = ['Select rooms', 'Your details', 'Finish booking'];
-  const ProgressHeader = () => (
+  const stepLabels = ['Select rooms', 'Your details', 'Finish booking'];
+  const ProgressHeader = useMemo(() => memo(() => (
     <View style={styles.progress}>
-      {steps.map((label, i) => (
+      {stepLabels.map((label, i) => (
         <React.Fragment key={label}>
           <View style={styles.progressItem}>
             <View style={[
@@ -390,16 +382,16 @@ export default function BookingFlowScreen() {
               {label}
             </Text>
           </View>
-          {i < steps.length - 1 && (
+          {i < stepLabels.length - 1 && (
             <View style={[styles.progressLine, i < step && styles.progressLineDone]} />
           )}
         </React.Fragment>
       ))}
     </View>
-  );
+  )), [step]);
 
   // ── Step 0: Room Selection ──
-  const StepRooms = () => (
+  const StepRooms = useMemo(() => memo(() => (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Text style={styles.stepTitle}>Select your rooms</Text>
       <Text style={styles.stepSub}>Choose the perfect room for your stay</Text>
@@ -466,10 +458,10 @@ export default function BookingFlowScreen() {
         })
       )}
     </ScrollView>
-  );
+  )), [isLoading, availableRooms, selectedRooms, nights]);
 
   // ── Step 1: Guest Details ──
-  const StepDetails = () => (
+  const StepDetails = useMemo(() => memo(() => (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.stepTitle}>Enter your details</Text>
@@ -505,30 +497,13 @@ export default function BookingFlowScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
+  )), [guestInfo, guestErrors]);
 
   // ── Step 2: Payment & Review ──
-  const StepPayment = () => (
+  const StepPayment = useMemo(() => memo(() => (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Text style={styles.stepTitle}>Finish booking</Text>
-      <Text style={styles.stepSub}>Choose your payment method</Text>
-
-      {/* Payment method tabs */}
-      <View style={styles.payTabs}>
-        {[
-          { key: 'stripe' as const, label: 'Card', icon: 'card-outline' as const },
-          { key: 'razorpay' as const, label: 'UPI / Wallet', icon: 'phone-portrait-outline' as const },
-        ].map(opt => (
-          <TouchableOpacity
-            key={opt.key}
-            onPress={() => setPaymentMethod(opt.key)}
-            style={[styles.payTab, paymentMethod === opt.key && styles.payTabActive]}
-          >
-            <Ionicons name={opt.icon} size={18} color={paymentMethod === opt.key ? BLUE : '#94A3B8'} />
-            <Text style={[styles.payTabText, paymentMethod === opt.key && styles.payTabTextActive]}>{opt.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={styles.stepSub}>Review your booking and complete payment</Text>
 
       {/* Promo code */}
       <View style={styles.promoBox}>
@@ -593,10 +568,10 @@ export default function BookingFlowScreen() {
         </View>
       </View>
     </ScrollView>
-  );
+  )), [selectedRooms, nights, promoCode, appliedPromo, promoLoading, promoDiscount, tax, total, checkIn]);
 
   // ── Bottom bar ──
-  const BottomBar = () => (
+  const BottomBar = useMemo(() => memo(() => (
     <View style={styles.bottomBar}>
       <View style={styles.bottomPrice}>
         <Text style={styles.bottomTotalLabel}>Total</Text>
@@ -623,7 +598,7 @@ export default function BookingFlowScreen() {
         </TouchableOpacity>
       </View>
     </View>
-  );
+  )), [step, total, isSubmitting, isProcessing]);
 
   return (
     <View style={styles.container}>
@@ -710,13 +685,6 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 11, color: '#EF4444' },
   select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
   selectText: { fontSize: 15, color: '#0F172A' },
-
-  // Payment tabs
-  payTabs: { flexDirection: 'row', gap: 10 },
-  payTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
-  payTabActive: { borderColor: BLUE, backgroundColor: '#EFF6FF' },
-  payTabText: { fontSize: 14, fontWeight: '500', color: '#94A3B8' },
-  payTabTextActive: { color: BLUE, fontWeight: '600' },
 
   // Promo
   promoBox: { gap: 6 },

@@ -5,7 +5,6 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { FONTS } from '@/constants/portal-theme';
 
 const NAVY = '#1A3C5E';
 const BLUE = '#0071c2';
