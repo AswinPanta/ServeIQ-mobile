@@ -60,6 +60,7 @@ export interface Hotel {
   starRating: number;
   price: number;
   currency: string;
+  property_type?: string;
   description: string;
   shortDescription: string;
   images: string[];

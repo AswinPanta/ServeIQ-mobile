@@ -179,7 +179,7 @@ export type PropertyType =
   | 'HOSTEL'
   | 'GUEST_HOUSE';
 
-export type CancellationPolicy = 'FLEXIBLE' | 'MODERATE' | 'STRICT';
+export type CancellationPolicy = 'FLEXIBLE' | 'MODERATE' | 'STRICT' | 'NON_REFUNDABLE' | 'CUSTOM';
 
 export interface PropertyPhoto {
   id: string;
