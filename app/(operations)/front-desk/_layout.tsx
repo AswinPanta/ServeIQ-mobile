@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Stack } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/lib/context/auth-context";
-import { CRMProvider } from "@/lib/context/crm-context";
 import { FrontDeskProvider } from "@/lib/context/frontdesk-context";
 import type { OperatorProfile } from "@/types/api";
 
@@ -16,16 +15,14 @@ export default function FrontDeskLayout() {
     contentStyle: { backgroundColor: colors.background },
   }), [colors.background]);
   return (
-    <CRMProvider>
-      <FrontDeskProvider propertyId={propertyId}>
-        <Stack screenOptions={screenOptions}>
+    <FrontDeskProvider propertyId={propertyId}>
+      <Stack screenOptions={screenOptions}>
         <Stack.Screen name="index" />
         <Stack.Screen name="new-booking" />
         <Stack.Screen name="check-in" />
         <Stack.Screen name="check-out" />
         <Stack.Screen name="guest-crm" />
       </Stack>
-      </FrontDeskProvider>
-    </CRMProvider>
+    </FrontDeskProvider>
   );
 }

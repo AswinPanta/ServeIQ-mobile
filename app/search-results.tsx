@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
+const PAGE_SIZE = 20;
+
 export default function SearchResultsScreen() {
   const { location = 'Hotels', checkIn, checkOut, guests, adults, children, rooms } = useLocalSearchParams<{
     location?: string; checkIn?: string; checkOut?: string; guests?: string;
@@ -29,10 +31,13 @@ export default function SearchResultsScreen() {
 
   const [allHotels, setAllHotels] = useState<Hotel[]>(MOCK_PROPERTIES);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [fromApi, setFromApi] = useState(false);
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'distance'>('price');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [hasMore, setHasMore] = useState(true);
+  const [skip, setSkip] = useState(0);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     priceRange: [0, 50000],
     minRating: 3.0,
@@ -45,10 +50,8 @@ export default function SearchResultsScreen() {
   const routeKey = '/search-results';
   const handleScroll = useScrollRestoration(scrollRef as any, routeKey);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setIsLoading(true);
+  const fetchResults = useCallback(async (currentSkip: number, append: boolean) => {
+    try {
       const result = await searchHotelsApi({
         destination: location || '',
         checkIn: checkIn as string,
@@ -56,15 +59,40 @@ export default function SearchResultsScreen() {
         adults: adults ? Number(adults) : (guests ? Number(guests) : 1),
         children: children ? Number(children) : 0,
         rooms: rooms ? Number(rooms) : 1,
+        limit: PAGE_SIZE,
+        skip: currentSkip,
       });
-      if (!cancelled) {
+      if (result.hotels.length < PAGE_SIZE) setHasMore(false);
+      if (append) {
+        setAllHotels(prev => [...prev, ...result.hotels]);
+      } else {
         setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
-        setFromApi(result.fromApi);
-        setIsLoading(false);
       }
+      setFromApi(result.fromApi);
+    } catch {}
+  }, [location, checkIn, checkOut, guests, adults, children, rooms]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      setHasMore(true);
+      setSkip(0);
+      await fetchResults(0, false);
+      if (!cancelled) setIsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [location, checkIn, checkOut, guests, adults, children, rooms]);
+  }, [fetchResults]);
+
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    const nextSkip = skip + PAGE_SIZE;
+    setIsLoadingMore(true);
+    fetchResults(nextSkip, true).then(() => {
+      setSkip(nextSkip);
+      setIsLoadingMore(false);
+    });
+  }, [skip, isLoadingMore, hasMore, fetchResults]);
 
   const filteredHotels = useMemo(() => {
     let filtered = allHotels.filter((hotel) => {
@@ -196,8 +224,8 @@ export default function SearchResultsScreen() {
                   check_in_time: item.checkInTime,
                   check_out_time: item.checkOutTime,
                   cancellation_policy: item.cancellationPolicy,
-                  photos: item.images.map((url, idx) => ({ url, caption: '', id: String(idx), order: idx })),
-                  amenities: item.amenities.map(a => ({ id: a.name, name: a.name, icon: a.icon, category: 'other' as const })),
+                  photos: item.images.map((url: string, idx: number) => ({ url, caption: '', id: String(idx), order: idx })),
+                  amenities: item.amenities.map((a: any) => ({ id: a.name, name: a.name, icon: a.icon, category: 'other' as const })),
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),
                   website: item.website,
@@ -210,7 +238,17 @@ export default function SearchResultsScreen() {
           )}
           contentContainerStyle={{ paddingVertical: 8 }}
           showsVerticalScrollIndicator={false}
-          ListFooterComponent={<View className="h-8" />}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          ListFooterComponent={
+            <View className="py-4 items-center">
+              {isLoadingMore ? (
+                <ActivityIndicator size="small" color="#2E86AB" />
+              ) : !hasMore && filteredHotels.length > 0 ? (
+                <Text className="text-xs text-muted">All properties loaded ({filteredHotels.length})</Text>
+              ) : null}
+            </View>
+          }
         />
       )}
 

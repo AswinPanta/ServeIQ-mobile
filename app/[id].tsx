@@ -135,6 +135,38 @@ export default function HotelDetailScreen() {
             </View>
           </View>
 
+          {/* Contact Hotel */}
+          {(hotel.phone || hotel.email) && (
+            <Card variant="outlined" padding="md">
+              <View className="gap-3">
+                <Text className="text-sm font-semibold text-foreground">Contact Hotel</Text>
+                {hotel.phone ? (
+                  <TouchableOpacity 
+                    onPress={() => Linking.openURL(`tel:${hotel.phone}`)}
+                    className="flex-row items-center gap-3"
+                  >
+                    <Text className="text-lg">📞</Text>
+                    <Text className="text-sm text-foreground flex-1">{hotel.phone}</Text>
+                    <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || '#E63946' }}>Call</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {hotel.phone && hotel.email ? (
+                  <View className="h-px bg-border" />
+                ) : null}
+                {hotel.email ? (
+                  <TouchableOpacity 
+                    onPress={() => Linking.openURL(`mailto:${hotel.email}`)}
+                    className="flex-row items-center gap-3"
+                  >
+                    <Text className="text-lg">✉️</Text>
+                    <Text className="text-sm text-foreground flex-1">{hotel.email}</Text>
+                    <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || '#E63946' }}>Email</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </Card>
+          )}
+
           {/* Cancellation Policy */}
           <Card variant="outlined" padding="md">
             <View className="gap-2">

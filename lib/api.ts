@@ -474,6 +474,8 @@ export async function searchHotelsApi(params: {
 export interface AvailableRoom {
   id: string;
   room_name: string;
+  room_type?: string;
+  bed_type?: string;
   base_rate: string;
   max_adults: number;
   max_children: number;
@@ -481,6 +483,10 @@ export interface AvailableRoom {
   status: string;
   floor_number: number;
   cancellation_policy: string;
+  cancellation_title?: string;
+  cancellation_description?: string;
+  system_amenities?: string[];
+  custom_amenities?: string[];
 }
 
 export async function getAvailableRoomsApi(

@@ -3,18 +3,18 @@ import {
   View, Text, ScrollView, TouchableOpacity, Image, Share, StyleSheet, Platform, Alert,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { FONTS, SRS, RADIUS, SHADOWS, FIGMA_COLORS } from '@/constants/portal-theme';
-import { useAuth } from '@/lib/context/auth-context';
-import type { GuestProfile } from '@/types/api';
+import { FONTS } from '@/constants/portal-theme';
 
-function formatDateShort(iso: string): string {
+const NAVY = '#1A3C5E';
+const BLUE = '#0071c2';
+const TEAL = '#00875A';
+
+function formatDate(iso: string): string {
   if (!iso) return '—';
   const d = new Date(iso);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatDay(iso: string): string {
@@ -23,346 +23,354 @@ function formatDay(iso: string): string {
   return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
 }
 
-function calculateNights(checkIn: string, checkOut: string): number {
-  if (!checkIn || !checkOut) return 1;
-  return Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
-}
-
 function formatCurrency(amount: number): string {
   return 'NPR ' + amount.toLocaleString('en-IN');
 }
 
 export default function BookingConfirmationScreen() {
-  const { t } = useTranslation();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
 
-  const hotelName = (params.hotelName as string) || 'Himalayan Lakeview Resort';
+  const hotelName = (params.hotelName as string) || 'Hotel';
   const hotelImage = (params.hotelImage as string) || '';
-  const hotelCity = (params.hotelCity as string) || 'Pokhara';
-  const roomType = (params.roomType as string) || params.rooms as string || 'Lakeview Room';
+  const hotelCity = (params.hotelCity as string) || '';
+  const roomType = (params.roomType as string) || params.rooms as string || '';
   const checkIn = (params.checkIn as string) || '';
   const checkOut = (params.checkOut as string) || '';
+  const nights = parseInt((params.nights as string) || '1', 10);
   const guests = parseInt((params.guests as string) || '2', 10);
-  const nights = parseInt((params.nights as string) || '1', 10) || calculateNights(checkIn, checkOut);
-  const totalPrice = parseInt((params.total as string) || (params.totalPrice as string) || '0', 10);
-  const confirmationCode = (params.confirmationCode as string) || (params.bookingId as string) || 'BK1782975486778';
-  const subtotal = parseInt((params.subtotal as string) || '0', 10) || Math.round(totalPrice * 0.88);
-  const tax = parseInt((params.tax as string) || '0', 10) || Math.round(totalPrice * 0.12);
+  const totalPrice = parseInt((params.total as string) || '0', 10);
+  const confirmationCode = (params.confirmationCode as string) || 'BK' + Date.now();
+  const subtotal = parseInt((params.subtotal as string) || '0', 10);
+  const tax = parseInt((params.tax as string) || '0', 10);
   const discount = parseInt((params.discount as string) || '0', 10);
-  const paymentGateway = (params.paymentGateway as string) || 'stripe';
+  const guestName = (params.guestName as string) || 'Guest';
+  const guestEmail = (params.guestEmail as string) || '';
+  const guestPhone = (params.guestPhone as string) || '';
+  const guestCountry = (params.guestCountry as string) || '';
+  const bedTypes = (params.bedTypes as string) || 'Queen';
   const pricePerNight = nights > 0 ? Math.round(subtotal / nights) : subtotal;
 
-  const userName = user ? ((user as GuestProfile).name || (user as GuestProfile).full_name || 'Guest') : 'Guest';
-  const userInitial = userName.charAt(0).toUpperCase();
+  const initials = hotelName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+  const handleCopyCode = async () => {
+    await Clipboard.setStringAsync(confirmationCode);
+    Alert.alert('Copied', 'Confirmation code copied to clipboard');
+  };
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Booking Confirmed!\nHotel: ${hotelName}\nRoom: ${roomType}\nCheck-in: ${formatDateShort(checkIn)}\nCheck-out: ${formatDateShort(checkOut)}\nConfirmation: ${confirmationCode}`,
+        message: `Booking Confirmed!\nHotel: ${hotelName}\nRoom: ${roomType}\nCheck-in: ${formatDate(checkIn)}\nCheck-out: ${formatDate(checkOut)}\nConfirmation: ${confirmationCode}`,
       });
     } catch {}
   };
 
+  const handleReceipt = () => {
+    Alert.alert('Receipt', 'Receipt downloaded successfully');
+  };
+
   return (
-    <View style={styles.root}>
-      {/* Gradient Banner Header */}
-      <View style={styles.gradientBanner}>
-        <View style={styles.bannerOverlay}>
-          <Text style={styles.bannerLogo}>StayEasy</Text>
-          <Text style={styles.bannerTitle}>{t('confirmation.title')}</Text>
-          <Text style={styles.bannerSubtitle}>{t('confirmation.subtitle')}</Text>
+    <View style={styles.container}>
+      {/* Success Banner */}
+      <View style={styles.banner}>
+        <View style={styles.bannerContent}>
+          <View style={styles.confirmedPill}>
+            <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+            <Text style={styles.confirmedPillText}>Booking confirmed</Text>
+          </View>
+          <Text style={styles.bannerTitle}>Your stay is confirmed</Text>
+          <Text style={styles.bannerSubtitle}>A confirmation has been sent to {guestEmail}</Text>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Confirmation Code Card */}
-        <View style={styles.confirmationCard}>
-          <Text style={styles.confirmationLabel}>{t('confirmation.code')}</Text>
-          <Text style={styles.confirmationCode}>{confirmationCode}</Text>
-          <Text style={styles.confirmationHint}>{t('confirmation.saveCode')}</Text>
-          <TouchableOpacity
-            onPress={async () => {
-              await Clipboard.setStringAsync(confirmationCode);
-              Alert.alert('Copied', 'Confirmation code copied to clipboard');
-            }}
-            style={styles.copyBtn}
-          >
-            <Ionicons name="copy-outline" size={14} color={SRS.teal} />
-            <Text style={styles.copyBtnText}>{t('confirmation.copyCode')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Hotel Details Card */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>{t('confirmation.hotelDetails')}</Text>
-          <View style={styles.hotelRow}>
-            {hotelImage ? (
-              <Image source={{ uri: hotelImage }} style={styles.hotelImage} />
-            ) : (
-              <View style={[styles.hotelImage, styles.hotelImagePlaceholder]}>
-                <Ionicons name="image-outline" size={32} color="#94A3B8" />
+      {/* Progress Stepper - all done */}
+      <View style={styles.stepper}>
+        {['Your Selection', 'Your Details', 'Finish booking'].map((label, i) => (
+          <React.Fragment key={label}>
+            <View style={styles.stepperItem}>
+              <View style={[styles.stepperDot, styles.stepperDotDone]}>
+                <Ionicons name="checkmark" size={12} color="#FFF" />
               </View>
-            )}
-            <View style={styles.hotelInfo}>
-              <Text style={styles.hotelName} numberOfLines={2}>{hotelName}</Text>
-              <Text style={styles.hotelRoom}>{roomType} · {hotelCity}</Text>
-              <View style={styles.confirmedBadge}>
-                <Ionicons name="checkmark-circle" size={12} color="#1E8449" />
-                <Text style={styles.confirmedBadgeText}>{t('confirmation.statusConfirmed')}</Text>
+              <Text style={[styles.stepperLabel, styles.stepperLabelDone]} numberOfLines={1}>{label}</Text>
+            </View>
+            {i < 2 && <View style={[styles.stepperLine, styles.stepperLineDone]} />}
+          </React.Fragment>
+        ))}
+      </View>
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.twoCol}>
+          {/* Left Column */}
+          <View style={styles.leftCol}>
+            {/* Room Details */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Room details</Text>
+              <View style={styles.roomRow}>
+                <Image source={{ uri: hotelImage }} style={styles.roomImage} />
+                <View style={styles.roomInfo}>
+                  <Text style={styles.roomName}>{roomType}</Text>
+                  <Text style={styles.roomBed}>{bedTypes} bed</Text>
+                  <Text style={styles.roomGuests}>Up to {guests} guests</Text>
+                  <Text style={styles.roomRate}>{formatCurrency(pricePerNight)} × {nights} night{nights > 1 ? 's' : ''}</Text>
+                </View>
               </View>
             </View>
-          </View>
-        </View>
 
-        {/* Stay Details Grid */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>{t('confirmation.stayDetails')}</Text>
-          <View style={styles.stayGrid}>
-            <View style={styles.stayCell}>
-              <Text style={styles.stayLabel}>{t('confirmation.checkin')}</Text>
-              <Text style={styles.stayValue}>{formatDateShort(checkIn)}</Text>
-              <Text style={styles.stayDay}>{formatDay(checkIn)}</Text>
+            {/* Guest Details */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Guest details</Text>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Name</Text>
+                <Text style={styles.detailValue}>{guestName}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Email</Text>
+                <Text style={styles.detailValue}>{guestEmail}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Phone</Text>
+                <Text style={styles.detailValue}>{guestPhone}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Country</Text>
+                <Text style={styles.detailValue}>{guestCountry}</Text>
+              </View>
             </View>
-            <View style={styles.stayCell}>
-              <Text style={styles.stayLabel}>{t('confirmation.checkout')}</Text>
-              <Text style={styles.stayValue}>{formatDateShort(checkOut)}</Text>
-              <Text style={styles.stayDay}>{formatDay(checkOut)}</Text>
+
+            {/* Important Info */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Important information</Text>
+              {[
+                'Please present a valid photo ID at check-in',
+                'Arrive at least 15 minutes before your check-in time',
+                '24/7 front desk assistance available',
+                'Breakfast included in your stay',
+                'Free WiFi throughout the property',
+              ].map((info, i) => (
+                <View key={i} style={styles.infoRow}>
+                  <Ionicons name="checkmark-circle" size={16} color={TEAL} />
+                  <Text style={styles.infoText}>{info}</Text>
+                </View>
+              ))}
             </View>
-            <View style={styles.stayCell}>
-              <Text style={styles.stayLabel}>NIGHTS</Text>
-              <Text style={styles.stayValue}>{t('confirmation.nights', { count: nights })}</Text>
+
+            {/* Cancellation Policy */}
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Cancellation policy</Text>
+              <View style={styles.cancelRow}>
+                <Ionicons name="shield-checkmark-outline" size={18} color={TEAL} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cancelTitle}>Free cancellation</Text>
+                  <Text style={styles.cancelDesc}>Cancel before {formatDate(checkIn)} for a full refund</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.stayCell}>
-              <Text style={styles.stayLabel}>GUESTS</Text>
-              <Text style={styles.stayValue}>{t('confirmation.guests', { count: guests })}</Text>
+          </View>
+
+          {/* Right Column */}
+          <View style={styles.rightCol}>
+            {/* Booking Summary */}
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryHeader}>
+                <View style={styles.initialsBadge}>
+                  <Text style={styles.initialsText}>{initials}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.summaryHotelName} numberOfLines={2}>{hotelName}</Text>
+                  <Text style={styles.summaryLocation}>{hotelCity}</Text>
+                </View>
+              </View>
+
+              <View style={styles.summaryDivider} />
+
+              <View style={styles.summaryRow}>
+                <Ionicons name="key-outline" size={16} color="#64748B" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.summaryLabel}>Confirmation code</Text>
+                  <Text style={styles.confirmationCode}>{confirmationCode}</Text>
+                </View>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Ionicons name="calendar-outline" size={16} color="#64748B" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.summaryLabel}>Dates</Text>
+                  <Text style={styles.summaryValue}>{formatDate(checkIn)} – {formatDate(checkOut)}</Text>
+                  <Text style={styles.summarySub}>{nights} night{nights > 1 ? 's' : ''}</Text>
+                </View>
+              </View>
+
+              <View style={styles.summaryRow}>
+                <Ionicons name="people-outline" size={16} color="#64748B" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.summaryLabel}>Guests</Text>
+                  <Text style={styles.summaryValue}>{guests} guest{guests > 1 ? 's' : ''}</Text>
+                </View>
+              </View>
+
+              <View style={styles.summaryDivider} />
+
+              {/* Price Breakdown */}
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Room × {nights} nights</Text>
+                <Text style={styles.priceValue}>{formatCurrency(subtotal)}</Text>
+              </View>
+              {discount > 0 && (
+                <View style={styles.priceRow}>
+                  <Text style={[styles.priceLabel, { color: RED }]}>Discount</Text>
+                  <Text style={[styles.priceValue, { color: RED }]}>-{formatCurrency(discount)}</Text>
+                </View>
+              )}
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Taxes & fees</Text>
+                <Text style={styles.priceValue}>{formatCurrency(tax)}</Text>
+              </View>
+              <View style={styles.priceDivider} />
+              <View style={styles.priceRow}>
+                <Text style={styles.priceTotalLabel}>Total paid</Text>
+                <Text style={styles.priceTotalValue}>{formatCurrency(totalPrice)}</Text>
+              </View>
+              <View style={styles.paidBadge}>
+                <View style={styles.paidDot} />
+                <Text style={styles.paidText}>Paid</Text>
+              </View>
+
+              <View style={styles.summaryDivider} />
+
+              {/* Action Buttons */}
+              <View style={styles.actions}>
+                <TouchableOpacity style={styles.actionBtn} onPress={handleCopyCode}>
+                  <Ionicons name="copy-outline" size={16} color={NAVY} />
+                  <Text style={styles.actionBtnText}>Copy code</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
+                  <Ionicons name="share-outline" size={16} color={NAVY} />
+                  <Text style={styles.actionBtnText}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtn} onPress={handleReceipt}>
+                  <Ionicons name="document-text-outline" size={16} color={NAVY} />
+                  <Text style={styles.actionBtnText}>Receipt</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* QR Code */}
+            <View style={styles.qrCard}>
+              <Text style={styles.qrTitle}>Booking QR Code</Text>
+              <View style={styles.qrPlaceholder}>
+                <Ionicons name="qr-code" size={100} color="#94A3B8" />
+              </View>
+              <Text style={styles.qrHint}>Show this QR code at check-in</Text>
             </View>
           </View>
-        </View>
-
-        {/* Price Breakdown */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>{t('confirmation.priceBreakdown')}</Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{t('confirmation.roomNights', { count: nights, nights })} × {formatCurrency(pricePerNight)}</Text>
-            <Text style={styles.priceValue}>{formatCurrency(subtotal - Math.round(subtotal * 0.1))}</Text>
-          </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>{t('confirmation.taxes')}</Text>
-            <Text style={styles.priceValue}>{formatCurrency(tax)}</Text>
-          </View>
-          <View style={styles.priceDivider} />
-          <View style={styles.priceRow}>
-            <Text style={styles.priceTotalLabel}>Total</Text>
-            <Text style={styles.priceTotalValue}>{formatCurrency(totalPrice)}</Text>
-          </View>
-        </View>
-
-        {/* Important Information */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>{t('confirmation.importantInfo')}</Text>
-          <View style={styles.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>{t('confirmation.checkinTime')}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>{t('confirmation.photoId')}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>{t('confirmation.breakfast')}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="checkmark-circle" size={16} color="#1E8449" />
-            <Text style={styles.infoText}>{t('confirmation.wifi')}</Text>
-          </View>
-        </View>
-
-        {/* Cancellation Policy */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>{t('confirmation.cancellationPolicy')}</Text>
-          <View style={styles.cancelRow}>
-            <Ionicons name="warning" size={18} color="#C0392B" />
-            <Text style={styles.cancelText}>{t('confirmation.freeCancellation')}</Text>
-          </View>
-        </View>
-
-        {/* QR Code */}
-        <View style={styles.card}>
-          <Text style={styles.sectionHeading}>{t('confirmation.qrCode')}</Text>
-          <View style={styles.qrPlaceholder}>
-            <Ionicons name="qr-code-outline" size={80} color="#94A3B8" />
-          </View>
-          <Text style={styles.qrHint}>{t('confirmation.showQr')}</Text>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionsSection}>
-          <TouchableOpacity style={styles.outlineBtn} onPress={handleShare} activeOpacity={0.7}>
-            <Ionicons name="share-outline" size={18} color={SRS.navy} />
-            <Text style={styles.outlineBtnText}>{t('confirmation.share')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.7} onPress={() => Alert.alert('Receipt', 'Receipt downloaded successfully')}>
-            <Ionicons name="download-outline" size={18} color={SRS.navy} />
-            <Text style={styles.outlineBtnText}>{t('confirmation.download')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => router.replace('/(tabs)')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.primaryBtnText}>{t('confirmation.backHome')}</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Bottom Bar */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.homeBtn} onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.homeBtnText}>Back to Home</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-const PF = FONTS.playfairDisplay.bold;
-const IR = FONTS.inter.regular;
-const IM = FONTS.inter.medium;
-const IB = FONTS.inter.bold;
+const RED = '#d4111e';
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: FIGMA_COLORS.pageBg },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
 
-  // Gradient Banner
-  gradientBanner: {
-    backgroundColor: SRS.navy,
-    paddingTop: Platform.OS === 'ios' ? 56 : 40,
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-  },
-  bannerOverlay: { alignItems: 'center' },
-  bannerLogo: { fontSize: 16, color: 'rgba(255,255,255,0.6)', letterSpacing: -0.3, fontFamily: PF, marginBottom: 8 },
-  bannerTitle: { fontSize: 24, color: '#FFFFFF', marginBottom: 4, fontFamily: PF },
-  bannerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontFamily: IR },
+  // Banner
+  banner: { backgroundColor: TEAL, paddingTop: Platform.OS === 'ios' ? 56 : 40, paddingBottom: 24, paddingHorizontal: 20 },
+  bannerContent: { alignItems: 'center', gap: 8 },
+  confirmedPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
+  confirmedPillText: { fontSize: 13, fontWeight: '600', color: '#FFF' },
+  bannerTitle: { fontSize: 22, fontWeight: '700', color: '#FFF', letterSpacing: -0.3 },
+  bannerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
 
-  scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  // Stepper
+  stepper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  stepperItem: { alignItems: 'center', width: 80 },
+  stepperDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  stepperDotDone: { backgroundColor: TEAL },
+  stepperLabel: { fontSize: 9, color: '#94A3B8', textAlign: 'center' },
+  stepperLabelDone: { color: NAVY, fontWeight: '600' },
+  stepperLine: { flex: 1, height: 2, backgroundColor: '#E2E8F0', marginBottom: 16, marginHorizontal: -4 },
+  stepperLineDone: { backgroundColor: TEAL },
 
-  // Confirmation Card
-  confirmationCard: {
-    backgroundColor: '#FFFFFF', borderRadius: RADIUS.card,
-    paddingVertical: 20, alignItems: 'center', marginTop: -16,
-    ...SHADOWS.card,
-  },
-  confirmationLabel: {
-    fontSize: 10, color: '#94A3B8', letterSpacing: 0.8, marginBottom: 6, fontFamily: IB,
-  },
-  confirmationCode: {
-    fontSize: 20, color: SRS.navy, letterSpacing: 1, marginBottom: 4, fontFamily: IB,
-  },
-  confirmationHint: { fontSize: 11, color: '#94A3B8', marginBottom: 12, fontFamily: IR },
-  copyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8,
-    borderWidth: 1, borderColor: SRS.teal, backgroundColor: 'rgba(30, 132, 73, 0.04)',
-  },
-  copyBtnText: { fontSize: 12, color: SRS.teal, fontFamily: IB },
+  // Layout
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 120 },
+  twoCol: { flexDirection: 'row', flexWrap: 'wrap' },
+  leftCol: { flex: 1, minWidth: 320, padding: 16, gap: 12 },
+  rightCol: { width: 360, padding: 16, gap: 12 },
 
   // Cards
-  card: {
-    backgroundColor: '#FFFFFF', borderRadius: RADIUS.card,
-    padding: 16, marginTop: 12, ...SHADOWS.card,
-  },
-  sectionHeading: {
-    fontSize: 12, color: '#94A3B8', letterSpacing: 0.6, marginBottom: 14, fontFamily: PF,
-  },
+  card: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12 },
 
-  // Hotel Details
-  hotelRow: { flexDirection: 'row', gap: 14 },
-  hotelImage: { width: 96, height: 96, borderRadius: RADIUS.card },
-  hotelImagePlaceholder: {
-    backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center',
-  },
-  hotelInfo: { flex: 1, justifyContent: 'center', gap: 4 },
-  hotelName: { fontSize: 16, color: SRS.navy, lineHeight: 22, fontFamily: PF },
-  hotelRoom: { fontSize: 12, color: '#64748B', fontFamily: IR },
-  confirmedBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: FIGMA_COLORS.successBg, borderRadius: RADIUS.badge,
-    paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 4,
-  },
-  confirmedBadgeText: { fontSize: 11, color: '#1E8449', fontFamily: IB },
+  // Room Row
+  roomRow: { flexDirection: 'row', gap: 12 },
+  roomImage: { width: 80, height: 80, borderRadius: 10 },
+  roomInfo: { flex: 1, gap: 2 },
+  roomName: { fontSize: 14, fontWeight: '700', color: NAVY },
+  roomBed: { fontSize: 12, color: '#64748B' },
+  roomGuests: { fontSize: 12, color: '#64748B' },
+  roomRate: { fontSize: 12, fontWeight: '600', color: TEAL, marginTop: 4 },
 
-  // Stay Details Grid
-  stayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 1 },
-  stayCell: {
-    width: '49.5%', backgroundColor: '#FFFFFF', borderRadius: RADIUS.badge,
-    borderWidth: 1, borderColor: FIGMA_COLORS.cardBorder,
-    paddingVertical: 12, paddingHorizontal: 14,
-  },
-  stayLabel: {
-    fontSize: 10, color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4, fontFamily: IB,
-  },
-  stayValue: { fontSize: 14, color: SRS.navy, marginBottom: 2, fontFamily: IB },
-  stayDay: { fontSize: 11, color: '#64748B', fontFamily: IR },
+  // Detail Row
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  detailLabel: { fontSize: 13, color: '#64748B' },
+  detailValue: { fontSize: 13, fontWeight: '600', color: NAVY },
 
-  // Price Breakdown
-  priceRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 6,
-  },
-  priceLabel: { fontSize: 13, color: '#64748B', fontFamily: IR, flex: 1 },
-  priceValue: { fontSize: 13, color: SRS.navy, fontFamily: IM },
-  priceDivider: {
-    height: 1, backgroundColor: FIGMA_COLORS.cardBorder, marginVertical: 8,
-  },
-  priceTotalLabel: { fontSize: 15, color: SRS.navy, fontFamily: IB },
-  priceTotalValue: { fontSize: 16, color: SRS.teal, fontFamily: IB },
+  // Info Row
+  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  infoText: { fontSize: 12, color: '#64748B', flex: 1, lineHeight: 18 },
 
-  // Important Information
-  infoItem: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10,
-  },
-  infoText: { fontSize: 12, color: '#64748B', flex: 1, lineHeight: 18, fontFamily: IR },
+  // Cancellation
+  cancelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, backgroundColor: '#F0FFF4', borderWidth: 1, borderColor: '#C6F6D5' },
+  cancelTitle: { fontSize: 13, fontWeight: '600', color: NAVY },
+  cancelDesc: { fontSize: 11, color: '#64748B', marginTop: 2 },
 
-  // Cancellation Policy
-  cancelRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    backgroundColor: FIGMA_COLORS.dangerBg, borderRadius: RADIUS.badge, padding: 12,
-  },
-  cancelText: { fontSize: 12, color: '#64748B', flex: 1, lineHeight: 18, fontFamily: IR },
+  // Summary Card
+  summaryCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  summaryHeader: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  initialsBadge: { width: 44, height: 44, borderRadius: 12, backgroundColor: NAVY, alignItems: 'center', justifyContent: 'center' },
+  initialsText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  summaryHotelName: { fontSize: 15, fontWeight: '700', color: NAVY, lineHeight: 20 },
+  summaryLocation: { fontSize: 12, color: '#64748B' },
+  summaryDivider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 12 },
+  summaryRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
+  summaryLabel: { fontSize: 11, color: '#94A3B8', marginBottom: 2 },
+  summaryValue: { fontSize: 13, fontWeight: '600', color: NAVY },
+  summarySub: { fontSize: 12, color: '#64748B' },
+  confirmationCode: { fontSize: 16, fontWeight: '700', color: NAVY, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
-  // QR Code
-  qrPlaceholder: {
-    width: 194, height: 194, alignSelf: 'center',
-    borderRadius: RADIUS.card, borderWidth: 2, borderColor: '#E2E8F0',
-    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#F8FAFC', marginBottom: 10,
-  },
-  qrHint: { fontSize: 12, color: '#94A3B8', textAlign: 'center', fontFamily: IR },
+  // Price
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  priceLabel: { fontSize: 13, color: '#64748B' },
+  priceValue: { fontSize: 13, fontWeight: '600', color: NAVY },
+  priceDivider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 6 },
+  priceTotalLabel: { fontSize: 15, fontWeight: '700', color: NAVY },
+  priceTotalValue: { fontSize: 16, fontWeight: '700', color: TEAL },
+  paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  paidDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: TEAL },
+  paidText: { fontSize: 12, fontWeight: '600', color: TEAL },
 
-  // Action Buttons
-  actionsSection: { marginTop: 16, gap: 12 },
-  outlineBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1.5, borderColor: SRS.navy, borderRadius: RADIUS.card,
-    paddingVertical: 14, backgroundColor: '#FFFFFF',
-  },
-  outlineBtnText: { fontSize: 14, color: SRS.navy, fontFamily: IB },
-  primaryBtn: {
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: SRS.navy, borderRadius: RADIUS.card, paddingVertical: 14,
-  },
-  primaryBtnText: { fontSize: 14, color: '#FFFFFF', fontFamily: IB },
+  // Actions
+  actions: { flexDirection: 'row', gap: 8 },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
+  actionBtnText: { fontSize: 12, fontWeight: '600', color: NAVY },
 
-  // Bottom Tab Bar
-  tabBar: {
-    flexDirection: 'row', backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: FIGMA_COLORS.cardBorder,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12, paddingTop: 8,
-  },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
-  tabLabel: { fontSize: 10, color: '#94A3B8', fontFamily: IM },
-  tabLabelActive: { color: SRS.teal },
+  // QR
+  qrCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
+  qrTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12, alignSelf: 'flex-start' },
+  qrPlaceholder: { width: 180, height: 180, borderRadius: 14, borderWidth: 2, borderColor: '#E2E8F0', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', marginBottom: 10 },
+  qrHint: { fontSize: 12, color: '#94A3B8' },
+
+  // Bottom Bar
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 36 : 16, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  homeBtn: { paddingVertical: 14, borderRadius: 10, alignItems: 'center', backgroundColor: NAVY },
+  homeBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 });

@@ -577,6 +577,9 @@ export interface PropertySummary {
   city?: string;
   country?: string;
   currency: string;
+  photo?: string | null;
+  phone_number: string;
+  email: string;
 }
 
 export interface RoomReservationDetail {
@@ -589,12 +592,22 @@ export interface RoomReservationDetail {
   base_rate: number;
   nights: number;
   subtotal: number;
+  photo?: string | null;
+  cancellation_title: string;
+  cancellation_description: string;
+}
+
+export interface AppliedSpecialOffer {
+  title: string;
+  description: string;
 }
 
 export interface BookingReservationResponse {
   booking_id: string;
   ref_number: string;
   status: string;
+  number_of_adults: number;
+  number_of_children: number;
   check_in: string;
   check_out: string;
   nights: number;
@@ -603,18 +616,35 @@ export interface BookingReservationResponse {
   rooms: RoomReservationDetail[];
   total_amount: number;
   subtotal: number;
+  special_offer_applied?: AppliedSpecialOffer[];
   special_offer_discount: number;
   coupon_code?: string;
   coupon_discount: number;
   soft_lock_expires_at: string;
+  created_at?: string;
 }
 
 export interface BookingListItem {
   id: string;
+  property_id: string;
+  property_name: string;
+  property_photo?: string | null;
+  guest_name: string;
+  guest_email: string;
+  booking_number: string;
+  room_names: string[];
   ref_number: string;
   status: string;
+  number_of_adults?: number;
+  number_of_children?: number;
   checkin_date: string;
   checkout_date: string;
+  payment_gateway: string;
+  subtotal: string;
+  special_offer_discount: string | null;
+  coupon_code: string | null;
+  coupon_discount: string | null;
+  currency?: string;
   total_amount: number;
   created_at: string;
 }

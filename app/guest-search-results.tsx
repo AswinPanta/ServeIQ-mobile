@@ -11,6 +11,7 @@ import { StickySearchHeader } from '@/components/StickySearchHeader';
 import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PAGE_SIZE = 20;
 
 const PROPERTY_TYPE_FILTERS = ['All types', 'Hotels', 'Apartments', 'Villa', 'Resort', 'Others'];
 const AMENITY_FILTERS = ['Pool', 'Free WiFi', 'Breakfast included', 'Free cancellation', 'Beachfront', 'Kitchen', 'Air conditioning', 'Hot tub'];
@@ -23,9 +24,12 @@ export default function GuestSearchResults() {
 
   const [allHotels, setAllHotels] = useState<Hotel[]>(MOCK_PROPERTIES);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [fromApi, setFromApi] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('Recommended');
+  const [hasMore, setHasMore] = useState(true);
+  const [skip, setSkip] = useState(0);
 
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['All types']);
@@ -47,10 +51,8 @@ export default function GuestSearchResults() {
     }
   }, [quickFilter]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setIsLoading(true);
+  const fetchResults = useCallback(async (currentSkip: number, append: boolean) => {
+    try {
       const result = await searchHotelsApi({
         destination: (location as string) || '',
         checkIn: checkIn as string,
@@ -58,15 +60,40 @@ export default function GuestSearchResults() {
         adults: adults ? Number(adults) : (guests ? Number(guests) : 1),
         children: children ? Number(children) : 0,
         rooms: rooms ? Number(rooms) : 1,
+        limit: PAGE_SIZE,
+        skip: currentSkip,
       });
-      if (!cancelled) {
+      if (result.hotels.length < PAGE_SIZE) setHasMore(false);
+      if (append) {
+        setAllHotels(prev => [...prev, ...result.hotels]);
+      } else {
         setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
-        setFromApi(result.fromApi);
-        setIsLoading(false);
       }
+      setFromApi(result.fromApi);
+    } catch {}
+  }, [location, checkIn, checkOut, guests, adults, children, rooms]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoading(true);
+      setHasMore(true);
+      setSkip(0);
+      await fetchResults(0, false);
+      if (!cancelled) setIsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [location, checkIn, checkOut, guests, adults, children, rooms]);
+  }, [fetchResults]);
+
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    const nextSkip = skip + PAGE_SIZE;
+    setIsLoadingMore(true);
+    fetchResults(nextSkip, true).then(() => {
+      setSkip(nextSkip);
+      setIsLoadingMore(false);
+    });
+  }, [skip, isLoadingMore, hasMore, fetchResults]);
 
   const filteredHotels = allHotels.filter((hotel) => {
     if (hotel.price < priceRange[0] || hotel.price > priceRange[1]) return false;
@@ -215,6 +242,22 @@ export default function GuestSearchResults() {
               </View>
             </TouchableOpacity>
           ))}
+
+          {/* Load More */}
+          {hasMore && (
+            <TouchableOpacity onPress={handleLoadMore} disabled={isLoadingMore} style={s.loadMoreBtn}>
+              {isLoadingMore ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={s.loadMoreText}>Load more properties</Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {!hasMore && filteredHotels.length > 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+              <Text style={{ fontSize: 12, color: '#94A3B8' }}>All {filteredHotels.length} properties loaded</Text>
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -364,4 +407,6 @@ const s = StyleSheet.create({
 
   filterFAB: { position: 'absolute', bottom: 24, left: '50%', marginLeft: -60, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999, backgroundColor: '#1A3C5E', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6, zIndex: 50 },
   filterFABText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  loadMoreBtn: { marginVertical: 16, marginHorizontal: 16, paddingVertical: 14, borderRadius: 12, backgroundColor: '#1A3C5E', alignItems: 'center' },
+  loadMoreText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 });

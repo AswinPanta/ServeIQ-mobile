@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform,
+  ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,17 +52,22 @@ export default function LoginScreen() {
       >
         {/* Navy header area */}
         <View style={s.headerArea}>
-
+          <Image
+            source={require('@/assets/images/auth/stayeasy_login_background.png')}
+            style={s.headerBg}
+            resizeMode="cover"
+          />
+          <View style={s.headerOverlay} />
+          <Image
+            source={require('@/assets/images/auth/stayeasy_landmarks_white.png')}
+            style={s.landmarksImg}
+            resizeMode="contain"
+          />
           <Text style={s.logo}>
             <Text style={{ color: '#FFF' }}>Stay</Text>
             <Text style={{ color: TEAL }}>Easy</Text>
           </Text>
-          <View style={s.buildingRow}>
-            <Text style={{ fontSize: 48 }}>🏛️</Text>
-            <Text style={{ fontSize: 40 }}>🏨</Text>
-            <Text style={{ fontSize: 44 }}>🏪</Text>
-            <Text style={{ fontSize: 36 }}>🏢</Text>
-          </View>
+          <Text style={s.tagline}>Find your perfect stay</Text>
         </View>
 
         {/* White form card */}
@@ -162,11 +167,24 @@ const s = StyleSheet.create({
   headerArea: {
     backgroundColor: NAVY,
     paddingTop: 60,
-    paddingBottom: 32,
+    paddingBottom: 40,
     paddingHorizontal: 24,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  headerBg: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  headerOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(26, 60, 94, 0.75)',
   },
   backBtn: {
     position: 'absolute',
@@ -176,11 +194,9 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
-  logo: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, marginBottom: 12, marginTop: 4 },
-  buildingRow: {
-    flexDirection: 'row', justifyContent: 'center',
-    gap: 6, opacity: 0.6,
-  },
+  landmarksImg: { width: 160, height: 80, marginBottom: 8, zIndex: 2 },
+  logo: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4, marginTop: 4, zIndex: 2 },
+  tagline: { fontSize: 13, color: 'rgba(255,255,255,0.7)', zIndex: 2, letterSpacing: 0.5 },
 
   card: {
     backgroundColor: '#FFF',

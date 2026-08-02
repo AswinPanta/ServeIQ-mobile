@@ -158,7 +158,7 @@ export const hostApi = {
   getProperties: async (fallback: () => Property[]): Promise<Property[]> => {
     if (await isDemoMode()) return fallback();
     try {
-      const response = await api.get(API_ENDPOINTS.PROPERTIES.GET_ALL);
+      const response = await api.get(API_ENDPOINTS.PROPERTIES.GET_ALL, { params: { skip: 0, limit: 50 } });
       const json = await handleResponse<{
         success?: boolean;
         data?: { tenant_id?: string; properties?: Property[] };

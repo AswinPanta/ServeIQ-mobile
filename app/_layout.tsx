@@ -10,12 +10,6 @@ import { ThemeProvider } from "@/lib/theme-provider";
 
 import { useFonts } from "expo-font";
 import {
-  RussoOne_400Regular,
-} from "@expo-google-fonts/russo-one";
-import {
-  InknutAntiqua_400Regular,
-} from "@expo-google-fonts/inknut-antiqua";
-import {
   Itim_400Regular,
 } from "@expo-google-fonts/itim";
 import {
@@ -28,8 +22,6 @@ import {
   Sora_700Bold,
 } from "@expo-google-fonts/sora";
 import {
-  PlayfairDisplay_400Regular,
-  PlayfairDisplay_600SemiBold,
   PlayfairDisplay_700Bold,
 } from "@expo-google-fonts/playfair-display";
 import {
@@ -53,9 +45,7 @@ import { NotificationProvider, useNotifications } from "@/lib/context/notificati
 import { BookingProvider } from "@/lib/context/booking-context";
 import { CouponProvider } from "@/lib/context/coupon-context";
 import { PreferencesProvider } from "@/lib/context/preferences-context";
-import { SearchProvider } from "@/lib/context/search-context";
 import { CRMProvider } from "@/lib/context/crm-context";
-import { AnalyticsProvider } from "@/lib/context/analytics-context";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useColors } from "@/hooks/use-colors";
 import { I18nextProvider } from 'react-i18next';
@@ -135,14 +125,10 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    RussoOne_400Regular,
-    InknutAntiqua_400Regular,
     Itim_400Regular,
     AbhayaLibre_500Medium,
     Calistoga_400Regular,
     Sora_700Bold,
-    PlayfairDisplay_400Regular,
-    PlayfairDisplay_600SemiBold,
     PlayfairDisplay_700Bold,
     Inter_400Regular,
     Inter_500Medium,
@@ -178,15 +164,11 @@ export default function RootLayout() {
             <NotificationProvider>
               <BookingProvider>
                 <CouponProvider>
-                  <PreferencesProvider>
-                    <SearchProvider>
+                    <PreferencesProvider>
                       <CRMProvider>
-                        <AnalyticsProvider>
                           <RootNavigator />
-                        </AnalyticsProvider>
                       </CRMProvider>
-                    </SearchProvider>
-                  </PreferencesProvider>
+                    </PreferencesProvider>
                   <PushNotificationInit />
                   <StatusBar style="auto" />
                 </CouponProvider>

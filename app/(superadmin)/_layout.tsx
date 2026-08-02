@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { AuthGuard } from '@/components/common/AuthGuard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SuperAdminProvider } from '@/lib/context/superadmin-context';
+import { AnalyticsProvider } from '@/lib/context/analytics-context';
 
 const ACCENT = '#7C3AED';
 const INACTIVE = '#94A3B8';
@@ -71,25 +72,27 @@ function SuperAdminContent({ children }: { children: React.ReactNode }) {
 export default function SuperAdminLayout() {
   return (
     <AuthGuard portal="superadmin">
-      <SuperAdminProvider>
-        <SuperAdminContent>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: GRAY[50] },
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="tenants" />
-            <Stack.Screen name="commerce" />
-            <Stack.Screen name="platform" />
-            <Stack.Screen name="support" />
-            <Stack.Screen name="system" />
-            <Stack.Screen name="admin" />
-            <Stack.Screen name="more" />
-          </Stack>
-        </SuperAdminContent>
-      </SuperAdminProvider>
+      <AnalyticsProvider>
+        <SuperAdminProvider>
+          <SuperAdminContent>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: GRAY[50] },
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="tenants" />
+              <Stack.Screen name="commerce" />
+              <Stack.Screen name="platform" />
+              <Stack.Screen name="support" />
+              <Stack.Screen name="system" />
+              <Stack.Screen name="admin" />
+              <Stack.Screen name="more" />
+            </Stack>
+          </SuperAdminContent>
+        </SuperAdminProvider>
+      </AnalyticsProvider>
     </AuthGuard>
   );
 }
