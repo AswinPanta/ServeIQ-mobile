@@ -169,6 +169,12 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          <View style={s.footer}>
+            <Text style={s.footerText}>{t('auth.login.noAccount')} </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <Text style={s.footerLink}>{t('auth.login.signup')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -287,4 +293,8 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#FFF',
   },
   socialBtnText: { fontSize: 13, fontWeight: '600', color: '#334155' },
+
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  footerText: { fontSize: 13, color: '#94A3B8' },
+  footerLink: { fontSize: 13, color: NAVY, fontWeight: '700' },
 });

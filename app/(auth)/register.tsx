@@ -194,6 +194,13 @@ export default function RegisterScreen() {
                   <Text style={s.btnText}>{t('auth.register.button')}</Text>
                 )}
               </TouchableOpacity>
+
+              <View style={s.footer}>
+                <Text style={s.footerText}>{t('auth.register.hasAccount')} </Text>
+                <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                  <Text style={s.footerLink}>{t('auth.register.login')}</Text>
+                </TouchableOpacity>
+              </View>
             </>
           ) : !verified ? (
             <>
@@ -383,6 +390,7 @@ const s = StyleSheet.create({
   successTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 6, textAlign: 'center' },
   successSubtitle: { fontSize: 13, color: '#8896A6', textAlign: 'center', lineHeight: 20 },
 
-  footer: { alignItems: 'center', marginTop: 8 },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4 },
+  footerText: { fontSize: 13, color: '#94A3B8' },
   footerLink: { fontSize: 13, color: NAVY, fontWeight: '700' },
 });
