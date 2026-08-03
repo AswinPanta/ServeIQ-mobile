@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { router, usePathname } from 'expo-router';
+import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
@@ -14,7 +14,8 @@ const TEAL = '#2E86AB';
 export default function LoginScreen() {
   const { login, isLoading } = useAuth();
   const pathname = usePathname();
-  const isHostRoute = pathname.includes('/host');
+  const params = useLocalSearchParams<{ portal?: string }>();
+  const isHostRoute = pathname.includes('/host') || params.portal === 'host';
   const { t } = useTranslation();
 
   const [email, setEmail] = useState('');

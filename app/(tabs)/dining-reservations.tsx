@@ -135,7 +135,7 @@ export default function DiningReservationsScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-6 pt-14 pb-4">
           <View className="flex-row items-center gap-3 mb-6">
             <TouchableOpacity onPress={() => step === 'restaurant' ? safeGoBack() : resetSelection()}

@@ -10,6 +10,7 @@ export default function SupportLayout() {
     >
       <Stack.Screen name="tickets" />
       <Stack.Screen name="announcements" />
+      <Stack.Screen name="notifications" />
     </Stack>
   );
 }

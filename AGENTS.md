@@ -120,6 +120,21 @@ app/
 
 ## Session History
 
+### 2026-08-03 — Guest Portal: Always Open Logged Out + Home Shows Backend Properties
+
+**Done**
+- Fixed TS2451 "Cannot redeclare block-scoped variable" errors in `app/(tabs)/profile/index.tsx` — deleted a duplicate block of hooks/derived values that was redeclared *after* the `if (!user)` early return; single canonical block now lives above the guard
+- Guest portal now **always opens signed out**: `lib/context/auth-context.tsx` `initializeAuth` clears the stored guest session keys (`auth_token_guest`, `refresh_token_guest`, `user_profile_guest`) on launch and returns early. Host/operations/superadmin sessions still persist. `/me` probe now always uses `USER_ME` (guest path is excluded)
+- Guest home screen (`app/(tabs)/index.tsx`) city rails (Kathmandu + Pokhara) now fetch from the backend via `searchHotelsApi({ destination })` on mount (seeded from `MOCK_PROPERTIES`, falls back to mocks on backend failure); host-created properties merged into results via `tryFetchHostProperties` in `lib/api.ts`
+- Confirmed guest detail screens already fetch backend rooms: `getPropertyById` (`lib/api.ts`) maps `AVAILABLE_ROOMS` backend response into guest `RoomType`s
+- `npx tsc --noEmit` — zero errors
+
+**Key decisions**
+- Guest session is intentionally not restored across launches (only guest portal); the active-portal routing in `app/index.tsx` already lands on `(tabs)` by default, so clearing guest keys keeps splash → guest home with login prompt
+- Hooks in home screen placed before the `if (!isSignedIn)` early return to satisfy React rules
+
+---
+
 ### 2026-07-09 — Backend Connection: Host Portal API + Auth Verification
 
 **Backend Analysis**

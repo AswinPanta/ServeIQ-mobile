@@ -71,7 +71,7 @@ const s = StyleSheet.create({
   header: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 12, gap: 2 },
   title: { fontSize: 24, fontWeight: '700', color: '#1A3C5E', letterSpacing: -0.5 },
   count: { fontSize: 13, color: '#94A3B8' },
-  list: { paddingHorizontal: 16, paddingBottom: 40 },
+  list: { paddingHorizontal: 16, paddingBottom: 120 },
   cardWrap: { marginBottom: 16 },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },

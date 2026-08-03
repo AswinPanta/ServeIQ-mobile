@@ -49,7 +49,7 @@ export default function SelfCheckinScreen() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 120 }}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>

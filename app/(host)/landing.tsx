@@ -67,7 +67,7 @@ export default function HostLandingPage() {
             <Text style={s.heroDesc}>
               List your space, set your own price, and keep every rupee you earn. No commission, no fine print.
             </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/login")} style={s.heroCta}>
+            <TouchableOpacity onPress={() => router.push("/(auth)/register?portal=host")} style={s.heroCta}>
               <Text style={s.heroCtaText}>List your space</Text>
               <IconSymbol name="arrow.forward" size={14} color={BRAND_DARK} />
             </TouchableOpacity>
@@ -144,7 +144,7 @@ export default function HostLandingPage() {
         {/* CTA */}
         <View style={s.ctaSection}>
           <Text style={s.ctaTitle}>Your first guest is closer than you think.</Text>
-          <TouchableOpacity onPress={() => router.push("/(auth)/login")} style={s.ctaBtn}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/register?portal=host")} style={s.ctaBtn}>
             <Text style={s.ctaBtnText}>List your space</Text>
             <IconSymbol name="arrow.forward" size={14} color={BRAND_DARK} />
           </TouchableOpacity>

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, Switch, Image,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, Switch, Image, Alert,
 } from 'react-native';
 import { Drawer } from 'react-native-drawer-layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ const BG = '#F8F9FB';
 export default function HostDrawerShell() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { properties, isDataLoading, fetchHostData, togglePropertyActivation } = useHost();
+  const { properties, isDataLoading, fetchHostData, togglePropertyActivation, removeProperty } = useHost();
   const [open, setOpen] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -61,7 +61,7 @@ export default function HostDrawerShell() {
       </AnimatedPressable>
 
       <AnimatedPressable portal="host" haptic="light" scaleTo={0.96}
-        onPress={() => { setOpen(false); }}
+        onPress={() => { setOpen(false); router.push('/(host)/notifications'); }}
         style={s.navItem}
       >
         <View style={s.navIcon}>
@@ -158,6 +158,25 @@ export default function HostDrawerShell() {
                       style={s.editIconBtn}
                     >
                       <Ionicons name="create-outline" size={16} color="#94A3B8" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        Alert.alert(
+                          'Delete Property',
+                          `Are you sure you want to delete "${p.name}"? This cannot be undone.`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: () => removeProperty(p.id),
+                            },
+                          ],
+                        );
+                      }}
+                      style={[s.editIconBtn, { backgroundColor: '#FEF2F2' }]}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
                     </TouchableOpacity>
                     <View style={{ alignItems: 'center', gap: 2 }}>
                       <Switch

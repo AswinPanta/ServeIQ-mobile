@@ -129,7 +129,7 @@ const s = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 12,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   row: {
     gap: 12,

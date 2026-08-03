@@ -57,6 +57,20 @@ export default function BookingFlowScreen() {
 
   const { user } = useAuth();
   const guestUser = user as GuestProfile | null;
+
+  // Require login to book
+  useEffect(() => {
+    if (!user) {
+      Alert.alert(
+        'Login Required',
+        'Please login or create an account to complete your booking.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => safeGoBack() },
+          { text: 'Login', onPress: () => router.replace('/(auth)/login') },
+        ],
+      );
+    }
+  }, [user]);
   const { addBooking } = useBookings();
 
   // ── State ──

@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { router, usePathname } from 'expo-router';
+import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
@@ -12,9 +12,10 @@ const NAVY = '#1A3C5E';
 const TEAL = '#2E86AB';
 
 export default function RegisterScreen() {
-  const { register, verifyOTP, resendOTP, isLoading } = useAuth();
+  const { register, verifyOTP, resendOTP, login, isLoading } = useAuth();
   const pathname = usePathname();
-  const isHostRoute = pathname.includes('/host');
+  const params = useLocalSearchParams<{ portal?: string }>();
+  const isHostRoute = pathname.includes('/host') || params.portal === 'host';
   const portal = isHostRoute ? 'host' : 'guest';
   const { t } = useTranslation();
 
@@ -46,10 +47,13 @@ export default function RegisterScreen() {
     setError('');
     if (!form.fullName.trim()) { setError('Full name is required.'); return; }
     if (!form.phone.trim()) { setError('Phone number is required.'); return; }
+    const digitsOnly = form.phone.replace(/\D/g, '');
+    if (digitsOnly.length < 10) { setError('Phone number must be at least 10 digits.'); return; }
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { setError('Valid email required.'); return; }
-    if (form.password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(form.password)) { setError('Password must contain at least one special character (e.g. @, #, !).'); return; }
     try {
-      await register(form.email, form.phone, form.fullName, form.password, portal);
+      await register(form.email, digitsOnly, form.fullName, form.password, portal);
       setShowOtp(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Registration failed.');
@@ -63,6 +67,18 @@ export default function RegisterScreen() {
     try {
       await verifyOTP(form.email, otp, portal);
       setVerified(true);
+      // OTP verified — now auto-login with the password the user just set
+      try {
+        const loginResult = await login(form.email, form.password);
+        setTimeout(() => {
+          router.replace(loginResult === 'host' ? '/(host)' : '/(tabs)');
+        }, 1000);
+      } catch {
+        // Auto-login failed — redirect to login screen
+        setTimeout(() => {
+          router.replace('/(auth)/login');
+        }, 1500);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid verification code.');
     } finally {
@@ -173,7 +189,7 @@ export default function RegisterScreen() {
                 </View>
               ))}
 
-              <Text style={s.hint}>{t('auth.register.passwordHint')}</Text>
+              <Text style={s.hint}>Min 6 characters with at least one special character (!@#$%...)</Text>
 
               {error ? (
                 <View style={s.errorBox}>
@@ -260,15 +276,15 @@ export default function RegisterScreen() {
                   <Ionicons name="checkmark" size={36} color="#FFF" />
                 </View>
                 <Text style={s.successTitle}>{t('auth.otp.success')}</Text>
-                <Text style={s.successSubtitle}>{t('auth.otp.successMessage')}</Text>
+                <Text style={s.successSubtitle}>Account verified! Taking you to your dashboard...</Text>
               </View>
 
               <TouchableOpacity
                 style={s.btn}
-                onPress={() => router.push('/(auth)/login')}
+                onPress={() => router.replace('/(tabs)')}
                 activeOpacity={0.85}
               >
-                <Text style={s.btnText}>{t('auth.otp.next')}</Text>
+                <Text style={s.btnText}>Continue to Dashboard</Text>
               </TouchableOpacity>
             </>
           )}

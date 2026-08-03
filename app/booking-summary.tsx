@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FolioBreakdown, type FolioItem } from '@/components/feature/folio-breakdown';
 import { safeGoBack } from '@/lib/utils';
+import { useAuth } from '@/lib/context/auth-context';
 
 const ACCENT = '#2E86AB';
 
@@ -24,7 +25,16 @@ export default function BookingSummaryScreen() {
   const grandTotal = parseInt((params.grandTotal as string) || '0', 10);
   const roomId = params.roomId as string | undefined;
 
+  const { user } = useAuth();
+
   const handleBookNow = () => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please login to complete your booking.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
     router.push({
       pathname: '/booking-flow',
       params: {

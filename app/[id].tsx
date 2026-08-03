@@ -8,6 +8,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import { useAuth } from '@/lib/context/auth-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { Card } from '@/components/ui/card';
@@ -31,7 +32,16 @@ export default function HotelDetailScreen() {
     [hotel]
   );
 
+  const { user } = useAuth();
+
   const handleBooking = (room: { id: string; name: string; price: number }) => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please login to book this property.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
     router.push({
       pathname: '/booking-flow',
       params: {

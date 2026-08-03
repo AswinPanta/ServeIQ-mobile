@@ -1,21 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Animated, ActivityIndicator, Image } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ScreenContainer } from '@/components/screen-container';
 import { HeroSection } from '@/components/feature/hero-section';
 import { SearchModal } from '@/components/feature/search-modal';
 import { PropertyTypeBrowser } from '@/components/guest/PropertyTypeBrowser';
-import { TrendingDestinations } from '@/components/guest/TrendingDestinations';
-import { PopularDestinations } from '@/components/guest/PopularDestinations';
-import { TrustBadges } from '@/components/guest/TrustBadges';
-import { Testimonials } from '@/components/guest/Testimonials';
 import { NewsletterCTA } from '@/components/guest/NewsletterCTA';
-import { GuestFooter } from '@/components/guest/GuestFooter';
+import { WhyStayEasy } from '@/components/guest/WhyStayEasy';
 import { useAuth } from '@/lib/context/auth-context';
+import { searchHotelsApi } from '@/lib/api';
+import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import type { Hotel } from '@/types/api';
+import { POPULAR_DESTINATIONS } from '@/lib/mock/landing-data';
 import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
 import { FONTS } from '@/constants/portal-theme';
 import { useTranslation } from 'react-i18next';
+import { useNearbyProperties } from '@/hooks/use-nearby-properties';
 
 
 export default function HomeScreen() {
@@ -26,6 +27,28 @@ export default function HomeScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const routeKey = '/(tabs)/home';
   const handleScroll = useScrollRestoration(scrollRef, routeKey);
+  const { nearbyHotels, loading: nearbyLoading, locationGranted, requestLocation } = useNearbyProperties();
+
+  const [kathmanduHotels, setKathmanduHotels] = useState<Hotel[]>(() =>
+    MOCK_PROPERTIES.filter(h => h.city === 'Kathmandu')
+  );
+  const [pokharaHotels, setPokharaHotels] = useState<Hotel[]>(() =>
+    MOCK_PROPERTIES.filter(h => h.city === 'Pokhara')
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [ktm, pkr] = await Promise.all([
+        searchHotelsApi({ destination: 'Kathmandu' }),
+        searchHotelsApi({ destination: 'Pokhara' }),
+      ]);
+      if (cancelled) return;
+      if (ktm.hotels.length > 0) setKathmanduHotels(ktm.hotels);
+      if (pkr.hotels.length > 0) setPokharaHotels(pkr.hotels);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   if (!isSignedIn) {
     return (
@@ -102,37 +125,185 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <Text style={s.sectionHint}>{t('home.staysNearbyHint')}</Text>
+
+          {!locationGranted && (
+            <TouchableOpacity style={s.locationBanner} onPress={requestLocation} activeOpacity={0.8}>
+              <IconSymbol name="location" size={18} color="#FFF" />
+              <View style={{ flex: 1 }}>
+                <Text style={s.locationBannerTitle}>Enable location</Text>
+                <Text style={s.locationBannerDesc}>Find properties near you</Text>
+              </View>
+              <IconSymbol name="chevron.right" size={16} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          )}
+
+          {nearbyLoading ? (
+            <View style={s.nearbyLoading}>
+              <ActivityIndicator size="small" color="#2E86AB" />
+              <Text style={s.nearbyLoadingText}>Finding nearby properties...</Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingTop: 12 }}>
+              {nearbyHotels.map((hotel) => (
+                <TouchableOpacity
+                  key={hotel.id}
+                  style={s.nearbyCard}
+                  onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
+                  activeOpacity={0.85}
+                >
+                  <Image
+                    source={{ uri: hotel.images[0] }}
+                    style={s.nearbyImage}
+                    resizeMode="cover"
+                  />
+                  <View style={s.nearbyInfo}>
+                    <Text style={s.nearbyName} numberOfLines={1}>{hotel.name}</Text>
+                    <Text style={s.nearbyLocation} numberOfLines={1}>{hotel.city}, {hotel.country}</Text>
+                    <View style={s.nearbyBottom}>
+                      <View style={s.nearbyRating}>
+                        <Text style={s.nearbyStar}>⭐</Text>
+                        <Text style={s.nearbyRatingText}>{hotel.rating}</Text>
+                      </View>
+                      <Text style={s.nearbyPrice}>{hotel.currency} {hotel.price}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
 
-        {/* Trending destinations */}
+        {/* Explore by City — Kathmandu */}
         <View style={s.section}>
-          <TrendingDestinations
-            onSelect={(dest) => router.push({ pathname: '/guest-search-results', params: { location: dest } })}
-          />
+          <View style={s.sectionHeader}>
+            <View style={s.sectionTitleRow}>
+              <Text style={s.cityEmoji}>🏛️</Text>
+              <View>
+                <Text style={s.sectionTitle}>Stay in Kathmandu</Text>
+                <Text style={s.sectionHint}>Nepal's capital — temples, history, vibrant culture</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/guest-search-results', params: { location: 'Kathmandu' } })}>
+              <View style={s.seeAllBtn}>
+                <Text style={s.seeAll}>View All</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingTop: 8 }}>
+            {kathmanduHotels.map((hotel) => (
+              <TouchableOpacity
+                key={hotel.id}
+                style={s.cityPropCard}
+                onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
+                activeOpacity={0.85}
+              >
+                <Image source={{ uri: hotel.images[0] }} style={s.cityPropImage} resizeMode="cover" />
+                <View style={s.cityPropInfo}>
+                  <Text style={s.cityPropName} numberOfLines={1}>{hotel.name}</Text>
+                  <Text style={s.cityPropLocation} numberOfLines={1}>{hotel.location}</Text>
+                  <View style={s.cityPropBottom}>
+                    <View style={s.cityPropRating}>
+                      <Text>⭐</Text>
+                      <Text style={s.cityPropRatingText}>{hotel.rating}</Text>
+                      <Text style={s.cityPropReviews}>({hotel.review_count})</Text>
+                    </View>
+                    <Text style={s.cityPropPrice}>{hotel.currency} {hotel.price}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Explore by City — Pokhara */}
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <View style={s.sectionTitleRow}>
+              <Text style={s.cityEmoji}>🏔️</Text>
+              <View>
+                <Text style={s.sectionTitle}>Stay in Pokhara</Text>
+                <Text style={s.sectionHint}>Lakeside paradise — Annapurna views, adventure sports</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/guest-search-results', params: { location: 'Pokhara' } })}>
+              <View style={s.seeAllBtn}>
+                <Text style={s.seeAll}>View All</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingTop: 8 }}>
+            {pokharaHotels.map((hotel) => (
+              <TouchableOpacity
+                key={hotel.id}
+                style={s.cityPropCard}
+                onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
+                activeOpacity={0.85}
+              >
+                <Image source={{ uri: hotel.images[0] }} style={s.cityPropImage} resizeMode="cover" />
+                <View style={s.cityPropInfo}>
+                  <Text style={s.cityPropName} numberOfLines={1}>{hotel.name}</Text>
+                  <Text style={s.cityPropLocation} numberOfLines={1}>{hotel.location}</Text>
+                  <View style={s.cityPropBottom}>
+                    <View style={s.cityPropRating}>
+                      <Text>⭐</Text>
+                      <Text style={s.cityPropRatingText}>{hotel.rating}</Text>
+                      <Text style={s.cityPropReviews}>({hotel.review_count})</Text>
+                    </View>
+                    <Text style={s.cityPropPrice}>{hotel.currency} {hotel.price}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Popular destinations */}
         <View style={s.section}>
-          <PopularDestinations
-            onSelect={(dest) => router.push({ pathname: '/guest-search-results', params: { location: dest } })}
-          />
+          <View style={s.sectionHeader}>
+            <View style={s.sectionTitleRow}>
+              <IconSymbol name="star" size={18} color="#F59E0B" />
+              <Text style={s.sectionTitle}>{t('components.destinations.popular') || 'Popular destinations'}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowSearch(true)}>
+              <View style={s.seeAllBtn}>
+                <Text style={s.seeAll}>{t('components.destinations.viewAll')}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingTop: 4 }}>
+            {POPULAR_DESTINATIONS.map((dest, i) => (
+              <TouchableOpacity
+                key={i}
+                style={s.popularCard}
+                onPress={() => router.push({ pathname: '/guest-search-results', params: { location: dest.city } })}
+                activeOpacity={0.85}
+              >
+                <Image source={{ uri: dest.image }} style={s.popularImage} resizeMode="cover" />
+                <View style={s.popularOverlay}>
+                  <Text style={s.popularCity}>{dest.city}</Text>
+                  <Text style={s.popularCountry}>{dest.country}</Text>
+                  <View style={s.popularBottom}>
+                    <View style={s.popularRating}>
+                      <Text style={s.popularStar}>⭐</Text>
+                      <Text style={s.popularRatingText}>{dest.rating}</Text>
+                    </View>
+                    <Text style={s.popularProps}>{dest.properties} properties</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
 
-        {/* Trust badges */}
+        {/* Why StayEasy */}
         <View style={s.section}>
-          <TrustBadges />
+          <WhyStayEasy />
         </View>
-
-        {/* What travelers say */}
-        <Testimonials />
 
         {/* Newsletter CTA */}
         <View style={{ marginTop: 24 }}>
           <NewsletterCTA />
         </View>
-
-        {/* Footer */}
-        <GuestFooter />
       </ScrollView>
       <SearchModal visible={showSearch} onClose={() => setShowSearch(false)} />
     </ScreenContainer>
@@ -244,7 +415,95 @@ const s = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 4,
   },
-
+  locationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#2E86AB',
+    shadowColor: '#2E86AB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  locationBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  locationBannerDesc: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  nearbyLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 16,
+  },
+  nearbyLoadingText: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  nearbyCard: {
+    width: 200,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  nearbyImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#F1F5F9',
+  },
+  nearbyInfo: {
+    padding: 12,
+  },
+  nearbyName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A3C5E',
+    marginBottom: 2,
+  },
+  nearbyLocation: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginBottom: 8,
+  },
+  nearbyBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  nearbyRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  nearbyStar: {
+    fontSize: 11,
+  },
+  nearbyRatingText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1A3C5E',
+  },
+  nearbyPrice: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#E63946',
+  },
   signedOutContainer: {
     flex: 1,
     alignItems: 'center',
@@ -289,5 +548,132 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#1A3C5E',
+  },
+  cityCard: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cityEmoji: {
+    fontSize: 20,
+  },
+  cityPropCard: {
+    width: 220,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cityPropImage: {
+    width: '100%',
+    height: 130,
+    backgroundColor: '#F1F5F9',
+  },
+  cityPropInfo: {
+    padding: 12,
+  },
+  cityPropName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A3C5E',
+    marginBottom: 2,
+  },
+  cityPropLocation: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginBottom: 8,
+  },
+  cityPropBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cityPropRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  cityPropRatingText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1A3C5E',
+  },
+  cityPropReviews: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  cityPropPrice: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#E63946',
+  },
+  popularCard: {
+    width: 140,
+    height: 180,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+  },
+  popularImage: {
+    width: '100%',
+    height: '100%',
+  },
+  popularOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    top: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+    padding: 12,
+  },
+  popularCity: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  popularCountry: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 1,
+  },
+  popularBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  popularRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  popularStar: {
+    fontSize: 10,
+  },
+  popularRatingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  popularProps: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
   },
 });

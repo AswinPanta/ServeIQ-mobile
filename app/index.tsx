@@ -6,9 +6,10 @@ import { FONTS, SRS, RADIUS } from '@/constants/portal-theme';
 import { useAuth } from '@/lib/context/auth-context';
 
 export default function SplashScreen() {
-  const { isSignedIn, portal } = useAuth();
+  const { isSignedIn, portal, isLoading } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const navigated = useRef(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -24,23 +25,29 @@ export default function SplashScreen() {
         useNativeDriver: true,
       }),
     ]).start();
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || navigated.current) return;
 
     const timer = setTimeout(() => {
-      if (isSignedIn && portal) {
+      if (navigated.current) return;
+      navigated.current = true;
+      // Always open guest portal first — login only needed for booking/profile
+      if (isSignedIn && portal && portal !== 'guest') {
         switch (portal) {
-          case 'guest': router.replace('/(tabs)'); break;
           case 'host': router.replace('/(host)'); break;
           case 'operations': router.replace('/(operations)'); break;
           case 'superadmin': router.replace('/(superadmin)'); break;
-          default: router.replace('/(auth)/login');
+          default: router.replace('/(tabs)');
         }
       } else {
-        router.replace('/(auth)/login');
+        router.replace('/(tabs)');
       }
-    }, 2000);
+    }, 1500);
 
     return () => clearTimeout(timer);
-  }, [isSignedIn, portal]);
+  }, [isLoading, isSignedIn, portal]);
 
   return (
     <View style={styles.container}>

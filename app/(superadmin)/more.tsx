@@ -13,6 +13,7 @@ const MORE_SECTIONS = [
     title: 'Support',
     items: [
       { label: 'Tickets', icon: 'chat' as const, route: '/(superadmin)/support/tickets', color: '#F59E0B' },
+      { label: 'Notifications', icon: 'notifications' as const, route: '/(superadmin)/support/notifications', color: '#7C3AED' },
       { label: 'Announcements', icon: 'notifications' as const, route: '/(superadmin)/support/announcements', color: '#EC4899' },
     ],
   },

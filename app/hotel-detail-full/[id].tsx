@@ -13,6 +13,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 import { ReviewModal } from '@/components/feature/review-modal';
 import { ReviewList, type Review } from '@/components/feature/review-list';
+import { useAuth } from '@/lib/context/auth-context';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { cn } from '@/lib/utils';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
@@ -68,7 +69,16 @@ export default function HotelDetailFullScreen() {
     setSelectedRoom(room);
   };
 
+  const { user } = useAuth();
+
   const handleBookNow = () => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please login to book this property.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
     if (!checkInDate || !checkOutDate || !selectedRoom) {
       Alert.alert('Missing Information', 'Please select dates and a room type');
       return;

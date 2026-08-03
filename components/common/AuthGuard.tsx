@@ -33,7 +33,7 @@ export function AuthGuard({ portal, children }: AuthGuardProps) {
   const colors = useColors();
 
   const isOnLoginScreen = segments.some((s: string) => s === 'login' || s === 'register');
-  const isOnPortalGroup = segments.some((s: string) => s === `(${portal})`);
+  const isOnPortalGroup = segments.some((s: string) => s === `(${portal})`) || (portal === 'guest' && segments.some((s: string) => s === '(tabs)'));
   const isCorrectPortal = activePortal === portal;
   const hasSession = isSignedIn && isCorrectPortal;
 

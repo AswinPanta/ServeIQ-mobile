@@ -58,7 +58,7 @@ export default function ReviewsScreen() {
   return (
     <ScrollView
       style={s.container}
-      contentContainerStyle={{ paddingBottom: 40, flexGrow: 1 }}
+      contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
       contentInsetAdjustmentBehavior="automatic"
     >
       <View style={s.header}>

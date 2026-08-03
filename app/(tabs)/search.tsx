@@ -45,7 +45,7 @@ export default function SearchScreen() {
   return (
     <ScrollView ref={scrollRef} onScroll={handleScroll} scrollEventThrottle={16}
       style={s.container}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 120 }}
       contentInsetAdjustmentBehavior="automatic"
     >
       {/* Header */}

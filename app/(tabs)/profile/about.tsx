@@ -47,7 +47,7 @@ export default function AboutScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={s.profileCard}>
           <View style={s.avatarWrap}>
             <View style={s.avatarCircle}>

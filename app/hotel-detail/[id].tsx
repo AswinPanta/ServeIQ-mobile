@@ -13,6 +13,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { Card } from '@/components/ui/card';
+import { useAuth } from '@/lib/context/auth-context';
 import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 import { ReviewModal } from '@/components/feature/review-modal';
 import { ReviewList, type Review } from '@/components/feature/review-list';
@@ -123,7 +124,16 @@ export default function HotelDetailScreen() {
     setSelectedRoom(room);
   };
 
+  const { user } = useAuth();
+
   const handleBookNow = () => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please login to book this property.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
     if (!checkInDate || !checkOutDate) {
       Alert.alert('Select Dates', 'Please choose check-in and check-out dates');
       return;

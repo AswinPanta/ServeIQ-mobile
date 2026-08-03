@@ -152,7 +152,7 @@ const s = StyleSheet.create({
   tabActive: { backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   tabText: { fontSize: 13, fontWeight: '600', color: '#94A3B8', fontFamily: FONTS.inter.semiBold },
   tabTextActive: { color: CORAL },
-  list: { paddingHorizontal: 16, paddingBottom: 40 },
+  list: { paddingHorizontal: 16, paddingBottom: 120 },
   emptyList: { flexGrow: 1 },
   card: {
     padding: 16,

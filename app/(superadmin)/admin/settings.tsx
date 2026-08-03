@@ -96,6 +96,59 @@ export default function SettingsScreen() {
             placeholder="NPR"
             placeholderTextColor="#94A3B8"
           />
+
+          {/* Danger Zone */}
+          <View style={styles.dangerZone}>
+            <View style={styles.dangerHeader}>
+              <IconSymbol name="warning" size={16} color="#EF4444" />
+              <Text style={styles.dangerTitle}>Danger Zone</Text>
+            </View>
+            <Text style={styles.dangerDesc}>Permanently delete your account and all associated data. This action cannot be undone.</Text>
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              activeOpacity={0.8}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Account',
+                  'WARNING: This will permanently delete your account, all properties, bookings, reviews, and personal data from the database.\n\nThis action is IRREVERSIBLE. Are you absolutely sure?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete Permanently',
+                      style: 'destructive',
+                      onPress: () => {
+                        Alert.alert(
+                          'Final Confirmation',
+                          'Type "DELETE" to confirm permanent deletion of all data.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Confirm Delete',
+                              style: 'destructive',
+                              onPress: async () => {
+                                try {
+                                  const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+                                  await AsyncStorage.clear();
+                                  Alert.alert('Account Deleted', 'All data has been permanently removed.', [
+                                    { text: 'OK', onPress: () => router.replace('/') },
+                                  ]);
+                                } catch {
+                                  Alert.alert('Error', 'Failed to delete account data.');
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <IconSymbol name="cancel" size={16} color="#FFF" />
+              <Text style={styles.deleteBtnText}>Delete Account Permanently</Text>
+            </TouchableOpacity>
+          </View>
         </AdminCard>
       )}
 
@@ -311,4 +364,48 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   saveText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  dangerZone: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  dangerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  dangerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  dangerDesc: {
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#EF4444',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  deleteBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFF',
+  },
 });

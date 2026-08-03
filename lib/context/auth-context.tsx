@@ -129,6 +129,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (activePortal && isPortalType(activePortal)) {
           setPortal(activePortal);
           const keys = getPortalStorageKeys(activePortal);
+
+          if (activePortal === 'guest') {
+            // Guest portal always opens signed out — clear any stored guest session
+            await Promise.all([
+              AsyncStorage.removeItem(keys.AUTH_TOKEN),
+              AsyncStorage.removeItem(keys.REFRESH_TOKEN),
+              AsyncStorage.removeItem(keys.USER_PROFILE),
+            ]);
+            return;
+          }
+
           const [storedAccessToken, storedRefreshToken, storedUserProfile, storedOpRole] = await Promise.all([
             AsyncStorage.getItem(keys.AUTH_TOKEN),
             AsyncStorage.getItem(keys.REFRESH_TOKEN),
@@ -148,19 +159,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (storedUserProfile) {
               setUser(JSON.parse(storedUserProfile));
             }
+            // Validate token with backend, but with a 5s timeout
+            // On timeout or network error, trust stored tokens (don't clear session)
             try {
-              const ep = activePortal === 'guest' ? API_ENDPOINTS.AUTH.GUEST_ME : API_ENDPOINTS.AUTH.USER_ME;
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 5000);
+              const ep = API_ENDPOINTS.AUTH.USER_ME;
               const meRes = await fetch(`${API_BASE_URL}${ep}`, {
                 headers: { Authorization: `Bearer ${storedAccessToken}` },
+                signal: controller.signal,
               });
+              clearTimeout(timeoutId);
               if (meRes.status === 401 || meRes.status === 403) {
-                throw new Error(`Auth error: ${meRes.status}`);
-              }
-            } catch (err: unknown) {
-              if (err instanceof Error && (err.message.includes('401') || err.message.includes('403') || err.message.includes('Auth error'))) {
+                // Token definitely expired — clear session
                 setTokens({ accessToken: null, refreshToken: null });
                 setUser(null);
-                const keys = getPortalStorageKeys(activePortal);
                 await Promise.all([
                   AsyncStorage.removeItem(keys.AUTH_TOKEN),
                   AsyncStorage.removeItem(keys.REFRESH_TOKEN),
@@ -168,6 +181,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ]);
                 await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_PORTAL);
               }
+              // On 200 or any other status, trust stored tokens and proceed
+            } catch {
+              // Network error, timeout, or abort — trust stored tokens, don't clear
             }
           }
         }
@@ -238,9 +254,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2) Try backend API — unified /auth/login endpoint
-      const formData = new FormData();
-      formData.append('username', email);
-      formData.append('password', password);
+      const params = new URLSearchParams();
+      params.append('username', email);
+      params.append('password', password);
 
       let lastError: string = 'Login failed';
 
@@ -248,8 +264,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Single login endpoint — backend tries guest then user internally
         const loginRes = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`, {
           method: 'POST',
-          body: formData,
-          // No Content-Type header — let browser set multipart/form-data with boundary
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
         });
 
         if (loginRes.ok) {
@@ -393,50 +409,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const targetPortal = portal || 'guest';
       const verifyEndpoint = targetPortal === 'host' ? API_ENDPOINTS.AUTH.USER_VERIFY_OTP : API_ENDPOINTS.AUTH.GUEST_VERIFY_OTP;
-      const meEndpoint = targetPortal === 'host' ? API_ENDPOINTS.AUTH.USER_ME : API_ENDPOINTS.AUTH.GUEST_ME;
       const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
       });
+      const rawBody = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.error || errorBody.message || 'OTP verification failed');
+        throw new Error(rawBody.error || rawBody.message || 'OTP verification failed');
       }
-      let rawBody: Record<string, unknown>;
-      try {
-        rawBody = await response.json();
-      } catch {
-        throw new Error(`OTP verification failed (HTTP ${response.status})`);
+
+      // Backend may or may not return tokens after verification
+      const data = (rawBody.success === true && rawBody.data) ? rawBody.data : rawBody;
+      const otpAccessToken = data.access_token;
+      const otpRefreshToken = data.refresh_token;
+
+      if (otpAccessToken) {
+        // Backend returned tokens — use them directly
+        setTokens({ accessToken: otpAccessToken, refreshToken: otpRefreshToken || otpAccessToken });
+        const meEndpoint = targetPortal === 'host' ? API_ENDPOINTS.AUTH.USER_ME : API_ENDPOINTS.AUTH.GUEST_ME;
+        const profileResponse = await fetch(
+          `${API_BASE_URL}${meEndpoint}`,
+          { headers: { Authorization: `Bearer ${otpAccessToken}` } },
+        );
+        if (profileResponse.ok) {
+          const rawProfile = await profileResponse.json();
+          const profileData = (rawProfile.success === true && rawProfile.data) ? rawProfile.data : rawProfile;
+          const profile = targetPortal === 'guest'
+            ? { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name } as GuestProfile
+            : { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name } as PortalProfile;
+          await Promise.all([
+            AsyncStorage.setItem(getPortalStorageKeys(targetPortal).USER_PROFILE, JSON.stringify(profile)),
+            AsyncStorage.setItem(getPortalStorageKeys(targetPortal).AUTH_TOKEN, otpAccessToken),
+            AsyncStorage.setItem(getPortalStorageKeys(targetPortal).REFRESH_TOKEN, otpRefreshToken || otpAccessToken),
+            AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_PORTAL, targetPortal),
+          ]);
+          setPortal(targetPortal);
+          setUser(profile);
+        }
       }
-      const data: AuthResponse = (rawBody.success === true && rawBody.data) ? (rawBody.data as AuthResponse) : (rawBody as unknown as AuthResponse);
-      const otpAccessToken = data.access_token ?? `demo-${targetPortal}-token`;
-      const otpRefreshToken = data.refresh_token ?? `demo-${targetPortal}-refresh`;
-      setTokens({ accessToken: otpAccessToken, refreshToken: otpRefreshToken });
-      const profileResponse = await fetch(
-        `${API_BASE_URL}${meEndpoint}`,
-        { headers: { Authorization: `Bearer ${otpAccessToken}` } },
-      );
-      if (profileResponse.ok) {
-        const rawProfile = await profileResponse.json();
-        const profileData = (rawProfile.success === true && rawProfile.data) ? rawProfile.data : rawProfile;
-        const profile = targetPortal === 'guest'
-          ? { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name } as GuestProfile
-          : { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name } as PortalProfile;
-        await Promise.all([
-          AsyncStorage.setItem(getPortalStorageKeys(targetPortal).USER_PROFILE, JSON.stringify(profile)),
-          AsyncStorage.setItem(getPortalStorageKeys(targetPortal).AUTH_TOKEN, otpAccessToken),
-          AsyncStorage.setItem(getPortalStorageKeys(targetPortal).REFRESH_TOKEN, otpRefreshToken),
-          AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_PORTAL, targetPortal),
-        ]);
-        setPortal(targetPortal);
-        setUser(profile);
-      } else {
-        const demoAccount = DEMO_ACCOUNTS[targetPortal];
-        const demoUser = makeDemoUser(demoAccount);
-        await saveSession(targetPortal, otpAccessToken, otpRefreshToken, demoUser);
-        setUser(demoUser);
-      }
+      // If no tokens returned, caller (register screen) handles auto-login with password
     } catch (error) {
       console.error('OTP verification error:', error);
       throw error;

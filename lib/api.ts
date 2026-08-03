@@ -565,6 +565,50 @@ export async function getPropertyById(propertyId: string): Promise<Hotel | null>
     }
     const amenities = Array.from(amenitiesMap.values());
 
+    // Fetch rooms from backend
+    let roomTypes: Hotel['roomTypes'] = mockHotel?.roomTypes ?? [];
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const roomsRes = await api.get(API_ENDPOINTS.AVAILABLE_ROOMS(data.id, today, nextWeek));
+      const roomsJson = await roomsRes.json();
+      const roomsData = roomsJson.success ? roomsJson.data : (Array.isArray(roomsJson) ? roomsJson : []);
+      if (Array.isArray(roomsData) && roomsData.length > 0) {
+        // Map backend rooms to guest RoomType format
+        const grouped = new Map<string, AvailableRoom[]>();
+        for (const room of roomsData) {
+          const key = room.room_type || room.room_name;
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(room);
+        }
+        roomTypes = Array.from(grouped.entries()).map(([typeName, rooms]) => {
+          const first = rooms[0];
+          const price = parseFloat(first.base_rate) || 0;
+          const roomImage = first.photos?.cover || (allPhotos.length > 0 ? allPhotos[0] : '');
+          return {
+            id: first.id,
+            name: typeName || first.room_name,
+            price,
+            currency: data.currency || 'NPR',
+            occupancy: `${first.max_adults} adults${first.max_children > 0 ? `, ${first.max_children} children` : ''}`,
+            bed: first.bed_type || 'Standard',
+            description: first.cancellation_description || first.cancellation_title || 'Comfortable room',
+            available: rooms.length,
+            amenities: [...(first.system_amenities || []), ...(first.custom_amenities || [])].filter(Boolean),
+            image: roomImage,
+            gallery: first.photos?.gallery || [],
+            totalRooms: rooms.length,
+            bedType: first.bed_type,
+            areaSqFt: undefined,
+            cancellationPolicy: first.cancellation_policy || 'FLEXIBLE',
+            breakfastIncluded: (first.system_amenities || []).some((a: string) => a.toLowerCase().includes('breakfast')),
+          };
+        });
+      }
+    } catch {
+      // Rooms fetch failed — use mock data
+    }
+
     return {
       id: data.id,
       name: data.name,
@@ -581,7 +625,7 @@ export async function getPropertyById(propertyId: string): Promise<Hotel | null>
       shortDescription: mockHotel?.shortDescription || data.description || data.name,
       images: allPhotos.length > 0 ? allPhotos : (mockHotel?.images ?? []),
       amenities: amenities.length > 0 ? amenities : (mockHotel?.amenities ?? []),
-      roomTypes: mockHotel?.roomTypes ?? [],
+      roomTypes,
       reviews: mockHotel?.reviews ?? [],
       cancellationPolicy: mockHotel?.cancellationPolicy ?? 'Free cancellation up to 24 hours before check-in.',
       checkInTime: data.check_in_time || (mockHotel?.checkInTime ?? '14:00'),

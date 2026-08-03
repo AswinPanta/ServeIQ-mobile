@@ -496,6 +496,164 @@ export const MOCK_PROPERTIES: Hotel[] = [
     category: 'luxury', tag: 'Rare find',
     hostName: 'Elena Papadopoulos', hostAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop', hostJoined: 'June 2019', hostReviews: 162,
   },
+  {
+    id: '12', name: 'Chitwan Jungle Safari Lodge', location: 'Sauraha, Chitwan, Nepal', city: 'Chitwan', country: 'Nepal',
+    address: 'Sauraha Road, Chitwan 44200, Nepal', rating: 4.82, review_count: 156, starRating: 4, price: 75,
+    currency: 'NPR', brandColor: '#059669',
+    description: 'Nestled on the edge of Chitwan National Park, this eco-lodge puts you face-to-face with Nepal\'s incredible wildlife. Wake to the sounds of exotic birds, then head out on a guided jungle safari to spot rhinos, crocodiles, and if you\'re lucky, the elusive Bengal tiger. Evenings are spent around a crackling campfire under a canopy of stars.',
+    shortDescription: 'Eco-lodge on the edge of Chitwan National Park with guided safaris',
+    images: [
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&h=600&fit=crop',
+    ],
+    amenities: [
+      am('Jungle Safari', '🦁'), am('Free WiFi', '📶'), am('Restaurant', '🍽️'), am('Campfire', '🔥'),
+      am('Bird Watching', '🦅'), am('Canoe Ride', '🛶'), am('Spa', '✨'), am('Parking', '🅿️'),
+    ],
+    roomTypes: [
+      rt('std-12', 'Jungle View Room', 75, 2, 'Queen', 'Rustic-chic room overlooking the jungle canopy with a private balcony.', 5,
+        ['WiFi', 'AC', 'TV', 'Safe'], 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
+        { totalRooms: 8, bedType: 'Queen', areaSqFt: 280, bathrooms: 1, maxGuests: 2, breakfastIncluded: true }
+      ),
+    ],
+    reviews: [
+      { id: 'r22', author: 'David L.', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=48&h=48&fit=crop', rating: 5, date: 'June 2026', comment: 'We saw a one-horned rhino on our morning safari! Incredible experience.', helpful: 22 },
+    ],
+    cancellationPolicy: 'Free cancellation up to 48 hours before check-in.',
+    checkInTime: '14:00', checkOutTime: '11:00', phone: '+977-56-521234', email: 'info@chitwanjungle.com',
+    coordinates: { lat: 27.53, lng: 84.35 }, lat: 27.53, lng: 84.35, availableRooms: 12, tags: ['Wildlife', 'Eco', 'Adventure', 'Nature'],
+    category: 'nature', tag: 'Guest favourite',
+    hostName: 'Bishnu Thapa', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'Jan 2020', hostReviews: 140,
+  },
+  {
+    id: '13', name: 'Nagarkot Mountain Retreat', location: 'Nagarkot, Bhaktapur, Nepal', city: 'Kathmandu', country: 'Nepal',
+    address: 'Nagarkot Road, Bhaktapur 44600, Nepal', rating: 4.78, review_count: 198, starRating: 4, price: 60,
+    currency: 'NPR', brandColor: '#7C3AED',
+    description: 'Perched at 2,175m above sea level, this mountain retreat offers sweeping panoramic views of the Himalayan range — from Dhaulagiri in the west to Kanchenjunga in the east. The property blends traditional Nepali architecture with modern comforts, making it the perfect escape from Kathmandu\'s hustle without straying too far.',
+    shortDescription: 'Mountain retreat at 2,175m with panoramic Himalayan views',
+    images: [
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&h=600&fit=crop',
+    ],
+    amenities: [
+      am('Mountain View', '🏔️'), am('Free WiFi', '📶'), am('Restaurant', '🍽️'), am('Garden', '🌿'),
+      am('Bonfire', '🔥'), am('Hiking Trails', '🥾'), am('Yoga', '🧘'), am('Parking', '🅿️'),
+    ],
+    roomTypes: [
+      rt('std-13', 'Mountain View Room', 60, 2, 'Queen', 'Cosy room with floor-to-ceiling windows framing the Himalayas.', 6,
+        ['WiFi', 'Heater', 'TV', 'Safe'], 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&h=300&fit=crop',
+        { totalRooms: 10, bedType: 'Queen', areaSqFt: 260, bathrooms: 1, maxGuests: 2, breakfastIncluded: true }
+      ),
+      rt('dlx-13', 'Sunrise Suite', 110, 3, 'King + Single', 'Premium suite with east-facing balcony for unforgettable Himalayan sunrises.', 2,
+        ['WiFi', 'Heater', 'TV', 'Safe', 'Balcony'], 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=400&h=300&fit=crop',
+        { totalRooms: 4, bedType: 'King + Single', areaSqFt: 400, bathrooms: 1, maxGuests: 3, breakfastIncluded: true }
+      ),
+    ],
+    reviews: [
+      { id: 'r23', author: 'Sarah M.', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=48&h=48&fit=crop', rating: 5, date: 'May 2026', comment: 'The sunrise over the Himalayas from our balcony was breathtaking.', helpful: 35 },
+    ],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
+    checkInTime: '14:00', checkOutTime: '11:00', phone: '+977-1-6612345', email: 'info@nagarkotretreat.com',
+    coordinates: { lat: 27.72, lng: 85.52 }, lat: 27.72, lng: 85.52, availableRooms: 14, tags: ['Mountain View', 'Sunrise', 'Nature', 'Peaceful'],
+    isSuperhost: true, category: 'mountain',
+    hostName: 'Anita Sharma', hostAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop', hostJoined: 'Aug 2018', hostReviews: 180,
+  },
+  {
+    id: '14', name: 'Lumbini Buddha Garden Resort', location: 'Lumbini, Nepal', city: 'Lumbini', country: 'Nepal',
+    address: 'Lumbini Development Zone, Lumbini 32900, Nepal', rating: 4.71, review_count: 112, starRating: 3, price: 45,
+    currency: 'NPR', brandColor: '#D97706',
+    description: 'A serene retreat in the birthplace of Lord Buddha. This peaceful resort sits within walking distance of the sacred Maya Devi Temple and the eternal flame. Lush gardens, meditation spaces, and a tranquil pond create the ideal setting for reflection and spiritual renewal.',
+    shortDescription: 'Peaceful resort near the sacred Maya Devi Temple in Buddha\'s birthplace',
+    images: [
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&h=600&fit=crop',
+    ],
+    amenities: [
+      am('Temple View', '🏛️'), am('Free WiFi', '📶'), am('Meditation Garden', '🧘'), am('Restaurant', '🍽️'),
+      am('Bicycle Rental', '🚴'), am('Parking', '🅿️'), am('Laundry', '👔'),
+    ],
+    roomTypes: [
+      rt('std-14', 'Garden Room', 45, 2, 'Queen', 'Simple, clean room overlooking the meditation garden.', 6,
+        ['WiFi', 'AC', 'TV'], 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
+        { totalRooms: 12, bedType: 'Queen', areaSqFt: 220, bathrooms: 1, maxGuests: 2, breakfastIncluded: true }
+      ),
+    ],
+    reviews: [
+      { id: 'r24', author: 'Karma W.', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=48&h=48&fit=crop', rating: 4, date: 'April 2026', comment: 'Perfect for a spiritual getaway. The meditation garden is so peaceful.', helpful: 12 },
+    ],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
+    checkInTime: '13:00', checkOutTime: '11:00', phone: '+977-71-522345', email: 'info@lumbinibuddha.com',
+    coordinates: { lat: 27.48, lng: 83.28 }, lat: 27.48, lng: 83.28, availableRooms: 10, tags: ['Spiritual', 'Peaceful', 'Cultural', 'Budget'],
+    category: 'cultural',
+    hostName: 'Ram Prajapati', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'Mar 2021', hostReviews: 95,
+  },
+  {
+    id: '15', name: 'Bandipur Heritage Inn', location: 'Bandipur, Tanahun, Nepal', city: 'Pokhara', country: 'Nepal',
+    address: 'Bandipur Bazaar, Tanahun 33500, Nepal', rating: 4.85, review_count: 87, starRating: 4, price: 55,
+    currency: 'NPR', brandColor: '#DC2626',
+    description: 'Step back in time in this beautifully restored Newari trading house perched on a hilltop between Kathmandu and Pokhara. Cobblestone streets, ancient temples, and sweeping views of the Marsyangdi River valley make Bandipur one of Nepal\'s best-kept secrets. The inn\'s rooftop restaurant serves authentic Nepali cuisine with a view that stretches to the Annapurnas.',
+    shortDescription: 'Restored Newari trading house in a hilltop heritage town',
+    images: [
+      'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&h=600&fit=crop',
+    ],
+    amenities: [
+      am('Heritage Building', '🏛️'), am('Free WiFi', '📶'), am('Rooftop Restaurant', '🍽️'), am('Mountain View', '🏔️'),
+      am('Courtyard', '🌿'), am('Bicycle Rental', '🚴'), am('Cultural Tours', '🗺️'),
+    ],
+    roomTypes: [
+      rt('std-15', 'Heritage Room', 55, 2, 'Queen', 'Traditional room with wooden beams, handwoven textiles, and valley views.', 3,
+        ['WiFi', 'Heater', 'TV'], 'https://images.unsplash.com/photo-1548013146-72479768bada?w=400&h=300&fit=crop',
+        { totalRooms: 6, bedType: 'Queen', areaSqFt: 240, bathrooms: 1, maxGuests: 2, breakfastIncluded: true }
+      ),
+    ],
+    reviews: [
+      { id: 'r25', author: 'Tom R.', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=48&h=48&fit=crop', rating: 5, date: 'May 2026', comment: 'A hidden gem! The rooftop sunset views are absolutely stunning.', helpful: 18 },
+    ],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
+    checkInTime: '14:00', checkOutTime: '11:00', phone: '+977-65-520123', email: 'info@bandipurheritage.com',
+    coordinates: { lat: 27.94, lng: 84.41 }, lat: 27.94, lng: 84.41, availableRooms: 6, tags: ['Heritage', 'Cultural', 'Peaceful', 'Scenic'],
+    isSuperhost: true, category: 'heritage',
+    hostName: 'Suman Gurung', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'Oct 2019', hostReviews: 78,
+  },
+  {
+    id: '16', name: 'Kathmandu Grand Hotel', location: 'Durbar Marg, Kathmandu, Nepal', city: 'Kathmandu', country: 'Nepal',
+    address: 'Durbar Marg, Kathmandu 44600, Nepal', rating: 4.65, review_count: 445, starRating: 5, price: 150,
+    currency: 'NPR', brandColor: '#1D4ED8',
+    description: 'A landmark luxury hotel in the heart of Kathmandu, steps from Kathmandu Durbar Square and the shopping district. Grand marble lobbies, a rooftop infinity pool with Himalayan views, and world-class dining make this the city\'s premier address for discerning travelers. The spa offers traditional Nepali treatments alongside international wellness therapies.',
+    shortDescription: 'Landmark luxury hotel with rooftop pool and Durbar Square views',
+    images: [
+      'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&h=600&fit=crop',
+    ],
+    amenities: [
+      am('Rooftop Pool', '🏊'), am('Free WiFi', '📶'), am('Spa', '✨'), am('Restaurant', '🍽️'),
+      am('Bar', '🍸'), am('Fitness Center', '💪'), am('Airport Shuttle', '🚐'), am('Concierge', '🛎️'),
+      am('Room Service', '🛎️'), am('Business Center', '💼'),
+    ],
+    roomTypes: [
+      rt('std-16', 'Deluxe Room', 150, 2, 'King', 'Elegant room with city views and premium amenities.', 8,
+        ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe'], 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=400&h=300&fit=crop',
+        { totalRooms: 40, bedType: 'King', areaSqFt: 350, bathrooms: 1, maxGuests: 2, breakfastIncluded: true }
+      ),
+      rt('dlx-16', 'Executive Suite', 280, 3, 'King + Sofa', 'Spacious suite with separate living area and panoramic city views.', 4,
+        ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe', 'Living Room'], 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop',
+        { totalRooms: 12, bedType: 'King + Sofa', areaSqFt: 550, bathrooms: 1, maxGuests: 3, breakfastIncluded: true }
+      ),
+    ],
+    reviews: [
+      { id: 'r26', author: 'Anil K.', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=48&h=48&fit=crop', rating: 5, date: 'June 2026', comment: 'The rooftop pool at sunset is magical. Best hotel in Kathmandu.', helpful: 45 },
+      { id: 'r27', author: 'Lisa T.', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=48&h=48&fit=crop', rating: 4, date: 'May 2026', comment: 'Beautiful property, excellent service. The spa was world-class.', helpful: 30 },
+    ],
+    cancellationPolicy: 'Free cancellation up to 48 hours before check-in.',
+    checkInTime: '15:00', checkOutTime: '12:00', phone: '+977-1-4220123', email: 'reservations@kathmandugrand.com',
+    coordinates: { lat: 27.71, lng: 85.31 }, lat: 27.71, lng: 85.31, availableRooms: 52, tags: ['Luxury', 'Pool', 'Spa', 'City View', 'Business'],
+    isSuperhost: true, category: 'luxury', tag: 'Rare find',
+    hostName: 'Vikram Singh', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'Jan 2017', hostReviews: 420,
+  },
 ];
 
 /**
