@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as Location from 'expo-location';
 import { MOCK_PROPERTIES, type Hotel } from '@/lib/mock/properties';
+import { searchNearbyApi } from '@/lib/api';
 
 interface UseNearbyPropertiesResult {
   nearbyHotels: Hotel[];
@@ -23,21 +24,34 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function fallbackNearby(lat: number, lng: number): Hotel[] {
+  const withDistance = MOCK_PROPERTIES.map((h) => ({
+    hotel: h,
+    distance: haversineDistance(lat, lng, h.lat ?? 0, h.lng ?? 0),
+  }))
+    .filter((h) => h.hotel.lat && h.hotel.lng)
+    .sort((a, b) => a.distance - b.distance);
+
+  return withDistance.slice(0, 6).map((h) => h.hotel);
+}
+
 export function useNearbyProperties(): UseNearbyPropertiesResult {
   const [nearbyHotels, setNearbyHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  const fetchNearby = (lat: number, lng: number) => {
-    const withDistance = MOCK_PROPERTIES.map((h) => ({
-      hotel: h,
-      distance: haversineDistance(lat, lng, h.lat ?? 0, h.lng ?? 0),
-    }))
-      .filter((h) => h.hotel.lat && h.hotel.lng)
-      .sort((a, b) => a.distance - b.distance);
-
-    setNearbyHotels(withDistance.slice(0, 6).map((h) => h.hotel));
+  const fetchNearby = async (lat: number, lng: number) => {
+    try {
+      const res = await searchNearbyApi({ lat, lon: lng, limit: 6 });
+      if (res.fromApi && res.hotels.length > 0) {
+        setNearbyHotels(res.hotels);
+        return;
+      }
+    } catch {
+      // fall through to mock
+    }
+    setNearbyHotels(fallbackNearby(lat, lng));
   };
 
   const requestLocation = async () => {

@@ -120,6 +120,33 @@ app/
 
 ## Session History
 
+### 2026-08-03 — Backend Alignment: Nearby Search, Staff CRUD, Search Description, Khalti Payments
+
+**Backend context**
+- Live backend (`anilghatan6/Stay-Easy` → `stay-easy-sizw.onrender.com`) added new commits: staff mgmt, `/search/nearby`, `description`/`cover_photo`/`type`/`currency` on search results, `created_at` + special-offer/coupon fields on booking responses, Khalti payment gateway
+- New live endpoints verified via OpenAPI: `GET /search/nearby?lat=&lon=&limit=`, `GET/POST /properties/{id}/staffs`, `GET/PATCH/DELETE /properties/{id}/staffs/{staff_id}`, `POST /properties/{id}/staffs/image`
+- `/search/nearby` returns a **flat array** (not `SearchResponse`) with `distance_km`, `lowest_rate`, `cover_photo`, `type`, `currency`, `property_id`, `name`, `city`, `country`, `address`
+- Staff schemas: `CreateStaffRequest` (`full_name`, `email`, `phone_number`, `job_role`, `monthly_salary`, `joining_date`, `status`, `photos`), `StaffResponse`, `JobRole` enum (`MANAGER`/`FRONT_DESK`/`HOUSEKEEPING`/`WAITER`/`KITCHEN`/`MAINTENANCE`), `StaffStatus` (`ACTIVE`/`INACTIVE`/`ON_LEAVE`), `StaffPhotos` (`profile`, `citizenship_front`, `citizenship_back`)
+- `PaymentIntentRequest` now accepts `return_url`; `ConfirmPaymentRequest.gateway_payload` supports `{pidx}` for Khalti, `{order_id}` for Razorpay, `{payment_intent_id}` for Stripe, `{}` for DUMMY
+
+**Done**
+- `constants/api-config.ts`: added `SEARCH.SEARCH_NEARBY` and staff endpoints (`GET_STAFF`, `CREATE_STAFF`, `GET_STAFF_MEMBER`, `UPDATE_STAFF_MEMBER`, `DELETE_STAFF_MEMBER`, `UPLOAD_STAFF_IMAGE`)
+- `types/api.ts`: added `BackendStaff`, `CreateStaffRequest`, `BackendJobRole`, `BackendStaffStatus`, `StaffPhotos`; extended `PaymentIntentRequest` with `return_url` and `PaymentIntentResponse` with `pidx`
+- `lib/api.ts`: added `searchNearbyApi(lat, lon, limit)` with dedicated `BackendNearbyItem` + `mapNearbyToHotel` (handles flat-array response); extended `BackendSearchItem` with `description`/`cover_photo`/`type`/`currency` and mapped them into `Hotel` (description, cover image, category, currency)
+- `hooks/use-nearby-properties.ts`: now calls `searchNearbyApi` first, falls back to mock haversine sort only when the API fails or returns empty
+- `lib/api/host-api.ts`: added `getStaff`, `createStaff`, `updateStaff`, `deleteStaff`, `uploadStaffImage` (fallback pattern)
+- `lib/context/host-context.tsx`: added `mapApiStaff` (backend `BackendStaff` → `StaffMember` with role map + name split); fetches staff on `activePropertyId` change; `addStaff`/`updateStaff`/`removeStaff` now call the backend with `BackendStaff`-shaped fallbacks
+- `app/booking-flow.tsx`: replaced hardcoded `'stripe'` with stateful `paymentMethod` selector (Khalti / Stripe / Razorpay / Test), gateway-aware `gateway_payload` construction, updated `memo` deps + styles
+- `npx tsc --noEmit` — zero errors
+
+**Key decisions**
+- Staff is fetched per `activePropertyId` like rooms/discounts/offers; `mapApiStaff` converts the backend `full_name`/`job_role`/`status` into the existing `StaffMember` shape so all host/ops staff screens keep working unchanged
+- `searchNearbyApi` deliberately uses its own mapper because the nearby endpoint's response shape (flat array + `distance_km`/`lowest_rate`) differs from `/search`
+- Booking list already had `BookingListItem` with `created_at`/`special_offer_discount`/`coupon_code`/`coupon_discount`/`property_photo`/`property_name` — booking-context sync (previous session) already consumes these, no further change needed
+- Demo accounts (`guest@stayeasy.com`, `host@stayeasy.com`) are local-only mock credentials — the live backend rejected them during verification
+
+---
+
 ### 2026-08-03 — Guest Portal: Always Open Logged Out + Home Shows Backend Properties
 
 **Done**

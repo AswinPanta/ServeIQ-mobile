@@ -28,6 +28,15 @@ const NAVY = '#1A3C5E';
 const BLUE = '#0071c2';
 const TEAL = '#00875A';
 
+type PaymentGateway = 'dummy' | 'stripe' | 'khalti' | 'razorpay';
+
+const PAYMENT_METHODS: { key: PaymentGateway; name: string; desc: string }[] = [
+  { key: 'khalti', name: 'Khalti', desc: 'Pay with Khalti wallet' },
+  { key: 'stripe', name: 'Card (Stripe)', desc: 'Credit / debit card' },
+  { key: 'razorpay', name: 'Razorpay', desc: 'UPI, cards & net banking' },
+  { key: 'dummy', name: 'Test (Demo)', desc: 'No real charge — for testing' },
+];
+
 type Step = 0 | 1 | 2;
 
 interface SelectedRoom {
@@ -83,7 +92,7 @@ export default function BookingFlowScreen() {
   const [guestInfo, setGuestInfo] = useState({ firstName: '', lastName: '', email: '', phone: '', country: 'Nepal' });
   const [guestErrors, setGuestErrors] = useState<Record<string, string>>({});
 
-  const [paymentMethod] = useState<'stripe'>('stripe');
+  const [paymentMethod, setPaymentMethod] = useState<'dummy' | 'stripe' | 'khalti' | 'razorpay'>('khalti');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -308,13 +317,20 @@ export default function BookingFlowScreen() {
       }
 
       // Step 4: Confirm payment
+      const gatewayPayload: Record<string, unknown> | undefined =
+        paymentMethod === 'khalti'
+          ? (paymentIntent.pidx ? { pidx: paymentIntent.pidx } : paymentIntent.payment_intent_id ? { payment_intent_id: paymentIntent.payment_intent_id } : undefined)
+          : paymentMethod === 'razorpay'
+            ? (paymentIntent.order_id ? { order_id: paymentIntent.order_id } : undefined)
+            : paymentMethod === 'stripe'
+              ? (paymentIntent.payment_intent_id ? { payment_intent_id: paymentIntent.payment_intent_id } : undefined)
+              : undefined;
+
       await bookingApi.confirmPayment(
         ref,
         {
           idempotency_key: `pay-${idempotencyKey}`,
-          gateway_payload: paymentIntent.payment_intent_id
-            ? { payment_intent_id: paymentIntent.payment_intent_id }
-            : undefined,
+          gateway_payload: gatewayPayload,
         },
         () => ({
           status: 'confirmed',
@@ -581,8 +597,31 @@ export default function BookingFlowScreen() {
           <Text style={styles.cancelDesc}>Cancel before {formatDate(checkIn)} for a full refund</Text>
         </View>
       </View>
+
+      {/* Payment method */}
+      <View style={styles.payBox}>
+        <Text style={styles.fieldLabel}>Payment method</Text>
+        {PAYMENT_METHODS.map(m => {
+          const selected = paymentMethod === m.key;
+          return (
+            <TouchableOpacity
+              key={m.key}
+              onPress={() => setPaymentMethod(m.key)}
+              style={[styles.payOption, selected && { borderColor: BLUE, backgroundColor: '#F0F7FF' }]}
+            >
+              <View style={[styles.payRadio, selected && { borderColor: BLUE }]}>
+                {selected && <View style={styles.payRadioInner} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payName}>{m.name}</Text>
+                <Text style={styles.payDesc}>{m.desc}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </ScrollView>
-  )), [selectedRooms, nights, promoCode, appliedPromo, promoLoading, promoDiscount, tax, total, checkIn]);
+  )), [selectedRooms, nights, promoCode, appliedPromo, promoLoading, promoDiscount, tax, total, checkIn, paymentMethod]);
 
   // ── Bottom bar ──
   const BottomBar = useMemo(() => memo(() => (
@@ -723,6 +762,14 @@ const styles = StyleSheet.create({
   cancelBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, backgroundColor: '#F0FFF4', borderWidth: 1, borderColor: '#BBF7D0' },
   cancelTitle: { fontSize: 13, fontWeight: '600', color: NAVY },
   cancelDesc: { fontSize: 12, color: '#64748B', marginTop: 2 },
+
+  // Payment method
+  payBox: { gap: 8 },
+  payOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  payRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
+  payRadioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE },
+  payName: { fontSize: 14, fontWeight: '600', color: NAVY },
+  payDesc: { fontSize: 12, color: '#64748B', marginTop: 1 },
 
   // Bottom bar
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 36 : 16, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', gap: 10 },

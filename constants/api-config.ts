@@ -92,11 +92,19 @@ export const API_ENDPOINTS = {
     GET_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
     UPDATE_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
     DELETE_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
+    // Staff management
+    GET_STAFF: (id: string) => `/properties/${id}/staffs`,
+    CREATE_STAFF: (id: string) => `/properties/${id}/staffs`,
+    GET_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
+    UPDATE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
+    DELETE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
+    UPLOAD_STAFF_IMAGE: (id: string) => `/properties/${id}/staffs/image`,
   },
 
   // ─── Search ────────────────────────────────────────────────────
   SEARCH: {
     SEARCH_HOTELS: '/search',
+    SEARCH_NEARBY: '/search/nearby',
   },
 
   // ─── Available rooms for a property ──────────────────────────

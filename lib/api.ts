@@ -286,6 +286,10 @@ interface BackendSearchItem {
   state: string;
   city: string;
   address: string;
+  description?: string | null;
+  cover_photo?: string | null;
+  type?: string;
+  currency?: string;
   amenities: string[];
   total_price: number;
   nights: number;
@@ -310,10 +314,10 @@ function mapSearchItemToHotel(item: BackendSearchItem, fallbackHotel?: Hotel): H
     review_count: fallbackHotel?.review_count ?? 0,
     starRating: fallbackHotel?.starRating ?? 4,
     price: item.total_price && item.nights ? Math.round(item.total_price / item.nights) : (fallbackHotel?.price ?? 0),
-    currency: fallbackHotel?.currency ?? 'NPR',
-    description: fallbackHotel?.description ?? `${item.name} in ${item.city}, ${item.country}.`,
-    shortDescription: fallbackHotel?.shortDescription ?? item.name,
-    images: fallbackHotel?.images ?? [
+    currency: (item.currency || fallbackHotel?.currency) ?? 'NPR',
+    description: (item.description || fallbackHotel?.description) ?? `${item.name} in ${item.city}, ${item.country}.`,
+    shortDescription: (item.description || fallbackHotel?.shortDescription) ?? item.name,
+    images: item.cover_photo ? [item.cover_photo] : fallbackHotel?.images ?? [
       'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&h=600&fit=crop',
     ],
     amenities: item.amenities.map(a => ({ name: a, icon: '✨' })),
@@ -330,7 +334,7 @@ function mapSearchItemToHotel(item: BackendSearchItem, fallbackHotel?: Hotel): H
     brandColor: fallbackHotel?.brandColor,
     logoUrl: fallbackHotel?.logoUrl,
     isSuperhost: fallbackHotel?.isSuperhost,
-    category: fallbackHotel?.category,
+    category: item.type || fallbackHotel?.category,
     hostName: fallbackHotel?.hostName,
     hostAvatar: fallbackHotel?.hostAvatar,
     hostJoined: fallbackHotel?.hostJoined,
@@ -466,6 +470,93 @@ export async function searchHotelsApi(params: {
     } catch {
       return { hotels: [], fromApi: false };
     }
+  }
+}
+
+interface BackendNearbyItem {
+  property_id: string;
+  name: string;
+  type?: string;
+  country: string;
+  state?: string;
+  city: string;
+  address?: string;
+  currency?: string;
+  cover_photo?: string | null;
+  description?: string | null;
+  distance_km?: number;
+  lowest_rate?: number;
+  amenities?: string[];
+}
+
+function mapNearbyToHotel(item: BackendNearbyItem, fallbackHotel?: Hotel): Hotel {
+  return {
+    id: item.property_id,
+    name: item.name,
+    location: [item.city, item.state, item.country].filter(Boolean).join(', '),
+    city: item.city || '',
+    country: item.country || '',
+    address: item.address || '',
+    rating: fallbackHotel?.rating ?? 4.5,
+    review_count: fallbackHotel?.review_count ?? 0,
+    starRating: fallbackHotel?.starRating ?? 4,
+    price: item.lowest_rate ?? (fallbackHotel?.price ?? 0),
+    currency: (item.currency || fallbackHotel?.currency) ?? 'NPR',
+    description: (item.description || fallbackHotel?.description) ?? `${item.name} in ${item.city}, ${item.country}.`,
+    shortDescription: (item.description || fallbackHotel?.shortDescription) ?? item.name,
+    images: item.cover_photo ? [item.cover_photo] : fallbackHotel?.images ?? [
+      'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&h=600&fit=crop',
+    ],
+    amenities: (item.amenities || []).map(a => ({ name: a, icon: '✨' })),
+    roomTypes: fallbackHotel?.roomTypes ?? [],
+    reviews: fallbackHotel?.reviews ?? [],
+    cancellationPolicy: fallbackHotel?.cancellationPolicy ?? 'Free cancellation up to 24 hours before check-in.',
+    checkInTime: fallbackHotel?.checkInTime ?? '14:00',
+    checkOutTime: fallbackHotel?.checkOutTime ?? '11:00',
+    phone: fallbackHotel?.phone ?? '',
+    email: fallbackHotel?.email ?? '',
+    coordinates: fallbackHotel?.coordinates,
+    availableRooms: fallbackHotel?.availableRooms ?? 5,
+    tags: (item.amenities || []).slice(0, 4),
+    brandColor: fallbackHotel?.brandColor,
+    logoUrl: fallbackHotel?.logoUrl,
+    isSuperhost: fallbackHotel?.isSuperhost,
+    category: item.type || fallbackHotel?.category,
+    hostName: fallbackHotel?.hostName,
+    hostAvatar: fallbackHotel?.hostAvatar,
+    hostJoined: fallbackHotel?.hostJoined,
+    hostReviews: fallbackHotel?.hostReviews,
+  };
+}
+
+export async function searchNearbyApi(params: {
+  lat: number;
+  lon: number;
+  limit?: number;
+}): Promise<{ hotels: Hotel[]; fromApi: boolean }> {
+  try {
+    const queryParams: Record<string, string | number> = {
+      lat: params.lat,
+      lon: params.lon,
+    };
+    if (params.limit) queryParams.limit = params.limit;
+
+    const response = await api.get(API_ENDPOINTS.SEARCH.SEARCH_NEARBY, { params: queryParams });
+    const json = await response.json();
+
+    const data: BackendNearbyItem[] | BackendSearchResponse = json.data ?? json;
+    const results: BackendNearbyItem[] = Array.isArray(data) ? data : (data.results ?? []);
+
+    const enriched = results.map(item => {
+      const fallback = MOCK_PROPERTIES.find(
+        m => m.id === item.property_id || m.name.toLowerCase() === item.name.toLowerCase()
+      );
+      return mapNearbyToHotel(item, fallback);
+    });
+
+    return { hotels: enriched, fromApi: true };
+  } catch {
+    return { hotels: [], fromApi: false };
   }
 }
 

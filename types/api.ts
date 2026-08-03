@@ -363,6 +363,47 @@ export type StaffRole =
   | 'kitchen'
   | 'maintenance';
 
+// Backend staff job roles (JobRole enum from staff router)
+export type BackendJobRole =
+  | 'MANAGER'
+  | 'FRONT_DESK'
+  | 'HOUSEKEEPING'
+  | 'WAITER'
+  | 'KITCHEN'
+  | 'MAINTENANCE';
+
+export type BackendStaffStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE';
+
+export interface StaffPhotos {
+  profile?: string | null;
+  citizenship_front?: string | null;
+  citizenship_back?: string | null;
+}
+
+export interface BackendStaff {
+  id: string;
+  tenant_id?: string;
+  full_name: string;
+  email: string;
+  phone_number?: string | null;
+  job_role: BackendJobRole;
+  monthly_salary?: string;
+  joining_date: string;
+  status: BackendStaffStatus;
+  photos?: StaffPhotos | null;
+}
+
+export interface CreateStaffRequest {
+  full_name: string;
+  email: string;
+  phone_number?: string;
+  job_role: BackendJobRole;
+  monthly_salary?: string;
+  joining_date: string;
+  status?: BackendStaffStatus;
+  photos?: StaffPhotos;
+}
+
 export interface StaffMember {
   id: string;
   tenant_id: string;
@@ -659,6 +700,7 @@ export interface PaginatedBookingsResponse {
 
 export interface PaymentIntentRequest {
   payment_gateway: string;
+  return_url?: string | null;
 }
 
 export interface PaymentIntentResponse {
@@ -669,6 +711,7 @@ export interface PaymentIntentResponse {
   payment_intent_id?: string;
   client_secret?: string;
   order_id?: string;
+  pidx?: string;
 }
 
 export interface ConfirmPaymentRequest {

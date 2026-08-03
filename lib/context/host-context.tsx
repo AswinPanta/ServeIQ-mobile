@@ -16,6 +16,7 @@ import type {
   StaffTask,
   AdminRoomStatus,
   CancellationPolicy,
+  BackendStaff,
 } from '@/types/api';
 import {
   mockProperties,
@@ -270,6 +271,35 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     updated_at: r.updated_at || new Date().toISOString(),
   }), [activePropertyId]);
 
+  // Transform API staff shape to our StaffMember type
+  const mapApiStaff = useCallback((s: BackendStaff): StaffMember => {
+    const nameParts = (s.full_name || '').trim().split(/\s+/);
+    const first_name = nameParts[0] || '';
+    const last_name = nameParts.slice(1).join(' ');
+    const roleMap: Record<string, StaffMember['role']> = {
+      MANAGER: 'manager',
+      FRONT_DESK: 'front_desk',
+      HOUSEKEEPING: 'housekeeping',
+      WAITER: 'waiter',
+      KITCHEN: 'kitchen',
+      MAINTENANCE: 'maintenance',
+    };
+    return {
+      id: s.id,
+      tenant_id: s.tenant_id || '',
+      email: s.email,
+      first_name,
+      last_name,
+      phone: s.phone_number || '',
+      role: roleMap[s.job_role] || 'front_desk',
+      property_id: activePropertyId || '',
+      is_active: s.status !== 'INACTIVE',
+      pos_discount_limit: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }, [activePropertyId]);
+
   const refreshRooms = useCallback((propertyId?: string) => {
     const pid = propertyId || activePropertyId;
     if (!pid) return;
@@ -288,6 +318,9 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
       });
       hostApi.getSpecialOffers(activePropertyId, () => []).then(apiOffers => {
         if (apiOffers.length > 0) setSpecialOffers(apiOffers);
+      });
+      hostApi.getStaff(activePropertyId, () => []).then(apiStaff => {
+        if (apiStaff.length > 0) setStaff(apiStaff.map(mapApiStaff));
       });
       hostApi.getPropertyBookings(activePropertyId, () => []).then(apiData => {
         if (apiData.length > 0) {
@@ -552,10 +585,69 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     setTaxConfigs(prev => prev.map(tx => tx.id === id ? { ...tx, ...updates, updated_at: now() } : tx));
   }, []);
 
-  const addStaff = useCallback((s: StaffMember) => setStaff(prev => [...prev, s]), []);
+  const addStaff = useCallback((s: StaffMember) => {
+    const nameParts = `${s.first_name} ${s.last_name}`.trim().split(/\s+/);
+    const roleMap: Record<string, string> = {
+      manager: 'MANAGER',
+      front_desk: 'FRONT_DESK',
+      housekeeping: 'HOUSEKEEPING',
+      waiter: 'WAITER',
+      kitchen: 'KITCHEN',
+      maintenance: 'MAINTENANCE',
+    };
+    const pid = activePropertyId || 'prop-1';
+    const fallbackStaff: BackendStaff = {
+      id: s.id,
+      tenant_id: s.tenant_id,
+      full_name: nameParts.join(' '),
+      email: s.email,
+      phone_number: s.phone,
+      job_role: (roleMap[s.role] || 'FRONT_DESK') as BackendStaff['job_role'],
+      joining_date: new Date().toISOString().slice(0, 10),
+      status: s.is_active ? 'ACTIVE' : 'INACTIVE',
+    };
+    hostApi.createStaff(pid, {
+      full_name: nameParts.join(' '),
+      email: s.email,
+      phone_number: s.phone,
+      job_role: (roleMap[s.role] || 'FRONT_DESK') as any,
+      joining_date: new Date().toISOString().slice(0, 10),
+      status: s.is_active ? 'ACTIVE' : 'INACTIVE',
+    }, () => fallbackStaff).then(created => {
+      setStaff(prev => [...prev, created && created.full_name ? mapApiStaff(created) : s]);
+    });
+  }, [activePropertyId, mapApiStaff]);
   const updateStaff = useCallback((id: string, updates: Partial<StaffMember>) => {
     setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates, updated_at: now() } : s));
-  }, []);
+    const existing = staff.find(s => s.id === id);
+    if (!existing) return;
+    const roleMap: Record<string, string> = {
+      manager: 'MANAGER',
+      front_desk: 'FRONT_DESK',
+      housekeeping: 'HOUSEKEEPING',
+      waiter: 'WAITER',
+      kitchen: 'KITCHEN',
+      maintenance: 'MAINTENANCE',
+    };
+    const pid = activePropertyId || 'prop-1';
+    const fallbackStaff: BackendStaff = {
+      id: existing.id,
+      tenant_id: existing.tenant_id,
+      full_name: `${existing.first_name} ${existing.last_name}`.trim(),
+      email: existing.email,
+      phone_number: existing.phone,
+      job_role: (roleMap[existing.role] || 'FRONT_DESK') as BackendStaff['job_role'],
+      joining_date: existing.created_at.slice(0, 10),
+      status: existing.is_active ? 'ACTIVE' : 'INACTIVE',
+    };
+    hostApi.updateStaff(pid, id, {
+      full_name: `${updates.first_name ?? existing.first_name} ${updates.last_name ?? existing.last_name}`.trim(),
+      email: updates.email ?? existing.email,
+      phone_number: updates.phone ?? existing.phone,
+      job_role: (roleMap[(updates.role ?? existing.role)] || 'FRONT_DESK') as any,
+      status: (updates.is_active === undefined ? undefined : updates.is_active ? 'ACTIVE' : 'INACTIVE') as any,
+    }, () => fallbackStaff);
+  }, [activePropertyId, staff]);
 
   const addShift = useCallback((s: Shift) => setShifts(prev => [...prev, s]), []);
   const updateShift = useCallback((id: string, updates: Partial<Shift>) => {
@@ -598,7 +690,11 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   const removeDiscountCode = useCallback((id: string) => setDiscountCodes(prev => prev.filter(dc => dc.id !== id)), []);
   const removeSpecialOffer = useCallback((id: string) => setSpecialOffers(prev => prev.filter(so => so.id !== id)), []);
   const removeTaxConfig = useCallback((id: string) => setTaxConfigs(prev => prev.filter(tx => tx.id !== id)), []);
-  const removeStaff = useCallback((id: string) => setStaff(prev => prev.filter(s => s.id !== id)), []);
+  const removeStaff = useCallback((id: string) => {
+    const pid = activePropertyId || 'prop-1';
+    hostApi.deleteStaff(pid, id);
+    setStaff(prev => prev.filter(s => s.id !== id));
+  }, [activePropertyId]);
   const removeShift = useCallback((id: string) => setShifts(prev => prev.filter(s => s.id !== id)), []);
   const removeStaffTask = useCallback((id: string) => setStaffTasks(prev => prev.filter(t => t.id !== id)), []);
 

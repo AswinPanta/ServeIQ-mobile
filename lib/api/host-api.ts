@@ -2,6 +2,7 @@ import { api, handleResponse, isDemoMode } from '@/lib/api';
 import { API_ENDPOINTS } from '@/constants/api-config';
 import type {
   Property, RoomTypeDef, AdminRoom, AdminDiscountCode, SpecialOffer, AdminRoomStatus,
+  BackendStaff, CreateStaffRequest,
 } from '@/types/api';
 
 // ─── Step-by-step property setup types ───────────────────────────────
@@ -304,4 +305,20 @@ export const hostApi = {
   // ─── Property Bookings ───────────────────────────────────────
   getPropertyBookings: (propertyId: string, fallback: () => any[]) =>
     apiGet<any[]>(API_ENDPOINTS.PROPERTIES.GET_PROPERTY_BOOKINGS(propertyId), fallback),
+
+  // ─── Staff ───────────────────────────────────────────────────
+  getStaff: (propertyId: string, fallback: () => BackendStaff[]) =>
+    apiGet<BackendStaff[]>(API_ENDPOINTS.PROPERTIES.GET_STAFF(propertyId), fallback),
+
+  createStaff: (propertyId: string, data: CreateStaffRequest, fallback: () => BackendStaff) =>
+    apiPost<BackendStaff, CreateStaffRequest>(API_ENDPOINTS.PROPERTIES.CREATE_STAFF(propertyId), data, fallback),
+
+  updateStaff: (propertyId: string, staffId: string, data: Partial<CreateStaffRequest>, fallback: () => BackendStaff) =>
+    apiPatch<BackendStaff, Partial<CreateStaffRequest>>(API_ENDPOINTS.PROPERTIES.UPDATE_STAFF_MEMBER(propertyId, staffId), data, fallback),
+
+  deleteStaff: (propertyId: string, staffId: string) =>
+    apiDelete(API_ENDPOINTS.PROPERTIES.DELETE_STAFF_MEMBER(propertyId, staffId)),
+
+  uploadStaffImage: (propertyId: string, formData: FormData) =>
+    apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_STAFF_IMAGE(propertyId), formData),
 };

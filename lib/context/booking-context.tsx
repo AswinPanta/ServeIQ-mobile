@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from './auth-context'
+import { bookingApi } from '@/lib/api/booking-api'
+import type { BookingListItem } from '@/types/api'
 
 export interface FolioCharge {
   id: string
@@ -58,6 +60,31 @@ function autoCompletePastBookings(bookings: Booking[]): Booking[] {
   })
 }
 
+function mapBookingStatus(status?: string): Booking['status'] {
+  const s = (status || '').toLowerCase()
+  if (s.includes('cancel')) return 'cancelled'
+  if (s.includes('complete') || s.includes('checkout')) return 'completed'
+  return 'upcoming'
+}
+
+function mapBackendBooking(item: BookingListItem): Booking {
+  return {
+    id: item.id || item.booking_number || item.ref_number,
+    hotelId: 0,
+    hotelName: item.property_name || 'StayEasy Property',
+    hotelCity: '',
+    hotelCountry: '',
+    hotelImage: item.property_photo || '',
+    checkIn: item.checkin_date,
+    checkOut: item.checkout_date,
+    roomTypeName: (item.room_names || []).join(', ') || 'Room',
+    guests: (item.number_of_adults ?? 1) + (item.number_of_children ?? 0),
+    totalPrice: item.total_amount,
+    status: mapBookingStatus(item.status),
+    createdAt: item.created_at,
+  }
+}
+
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -67,10 +94,28 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       try {
         const key = getStorageKey(user?.id)
         const data = await AsyncStorage.getItem(key)
+        let local: Booking[] = []
         if (data) {
-          const parsed: Booking[] = JSON.parse(data)
-          setBookings(autoCompletePastBookings(parsed))
+          local = autoCompletePastBookings(JSON.parse(data))
         }
+        // Merge in bookings from the backend when signed in
+        if (user) {
+          try {
+            const remote = await bookingApi.getMyBookings(
+              () => ({ items: [], total: 0, page: 1, limit: 20, total_pages: 0 }),
+              1,
+              50,
+            )
+            const remoteBookings = (remote.items || []).map(mapBackendBooking)
+            const remoteIds = new Set(remoteBookings.map(b => b.id))
+            const localOnly = local.filter(b => !remoteIds.has(b.id))
+            setBookings(autoCompletePastBookings([...remoteBookings, ...localOnly]))
+            return
+          } catch {
+            // fall through to local-only
+          }
+        }
+        setBookings(local)
       } catch {}
     }
     load()
