@@ -203,8 +203,8 @@ export default function SplashVisual({ splashStart }: Props) {
   });
   const logoScale = progress.interpolate({ inputRange: [0.05, 0.1], outputRange: [0.8, 1], extrapolate: 'clamp' });
   const glowOpacity = progress.interpolate({
-    inputRange: [0.05, 0.1, P.logoIn, P.lockup, 0.99],
-    outputRange: [0, 0.6, 0.6, 0, 0.5],
+    inputRange: [0.03, 0.12, P.logoIn, P.lockup, 0.99],
+    outputRange: [0, 0.45, 0.45, 0, 0.35],
     extrapolate: 'clamp',
   });
 
@@ -482,14 +482,14 @@ const styles = StyleSheet.create({
   },
   glowWrap: {
     position: 'absolute',
-    width: 260,
-    height: 260,
+    width: 320,
+    height: 320,
     alignItems: 'center',
     justifyContent: 'center',
   },
   glow: {
-    width: 260,
-    height: 260,
+    width: 320,
+    height: 320,
   },
 
   wordmarkRow: {
