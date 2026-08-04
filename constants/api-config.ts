@@ -27,6 +27,11 @@ export const API_ENDPOINTS = {
     USER_RESEND_OTP: '/auth/users/resend-otp',
     USER_REFRESH: '/auth/users/refresh',
     USER_ME: '/auth/users/me',
+    // Password reset
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
+    CHANGE_PASSWORD_GUEST: '/auth/guest/change-password',
+    CHANGE_PASSWORD_USER: '/auth/user/change-password',
   },
 
   // ─── Bookings ─────────────────────────────────────────────────
@@ -113,9 +118,12 @@ export const API_ENDPOINTS = {
 };
 
 // Request/Response Configuration
+// Keep timeouts tight: the live backend is a cold-startable Render instance
+// that can hang far past 30s. Every API function falls back to mock data on
+// failure, so fast failure (8s, 1 retry) is far better UX than long hangs.
 export const API_CONFIG = {
-  TIMEOUT: 30000,
-  RETRY_ATTEMPTS: 3,
+  TIMEOUT: 8000,
+  RETRY_ATTEMPTS: 1,
   RETRY_DELAY: 1000,
   CACHE_DURATION: 5 * 60 * 1000,
 };

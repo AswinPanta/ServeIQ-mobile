@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, TextInput, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -100,6 +100,21 @@ export default function ProfileScreen() {
   }, []);
 
   // Not logged in — show login prompt
+  const hasPromptedLogin = useRef(false);
+  useEffect(() => {
+    if (!user && !hasPromptedLogin.current) {
+      hasPromptedLogin.current = true;
+      Alert.alert(
+        'Login Required',
+        'Please login or sign up to view your profile, bookings, and favorites.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login / Sign Up', onPress: () => router.push('/(auth)/login') },
+        ]
+      );
+    }
+  }, [user]);
+
   if (!user) {
     return (
       <View style={{ flex: 1, backgroundColor: '#F8F9FB', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
@@ -408,6 +423,20 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Sign Out */}
+      <View style={s.section}>
+        <TouchableOpacity
+          style={s.signOutBtn}
+          onPress={() => Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign Out', style: 'destructive', onPress: async () => { await logout(); router.replace('/(auth)/login'); } },
+          ])}
+        >
+          <IconSymbol name="logout" size={18} color="#EF4444" />
+          <Text style={s.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+
       {modifyBooking && (
         <BookingModifyModal
           visible={!!modifyBooking}
@@ -518,4 +547,7 @@ const s = StyleSheet.create({
   diningMeta: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   diningCancelBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5' },
   diningCancelText: { fontSize: 11, fontWeight: '600', color: '#EF4444' },
+
+  signOutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
+  signOutText: { fontSize: 15, fontWeight: '600', color: '#EF4444' },
 });
