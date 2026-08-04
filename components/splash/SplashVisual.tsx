@@ -54,83 +54,121 @@ interface Dest {
   label: string;
   x: number;
   y: number;
-  path: string;      // single-path line-art landmark (48×48) that self-draws
+  path: string;      // line-art landmark scene (100×70 viewBox) that self-draws
   draw: [number, number]; // self-draw progress window
 }
 
 const DESTINATIONS: Dest[] = [
   {
     key: 'KTM', label: 'Kathmandu', x: 95, y: 150, draw: [0.35, 0.44],
-    // Multi-tier pagoda temples + stupa with eyes + Dharahara tower
+    // Dharahara tower + Durbar Square pagoda temples + birds
     path:
-      // Base platform
-      'M2 44 H22 M4 44 L4 42 H20 V44 '
-      // Pagoda tier 1 (large)
-      + 'M6 42 L10 38 H14 L18 42 M10 38 V36 H14 V38 '
-      // Pagoda tier 2 (medium)
-      + 'M8 36 L10 33 H14 L16 36 M10 33 V31 H14 V33 '
-      // Pagoda tier 3 (small) + finial
-      + 'M10 31 L11 29 H13 L14 31 M12 29 V27 '
-      // Stupa (Swayambhunath)
-      + 'M26 44 V38 Q26 34 30 34 Q34 34 34 38 V44 '
-      + 'M28 36 a2 2 0 1 0 0.01 0 M32 36 a2 2 0 1 0 0.01 0 '
-      // Dharahara tower
-      + 'M38 44 V30 L40 26 H42 L44 30 V44 M40 26 V20 '
-      + 'M39 36 H43 M39 32 H43',
+      // Ground line
+      'M0 68 H100 '
+      // Dharahara tower (tall, detailed)
+      + 'M72 68 V52 M72 52 L68 48 H76 L72 52 '
+      + 'M70 52 V44 H74 V52 M70 44 V36 H74 V44 M70 36 V28 H74 V36 '
+      + 'M70 28 L72 22 L74 28 M72 22 V16 '
+      + 'M69 48 H75 M69 40 H75 M69 32 H75 '
+      // Pagoda temple 1 (large, 3-tier)
+      + 'M20 68 L20 58 M20 58 L14 54 H26 L20 58 '
+      + 'M16 54 L16 50 H24 L24 54 M16 50 L12 46 H28 L24 50 '
+      + 'M14 46 L14 42 H26 L26 46 M14 42 L10 38 H30 L26 42 '
+      + 'M18 38 L18 34 H22 L22 38 M20 34 V30 '
+      // Pagoda temple 2 (smaller, 2-tier)
+      + 'M40 68 L40 60 M40 60 L36 57 H44 L40 60 '
+      + 'M38 57 L38 54 H42 L42 57 M38 54 L35 51 H45 L42 54 '
+      + 'M40 51 L40 48 H40 M40 48 V45 '
+      // Pagoda temple 3 (tiny)
+      + 'M52 68 L52 62 M52 62 L50 60 H54 L52 62 M52 60 V58 '
+      // Stupa dome
+      + 'M84 68 V60 Q84 56 88 56 Q92 56 92 60 V68 '
+      + 'M86 58 a2 2 0 1 0 0.01 0 M90 58 a2 2 0 1 0 0.01 0 '
+      // Birds
+      + 'M8 20 Q10 18 12 20 M14 16 Q16 14 18 16 M30 22 Q32 20 34 22',
   },
   {
     key: 'PKR', label: 'Pokhara', x: 55, y: 100, draw: [0.48, 0.56],
-    // Machhapuchhre (Fishtail) double-peak + Phewa Lake + boat + tree
+    // Machhapuchhre (Fishtail) + mountain range + Phewa Lake + boat + trees + clouds
     path:
-      // Mountain range
-      'M2 34 L8 18 L12 24 L16 12 L20 20 L24 8 L28 18 L32 14 L38 34 '
-      // Fishtail double-peak emphasis
-      + 'M16 12 L18 16 L20 8 L22 16 L24 8 '
+      // Clouds
+      'M10 12 Q14 8 18 12 Q22 8 26 12 Q30 8 34 12 '
+      + 'M60 10 Q64 6 68 10 Q72 6 76 10 '
+      // Mountain range (back)
+      + 'M0 50 L8 32 L14 38 L20 24 L26 34 L32 18 L38 28 L44 14 L50 26 '
+      + 'L56 20 L62 30 L68 22 L74 34 L80 28 L86 36 L92 30 L100 50 '
+      // Fishtail double-peak
+      + 'M44 14 L46 20 L48 10 L50 20 L50 26 '
+      // Tree line along shore
+      + 'M6 56 V50 M6 50 L4 46 L8 46 L6 50 '
+      + 'M16 56 V52 M16 52 L14 48 L18 48 L16 52 '
+      + 'M80 56 V50 M80 50 L78 46 L82 46 L80 50 '
+      + 'M90 56 V52 M90 52 L88 48 L92 48 L90 52 '
       // Lake shoreline
-      + 'M2 42 H42 '
+      + 'M0 56 H100 '
       // Lake ripples
-      + 'M8 44 q4 -2 8 0 M20 44 q4 -2 8 0 M32 44 q4 -2 6 0 '
+      + 'M10 60 Q16 58 22 60 Q28 58 34 60 '
+      + 'M40 62 Q46 60 52 62 Q58 60 64 62 '
+      + 'M66 58 Q72 56 78 58 Q84 56 90 58 '
       // Boat on lake
-      + 'M18 40 L22 38 L26 40 L22 42 Z M22 38 V35 L26 37 '
-      // Lakeside tree
-      + 'M36 42 V34 M36 34 L33 30 M36 34 L39 30 M36 30 L34 26 L36 24 L38 26 L36 30',
+      + 'M38 58 L44 54 L50 58 L44 62 Z M44 54 V50 L50 52 '
+      // Boat reflection
+      + 'M40 64 Q44 62 48 64',
   },
   {
     key: 'CTW', label: 'Chitwan', x: 110, y: 195, draw: [0.61, 0.68],
-    // One-horned rhino + tall grass + safari watchtower + jungle canopy
+    // Rhinoceros + safari watchtower + trees + grass
     path:
-      // Rhino body
-      'M6 34 Q4 30 8 28 Q12 26 16 28 Q20 30 22 34 Q24 36 26 34 '
+      // Ground
+      'M0 68 H100 '
+      // Rhino body (detailed)
+      + 'M18 52 Q14 46 20 42 Q28 38 36 40 Q42 42 46 48 Q48 52 50 50 '
+      + 'Q52 46 56 44 L58 40 Q60 36 64 36 L66 40 '
       // Rhino head + horn
-      + 'M6 34 L4 32 Q3 30 5 28 L7 26 '
-      // Rhino legs
-      + 'M10 34 V38 M16 34 V38 M22 34 V38 M26 34 L26 38 '
+      + 'M18 52 L14 50 L10 46 Q8 42 12 40 L16 38 '
+      + 'M12 40 L10 34 L14 36 '
       // Rhino ear
-      + 'M7 28 L5 26 L8 27 '
-      // Tall grass/reeds
-      + 'M30 42 V32 M30 32 L28 28 M30 32 L32 28 M30 34 L27 30 M30 34 L33 30 '
-      + 'M36 42 V30 M36 30 L34 26 M36 30 L38 26 '
+      + 'M14 40 L10 36 L16 38 '
+      // Rhino legs
+      + 'M24 52 V58 M32 52 V58 M44 50 V56 M50 50 V56 '
+      // Rhino tail
+      + 'M56 44 L58 42 L60 44 '
       // Safari watchtower
-      + 'M40 42 V28 L44 24 L48 28 V42 M40 32 H48 M44 24 V20 '
-      // Jungle canopy
-      + 'M2 42 H28 M36 42 H48',
+      + 'M74 68 V44 L78 40 L82 44 V68 M74 50 H82 M78 40 V36 '
+      + 'M72 44 H84 '
+      // Trees
+      + 'M4 68 V54 M4 54 L1 50 L7 50 L4 54 M4 50 L2 46 L6 46 L4 50 '
+      + 'M62 68 V56 M62 56 L60 52 L64 52 L62 56 '
+      + 'M92 68 V54 M92 54 L90 50 L94 50 L92 54 '
+      // Tall grass
+      + 'M20 68 V60 M20 60 L18 56 M20 62 L22 58 '
+      + 'M38 68 V62 M38 62 L36 58 M38 64 L40 60 '
+      + 'M68 68 V62 M68 62 L66 58 M68 64 L70 60',
   },
   {
     key: 'NGK', label: 'Nagarkot', x: 165, y: 95, draw: [0.72, 0.79],
-    // Sunrise + layered mountain ridges + pine cluster + viewpoint
+    // Sunrise + mountain ridges + pine trees + viewpoint pavilion + clouds + birds
     path:
-      // Sun
-      'M22 22 a6 6 0 0 1 12 0 M28 14 V10 M20 18 L17 15 M36 18 L39 15 '
-      + 'M22 18 L18 16 M34 18 L38 16 '
+      // Clouds
+      + 'M10 14 Q14 10 18 14 Q22 10 26 14 '
+      + 'M68 12 Q72 8 76 12 Q80 8 84 12 '
+      // Sun with rays
+      + 'M44 20 a8 8 0 0 1 16 0 M52 10 V6 M46 14 L42 10 M58 14 L62 10 '
+      + 'M44 16 L40 14 M60 16 L64 14 M44 24 L40 26 M60 24 L64 26 '
       // Mountain ridge 1 (foreground)
-      + 'M2 36 L8 28 L14 32 L20 24 L26 30 L32 22 L38 28 L44 24 L48 30 '
+      + 'M0 52 L8 40 L16 46 L24 34 L32 42 L40 30 L48 38 L56 26 L64 36 '
+      + 'L72 28 L80 38 L88 32 L96 42 L100 52 '
       // Mountain ridge 2 (background)
-      + 'M0 40 L6 34 L12 38 L18 30 L24 36 L30 28 L36 34 L42 30 L48 36 '
+      + 'M0 56 L10 48 L20 52 L30 42 L40 48 L50 38 L60 44 L70 36 L80 42 L90 38 L100 48 '
       // Pine trees
-      + 'M8 42 V34 L5 30 L11 30 L8 34 M8 30 L6 26 L10 26 L8 30 '
-      + 'M38 42 V36 L36 32 L40 32 L38 36 '
-      // Ground
-      + 'M2 42 H48',
+      + 'M12 68 V58 L8 52 L16 52 L12 58 M12 52 L9 46 L15 46 L12 52 '
+      + 'M34 68 V60 L31 55 L37 55 L34 60 '
+      + 'M72 68 V58 L69 53 L75 53 L72 58 M72 53 L70 48 L74 48 L72 53 '
+      // Viewpoint pavilion
+      + 'M82 68 V56 L80 54 H88 L86 56 V68 '
+      + 'M80 54 L84 50 L88 54 M84 50 V48 '
+      // Birds
+      + 'M30 18 Q32 16 34 18 M38 14 Q40 12 42 14 M74 20 Q76 18 78 20',
   },
 ];
 
@@ -376,7 +414,7 @@ export default function SplashVisual({ splashStart }: Props) {
           {DESTINATIONS.map((d) => {
             const drawOffset = progress.interpolate({
               inputRange: d.draw,
-              outputRange: [600, 0],
+              outputRange: [1200, 0],
               extrapolate: 'clamp',
             });
             const pinR = progress.interpolate({
@@ -390,18 +428,18 @@ export default function SplashVisual({ splashStart }: Props) {
               extrapolate: 'clamp',
             });
             return (
-              <G key={d.key} transform={[{ translateX: d.x - 24 }, { translateY: d.y - 26 }]}>
+              <G key={d.key} transform={[{ translateX: d.x - 50 }, { translateY: d.y - 35 }]}>
                 <AnimatedPath
                   d={d.path}
                   stroke={BLUE}
-                  strokeWidth={2.4}
+                  strokeWidth={1.8}
                   strokeLinejoin="round"
                   strokeLinecap="round"
                   fill="none"
-                  strokeDasharray={600}
+                  strokeDasharray={1200}
                   strokeDashoffset={drawOffset}
                 />
-                <AnimatedCircle cx={24} cy={26} r={pinR} fill={GOLD} opacity={pinOpacity} />
+                <AnimatedCircle cx={50} cy={68} r={pinR} fill={GOLD} opacity={pinOpacity} />
               </G>
             );
           })}
