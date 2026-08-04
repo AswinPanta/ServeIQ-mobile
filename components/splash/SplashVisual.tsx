@@ -96,13 +96,19 @@ const EXTRA_PINS = [
   { key: 'EBC', label: 'Everest', x: 215, y: 50 },
 ];
 
-// Stylized Nepal silhouette (viewBox 0 0 100 90) — higher fidelity
+// Nepal silhouette (viewBox 0 0 100 80) — traced from geographic outline
 const NEPAL_MAP =
-  'M18 12 L22 8 L28 10 L32 6 L38 8 L44 4 L50 7 L56 5 L62 8 L68 5 '
-  + 'L74 9 L80 6 L86 10 L90 14 L88 20 L92 26 L88 32 L91 38 L86 44 '
-  + 'L82 50 L78 56 L72 62 L66 68 L60 72 L54 76 L48 80 L42 78 L36 82 '
-  + 'L30 80 L24 84 L18 78 L14 70 L10 62 L7 52 L5 44 L8 36 L5 28 '
-  + 'L10 20 L16 16 L18 12 Z';
+  // Western protrusion (Mahakali zone — the "nose" of Nepal)
+  'M8 22 L4 18 L3 14 L5 10 L8 8 L12 6 L16 8 L18 12 L16 16 L14 18 '
+  // Northern border — jagged Himalayan ridge (west → east)
+  + 'L18 14 L22 10 L26 12 L30 8 L34 10 L38 6 L42 9 L46 5 L50 8 '
+  + 'L54 4 L58 7 L62 5 L66 8 L70 4 L74 7 L78 5 L82 8 L86 6 L90 10 '
+  // Eastern tip
+  + 'L93 14 L94 18 L93 22 '
+  // Southern border — smooth Terai plains (east → west)
+  + 'L90 26 L86 30 L82 34 L78 38 L74 42 L70 46 L66 50 L62 54 L58 57 '
+  + 'L54 60 L50 63 L46 65 L42 67 L38 69 L34 70 L30 71 L26 72 L22 72 '
+  + 'L18 71 L14 69 L10 66 L8 62 L6 56 L5 50 L5 44 L6 38 L7 32 L8 26 L8 22 Z';
 
 // Route segments drawn in real time behind the plane
 const ROUTE_SEGMENTS = [
