@@ -220,11 +220,6 @@ export default function SplashVisual({ splashStart }: Props) {
   const subtitleOpacity = progress.interpolate({ inputRange: [0.93, 0.97], outputRange: [0, 1], extrapolate: 'clamp' });
 
   // ─── F9: wordmark moves to center ────────────────────────────────────────
-  const wordmarkTop = progress.interpolate({
-    inputRange: [P.lockup - 0.04, P.lockup + 0.02],
-    outputRange: [11, 32],
-    extrapolate: 'clamp',
-  });
   const wordmarkOffsetY = progress.interpolate({
     inputRange: [P.lockup - 0.04, P.lockup + 0.02],
     outputRange: [0, 80],
@@ -238,7 +233,7 @@ export default function SplashVisual({ splashStart }: Props) {
 
   // ─── Stage: map + route + landmarks (zoom out at F8, fade to 15% at F9) ───
   const stageOpacity = progress.interpolate({
-    inputRange: [P.mapIn, 0.3, P.lockup, 1],
+    inputRange: [P.mapIn, 0.3, P.lockup - 0.04, P.lockup],
     outputRange: [0, 1, 1, 0.15],
     extrapolate: 'clamp',
   });
