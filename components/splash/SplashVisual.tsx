@@ -157,21 +157,21 @@ const NEPAL_MAP =
 
 // Route segments drawn in real time behind the plane
 const ROUTE_SEGMENTS = [
-  { d: 'M-34 224 L95 150', draw: [0.315, 0.35], len: 200 },
-  { d: 'M95 150 L55 100', draw: [0.44, 0.47], len: 100 },
-  { d: 'M55 100 L110 195', draw: [0.565, 0.6], len: 150 },
-  { d: 'M110 195 L165 95', draw: [0.68, 0.71], len: 150 },
-  { d: 'M165 95 L160 140', draw: [0.79, 0.88], len: 80 },
+  { d: 'M-34 224 L95 150', draw: [0.31, 0.35], len: 200 },
+  { d: 'M95 150 L55 100', draw: [0.44, 0.48], len: 100 },
+  { d: 'M55 100 L110 195', draw: [0.57, 0.61], len: 150 },
+  { d: 'M110 195 L165 95', draw: [0.69, 0.72], len: 150 },
+  { d: 'M165 95 L160 140', draw: [0.79, 0.87], len: 80 },
 ];
 
 // Paper airplane (viewBox centered on 0,0 so translate = position)
 const PLANE = 'M-13 0 L12 -5 L6 0 L12 5 L-13 0 Z';
 
 // Plane keyframes (holds at each destination while it self-draws)
-const FLIGHT_PTS = [0.315, 0.35, 0.44, 0.47, 0.565, 0.6, 0.68, 0.71, 0.79, 0.88, 0.94];
+const FLIGHT_PTS = [0.31, 0.35, 0.44, 0.48, 0.57, 0.61, 0.69, 0.72, 0.79, 0.87, 0.93];
 const PLANE_X = [-34, 95, 95, 55, 55, 110, 110, 165, 165, 160, 160];
 const PLANE_Y = [224, 150, 150, 100, 100, 195, 195, 95, 95, 140, 140];
-const ROT_PTS = [0.315, 0.35, 0.44, 0.47, 0.565, 0.6, 0.68, 0.71, 0.79, 0.88];
+const ROT_PTS = [0.31, 0.35, 0.44, 0.48, 0.57, 0.61, 0.69, 0.72, 0.79, 0.87];
 const ROT_ANGLES = [-29.8, -29.8, -128.7, -128.7, 60, 60, -61.2, -61.2, 96.3, 96.3];
 
 type Props = {
@@ -238,7 +238,7 @@ export default function SplashVisual({ splashStart }: Props) {
     extrapolate: 'clamp',
   });
   const planeOpacity = progress.interpolate({
-    inputRange: [P.journey - 0.005, P.journey, P.lockup, P.lockup + 0.02],
+    inputRange: [P.journey - 0.005, P.journey, P.lockup - 0.02, P.lockup],
     outputRange: [0, 1, 1, 0],
     extrapolate: 'clamp',
   });
@@ -304,38 +304,24 @@ export default function SplashVisual({ splashStart }: Props) {
             ))}
           </AnimatedG>
 
-          {/* Route segments drawn in real time, then glowing softly behind the plane */}
+          {/* Route segments — dashed blue lines drawn in real time */}
           {ROUTE_SEGMENTS.map((seg, i) => {
             const offset = progress.interpolate({
               inputRange: seg.draw,
               outputRange: [seg.len, 0],
               extrapolate: 'clamp',
             });
-            const glowOpacity = progress.interpolate({
-              inputRange: [seg.draw[1], seg.draw[1] + 0.03],
-              outputRange: [0, 0.3],
-              extrapolate: 'clamp',
-            });
             return (
-              <G key={i}>
-                <AnimatedPath
-                  d={seg.d}
-                  stroke={GOLD}
-                  strokeWidth={6}
-                  strokeLinecap="round"
-                  fill="none"
-                  opacity={glowOpacity}
-                />
-                <AnimatedPath
-                  d={seg.d}
-                  stroke={ROUTE_BLUE}
-                  strokeWidth={2.5}
-                  strokeLinecap="round"
-                  fill="none"
-                  strokeDasharray={seg.len}
-                  strokeDashoffset={offset}
-                />
-              </G>
+              <AnimatedPath
+                key={i}
+                d={seg.d}
+                stroke={ROUTE_BLUE}
+                strokeWidth={2}
+                strokeLinecap="round"
+                fill="none"
+                strokeDasharray="8 5"
+                strokeDashoffset={offset}
+              />
             );
           })}
 
