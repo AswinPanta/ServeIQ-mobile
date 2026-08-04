@@ -60,32 +60,77 @@ interface Dest {
 
 const DESTINATIONS: Dest[] = [
   {
-    key: 'KTM', label: 'Kathmandu', x: 95, y: 150, draw: [0.35, 0.43],
-    // Temple cluster + Dharahara tower
-    path: 'M4 42 H24 M6 42 L11 36 H19 L24 42 M11 36 L11 31 H19 L19 36 M15 31 V24 '
-      + 'M26 42 L28 39 H32 L34 42 M28 39 V36 H32 L32 39 '
-      + 'M34 42 V28 L37 22 H41 L44 28 V42 M41 22 V15 M36 34 H42 M39 31 a2 2 0 1 0 0.01 0',
+    key: 'KTM', label: 'Kathmandu', x: 95, y: 150, draw: [0.35, 0.44],
+    // Multi-tier pagoda temples + stupa with eyes + Dharahara tower
+    path:
+      // Base platform
+      'M2 44 H22 M4 44 L4 42 H20 V44 '
+      // Pagoda tier 1 (large)
+      + 'M6 42 L10 38 H14 L18 42 M10 38 V36 H14 V38 '
+      // Pagoda tier 2 (medium)
+      + 'M8 36 L10 33 H14 L16 36 M10 33 V31 H14 V33 '
+      // Pagoda tier 3 (small) + finial
+      + 'M10 31 L11 29 H13 L14 31 M12 29 V27 '
+      // Stupa (Swayambhunath)
+      + 'M26 44 V38 Q26 34 30 34 Q34 34 34 38 V44 '
+      + 'M28 36 a2 2 0 1 0 0.01 0 M32 36 a2 2 0 1 0 0.01 0 '
+      // Dharahara tower
+      + 'M38 44 V30 L40 26 H42 L44 30 V44 M40 26 V20 '
+      + 'M39 36 H43 M39 32 H43',
   },
   {
-    key: 'PKR', label: 'Pokhara', x: 55, y: 100, draw: [0.48, 0.55],
-    // Machhapuchhre + Phewa Lake + boat + ripples + lakeside tree
-    path: 'M4 28 L14 6 L18 14 L22 6 L32 28 M18 14 L22 6 M6 42 H42 M14 42 q5 -4 10 0 '
-      + 'M19 42 V36 L24 40 L19 42 M16 45 q3 -2 6 0 M28 45 q3 -2 6 0 '
-      + 'M38 42 V34 M38 36 L35 32 M38 34 L41 30 M33 30 Q36 26 38 28 Q40 26 43 30',
+    key: 'PKR', label: 'Pokhara', x: 55, y: 100, draw: [0.48, 0.56],
+    // Machhapuchhre (Fishtail) double-peak + Phewa Lake + boat + tree
+    path:
+      // Mountain range
+      'M2 34 L8 18 L12 24 L16 12 L20 20 L24 8 L28 18 L32 14 L38 34 '
+      // Fishtail double-peak emphasis
+      + 'M16 12 L18 16 L20 8 L22 16 L24 8 '
+      // Lake shoreline
+      + 'M2 42 H42 '
+      // Lake ripples
+      + 'M8 44 q4 -2 8 0 M20 44 q4 -2 8 0 M32 44 q4 -2 6 0 '
+      // Boat on lake
+      + 'M18 40 L22 38 L26 40 L22 42 Z M22 38 V35 L26 37 '
+      // Lakeside tree
+      + 'M36 42 V34 M36 34 L33 30 M36 34 L39 30 M36 30 L34 26 L36 24 L38 26 L36 30',
   },
   {
-    key: 'CTW', label: 'Chitwan', x: 110, y: 195, draw: [0.61, 0.67],
-    // One-horned rhino + grass + safari watchtower
-    path: 'M7 32 Q5 28 9 27 Q14 25 18 29 Q24 31 26 34 L26 39 M26 34 L28 30 Q30 27 34 27 L36 30 '
-      + 'Q33 31 32 34 L32 39 M7 32 L7 39 M20 40 H14 M34 27 L33 23 M14 25 L15 22 L17 24 '
-      + 'M4 41 H30 M36 41 H44 M8 43 h6 M24 43 h8 M40 40 V26 L44 22 L48 26 V40 M40 30 H48 M44 22 V18',
+    key: 'CTW', label: 'Chitwan', x: 110, y: 195, draw: [0.61, 0.68],
+    // One-horned rhino + tall grass + safari watchtower + jungle canopy
+    path:
+      // Rhino body
+      'M6 34 Q4 30 8 28 Q12 26 16 28 Q20 30 22 34 Q24 36 26 34 '
+      // Rhino head + horn
+      + 'M6 34 L4 32 Q3 30 5 28 L7 26 '
+      // Rhino legs
+      + 'M10 34 V38 M16 34 V38 M22 34 V38 M26 34 L26 38 '
+      // Rhino ear
+      + 'M7 28 L5 26 L8 27 '
+      // Tall grass/reeds
+      + 'M30 42 V32 M30 32 L28 28 M30 32 L32 28 M30 34 L27 30 M30 34 L33 30 '
+      + 'M36 42 V30 M36 30 L34 26 M36 30 L38 26 '
+      // Safari watchtower
+      + 'M40 42 V28 L44 24 L48 28 V42 M40 32 H48 M44 24 V20 '
+      // Jungle canopy
+      + 'M2 42 H28 M36 42 H48',
   },
   {
-    key: 'NGK', label: 'Nagarkot', x: 165, y: 95, draw: [0.72, 0.78],
-    // Sunrise + mountain ridges + pines + viewpoint
-    path: 'M18 30 a8 8 0 0 1 16 0 M26 20 V14 M20 24 L17 21 M32 24 L35 21 '
-      + 'M4 38 L12 30 L18 35 L26 27 L34 34 L42 28 L46 32 '
-      + 'M14 42 V34 M14 34 L11 30 L17 30 L14 34 M14 30 L12 26 L16 26 L14 30 M34 42 V38 L37 42',
+    key: 'NGK', label: 'Nagarkot', x: 165, y: 95, draw: [0.72, 0.79],
+    // Sunrise + layered mountain ridges + pine cluster + viewpoint
+    path:
+      // Sun
+      'M22 22 a6 6 0 0 1 12 0 M28 14 V10 M20 18 L17 15 M36 18 L39 15 '
+      + 'M22 18 L18 16 M34 18 L38 16 '
+      // Mountain ridge 1 (foreground)
+      + 'M2 36 L8 28 L14 32 L20 24 L26 30 L32 22 L38 28 L44 24 L48 30 '
+      // Mountain ridge 2 (background)
+      + 'M0 40 L6 34 L12 38 L18 30 L24 36 L30 28 L36 34 L42 30 L48 36 '
+      // Pine trees
+      + 'M8 42 V34 L5 30 L11 30 L8 34 M8 30 L6 26 L10 26 L8 30 '
+      + 'M38 42 V36 L36 32 L40 32 L38 36 '
+      // Ground
+      + 'M2 42 H48',
   },
 ];
 
