@@ -219,6 +219,23 @@ export default function SplashVisual({ splashStart }: Props) {
   const asyY = progress.interpolate({ inputRange: [0.19, 0.26], outputRange: [10, 0], extrapolate: 'clamp' });
   const subtitleOpacity = progress.interpolate({ inputRange: [0.93, 0.97], outputRange: [0, 1], extrapolate: 'clamp' });
 
+  // ─── F9: wordmark moves to center ────────────────────────────────────────
+  const wordmarkTop = progress.interpolate({
+    inputRange: [P.lockup - 0.04, P.lockup + 0.02],
+    outputRange: [11, 32],
+    extrapolate: 'clamp',
+  });
+  const wordmarkOffsetY = progress.interpolate({
+    inputRange: [P.lockup - 0.04, P.lockup + 0.02],
+    outputRange: [0, 80],
+    extrapolate: 'clamp',
+  });
+  const decorativeOpacity = progress.interpolate({
+    inputRange: [P.lockup, P.lockup + 0.04],
+    outputRange: [0, 0.15],
+    extrapolate: 'clamp',
+  });
+
   // ─── Stage: map + route + landmarks (zoom out at F8, fade to 15% at F9) ───
   const stageOpacity = progress.interpolate({
     inputRange: [P.mapIn, 0.3, P.lockup, 1],
@@ -263,7 +280,10 @@ export default function SplashVisual({ splashStart }: Props) {
 
       <Animated.View
         pointerEvents="none"
-        style={[styles.brandWrap, { opacity: wordmarkOpacity, transform: [{ scale: seScale }] }]}
+        style={[styles.brandWrap, {
+          opacity: wordmarkOpacity,
+          transform: [{ scale: seScale }, { translateY: wordmarkOffsetY }],
+        }]}
       >
         <View style={styles.wordmarkRow}>
           <Animated.Text style={[styles.wordmark, styles.wordmarkBlue, { transform: [{ translateX: sX }] }]}>S</Animated.Text>
@@ -274,6 +294,29 @@ export default function SplashVisual({ splashStart }: Props) {
         <Animated.Text style={[styles.subtitle, { opacity: subtitleOpacity }]}>
           Hospitality Management Platform
         </Animated.Text>
+      </Animated.View>
+
+      {/* Decorative mountain/tree silhouettes (F9) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.decorativeWrap, { opacity: decorativeOpacity }]}
+      >
+        <Svg width={280} height={50} viewBox="0 0 280 50">
+          <G>
+            <Path
+              d="M0 45 L30 20 L50 32 L80 12 L110 28 L140 8 L170 25 L200 15 L230 30 L260 22 L280 45"
+              stroke={BLUE}
+              strokeWidth={1.5}
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <Path d="M35 45 V36 L30 30 L40 30 L35 36 M35 30 L32 25 L38 25 L35 30" stroke={BLUE} strokeWidth={1.2} fill="none" />
+            <Path d="M85 45 V38 L81 33 L89 33 L85 38" stroke={BLUE} strokeWidth={1.2} fill="none" />
+            <Path d="M145 45 V34 L140 28 L150 28 L145 34 M145 28 L142 23 L148 23 L145 28" stroke={BLUE} strokeWidth={1.2} fill="none" />
+            <Path d="M205 45 V36 L201 31 L209 31 L205 36" stroke={BLUE} strokeWidth={1.2} fill="none" />
+            <Path d="M250 45 V38 L246 33 L254 33 L250 38 M250 33 L247 28 L253 28 L250 33" stroke={BLUE} strokeWidth={1.2} fill="none" />
+          </G>
+        </Svg>
       </Animated.View>
 
       {/* Journey stage */}
@@ -296,6 +339,15 @@ export default function SplashVisual({ splashStart }: Props) {
               strokeDashoffset={mapOffset}
             />
           </G>
+
+          {/* Faint mountain/temple silhouettes inside map (F3) */}
+          <AnimatedG opacity={faintOpacity}>
+            <G transform={[{ translateX: 50 }, { translateY: 30 }, { scale: 2.2 }]}>
+              <Path d="M0 40 L10 25 L20 35 L30 15 L40 30 L50 10 L60 28 L70 18 L80 38" stroke={BLUE} strokeWidth={1} fill="none" opacity={0.3} />
+              <Path d="M20 42 L22 38 H26 L28 42 M23 38 V35 H25 V38" stroke={BLUE} strokeWidth={0.8} fill="none" opacity={0.25} />
+              <Path d="M55 42 L57 36 H61 L63 42 M58 36 V33 H60 V36" stroke={BLUE} strokeWidth={0.8} fill="none" opacity={0.25} />
+            </G>
+          </AnimatedG>
 
           {/* Faint pre-markers (F3) */}
           <AnimatedG opacity={faintOpacity}>
@@ -464,10 +516,10 @@ const styles = StyleSheet.create({
   wordmarkGold: { color: GOLD },
   subtitle: {
     marginTop: 10,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: GRAY,
-    letterSpacing: 2.2,
+    color: GOLD,
+    letterSpacing: 3,
     textTransform: 'uppercase',
   },
 
@@ -486,5 +538,11 @@ const styles = StyleSheet.create({
     top: -8,
     width: 30,
     height: 16,
+  },
+  decorativeWrap: {
+    position: 'absolute',
+    bottom: '8%',
+    width: '100%',
+    alignItems: 'center',
   },
 });
