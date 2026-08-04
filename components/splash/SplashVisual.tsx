@@ -150,7 +150,7 @@ const DESTINATIONS: Dest[] = [
     // Sunrise + mountain ridges + pine trees + viewpoint pavilion + clouds + birds
     path:
       // Clouds
-      + 'M10 14 Q14 10 18 14 Q22 10 26 14 '
+      'M10 14 Q14 10 18 14 Q22 10 26 14 '
       + 'M68 12 Q72 8 76 12 Q80 8 84 12 '
       // Sun with rays
       + 'M44 20 a8 8 0 0 1 16 0 M52 10 V6 M46 14 L42 10 M58 14 L62 10 '
