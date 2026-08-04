@@ -96,10 +96,13 @@ const EXTRA_PINS = [
   { key: 'EBC', label: 'Everest', x: 215, y: 50 },
 ];
 
-// Stylized Nepal silhouette (viewBox 0 0 100 90)
+// Stylized Nepal silhouette (viewBox 0 0 100 90) — higher fidelity
 const NEPAL_MAP =
-  'M22 10 L30 6 L38 10 L48 5 L56 9 L66 6 L76 10 L86 7 L92 13 L88 21 L93 29 L87 35 L91 43 L84 49 L75 53 '
-  + 'L70 61 L62 67 L55 75 L47 79 L41 74 L35 83 L27 78 L21 85 L15 76 L11 66 L7 55 L5 45 L9 35 L5 27 L13 19 L22 10 Z';
+  'M18 12 L22 8 L28 10 L32 6 L38 8 L44 4 L50 7 L56 5 L62 8 L68 5 '
+  + 'L74 9 L80 6 L86 10 L90 14 L88 20 L92 26 L88 32 L91 38 L86 44 '
+  + 'L82 50 L78 56 L72 62 L66 68 L60 72 L54 76 L48 80 L42 78 L36 82 '
+  + 'L30 80 L24 84 L18 78 L14 70 L10 62 L7 52 L5 44 L8 36 L5 28 '
+  + 'L10 20 L16 16 L18 12 Z';
 
 // Route segments drawn in real time behind the plane
 const ROUTE_SEGMENTS = [
