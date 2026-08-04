@@ -182,7 +182,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 300 }} contentInsetAdjustmentBehavior="automatic">
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 20 }} contentInsetAdjustmentBehavior="automatic">
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
@@ -436,6 +436,9 @@ export default function ProfileScreen() {
           <Text style={s.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Bottom spacer to clear absolute tab bar */}
+      <View style={{ height: 100 }} />
 
       {modifyBooking && (
         <BookingModifyModal
