@@ -182,7 +182,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 120 }} contentInsetAdjustmentBehavior="automatic">
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 200 }} contentInsetAdjustmentBehavior="automatic">
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
