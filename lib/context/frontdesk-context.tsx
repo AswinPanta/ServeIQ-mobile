@@ -2,6 +2,7 @@ import React, { createContext, useContext, useCallback, useState, useEffect, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { operationsApi } from '@/lib/api/operations-api';
 import { hostApi } from '@/lib/api/host-api';
+import { bookingApi } from '@/lib/api/booking-api';
 import { loadOpsState, persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
 import { loadBridgedGuestBookings } from '@/lib/utils';
 import type { AdminRoom } from '@/types/api';
@@ -272,6 +273,13 @@ function mapBackendRoomToFD(r: AdminRoom): FrontDeskRoom {
   };
 }
 
+function mapFDStatusToBackend(status: RoomStatus): string {
+  const map: Record<RoomStatus, string> = {
+    available: 'AVAILABLE', occupied: 'OCCUPIED', dirty: 'DIRTY', maintenance: 'MAINTENANCE',
+  };
+  return map[status] || 'AVAILABLE';
+}
+
 function mapBackendBookingToFD(b: any): FrontDeskBooking {
   return {
     id: b.id,
@@ -295,6 +303,7 @@ const FrontDeskContext = createContext<FrontDeskContextValue | null>(null);
 
 export function FrontDeskProvider({ children, propertyId: propPropertyId }: { children: React.ReactNode; propertyId?: string }) {
   const activePropertyId = useRef(propPropertyId || 'prop-1');
+  const backendRoomsRef = useRef<Map<string, AdminRoom>>(new Map());
   const [propertyId, setPropertyId] = useState<string>(propPropertyId || 'prop-1');
   const defaultPropId = propPropertyId || 'prop-1';
   const [rooms, setRooms] = useState<FrontDeskRoom[]>(() => getRoomsForProperty(defaultPropId));
@@ -371,7 +380,11 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
     if (isValidUuid(pid)) {
       hostApi.getRooms(pid, () => []).then((apiRooms: any[]) => {
         if (!cancelled && apiRooms.length > 0) {
-          setRooms(apiRooms.map(mapBackendRoomToFD));
+          const mapped = apiRooms.map(mapBackendRoomToFD);
+          setRooms(mapped);
+          const idMap = new Map<string, AdminRoom>();
+          apiRooms.forEach((r: AdminRoom) => idMap.set(r.room_name, r));
+          backendRoomsRef.current = idMap;
         }
       });
       hostApi.getPropertyBookings(pid, () => []).then((apiBookings: any[]) => {
@@ -398,6 +411,13 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       persistOpsState(OPS_STORAGE_KEYS.rooms(activePropertyId.current), next);
       return next;
     });
+    const pid = activePropertyId.current;
+    if (isValidUuid(pid)) {
+      const backendRoom = backendRoomsRef.current.get(roomNumber);
+      if (backendRoom) {
+        hostApi.updateRoom(pid, backendRoom.id, { status: mapFDStatusToBackend(status) as any }, () => backendRoom);
+      }
+    }
   }, []);
 
   const getBooking = useCallback((id: string) => bookings.find(b => b.id === id), [bookings]);
@@ -446,8 +466,13 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
   }, [bookings]);
 
   const checkIn = useCallback((guest: FrontDeskBooking, roomNumber: string) => {
-    operationsApi.checkIn({ booking_ref: guest.ref, room_number: roomNumber }, () => {});
     const pid = activePropertyId.current;
+    if (isValidUuid(pid)) {
+      const backendRoom = backendRoomsRef.current.get(roomNumber);
+      if (backendRoom) {
+        hostApi.updateRoom(pid, backendRoom.id, { status: 'OCCUPIED' as any }, () => backendRoom);
+      }
+    }
     setRooms(prev => {
       const next = prev.map(r =>
         r.room_number === roomNumber ? { ...r, status: 'occupied' as RoomStatus, guest_name: guest.guest_name, booking_ref: guest.ref } : r
@@ -475,6 +500,12 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
   const checkOut = useCallback((guestId: string, roomNumber: string) => {
     const pid = activePropertyId.current;
     const booking = bookings.find(b => b.id === guestId);
+    if (isValidUuid(pid)) {
+      const backendRoom = backendRoomsRef.current.get(roomNumber);
+      if (backendRoom) {
+        hostApi.updateRoom(pid, backendRoom.id, { status: 'DIRTY' as any }, () => backendRoom);
+      }
+    }
     setRooms(prev => {
       const next = prev.map(r =>
         r.room_number === roomNumber ? { ...r, status: 'dirty' as RoomStatus, guest_name: undefined, booking_ref: undefined } : r
@@ -483,9 +514,6 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       return next;
     });
     setBookings(prev => {
-      if (booking) {
-        operationsApi.checkOut({ booking_ref: booking.ref, payment_method: 'cash' }, () => {});
-      }
       const next = prev.map(b =>
         b.id === guestId ? { ...b, status: 'checked_out' as BookingArrivalStatus } : b
       );
@@ -535,6 +563,18 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       persistOpsState(OPS_STORAGE_KEYS.bookings(pid), next);
       return next;
     });
+    if (isValidUuid(pid)) {
+      bookingApi.createBooking({
+        idempotency_key: `fd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        property_id: pid,
+        room_ids: [],
+        check_in: data.checkIn,
+        check_out: data.checkOut,
+        adults: data.adults,
+        children: data.children || 0,
+        special_requests: data.specialRequests || undefined,
+      }, () => ({ id: newBooking.id, ref_number: newBooking.ref, status: 'confirmed' } as any));
+    }
     addTimelineEvent({
       bookingRef: newBooking.ref,
       type: 'created',
@@ -572,6 +612,7 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       return next;
     });
     if (booking) {
+      bookingApi.cancelBooking(booking.ref);
       addTimelineEvent({
         bookingRef: booking.ref,
         type: 'cancelled',

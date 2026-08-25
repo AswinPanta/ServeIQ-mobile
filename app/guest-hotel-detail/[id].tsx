@@ -24,7 +24,7 @@ import { safeGoBack } from "@/lib/utils";
 import type { Hotel } from '@/types/api';
 import { BG, SRS, NEUTRAL, SLATE, BRAND } from '@/lib/constants/figma-tokens';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import MapView, { Marker } from 'react-native-maps';
+import { OSMMap } from '@/components/feature/osm-map';
 
 export default function GuestHotelDetail() {
   const {
@@ -253,24 +253,11 @@ export default function GuestHotelDetail() {
               <View style={s.section}>
                 <Text style={s.sectionTitle}>Location</Text>
                 <View style={s.mapContainer}>
-                  <MapView
-                    style={s.map}
-                    initialRegion={{
-                      latitude: hotel.latitude || hotel.coordinates?.lat || 27.7172,
-                      longitude: hotel.longitude || hotel.coordinates?.lng || 85.324,
-                      latitudeDelta: 0.01,
-                      longitudeDelta: 0.01,
-                    }}
-                    scrollEnabled={false}
-                  >
-                    <Marker
-                      coordinate={{
-                        latitude: hotel.latitude || hotel.coordinates?.lat || 27.7172,
-                        longitude: hotel.longitude || hotel.coordinates?.lng || 85.324,
-                      }}
-                      title={hotel.name}
-                    />
-                  </MapView>
+                  <OSMMap
+                    latitude={hotel.latitude || hotel.coordinates?.lat || 27.7172}
+                    longitude={hotel.longitude || hotel.coordinates?.lng || 85.324}
+                    title={hotel.name}
+                  />
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
                   <IconSymbol name="location" size={14} color={SRS.teal} />
