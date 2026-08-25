@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, SectionList, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -8,9 +8,10 @@ import { useCoupons } from '@/lib/context/coupon-context';
 import type { Coupon } from '@/types/coupon';
 import { FONTS } from '@/constants/portal-theme';
 import type { TFunction } from 'i18next';
+import { CORAL, BRAND, SLATE, NEUTRAL, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#E63946';
-const NAVY = '#1A3C5E';
+const ACCENT = CORAL[500];
+const NAVY = BRAND.navyLight;
 
 function getExpiryText(expiresAt: string, t: TFunction): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -22,7 +23,8 @@ function getExpiryText(expiresAt: string, t: TFunction): string {
 function CouponCard({ coupon }: { coupon: Coupon }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
-  const expired = coupon.status === 'expired' || new Date(coupon.expiresAt).getTime() <= Date.now();
+  const now = useMemo(() => Date.now(), []);
+  const expired = coupon.status === 'expired' || new Date(coupon.expiresAt).getTime() <= now;
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(coupon.code);
@@ -33,24 +35,24 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
   return (
     <View style={[styles.couponCard, expired && styles.couponCardExpired]}>
       <View style={[styles.couponIcon, expired && styles.couponIconExpired]}>
-        <IconSymbol name="discount" size={18} color={expired ? '#94A3B8' : ACCENT} />
+        <IconSymbol name="discount" size={18} color={expired ? SLATE[400] : ACCENT} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.couponCode, expired && { color: '#94A3B8' }]}>{coupon.code}</Text>
-        <Text style={[styles.couponDesc, expired && { color: '#CBD5E1' }]}>{coupon.description}</Text>
-        <Text style={[styles.expiryText, expired && { color: '#CBD5E1' }]}>
+        <Text style={[styles.couponCode, expired && { color: SLATE[400] }]}>{coupon.code}</Text>
+        <Text style={[styles.couponDesc, expired && { color: SLATE[300] }]}>{coupon.description}</Text>
+        <Text style={[styles.expiryText, expired && { color: SLATE[300] }]}>
           {getExpiryText(coupon.expiresAt, t)}
         </Text>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 6 }}>
-        <Text style={[styles.couponValue, expired && { color: '#94A3B8' }]}>
+        <Text style={[styles.couponValue, expired && { color: SLATE[400] }]}>
           {coupon.discountType === 'percentage' ? `${coupon.discount}%` : `\u20A8 ${coupon.discount}`}
         </Text>
         <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
           {copied ? (
             <Text style={styles.copiedText}>{t('profile.coupons.copied')}</Text>
           ) : (
-            <IconSymbol name="content.copy" size={16} color={expired ? '#94A3B8' : ACCENT} />
+            <IconSymbol name="content.copy" size={16} color={expired ? SLATE[400] : ACCENT} />
           )}
         </TouchableOpacity>
       </View>
@@ -62,7 +64,7 @@ function EmptyState({ label }: { label: string }) {
   return (
     <View style={styles.emptyState}>
       <View style={styles.emptyIcon}>
-        <IconSymbol name="confirmation-number" size={32} color="#E2E8F0" />
+        <IconSymbol name="confirmation-number" size={32} color={SLATE[200]} />
       </View>
       <Text style={styles.emptyText}>{label}</Text>
     </View>
@@ -73,7 +75,7 @@ export default function CouponsScreen() {
   const { coupons } = useCoupons();
   const { t } = useTranslation();
 
-  const now = Date.now();
+  const now = useMemo(() => Date.now(), []);
   const active = coupons.filter(c => c.status === 'active' && new Date(c.expiresAt).getTime() > now);
   const expired = coupons.filter(c => c.status !== 'active' || new Date(c.expiresAt).getTime() <= now);
 
@@ -115,7 +117,7 @@ export default function CouponsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -123,28 +125,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 56,
     paddingBottom: 12,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: NEUTRAL[50],
   },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SLATE[100] },
   title: { fontSize: 24, fontWeight: '700', color: NAVY, letterSpacing: -0.5, fontFamily: FONTS.sora },
   list: { paddingHorizontal: 16, paddingBottom: 120 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: NAVY, fontFamily: FONTS.inter.semiBold },
-  sectionCount: { fontSize: 12, fontWeight: '600', color: '#94A3B8', backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, fontFamily: FONTS.inter.semiBold },
+  sectionCount: { fontSize: 12, fontWeight: '600', color: SLATE[400], backgroundColor: SLATE[100], paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, fontFamily: FONTS.inter.semiBold },
   couponCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14,
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 10,
+    backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100], marginBottom: 10,
   },
   couponCardExpired: { opacity: 0.6 },
   couponIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' },
-  couponIconExpired: { backgroundColor: '#F1F5F9' },
+  couponIconExpired: { backgroundColor: SLATE[100] },
   couponCode: { fontSize: 14, fontWeight: '700', color: NAVY, letterSpacing: 1, fontFamily: FONTS.inter.bold },
-  couponDesc: { fontSize: 12, color: '#64748B', marginTop: 2, fontFamily: FONTS.inter.regular },
+  couponDesc: { fontSize: 12, color: SLATE[500], marginTop: 2, fontFamily: FONTS.inter.regular },
   expiryText: { fontSize: 11, color: ACCENT, fontWeight: '600', marginTop: 4, fontFamily: FONTS.inter.semiBold },
   couponValue: { fontSize: 14, fontWeight: '700', color: ACCENT, fontFamily: FONTS.inter.bold },
   copyBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: ACCENT + '08', alignItems: 'center', justifyContent: 'center' },
   copiedText: { fontSize: 9, fontWeight: '700', color: ACCENT, fontFamily: FONTS.inter.bold },
   emptyState: { alignItems: 'center', paddingVertical: 32, gap: 12 },
-  emptyIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '500', fontFamily: FONTS.inter.medium },
+  emptyIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: SLATE[50], alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SLATE[100] },
+  emptyText: { fontSize: 14, color: SLATE[400], fontWeight: '500', fontFamily: FONTS.inter.medium },
 });

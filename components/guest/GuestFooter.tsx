@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, Image } from 'react-native';
 import { useAppLanguage } from '@/hooks/use-app-language';
+import { NEUTRAL, SLATE, SRS, BRAND, BG, TEXT, CORAL } from '@/lib/constants/figma-tokens';
 
 const FOOTER_LINKS = {
   Support: ['Help Center', 'AirCover', 'Safety information', 'Supporting people with disabilities', 'Cancellation options'],
   Hosting: ['Try hosting', 'AirCover for Hosts', 'Explore hosting resources', 'Visit our community forum', 'Responsible hosting'],
-  StayEasy: ['Newsroom', 'Features', 'Careers', 'Investors', 'Pricing & Plans'],
+  ServeIQ: ['Newsroom', 'Features', 'Careers', 'Investors', 'Pricing & Plans'],
   Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Sitemap', 'Company details'],
 };
 
@@ -17,11 +18,14 @@ export function GuestFooter() {
     <View style={s.container}>
       {/* Brand */}
       <View style={s.brandRow}>
-        <View style={s.logoDot} />
+        <Image source={require('@/assets/images/serveiq-logo.png')} style={s.logoImage} />
         <Text style={s.brandName}>
-          Stay<Text style={s.brandAccent}>Easy</Text>
+          Serve<Text style={s.brandAccent}>IQ</Text>
         </Text>
       </View>
+
+      {/* Tagline */}
+      <Text style={s.tagline}>Service with Intelligence and Quality</Text>
 
       {/* Links Grid */}
       <View style={s.linksGrid}>
@@ -42,7 +46,7 @@ export function GuestFooter() {
 
       {/* Bottom Row */}
       <View style={s.bottomRow}>
-        <Text style={s.copyright}>© 2026 StayEasy, Inc. All rights reserved.</Text>
+        <Text style={s.copyright}>© 2026 ServeIQ, Inc. All rights reserved.</Text>
         <View style={s.bottomActions}>
           <Pressable style={s.actionBtn} onPress={() => setShowLangPicker(true)}>
             <Text style={s.actionIcon}>🌐</Text>
@@ -90,9 +94,9 @@ const s = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 40,
     paddingHorizontal: 20,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: NEUTRAL[50],
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: SLATE[100],
   },
   brandRow: {
     flexDirection: 'row',
@@ -100,20 +104,25 @@ const s = StyleSheet.create({
     gap: 8,
     marginBottom: 24,
   },
-  logoDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2E86AB',
+  logoImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
   },
   brandName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     letterSpacing: -0.5,
   },
   brandAccent: {
-    color: '#2E86AB',
+    color: SRS.teal,
+  },
+  tagline: {
+    fontSize: 12,
+    color: SLATE[400],
+    marginBottom: 24,
+    fontStyle: 'italic',
   },
   linksGrid: {
     flexDirection: 'row',
@@ -128,7 +137,7 @@ const s = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     marginBottom: 4,
   },
   linkItem: {
@@ -136,11 +145,11 @@ const s = StyleSheet.create({
   },
   linkText: {
     fontSize: 12,
-    color: '#64748B',
+    color: SLATE[500],
   },
   divider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: SLATE[200],
     marginBottom: 16,
   },
   bottomRow: {
@@ -152,7 +161,7 @@ const s = StyleSheet.create({
   },
   copyright: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: SLATE[400],
   },
   bottomActions: {
     flexDirection: 'row',
@@ -169,7 +178,7 @@ const s = StyleSheet.create({
   actionText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#475569',
+    color: SLATE[600],
   },
   modalOverlay: {
     flex: 1,
@@ -178,12 +187,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   modalCard: {
-    backgroundColor: '#fff',
+    backgroundColor: BG.white,
     borderRadius: 16,
     padding: 24,
     width: '80%',
     maxHeight: '60%',
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -192,7 +201,7 @@ const s = StyleSheet.create({
   modalTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -203,19 +212,19 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
   langLabel: {
     fontSize: 15,
-    color: '#334155',
+    color: SLATE[700],
   },
   langLabelActive: {
-    color: '#E63946',
+    color: CORAL[500],
     fontWeight: '600',
   },
   langCheck: {
     fontSize: 16,
-    color: '#E63946',
+    color: CORAL[500],
     fontWeight: '700',
   },
 });

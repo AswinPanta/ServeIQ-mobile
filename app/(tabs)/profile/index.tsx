@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
@@ -9,9 +9,10 @@ import { useFavorites } from '@/lib/context/favorites-context';
 import type { GuestProfile } from '@/types/api';
 import { FONTS } from '@/constants/portal-theme';
 import * as ImagePicker from 'expo-image-picker';
+import { SRS, BRAND, BLUE, PURPLE, CORAL, AMBER, STATUS, INDIGO, TEAL, NEUTRAL, SLATE, BG, STATUS_COLORS, RED } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2E86AB';
-const NAVY = '#1A3C5E';
+const ACCENT = SRS.teal;
+const NAVY = BRAND.navyLight;
 
 interface MenuItem {
   icon: IconSymbolName;
@@ -21,16 +22,17 @@ interface MenuItem {
 }
 
 const MENU_ITEMS: MenuItem[] = [
-  { icon: 'calendar', label: 'My Bookings', route: '/(tabs)/profile/bookings', color: '#2563EB' },
-  { icon: 'person.fill', label: 'About Me', route: '/(tabs)/profile/about', color: '#7C3AED' },
-  { icon: 'heart', label: 'Favourites', route: '/(tabs)/profile/favorites', color: '#E63946' },
-  { icon: 'discount', label: 'My Coupons', route: '/(tabs)/profile/coupons', color: '#F59E0B' },
-  { icon: 'star', label: 'My Reviews', route: '/(tabs)/profile/reviews', color: '#10B981' },
-  { icon: 'notifications', label: 'Notifications', route: '/(tabs)/profile/notifications', color: '#6366F1' },
+  { icon: 'calendar', label: 'My Bookings', route: '/(tabs)/profile/bookings', color: BLUE[600] },
+  { icon: 'person.fill', label: 'About Me', route: '/(tabs)/profile/about', color: PURPLE[700] },
+  { icon: 'heart', label: 'Favourites', route: '/(tabs)/profile/favorites', color: CORAL[500] },
+  { icon: 'discount', label: 'My Coupons', route: '/(tabs)/profile/coupons', color: AMBER[500] },
+  { icon: 'star', label: 'My Reviews', route: '/(tabs)/profile/reviews', color: STATUS.activeGreen },
+  { icon: 'notifications', label: 'Notifications', route: '/(tabs)/profile/notifications', color: INDIGO[500] },
+  { icon: 'lock', label: 'Security', route: '/(tabs)/profile/security', color: TEAL[600] },
 ];
 
 export default function ProfileScreen() {
-  const { user: authUser, logout } = useAuth();
+  const { user: authUser, logout, isLoading: authLoading, portal, setUser } = useAuth();
   const user = authUser as GuestProfile | null;
   const { bookings } = useBookings();
   const { favorites } = useFavorites();
@@ -38,15 +40,42 @@ export default function ProfileScreen() {
   const [photoData, setPhotoData] = useState('');
   const photoKey = user?.id ? `photo_${user.id}` : 'photo_guest';
 
+  // Refresh user data from AsyncStorage when screen gains focus (after edit profile)
+  useFocusEffect(
+    useCallback(() => {
+      const refreshUser = async () => {
+        if (portal) {
+          try {
+            const keys = require('@/constants/api-config').getPortalStorageKeys(portal);
+            const raw = await AsyncStorage.getItem(keys.USER_PROFILE);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && parsed.name && parsed.name !== user?.name) {
+                setUser(parsed);
+              }
+              // Also sync photo
+              const profilePhoto = parsed?.profile_photo || parsed?.profile_image;
+              if (profilePhoto) setPhotoData(profilePhoto);
+            }
+          } catch {}
+        }
+      };
+      refreshUser();
+    }, [portal, user?.name])
+  );
+
+  // Sync photo from user object whenever it changes (e.g. after edit profile)
   useEffect(() => {
+    let cancelled = false;
     const bp = user && 'profile_image' in user ? (user as any).profile_image : undefined;
     const bp2 = user && 'profile_photo' in user ? (user as any).profile_photo : undefined;
     const backendPhoto = bp || bp2;
     if (backendPhoto) {
-      setPhotoData(backendPhoto);
+      if (!cancelled) setPhotoData(backendPhoto);
     } else if (photoKey) {
-      AsyncStorage.getItem(photoKey).then(d => { if (d) setPhotoData(d); });
+      AsyncStorage.getItem(photoKey).then(d => { if (!cancelled && d) setPhotoData(d); });
     }
+    return () => { cancelled = true; };
   }, [photoKey, user]);
 
   const firstName = user?.name?.split(' ')[0] || '';
@@ -62,7 +91,7 @@ export default function ProfileScreen() {
 
   const hasPromptedLogin = useRef(false);
   useEffect(() => {
-    if (!user && !hasPromptedLogin.current) {
+    if (!authLoading && !user && !hasPromptedLogin.current) {
       hasPromptedLogin.current = true;
       Alert.alert(
         'Login Required',
@@ -73,16 +102,24 @@ export default function ProfileScreen() {
         ]
       );
     }
-  }, [user]);
+  }, [user, authLoading]);
+
+  if (authLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: NEUTRAL[100], alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ fontSize: 14, color: SLATE[400] }}>Loading profile...</Text>
+      </View>
+    );
+  }
 
   if (!user) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#F8F9FB', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: '#EBF5FB', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+      <View style={{ flex: 1, backgroundColor: NEUTRAL[100], alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: BLUE.tint, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <IconSymbol name="person.fill" size={32} color={ACCENT} />
         </View>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: NAVY, marginBottom: 8 }}>Welcome to StayEasy</Text>
-        <Text style={{ fontSize: 14, color: '#94A3B8', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: NAVY, marginBottom: 8 }}>Welcome to ServeIQ</Text>
+        <Text style={{ fontSize: 14, color: SLATE[400], textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
           Login to view your bookings, manage favourites, and earn loyalty points.
         </Text>
         <TouchableOpacity
@@ -90,13 +127,13 @@ export default function ProfileScreen() {
           style={{ backgroundColor: ACCENT, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, width: '100%' }}
           activeOpacity={0.85}
         >
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFF', textAlign: 'center' }}>Login / Sign Up</Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: BG.white, textAlign: 'center' }}>Login / Sign Up</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const tierColor = tier === 'PLATINUM' ? '#E5E4E2' : tier === 'GOLD' ? '#FFD700' : tier === 'SILVER' ? '#C0C0C0' : '#CD7F32';
+  const tierColor = tier === 'PLATINUM' ? STATUS_COLORS.platinum : tier === 'GOLD' ? STATUS_COLORS.gold : tier === 'SILVER' ? STATUS_COLORS.silver : STATUS_COLORS.bronze;
 
   const handlePickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -141,7 +178,7 @@ export default function ProfileScreen() {
             </View>
           )}
           <View style={s.cameraBadge}>
-            <IconSymbol name="photo" size={10} color="#FFF" />
+            <IconSymbol name="photo" size={10} color={BG.white} />
           </View>
         </TouchableOpacity>
         <View style={s.userInfo}>
@@ -195,7 +232,7 @@ export default function ProfileScreen() {
                     <Text style={s.badgeText}>{badge}</Text>
                   </View>
                 )}
-                <IconSymbol name="chevron.right" size={16} color="#CBD5E1" />
+                <IconSymbol name="chevron.right" size={16} color={SLATE[300]} />
               </View>
             </TouchableOpacity>
           );
@@ -211,7 +248,7 @@ export default function ProfileScreen() {
         ])}
         activeOpacity={0.7}
       >
-        <IconSymbol name="logout" size={18} color="#EF4444" />
+        <IconSymbol name="logout" size={18} color={RED[500]} />
         <Text style={s.signOutText}>Sign Out</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -219,14 +256,14 @@ export default function ProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8F9FB' },
+  container: { flex: 1, backgroundColor: NEUTRAL[100] },
   header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 },
   title: { fontSize: 28, fontWeight: '800', color: NAVY, letterSpacing: -0.5 },
 
   userCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     marginHorizontal: 16, padding: 16, borderRadius: 16,
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9',
+    backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100],
     marginBottom: 12,
   },
   avatarWrap: { position: 'relative' },
@@ -239,42 +276,42 @@ const s = StyleSheet.create({
   cameraBadge: {
     position: 'absolute', bottom: 0, right: 0, width: 22, height: 22,
     borderRadius: 11, backgroundColor: NAVY, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#FFF',
+    borderWidth: 2, borderColor: BG.white,
   },
   userInfo: { flex: 1, gap: 4 },
   userName: { fontSize: 17, fontWeight: '700', color: NAVY },
-  userEmail: { fontSize: 13, color: '#94A3B8' },
+  userEmail: { fontSize: 13, color: SLATE[400] },
   tierRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
   tierBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   tierText: { fontSize: 10, fontWeight: '700' },
-  memberSince: { fontSize: 11, color: '#94A3B8' },
+  memberSince: { fontSize: 11, color: SLATE[400] },
 
   statsRow: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 16, paddingVertical: 14, borderRadius: 12,
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9',
+    backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100],
     marginBottom: 16,
   },
   statItem: { flex: 1, alignItems: 'center' },
   statVal: { fontSize: 18, fontWeight: '800', color: NAVY },
-  statLabel: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  statDivider: { width: 1, height: 28, backgroundColor: '#F1F5F9' },
+  statLabel: { fontSize: 11, color: SLATE[400], marginTop: 2 },
+  statDivider: { width: 1, height: 28, backgroundColor: SLATE[100] },
 
   menuSection: {
     marginHorizontal: 16, borderRadius: 16,
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9',
+    backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100],
     marginBottom: 16, overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingHorizontal: 16, paddingVertical: 16,
   },
-  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: '#F8F9FB' },
+  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: NEUTRAL[100] },
   menuIcon: {
     width: 40, height: 40, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: '#1E293B' },
+  menuLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: SLATE[800] },
   menuRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   badge: {
     backgroundColor: ACCENT + '15', paddingHorizontal: 8, paddingVertical: 2,
@@ -285,7 +322,7 @@ const s = StyleSheet.create({
   signOutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginHorizontal: 16, paddingVertical: 16, borderRadius: 12,
-    backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA',
+    backgroundColor: RED[50], borderWidth: 1, borderColor: RED[200],
   },
-  signOutText: { fontSize: 15, fontWeight: '600', color: '#EF4444' },
+  signOutText: { fontSize: 15, fontWeight: '600', color: RED[500] },
 });

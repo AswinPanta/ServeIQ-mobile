@@ -8,12 +8,15 @@ import { useShiftStore } from '@/stores/useShiftStore';
 import { useActivityStore } from '@/stores/useActivityStore';
 import { SystemFlowBar } from '@/components/operations/SystemFlowBar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { STATUS_COLORS as STATUS_COLORSTokens, SRS as SRSTokens, PURPLE, BRAND, ORANGE, AMBER, BLUE, EMERALD, BG, RED, FLAT, UI } from '@/lib/constants/figma-tokens';
+;
+;
 
 const QUICK_ACTIONS = [
-  { id: 'new-booking', label: 'New Booking', icon: 'booking' as const, desc: 'Walk-in or phone', href: 'new-booking' as const, color: '#2980B9' },
-  { id: 'check-in', label: 'Check-in', icon: 'checkin' as const, desc: 'Process arrival', href: 'check-in' as const, color: '#1E8449' },
-  { id: 'check-out', label: 'Check-out', icon: 'checkout' as const, desc: 'Process departure', href: 'check-out' as const, color: '#D35400' },
-  { id: 'guest-crm', label: 'Guest CRM', icon: 'person.fill' as const, desc: 'Guest profiles', href: 'guest-crm' as const, color: '#7C3AED' },
+  { id: 'new-booking', label: 'New Booking', icon: 'booking' as const, desc: 'Walk-in or phone', href: 'new-booking' as const, color: STATUS_COLORSTokens.occupied },
+  { id: 'check-in', label: 'Check-in', icon: 'checkin' as const, desc: 'Process arrival', href: 'check-in' as const, color: SRSTokens.green },
+  { id: 'check-out', label: 'Check-out', icon: 'checkout' as const, desc: 'Process departure', href: 'check-out' as const, color: SRSTokens.orange },
+  { id: 'guest-crm', label: 'Guest CRM', icon: 'person.fill' as const, desc: 'Guest profiles', href: 'guest-crm' as const, color: PURPLE[700] },
 ];
 
 const ROOM_STATUSES = ['available', 'occupied', 'dirty', 'maintenance'] as const;
@@ -22,12 +25,12 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const SOURCE_BADGES: Record<string, { label: string; color: string }> = {
-  walk_in: { label: 'Walk-in', color: '#2980B9' },
-  phone: { label: 'Phone', color: '#8E44AD' },
-  online: { label: 'Online', color: '#1E8449' },
-  ota: { label: 'OTA', color: '#D35400' },
-  corporate: { label: 'Corporate', color: '#1A3C5E' },
-  agent: { label: 'Agent', color: '#F39C12' },
+  walk_in: { label: 'Walk-in', color: STATUS_COLORSTokens.occupied },
+  phone: { label: 'Phone', color: STATUS_COLORSTokens.inspected },
+  online: { label: 'Online', color: SRSTokens.green },
+  ota: { label: 'OTA', color: SRSTokens.orange },
+  corporate: { label: 'Corporate', color: BRAND.navyLight },
+  agent: { label: 'Agent', color: ORANGE[400] },
 };
 
 export default function FrontDeskDashboard() {
@@ -103,7 +106,7 @@ export default function FrontDeskDashboard() {
     const isInHouse = b.status === 'checked_in';
     const today = new Date().toISOString().slice(0, 10);
     const isDeparting = b.status === 'checked_in' && b.checkout === today;
-    const bgColor = isDeparting ? '#FEF3C7' : isArriving ? '#EFF6FF' : isInHouse ? '#ECFDF5' : '#FFF';
+    const bgColor = isDeparting ? AMBER[100] : isArriving ? BLUE[50] : isInHouse ? EMERALD[50] : BG.white;
 
     return (
       <TouchableOpacity
@@ -121,8 +124,8 @@ export default function FrontDeskDashboard() {
         style={[s.bookingCard, { backgroundColor: bgColor }]}
         activeOpacity={0.7}
       >
-        <View style={[s.bookingRoomBadge, { backgroundColor: isDeparting ? '#F59E0B20' : isArriving ? '#2980B920' : '#1E844920' }]}>
-          <Text style={[s.bookingRoomText, { color: isDeparting ? '#D35400' : isArriving ? '#2980B9' : '#1E8449' }]}>
+        <View style={[s.bookingRoomBadge, { backgroundColor: isDeparting ? AMBER[500] + '20' : isArriving ? FLAT.blue + '20' : FLAT.green + '20' }]}>
+          <Text style={[s.bookingRoomText, { color: isDeparting ? SRSTokens.orange : isArriving ? STATUS_COLORSTokens.occupied : SRSTokens.green }]}>
             {b.room_number || '-'}
           </Text>
         </View>
@@ -177,7 +180,7 @@ export default function FrontDeskDashboard() {
             </Text>
           </View>
           <TouchableOpacity onPress={() => setShowSearch(!showSearch)} style={s.searchToggle}>
-            <IconSymbol name="search" size={18} color={showSearch ? '#FFF' : SRS.navy} />
+            <IconSymbol name="search" size={18} color={showSearch ? BG.white : SRS.navy} />
           </TouchableOpacity>
         </View>
 
@@ -224,22 +227,22 @@ export default function FrontDeskDashboard() {
             <Text style={s.kpiLabel}>Check-ins</Text>
           </View>
           <View style={[s.kpiCard, SHADOWS.card]}>
-            <View style={[s.kpiIcon, { backgroundColor: '#2980B918' }]}>
-              <IconSymbol name="booking" size={16} color="#2980B9" />
+            <View style={[s.kpiIcon, { backgroundColor: FLAT.blue + '18' }]}>
+              <IconSymbol name="booking" size={16} color={STATUS_COLORSTokens.occupied} />
             </View>
             <Text style={s.kpiValue}>{summaryStats.arrivals}</Text>
             <Text style={s.kpiLabel}>Arrivals</Text>
           </View>
           <View style={[s.kpiCard, SHADOWS.card]}>
-            <View style={[s.kpiIcon, { backgroundColor: '#1E844918' }]}>
-              <IconSymbol name="hotel" size={16} color="#1E8449" />
+            <View style={[s.kpiIcon, { backgroundColor: FLAT.green + '18' }]}>
+              <IconSymbol name="hotel" size={16} color={SRSTokens.green} />
             </View>
             <Text style={s.kpiValue}>{summaryStats.inHouse}</Text>
             <Text style={s.kpiLabel}>In House</Text>
           </View>
           <View style={[s.kpiCard, SHADOWS.card]}>
-            <View style={[s.kpiIcon, { backgroundColor: '#D3540018' }]}>
-              <IconSymbol name="checkout" size={16} color="#D35400" />
+            <View style={[s.kpiIcon, { backgroundColor: UI.warning + '18' }]}>
+              <IconSymbol name="checkout" size={16} color={SRSTokens.orange} />
             </View>
             <Text style={s.kpiValue}>{departingToday.length}</Text>
             <Text style={s.kpiLabel}>Departures</Text>
@@ -259,8 +262,8 @@ export default function FrontDeskDashboard() {
               onPress={() => setActiveTab(tab.key)}
               style={[s.tabBtn, activeTab === tab.key && s.tabBtnActive]}
             >
-              <IconSymbol name={tab.icon} size={14} color={activeTab === tab.key ? '#FFF' : GRAY[500]} />
-              <Text style={[s.tabLabel, activeTab === tab.key && { color: '#FFF' }]}>{tab.label}</Text>
+              <IconSymbol name={tab.icon} size={14} color={activeTab === tab.key ? BG.white : GRAY[500]} />
+              <Text style={[s.tabLabel, activeTab === tab.key && { color: BG.white }]}>{tab.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -273,17 +276,17 @@ export default function FrontDeskDashboard() {
               <View style={s.occupancyCard}>
                 <Text style={s.occupancyTitle}>Occupancy</Text>
                 <View style={s.occupancyBar}>
-                  <View style={[s.occSegment, { flex: occupancySnapshot.occupied, backgroundColor: '#1E8449' }]} />
-                  <View style={[s.occSegment, { flex: occupancySnapshot.available, backgroundColor: '#2980B9' }]} />
-                  <View style={[s.occSegment, { flex: occupancySnapshot.dirty, backgroundColor: '#F59E0B' }]} />
-                  <View style={[s.occSegment, { flex: occupancySnapshot.maintenance, backgroundColor: '#EF4444' }]} />
+                  <View style={[s.occSegment, { flex: occupancySnapshot.occupied, backgroundColor: SRSTokens.green }]} />
+                  <View style={[s.occSegment, { flex: occupancySnapshot.available, backgroundColor: STATUS_COLORSTokens.occupied }]} />
+                  <View style={[s.occSegment, { flex: occupancySnapshot.dirty, backgroundColor: AMBER[500] }]} />
+                  <View style={[s.occSegment, { flex: occupancySnapshot.maintenance, backgroundColor: RED[500] }]} />
                 </View>
                 <View style={s.occLegend}>
                   {[
-                    { label: 'Occupied', count: occupancySnapshot.occupied, color: '#1E8449' },
-                    { label: 'Available', count: occupancySnapshot.available, color: '#2980B9' },
-                    { label: 'Dirty', count: occupancySnapshot.dirty, color: '#F59E0B' },
-                    { label: 'Maint.', count: occupancySnapshot.maintenance, color: '#EF4444' },
+                    { label: 'Occupied', count: occupancySnapshot.occupied, color: SRSTokens.green },
+                    { label: 'Available', count: occupancySnapshot.available, color: STATUS_COLORSTokens.occupied },
+                    { label: 'Dirty', count: occupancySnapshot.dirty, color: AMBER[500] },
+                    { label: 'Maint.', count: occupancySnapshot.maintenance, color: RED[500] },
                   ].map(item => (
                     <View key={item.label} style={s.occLegendItem}>
                       <View style={[s.occDot, { backgroundColor: item.color }]} />
@@ -336,8 +339,8 @@ export default function FrontDeskDashboard() {
                         onPress={() => setStatusFilter(active ? null : roomStatus)}
                         style={[s.filterChip, { backgroundColor: active ? color : color + '15' }]}
                       >
-                        <View style={[s.filterDot, { backgroundColor: active ? '#FFF' : color }]} />
-                        <Text style={[s.filterText, { color: active ? '#FFF' : color }]}>
+                        <View style={[s.filterDot, { backgroundColor: active ? BG.white : color }]} />
+                        <Text style={[s.filterText, { color: active ? BG.white : color }]}>
                           {STATUS_LABELS[roomStatus]} ({statusCounts[roomStatus] || 0})
                         </Text>
                       </TouchableOpacity>
@@ -397,7 +400,7 @@ export default function FrontDeskDashboard() {
                 onPress={() => router.push('/(operations)/front-desk/new-booking')}
                 style={s.quickAddBtn}
               >
-                <IconSymbol name="add" size={16} color="#FFF" />
+                <IconSymbol name="add" size={16} color={BG.white} />
                 <Text style={s.quickAddText}>Quick Walk-in Booking</Text>
               </TouchableOpacity>
             </>
@@ -428,11 +431,11 @@ export default function FrontDeskDashboard() {
                     <TouchableOpacity
                       key={b.id}
                       onPress={() => router.push({ pathname: '/(operations)/front-desk/check-out', params: { bookingRef: b.ref } })}
-                      style={[s.bookingCard, { backgroundColor: '#FEF3C7' }]}
+                      style={[s.bookingCard, { backgroundColor: AMBER[100] }]}
                       activeOpacity={0.7}
                     >
-                      <View style={[s.bookingRoomBadge, { backgroundColor: '#F59E0B20' }]}>
-                        <Text style={[s.bookingRoomText, { color: '#D35400' }]}>{b.room_number || '-'}</Text>
+                      <View style={[s.bookingRoomBadge, { backgroundColor: AMBER[500] + '20' }]}>
+                        <Text style={[s.bookingRoomText, { color: SRSTokens.orange }]}>{b.room_number || '-'}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={s.bookingName}>{b.guest_name}</Text>
@@ -459,7 +462,7 @@ export default function FrontDeskDashboard() {
         style={s.fab}
         activeOpacity={0.85}
       >
-        <IconSymbol name="add" size={24} color="#FFF" />
+        <IconSymbol name="add" size={24} color={BG.white} />
       </TouchableOpacity>
     </View>
   );
@@ -469,21 +472,21 @@ const s = StyleSheet.create({
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.md, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   headerTitle: { ...TYPOGRAPHY.h2, color: SRS.navy },
   headerSub: { ...TYPOGRAPHY.small, color: GRAY[500], marginTop: 2 },
-  searchToggle: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: GRAY[200] },
+  searchToggle: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: GRAY[200] },
   searchSection: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md },
-  searchInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: RADIUS.card, paddingHorizontal: 14, borderWidth: 1, borderColor: GRAY[200], gap: 8 },
+  searchInputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: BG.white, borderRadius: RADIUS.card, paddingHorizontal: 14, borderWidth: 1, borderColor: GRAY[200], gap: 8 },
   searchInput: { flex: 1, fontSize: 14, color: SRS.navy, paddingVertical: 11 },
   searchClear: { fontSize: 12, fontWeight: '600', color: SRS.teal },
   searchResults: { marginTop: SPACING.sm, gap: SPACING.sm },
   searchResultCount: { ...TYPOGRAPHY.caption, color: GRAY[400], marginBottom: 4 },
   noResults: { ...TYPOGRAPHY.body, color: GRAY[400], textAlign: 'center', paddingVertical: SPACING.xl },
   kpiRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, gap: SPACING.sm },
-  kpiCard: { flex: 1, backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.md, alignItems: 'center', gap: 4 },
+  kpiCard: { flex: 1, backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.md, alignItems: 'center', gap: 4 },
   kpiIcon: { width: 30, height: 30, borderRadius: RADIUS.button, alignItems: 'center', justifyContent: 'center' },
   kpiValue: { fontSize: 18, fontWeight: '800', color: SRS.navy, fontVariant: ['tabular-nums'] as any },
   kpiLabel: { ...TYPOGRAPHY.caption, color: GRAY[500], textTransform: 'uppercase', letterSpacing: 0.3 },
   tabRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, gap: SPACING.sm, marginBottom: SPACING.md },
-  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[200] },
+  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[200] },
   tabBtnActive: { backgroundColor: SRS.navy, borderColor: SRS.navy },
   tabLabel: { ...TYPOGRAPHY.caption, fontWeight: '600', color: GRAY[600] },
   section: { paddingHorizontal: SPACING.lg },
@@ -493,7 +496,7 @@ const s = StyleSheet.create({
   clearBtn: { ...TYPOGRAPHY.small, color: SRS.teal, fontWeight: '600' },
 
   // Occupancy
-  occupancyCard: { backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100], marginBottom: SPACING.lg },
+  occupancyCard: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100], marginBottom: SPACING.lg },
   occupancyTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.md },
   occupancyBar: { flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden', marginBottom: SPACING.md },
   occSegment: { height: '100%' },
@@ -514,7 +517,7 @@ const s = StyleSheet.create({
   roomDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
 
   actionsRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.lg },
-  actionCard: { flex: 1, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', gap: 4 },
+  actionCard: { flex: 1, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', gap: 4 },
   actionIcon: { width: 40, height: 40, borderRadius: RADIUS.card, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   actionLabel: { ...TYPOGRAPHY.caption, fontWeight: '700', color: SRS.navy, fontSize: 11 },
   actionDesc: { ...TYPOGRAPHY.caption, color: GRAY[500], textAlign: 'center', fontSize: 9 },
@@ -525,17 +528,17 @@ const s = StyleSheet.create({
   bookingName: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
   bookingMeta: { ...TYPOGRAPHY.small, color: GRAY[500], marginTop: 1 },
   bookingDate: { ...TYPOGRAPHY.caption, color: GRAY[400], marginTop: 2 },
-  vipBadge: { fontSize: 10, fontWeight: '700', color: '#F59E0B' },
-  departBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#F59E0B20' },
-  departBadgeText: { fontSize: 10, fontWeight: '600', color: '#D35400' },
-  quickCheckinBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: '#1E8449' },
-  quickCheckinText: { fontSize: 10, fontWeight: '600', color: '#FFF' },
+  vipBadge: { fontSize: 10, fontWeight: '700', color: AMBER[500] },
+  departBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: AMBER[500] + '20' },
+  departBadgeText: { fontSize: 10, fontWeight: '600', color: SRSTokens.orange },
+  quickCheckinBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: SRSTokens.green },
+  quickCheckinText: { fontSize: 10, fontWeight: '600', color: BG.white },
   sourceBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   sourceText: { fontSize: 9, fontWeight: '600' },
-  departBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#D35400' },
-  departBtnText: { fontSize: 11, fontWeight: '600', color: '#FFF' },
+  departBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: SRSTokens.orange },
+  departBtnText: { fontSize: 11, fontWeight: '600', color: BG.white },
   quickAddBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: RADIUS.card, backgroundColor: SRS.teal, marginTop: SPACING.md },
-  quickAddText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  quickAddText: { fontSize: 14, fontWeight: '700', color: BG.white },
 
   emptyState: { padding: SPACING.xxl, alignItems: 'center', gap: SPACING.sm },
   emptyText: { ...TYPOGRAPHY.body, color: GRAY[400] },

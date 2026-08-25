@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
+import { BLUE, RED, BG, STATUS } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2563EB';
+const ACCENT = BLUE[600];
 
 interface Room {
   id: string;
@@ -16,6 +17,7 @@ interface Room {
   amenities: string[];
   photos: string[];
   cancellationPolicy: string;
+  cancellationNotes?: string;
 }
 
 interface Floor {
@@ -27,7 +29,7 @@ interface Floor {
 const ROOM_TYPES = ['Standard', 'Deluxe', 'Suite', 'Penthouse', 'Villa'];
 const BED_OPTIONS = ['Single', 'Double', 'Twin', 'Queen', 'King'];
 const ROOM_AMENITIES = ['WiFi', 'AC', 'TV', 'Balcony', 'Safe', 'Mini Bar'];
-const CANCELLATION_POLICIES = ['Flexible', 'Moderate', 'Strict'];
+const CANCELLATION_POLICIES = ['Flexible', 'Moderate', 'Strict', 'Non Refundable'];
 
 interface RoomSetupProps {
   rooms: Floor[];
@@ -68,6 +70,7 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
           amenities: [],
           photos: [],
           cancellationPolicy: 'Flexible',
+          cancellationNotes: '',
         }],
       };
     }));
@@ -145,7 +148,7 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
               <Text style={{ fontSize: 18, color: ACCENT }}>+</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => removeFloor(floor.id)}>
-              <Text style={{ fontSize: 16, color: '#EF4444' }}>✕</Text>
+              <Text style={{ fontSize: 16, color: RED[500] }}>✕</Text>
             </TouchableOpacity>
           </View>
 
@@ -164,7 +167,7 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
                   placeholder="#"
                 />
                 <TouchableOpacity onPress={() => removeRoom(floor.id, room.id)}>
-                  <Text style={{ fontSize: 14, color: '#EF4444' }}>✕</Text>
+                  <Text style={{ fontSize: 14, color: RED[500] }}>✕</Text>
                 </TouchableOpacity>
               </View>
 
@@ -179,12 +182,32 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
                           backgroundColor: room.roomType === t ? ACCENT : colors.border,
                         }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: room.roomType === t ? '#fff' : colors.foreground }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: room.roomType === t ? BG.white : colors.foreground }}>
                           {t}
                         </Text>
                       </TouchableOpacity>
                     ))}
+                    <TouchableOpacity
+                      onPress={() => { if (ROOM_TYPES.includes(room.roomType)) updateRoom(floor.id, room.id, { roomType: '' }); }}
+                      style={{
+                        paddingHorizontal: 12, paddingVertical: 16, borderRadius: 8, marginRight: 4,
+                        backgroundColor: !ROOM_TYPES.includes(room.roomType) ? ACCENT : colors.border,
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: !ROOM_TYPES.includes(room.roomType) ? BG.white : colors.foreground }}>
+                        Custom
+                      </Text>
+                    </TouchableOpacity>
                   </ScrollView>
+                  {!ROOM_TYPES.includes(room.roomType) && (
+                    <TextInput
+                      value={room.roomType}
+                      onChangeText={(t) => updateRoom(floor.id, room.id, { roomType: t })}
+                      placeholder="Enter custom room type, e.g. Family Suite"
+                      placeholderTextColor={colors.muted}
+                      className="text-sm text-foreground bg-background px-3 py-2 rounded-lg mt-2"
+                    />
+                  )}
                 </View>
               </View>
 
@@ -199,12 +222,32 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
                           backgroundColor: room.bedConfig === b ? ACCENT : colors.border,
                         }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: room.bedConfig === b ? '#fff' : colors.foreground }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: room.bedConfig === b ? BG.white : colors.foreground }}>
                           {b}
                         </Text>
                       </TouchableOpacity>
                     ))}
+                    <TouchableOpacity
+                      onPress={() => { if (BED_OPTIONS.includes(room.bedConfig)) updateRoom(floor.id, room.id, { bedConfig: '' }); }}
+                      style={{
+                        paddingHorizontal: 12, paddingVertical: 16, borderRadius: 8, marginRight: 4,
+                        backgroundColor: !BED_OPTIONS.includes(room.bedConfig) ? ACCENT : colors.border,
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: !BED_OPTIONS.includes(room.bedConfig) ? BG.white : colors.foreground }}>
+                        Custom
+                      </Text>
+                    </TouchableOpacity>
                   </ScrollView>
+                  {!BED_OPTIONS.includes(room.bedConfig) && (
+                    <TextInput
+                      value={room.bedConfig}
+                      onChangeText={(t) => updateRoom(floor.id, room.id, { bedConfig: t })}
+                      placeholder="Enter custom bed type, e.g. Bunk Beds"
+                      placeholderTextColor={colors.muted}
+                      className="text-sm text-foreground bg-background px-3 py-2 rounded-lg mt-2"
+                    />
+                  )}
                 </View>
               </View>
 
@@ -225,7 +268,7 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
                     <TouchableOpacity key={a} onPress={() => toggleRoomAmenity(floor.id, room.id, a)}
                       style={{
                         width: 44, height: 44, borderRadius: 8,
-                        backgroundColor: room.amenities.includes(a) ? '#10B981' + '20' : colors.border,
+                        backgroundColor: room.amenities.includes(a) ? STATUS.activeGreen + '20' : colors.border,
                         alignItems: 'center', justifyContent: 'center',
                       }}
                     >
@@ -236,7 +279,7 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
               </View>
 
               <View>
-                <Text className="text-xs text-muted mb-1">Cancellation</Text>
+                <Text className="text-xs text-muted mb-1">Cancellation Policy</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {CANCELLATION_POLICIES.map((p) => (
                     <TouchableOpacity key={p} onPress={() => updateRoom(floor.id, room.id, { cancellationPolicy: p })}
@@ -245,12 +288,34 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
                         backgroundColor: room.cancellationPolicy === p ? ACCENT : colors.border,
                       }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: room.cancellationPolicy === p ? '#fff' : colors.foreground }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: room.cancellationPolicy === p ? BG.white : colors.foreground }}>
                         {p}
                       </Text>
                     </TouchableOpacity>
                   ))}
+                  <TouchableOpacity
+                    onPress={() => updateRoom(floor.id, room.id, { cancellationPolicy: 'Custom' })}
+                    style={{
+                      paddingHorizontal: 12, paddingVertical: 16, borderRadius: 8, marginRight: 4,
+                      backgroundColor: room.cancellationPolicy === 'Custom' ? ACCENT : colors.border,
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: room.cancellationPolicy === 'Custom' ? BG.white : colors.foreground }}>
+                      Custom
+                    </Text>
+                  </TouchableOpacity>
                 </ScrollView>
+                {room.cancellationPolicy === 'Custom' && (
+                  <TextInput
+                    value={room.cancellationNotes || ''}
+                    onChangeText={(t) => updateRoom(floor.id, room.id, { cancellationNotes: t })}
+                    placeholder="Describe your custom cancellation terms..."
+                    placeholderTextColor={colors.muted}
+                    multiline
+                    numberOfLines={2}
+                    className="text-sm text-foreground bg-background px-3 py-2 rounded-lg mt-2"
+                  />
+                )}
               </View>
 
               {/* Room Photos Section */}
@@ -270,7 +335,7 @@ export function RoomSetup({ rooms, onRoomsChange }: RoomSetupProps) {
                         }}
                         style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(239,68,68,0.9)', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff' }}>×</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: BG.white }}>×</Text>
                       </TouchableOpacity>
                     </View>
                   ))}

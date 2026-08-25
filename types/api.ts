@@ -91,7 +91,10 @@ export type OperatorRole =
   | 'housekeeping'
   | 'pos'
   | 'kds'
-  | 'manager';
+  | 'manager'
+  | 'waiter'
+  | 'kitchen'
+  | 'maintenance';
 
 // ─── Search Types ───────────────────────────────────────────────────────────
 
@@ -178,6 +181,8 @@ export interface Hotel {
   hostReviews?: number;
   lat?: number;
   lng?: number;
+  /** Distance from the user's location (km) — set by the nearby search path. */
+  distance_km?: number;
   tag?: string;
   created_at?: string;
   updated_at?: string;
@@ -209,6 +214,9 @@ export interface Property {
   name: string;
   type: PropertyType;
   description: string;
+  /** Contact details — required by the backend when creating a property; set from the wizard / host account. */
+  phone_number?: string;
+  email?: string;
   country: string;
   state: string;
   city: string;
@@ -233,6 +241,8 @@ export interface Property {
   custom_domain: string | null;
   cancellation_policy: CancellationPolicy;
   photos: PropertyPhoto[];
+  /** Special offers enabled for this property during setup — carried on the local property so they can be synced to the server later. */
+  special_offers?: SpecialOffer[];
   created_at: string;
   updated_at: string;
 }
@@ -250,6 +260,11 @@ export interface AdminRoom {
   id: string;
   property_id: string;
   room_type_id: string;
+  /** Backend bed-type id — not always carried on locally created rooms, so optional. */
+  bed_type_id?: string;
+  /** Display names preserved from setup so a later server sync can recreate them faithfully. */
+  room_type_name?: string;
+  bed_name?: string;
   room_name: string;
   floor_number: number;
   max_adults: number;
@@ -398,26 +413,37 @@ export interface StaffPhotos {
 
 export interface BackendStaff {
   id: string;
-  tenant_id?: string;
+  tenant_id: string;
   full_name: string;
   email: string;
   phone_number?: string | null;
   job_role: BackendJobRole;
-  monthly_salary?: string;
+  monthly_salary: string;
   joining_date: string;
   status: BackendStaffStatus;
-  photos?: StaffPhotos | null;
+  photos: StaffPhotos | null;
 }
 
 export interface CreateStaffRequest {
   full_name: string;
   email: string;
-  phone_number?: string;
+  phone_number?: string | null;
   job_role: BackendJobRole;
-  monthly_salary?: string;
+  monthly_salary: string;
   joining_date: string;
   status?: BackendStaffStatus;
-  photos?: StaffPhotos;
+  photos?: StaffPhotos | null;
+}
+
+export interface UpdateStaffRequest {
+  full_name?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+  job_role?: BackendJobRole | null;
+  monthly_salary?: string | null;
+  joining_date?: string | null;
+  status?: BackendStaffStatus | null;
+  photos?: StaffPhotos | null;
 }
 
 export interface StaffMember {
@@ -625,6 +651,7 @@ export interface BookingCreateRequest {
   check_out: string;
   adults: number;
   children?: number;
+  special_requests?: string;
 }
 
 export interface PropertySummary {
@@ -728,6 +755,8 @@ export interface PaymentIntentResponse {
   client_secret?: string;
   order_id?: string;
   pidx?: string;
+  /** Hosted checkout URL — Khalti returns one. Stripe/Razorpay do NOT (they return client_secret / order_id and run through native SDKs). */
+  payment_url?: string;
 }
 
 export interface ConfirmPaymentRequest {
@@ -753,7 +782,8 @@ export interface BookingAddOn {
 // ─── Tenant API Types ───────────────────────────────────────────────────────
 
 export interface TenantCreateRequest {
-  brand_name: string;
+  /** Backend schema is `TenantCreateSchema { name }` — verified against live OpenAPI */
+  name: string;
 }
 
 export interface TenantCreateResponse {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { RADIUS, SHADOWS, FIGMA_COLORS } from '@/constants/portal-theme';
+import { BG } from '@/lib/constants/figma-tokens';
 
 interface FigmaCardProps {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ export function FigmaCard({
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
   },
   default: {

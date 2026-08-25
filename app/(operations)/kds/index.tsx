@@ -11,16 +11,19 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import type { KdsTicket } from '@/stores/useOrderStore';
+import { KDS, CLOUD, STATUS_COLORS, PURPLE, TEAL, BG } from '@/lib/constants/figma-tokens';
+;
+;
 
-const DARK_BG = '#0D1117';
-const DARK_CARD = '#161B22';
-const DARK_BORDER = '#30363D';
-const DARK_TEXT = '#E6EDF3';
-const DARK_MUTED = '#8B949E';
+const DARK_BG = KDS.bg;
+const DARK_CARD = KDS.card;
+const DARK_BORDER = KDS.border;
+const DARK_TEXT = CLOUD.mist;
+const DARK_MUTED = KDS.muted;
 
 const COLUMN_COLORS: Record<string, string> = {
   pending: SRS.orange,
-  in_progress: '#2980B9',
+  in_progress: STATUS_COLORS.occupied,
   ready: SRS.green,
 };
 
@@ -191,8 +194,8 @@ export default function KDScreen() {
           <KpiCardDark label="Preparing" value={totalProgressCount} icon="progress" color={COLUMN_COLORS.in_progress} />
           <KpiCardDark label="Ready" value={totalReadyCount} icon="ready" color={COLUMN_COLORS.ready} />
           <KpiCardDark label="Delayed" value={delayedCount} icon="warning.triangle" color={SRS.red} subtitle={delayedCount > 0 ? '>10 min' : undefined} />
-          <KpiCardDark label="Avg Time" value={formatTime(avgTimeSeconds)} icon="clock" color="#8B5CF6" />
-          <KpiCardDark label="Completed" value={completedOrders.length} icon="done.all" color="#0D9488" />
+          <KpiCardDark label="Avg Time" value={formatTime(avgTimeSeconds)} icon="clock" color={PURPLE[500]} />
+          <KpiCardDark label="Completed" value={completedOrders.length} icon="done.all" color={TEAL[600]} />
         </ScrollView>
 
         {/* Station Filter */}
@@ -201,9 +204,9 @@ export default function KDScreen() {
             <TouchableOpacity
               key={s}
               onPress={() => setStation(s)}
-              style={[kdsStyles.stationChip, { backgroundColor: station === s ? '#1F6FEB' : DARK_CARD, borderColor: station === s ? '#1F6FEB' : DARK_BORDER }]}
+              style={[kdsStyles.stationChip, { backgroundColor: station === s ? KDS.accent : DARK_CARD, borderColor: station === s ? KDS.accent : DARK_BORDER }]}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: station === s ? '#FFF' : DARK_MUTED }}>{s}</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: station === s ? BG.white : DARK_MUTED }}>{s}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -246,7 +249,7 @@ export default function KDScreen() {
                                 <View style={kdsStyles.vipBadge}><Text style={kdsStyles.vipText}>VIP</Text></View>
                               )}
                             </View>
-                            <StatusBadge label={`T${ticket.table_number}`} color="#0D9488" size="sm" />
+                            <StatusBadge label={`T${ticket.table_number}`} color={TEAL[600]} size="sm" />
                           </View>
 
                           <View style={kdsStyles.ticketTimerRow}>
@@ -292,24 +295,24 @@ export default function KDScreen() {
                                   <TouchableOpacity
                                     key={idx}
                                     onPress={() => useOrderStore.getState().updateItemStatus(ticket.id, item.id, 'served')}
-                                    style={[kdsStyles.serveBtn, { backgroundColor: item.item_status === 'ready' ? SRS.green + '15' : '#8B5CF615', borderColor: item.item_status === 'ready' ? SRS.green + '30' : '#8B5CF630' }]}
+                                    style={[kdsStyles.serveBtn, { backgroundColor: item.item_status === 'ready' ? SRS.green + '15' : PURPLE[500] + '15', borderColor: item.item_status === 'ready' ? SRS.green + '30' : PURPLE[500] + '30' }]}
                                   >
-                                    <Text style={{ fontSize: 11, fontWeight: '700', color: item.item_status === 'ready' ? SRS.green : '#8B5CF6' }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: item.item_status === 'ready' ? SRS.green : PURPLE[500] }}>
                                       {item.item_status === 'ready' ? `🍽️ Mark ${item.quantity}× ${item.name} Served` : `✅ ${item.name} Served`}
                                     </Text>
                                   </TouchableOpacity>
                                 );
                               })}
                               {ticket.items.every(i => i.item_status === 'served') && (
-                                <View style={{ borderRadius: RADIUS.card, paddingVertical: SPACING.md, alignItems: 'center', backgroundColor: '#8B5CF615' }}>
-                                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B5CF6' }}>✅ All Items Served</Text>
+                                <View style={{ borderRadius: RADIUS.card, paddingVertical: SPACING.md, alignItems: 'center', backgroundColor: PURPLE[500] + '15' }}>
+                                  <Text style={{ fontSize: 12, fontWeight: '700', color: PURPLE[500] }}>✅ All Items Served</Text>
                                 </View>
                               )}
                             </View>
                           ) : (
                             <TouchableOpacity
                               onPress={() => handleAdvance(ticket)}
-                              style={[kdsStyles.advanceBtn, { backgroundColor: col.status === 'pending' ? '#238636' : '#1F6FEB' }]}
+                              style={[kdsStyles.advanceBtn, { backgroundColor: col.status === 'pending' ? KDS.success : KDS.accent }]}
                             >
                               <Text style={kdsStyles.advanceBtnText}>
                                 {col.status === 'pending' ? 'Accept' : 'Mark Ready'}
@@ -517,7 +520,7 @@ const kdsStyles = StyleSheet.create({
     fontVariant: ['tabular-nums' as any],
   },
   vipBadge: {
-    backgroundColor: '#7C3AED25',
+    backgroundColor: PURPLE[700] + '25',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: RADIUS.badge,
@@ -525,7 +528,7 @@ const kdsStyles = StyleSheet.create({
   vipText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: PURPLE[700],
   },
   ticketTimerRow: {
     flexDirection: 'row',
@@ -595,6 +598,6 @@ const kdsStyles = StyleSheet.create({
   advanceBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
   },
 });

@@ -10,7 +10,7 @@
  */
 
 export const SUPERADMIN_CREDENTIALS = {
-  email: 'admin@stayeasy.com',
+  email: 'admin@serveiq.com',
   password: 'Admin@123',
 } as const;
 

@@ -1,11 +1,12 @@
 import { Stack } from "expo-router";
+import { SLATE } from '@/lib/constants/figma-tokens';
 
 export default function CommerceLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#F8FAFC" },
+        contentStyle: { backgroundColor: SLATE[50] },
       }}
     >
       <Stack.Screen name="subscriptions" />

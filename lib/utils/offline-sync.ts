@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SYNC_QUEUE_KEY = '@stayeasy_sync_queue';
-const SYNC_LOCK_KEY = '@stayeasy_sync_lock';
-const SYNC_LOCK_TS_KEY = '@stayeasy_sync_lock_ts';
-const FAILED_SYNCS_KEY = '@stayeasy_failed_syncs';
+const SYNC_QUEUE_KEY = '@serveiq_sync_queue';
+const SYNC_LOCK_KEY = '@serveiq_sync_lock';
+const SYNC_LOCK_TS_KEY = '@serveiq_sync_lock_ts';
+const FAILED_SYNCS_KEY = '@serveiq_failed_syncs';
 
 const LOCK_TTL_MS = 30_000; // 30 seconds
 
@@ -41,7 +41,9 @@ export function addToSyncQueue(action: Omit<SyncAction, 'id' | 'timestamp' | 're
   // Fire-and-forget - write happens in background
   getSyncQueue().then(queue => {
     queue.push(syncAction);
-    AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue)).catch(() => {});
+    AsyncStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue)).catch(e => {
+      console.warn('Failed to persist sync queue action:', e);
+    });
   });
 
   return id;

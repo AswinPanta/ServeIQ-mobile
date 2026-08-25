@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { calculateDistance, type UserLocation } from '@/hooks/use-location';
+import { CORAL, TEXT } from '@/lib/constants/figma-tokens';
 
 interface NearbyHotel {
   id: string;
@@ -33,7 +34,7 @@ export function NearbyHotels({ hotels, userLocation, loading }: NearbyHotelsProp
     return (
       <View className="px-6 py-8 gap-4">
         <View className="flex-row items-center gap-2">
-          <Ionicons name="location" size={20} color="#E63946" />
+          <Ionicons name="location" size={20} color={CORAL[500]} />
           <Text className="text-2xl font-bold text-foreground">Nearby Hotels</Text>
         </View>
         <View className="h-32 bg-surface rounded-xl animate-pulse" />
@@ -69,7 +70,7 @@ export function NearbyHotels({ hotels, userLocation, loading }: NearbyHotelsProp
     <View className="py-8 gap-4">
       <View className="px-6 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
-          <Ionicons name="location" size={20} color="#E63946" />
+          <Ionicons name="location" size={20} color={CORAL[500]} />
           <Text className="text-2xl font-bold text-foreground">Nearby Hotels</Text>
         </View>
         <Text className="text-xs text-muted">
@@ -92,7 +93,7 @@ export function NearbyHotels({ hotels, userLocation, loading }: NearbyHotelsProp
             activeOpacity={0.7}
             className="w-56 rounded-2xl overflow-hidden bg-surface"
             style={{
-              shadowColor: '#000',
+              shadowColor: TEXT.black,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.1,
               shadowRadius: 8,

@@ -6,7 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEY = '@stayeasy_user_preferences';
+const STORAGE_KEY = '@serveiq_user_preferences';
 
 export interface UserPreferences {
   currency: string;
@@ -31,6 +31,8 @@ interface PreferencesContextType {
   updatePreferences: (updates: Partial<UserPreferences>) => Promise<void>;
   addRecentSearch: (search: string) => Promise<void>;
   clearRecentSearches: () => Promise<void>;
+  preferenceError: string | null;
+  clearPreferenceError: () => void;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(undefined);
@@ -38,6 +40,7 @@ const PreferencesContext = createContext<PreferencesContextType | undefined>(und
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [loaded, setLoaded] = useState(false);
+  const [preferenceError, setPreferenceError] = useState<string | null>(null);
 
   const loadPreferences = async () => {
     try {
@@ -47,6 +50,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       }
     } catch (error) {
       console.error('Failed to load preferences:', error);
+      setPreferenceError('Failed to load your saved preferences. Using defaults.');
     } finally {
       setLoaded(true);
     }
@@ -61,8 +65,10 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     setPreferences(newPrefs);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newPrefs));
+      setPreferenceError(null);
     } catch (error) {
       console.error('Failed to save preferences:', error);
+      setPreferenceError('Failed to save your preference change. Please try again.');
     }
   }, [preferences]);
 
@@ -77,16 +83,24 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     await updatePreferences({ recentSearches: [] });
   }, [updatePreferences]);
 
+  const clearPreferenceError = useCallback(() => {
+    setPreferenceError(null);
+  }, []);
+
   const value = useMemo(() => ({
     preferences,
     updatePreferences,
     addRecentSearch,
     clearRecentSearches,
+    preferenceError,
+    clearPreferenceError,
   }), [
     preferences,
     updatePreferences,
     addRecentSearch,
     clearRecentSearches,
+    preferenceError,
+    clearPreferenceError,
   ]);
 
   return (

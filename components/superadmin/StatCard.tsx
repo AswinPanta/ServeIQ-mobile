@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { KpiCounter } from '@/components/ui/motion';
+import { STATUS, RED, BG, TEXT, SLATE } from '@/lib/constants/figma-tokens';
 
 interface StatCardProps {
   label: string;
@@ -60,8 +61,8 @@ export function StatCard({ label, value, color, change, positive, icon }: StatCa
         <Text style={styles.value}>{value}</Text>
       )}
       {change && (
-        <View style={[styles.changeBadge, { backgroundColor: (positive ? '#10B981' : '#EF4444') + '12' }]}>
-          <Text style={[styles.changeText, { color: positive ? '#10B981' : '#EF4444' }]}>
+        <View style={[styles.changeBadge, { backgroundColor: (positive ? STATUS.activeGreen : RED[500]) + '12' }]}>
+          <Text style={[styles.changeText, { color: positive ? STATUS.activeGreen : RED[500] }]}>
             {positive ? '+' : ''}{change}
           </Text>
         </View>
@@ -75,9 +76,9 @@ const styles = StyleSheet.create({
     width: '47%',
     padding: 16,
     borderRadius: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderLeftWidth: 3,
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -85,8 +86,8 @@ const styles = StyleSheet.create({
   },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   iconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
-  value: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  label: { fontSize: 12, color: SLATE[400], fontWeight: '500' },
+  value: { fontSize: 22, fontWeight: '800', color: SLATE[900], letterSpacing: -0.5 },
   changeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 },
   changeText: { fontSize: 11, fontWeight: '700' },
 });

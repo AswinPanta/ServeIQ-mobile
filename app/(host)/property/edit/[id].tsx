@@ -6,10 +6,15 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHost } from '@/lib/context/host-context';
+import { normalizeTime } from '@/lib/api/host-api';
+import { SRS, GRAY, RADIUS, TYPOGRAPHY, SHADOWS } from '@/constants/portal-theme';
 import type { Property } from '@/types/api';
+import { MapLocationPicker } from '@/components/host/MapLocationPicker';
+import { reverseGeocode } from '@/hooks/use-location';
+import { SRS as SRSTokens, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2E86AB';
-const NAVY = '#1A3C5E';
+const ACCENT = SRS.teal;
+const NAVY = SRS.navy;
 
 type EditableFields = {
   name: string;
@@ -28,6 +33,8 @@ type EditableFields = {
   check_out_time_to: string;
   currency: string;
   brand_color: string;
+  latitude: string;
+  longitude: string;
 };
 
 export default function EditProperty() {
@@ -41,7 +48,8 @@ export default function EditProperty() {
     country: '', address: '', zip_code: '', number_of_floors: '1',
     total_rooms: '1', check_in_time_from: '14:00', check_in_time_to: '00:00',
     check_out_time_from: '00:00', check_out_time_to: '11:00',
-    currency: 'USD', brand_color: '#2E86AB',
+    currency: 'USD', brand_color: SRSTokens.teal,
+    latitude: '', longitude: '',
   });
 
   useEffect(() => {
@@ -62,13 +70,33 @@ export default function EditProperty() {
         check_out_time_from: property.check_out_time_from || '00:00',
         check_out_time_to: property.check_out_time_to || '11:00',
         currency: property.currency || 'USD',
-        brand_color: property.brand_color || '#2E86AB',
+        brand_color: property.brand_color || SRSTokens.teal,
+        latitude: property.latitude != null ? String(property.latitude) : '',
+        longitude: property.longitude != null ? String(property.longitude) : '',
       });
     }
   }, [property]);
 
   const set = (key: keyof EditableFields, value: string) =>
     setFields(prev => ({ ...prev, [key]: value }));
+
+  const [showMapPicker, setShowMapPicker] = useState(false);
+
+  const handleLocationSelect = async (lat: number, lng: number) => {
+    set('latitude', String(lat));
+    set('longitude', String(lng));
+    try {
+      const geo = await reverseGeocode(lat, lng);
+      // Auto-fill empty address fields so a pin on the map completes the form.
+      if (geo.street && !fields.address) set('address', geo.street);
+      if (geo.city && !fields.city) set('city', geo.city);
+      if (geo.state && !fields.state) set('state', geo.state);
+      if (geo.country && !fields.country) set('country', geo.country);
+      if (geo.postcode && !fields.zip_code) set('zip_code', geo.postcode);
+    } catch {
+      // Coordinates are still saved even if reverse geocoding fails
+    }
+  };
 
   const handleSave = () => {
     if (!fields.name.trim()) {
@@ -86,13 +114,17 @@ export default function EditProperty() {
       zip_code: fields.zip_code,
       number_of_floors: parseInt(fields.number_of_floors) || 1,
       total_rooms: parseInt(fields.total_rooms) || 1,
+      check_in_time: normalizeTime(fields.check_in_time_from),
       check_in_time_from: fields.check_in_time_from,
       check_in_time_to: fields.check_in_time_to,
+      check_out_time: normalizeTime(fields.check_out_time_to),
       check_out_time_from: fields.check_out_time_from,
       check_out_time_to: fields.check_out_time_to,
       currency: fields.currency,
       brand_color: fields.brand_color,
-    });
+      latitude: fields.latitude ? parseFloat(fields.latitude) : undefined,
+      longitude: fields.longitude ? parseFloat(fields.longitude) : undefined,
+    } as any);
     Alert.alert('Saved', 'Property updated successfully', [
       { text: 'OK', onPress: () => router.back() },
     ]);
@@ -100,15 +132,15 @@ export default function EditProperty() {
 
   if (!property) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FB' }}>
-        <Ionicons name="alert-circle-outline" size={48} color="#94A3B8" />
-        <Text style={{ marginTop: 12, fontSize: 16, color: '#64748B' }}>Property not found</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: GRAY[50] }}>
+        <Ionicons name="alert-circle-outline" size={48} color={GRAY[400]} />
+        <Text style={{ marginTop: 12, ...TYPOGRAPHY.body, color: GRAY[500] }}>Property not found</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8F9FB' }}>
+    <View style={{ flex: 1, backgroundColor: GRAY[50] }}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -139,8 +171,25 @@ export default function EditProperty() {
             <Field label="City" value={fields.city} onChange={v => set('city', v)} />
             <Field label="Address" value={fields.address} onChange={v => set('address', v)} />
             <Field label="ZIP Code" value={fields.zip_code} onChange={v => set('zip_code', v)} />
+            <TouchableOpacity onPress={() => setShowMapPicker(true)} style={mapStyles.pickerBtn} activeOpacity={0.8}>
+              <Ionicons name="map-outline" size={16} color={ACCENT} />
+              <Text style={mapStyles.pickerText}>
+                {fields.latitude && fields.longitude
+                  ? `Pinned: ${fields.latitude}, ${fields.longitude}`
+                  : 'Set Location on Map'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={GRAY[400]} />
+            </TouchableOpacity>
           </View>
         </View>
+
+        <MapLocationPicker
+          visible={showMapPicker}
+          onClose={() => setShowMapPicker(false)}
+          onLocationSelect={handleLocationSelect}
+          initialLat={fields.latitude ? parseFloat(fields.latitude) : undefined}
+          initialLng={fields.longitude ? parseFloat(fields.longitude) : undefined}
+        />
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Property Details</Text>
@@ -181,7 +230,7 @@ function Field({
         onChangeText={onChange}
         multiline={multiline}
         keyboardType={keyboard || 'default'}
-        placeholderTextColor="#CBD5E1"
+        placeholderTextColor={GRAY[300]}
       />
     </View>
   );
@@ -189,18 +238,28 @@ function Field({
 
 const fieldStyles = StyleSheet.create({
   wrapper: { marginBottom: 16 },
-  label: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: '#F8F9FB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111', borderWidth: 1, borderColor: '#E2E8F0' },
+  label: { ...TYPOGRAPHY.caption, fontWeight: '600', color: GRAY[500], marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  input: { backgroundColor: GRAY[50], borderRadius: RADIUS.input, paddingHorizontal: 14, paddingVertical: 12, ...TYPOGRAPHY.body, color: GRAY[900], borderWidth: 1, borderColor: GRAY[200] },
+});
+
+const mapStyles = StyleSheet.create({
+  pickerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: ACCENT + '0D', borderWidth: 1.5, borderStyle: 'dashed',
+    borderColor: ACCENT + '55', borderRadius: RADIUS.input,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  pickerText: { flex: 1, fontSize: 13, fontWeight: '600', color: ACCENT },
 });
 
 const styles = StyleSheet.create({
-  header: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 12, paddingHorizontal: 16 },
+  header: { backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: GRAY[200], paddingBottom: 12, paddingHorizontal: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#111', flex: 1 },
-  saveBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: ACCENT },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  backBtn: { width: 40, height: 40, borderRadius: RADIUS.button, backgroundColor: GRAY[100], alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { ...TYPOGRAPHY.body, fontWeight: '700', color: GRAY[900], flex: 1 },
+  saveBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: RADIUS.button, backgroundColor: ACCENT },
+  saveBtnText: { ...TYPOGRAPHY.body, fontWeight: '700', color: BG.white },
   section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111', marginBottom: 10 },
-  card: { backgroundColor: '#FFF', borderRadius: 14, padding: 16 },
+  sectionTitle: { ...TYPOGRAPHY.body, fontWeight: '700', color: GRAY[900], marginBottom: 10 },
+  card: { backgroundColor: BG.white, borderRadius: RADIUS.card + 6, padding: 16, ...SHADOWS.card },
 });

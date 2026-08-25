@@ -3,9 +3,10 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from '@/lib/utils';
+import { CORAL, BRAND, BG, NEUTRAL, SLATE } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#E63946';
-const NAVY = '#1A3C5E';
+const ACCENT = CORAL[500];
+const NAVY = BRAND.navyLight;
 
 interface MenuItem {
   id: string;
@@ -92,7 +93,7 @@ export default function RestaurantMenuScreen() {
       {/* Call to Action */}
       <View style={s.ctaSection}>
         <TouchableOpacity onPress={() => router.push('/(tabs)/dining-reservations')} style={s.ctaBtn}>
-          <IconSymbol name="restaurant" size={18} color="#FFF" />
+          <IconSymbol name="restaurant" size={18} color={BG.white} />
           <Text style={s.ctaBtnText}>Reserve a Table</Text>
         </TouchableOpacity>
       </View>
@@ -101,22 +102,22 @@ export default function RestaurantMenuScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12 },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SLATE[100] },
   title: { fontSize: 22, fontWeight: '700', color: NAVY, letterSpacing: -0.5 },
-  sub: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
+  sub: { fontSize: 13, color: SLATE[400], marginTop: 2 },
   categoryRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 12 },
-  categoryTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E2E8F0' },
+  categoryTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: BG.white, borderWidth: 1.5, borderColor: SLATE[200] },
   categoryTabActive: { backgroundColor: ACCENT, borderColor: ACCENT },
-  categoryText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-  categoryTextActive: { color: '#FFF' },
+  categoryText: { fontSize: 13, fontWeight: '600', color: SLATE[500] },
+  categoryTextActive: { color: BG.white },
   menuList: { paddingHorizontal: 16, gap: 8 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
+  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100] },
   itemName: { fontSize: 14, fontWeight: '600', color: NAVY },
-  itemDesc: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  itemDesc: { fontSize: 11, color: SLATE[400], marginTop: 2 },
   itemPrice: { fontSize: 14, fontWeight: '700', color: ACCENT },
   ctaSection: { paddingHorizontal: 16, paddingTop: 24 },
   ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, backgroundColor: ACCENT },
-  ctaBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  ctaBtnText: { fontSize: 15, fontWeight: '700', color: BG.white },
 });

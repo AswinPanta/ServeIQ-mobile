@@ -6,8 +6,9 @@ import { StatCard } from '@/components/superadmin/StatCard';
 import { FilterChips } from '@/components/superadmin/FilterChips';
 import { StatusBadge } from '@/components/superadmin/StatusBadge';
 import { EmptyState } from '@/components/superadmin/EmptyState';
+import { PURPLE, STATUS, AMBER, RED, SLATE, BG, TEXT } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 const FILTERS = ['All', 'Paid', 'Pending', 'Overdue'] as const;
 
 const INVOICES = [
@@ -46,9 +47,9 @@ export default function BillingScreen() {
 
       {/* Summary Stats */}
       <View style={styles.statsRow}>
-        <StatCard label="Revenue" value={`NPR ${(totalRevenue / 1000).toFixed(1)}K`} color="#10B981" icon="payment" change="12.5%" positive />
-        <StatCard label="Pending" value={`NPR ${(pendingAmount / 1000).toFixed(1)}K`} color="#F59E0B" icon="clock" />
-        <StatCard label="Overdue" value={`NPR ${(overdueAmount / 1000).toFixed(1)}K`} color="#EF4444" icon="warning" />
+        <StatCard label="Revenue" value={`NPR ${(totalRevenue / 1000).toFixed(1)}K`} color={STATUS.activeGreen} icon="payment" change="12.5%" positive />
+        <StatCard label="Pending" value={`NPR ${(pendingAmount / 1000).toFixed(1)}K`} color={AMBER[500]} icon="clock" />
+        <StatCard label="Overdue" value={`NPR ${(overdueAmount / 1000).toFixed(1)}K`} color={RED[500]} icon="warning" />
       </View>
 
       {/* Filters */}
@@ -80,7 +81,7 @@ export default function BillingScreen() {
             </View>
             <View style={styles.invoiceBottom}>
               <Text style={styles.invoiceDate}>{inv.date}</Text>
-              <Text style={[styles.invoiceAmount, { color: inv.status === 'Overdue' ? '#EF4444' : '#0F172A' }]}>
+              <Text style={[styles.invoiceAmount, { color: inv.status === 'Overdue' ? RED[500] : SLATE[900] }]}>
                 NPR {inv.amount.toLocaleString()}
               </Text>
             </View>
@@ -92,10 +93,10 @@ export default function BillingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
   statsRow: { paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   filterWrap: { paddingHorizontal: 16, marginBottom: 16 },
   invoiceCard: {
@@ -103,10 +104,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#000',
+    borderColor: SLATE[100],
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -116,9 +117,9 @@ const styles = StyleSheet.create({
   invoiceLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   avatar: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 13, fontWeight: '700' },
-  invoiceTenant: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  invoiceMeta: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  invoiceBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  invoiceDate: { fontSize: 13, color: '#64748B' },
+  invoiceTenant: { fontSize: 15, fontWeight: '700', color: SLATE[900] },
+  invoiceMeta: { fontSize: 12, color: SLATE[400], marginTop: 2 },
+  invoiceBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTopWidth: 1, borderTopColor: SLATE[100] },
+  invoiceDate: { fontSize: 13, color: SLATE[500] },
   invoiceAmount: { fontSize: 16, fontWeight: '700' },
 });

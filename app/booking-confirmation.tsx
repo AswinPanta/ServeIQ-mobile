@@ -5,21 +5,17 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import { BRAND, PAYMENT, BG, SLATE, CORAL, NEUTRAL, GREEN } from '@/lib/constants/figma-tokens';
+import { BookingQrCode } from '@/components/feature/booking-qr-code';
+import { shareBookingReceipt } from '@/lib/utils/booking-receipt';
 
-const NAVY = '#1A3C5E';
-const BLUE = '#0071c2';
-const TEAL = '#00875A';
+const NAVY = BRAND.navyLight;
+const TEAL = PAYMENT.success;
 
 function formatDate(iso: string): string {
   if (!iso) return '—';
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatDay(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
 }
 
 function formatCurrency(amount: number): string {
@@ -38,7 +34,8 @@ export default function BookingConfirmationScreen() {
   const nights = parseInt((params.nights as string) || '1', 10);
   const guests = parseInt((params.guests as string) || '2', 10);
   const totalPrice = parseInt((params.total as string) || '0', 10);
-  const confirmationCode = (params.confirmationCode as string) || 'BK' + Date.now();
+  // Stable fallback code — computed once (never in render) so the react-compiler purity rule stays satisfied.
+  const [confirmationCode] = React.useState(() => (params.confirmationCode as string) || 'BK' + Date.now());
   const subtotal = parseInt((params.subtotal as string) || '0', 10);
   const tax = parseInt((params.tax as string) || '0', 10);
   const discount = parseInt((params.discount as string) || '0', 10);
@@ -61,11 +58,36 @@ export default function BookingConfirmationScreen() {
       await Share.share({
         message: `Booking Confirmed!\nHotel: ${hotelName}\nRoom: ${roomType}\nCheck-in: ${formatDate(checkIn)}\nCheck-out: ${formatDate(checkOut)}\nConfirmation: ${confirmationCode}`,
       });
-    } catch {}
+    } catch {
+      // User cancelled share or platform error — non-fatal
+    }
   };
 
   const handleReceipt = () => {
-    Alert.alert('Receipt', 'Receipt downloaded successfully');
+    shareBookingReceipt({
+      confirmationCode,
+      propertyName: hotelName,
+      propertyLocation: hotelCity,
+      checkIn,
+      checkOut,
+      totalGuests: guests,
+      guestName,
+      guestEmail,
+      guestPhone,
+      guestNationality: guestCountry,
+      rooms: [{
+        room_name: roomType,
+        room_type: roomType,
+        bed_type: bedTypes,
+        base_rate: pricePerNight,
+        nights,
+        subtotal,
+      }],
+      discount: discount > 0 ? discount : undefined,
+      totalAmount: totalPrice,
+      currency: 'NPR',
+      createdAt: new Date().toLocaleString(),
+    });
   };
 
   return (
@@ -74,7 +96,7 @@ export default function BookingConfirmationScreen() {
       <View style={styles.banner}>
         <View style={styles.bannerContent}>
           <View style={styles.confirmedPill}>
-            <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+            <Ionicons name="checkmark-circle" size={14} color={BG.white} />
             <Text style={styles.confirmedPillText}>Booking confirmed</Text>
           </View>
           <Text style={styles.bannerTitle}>Your stay is confirmed</Text>
@@ -88,7 +110,7 @@ export default function BookingConfirmationScreen() {
           <React.Fragment key={label}>
             <View style={styles.stepperItem}>
               <View style={[styles.stepperDot, styles.stepperDotDone]}>
-                <Ionicons name="checkmark" size={12} color="#FFF" />
+                <Ionicons name="checkmark" size={12} color={BG.white} />
               </View>
               <Text style={[styles.stepperLabel, styles.stepperLabelDone]} numberOfLines={1}>{label}</Text>
             </View>
@@ -183,7 +205,7 @@ export default function BookingConfirmationScreen() {
               <View style={styles.summaryDivider} />
 
               <View style={styles.summaryRow}>
-                <Ionicons name="key-outline" size={16} color="#64748B" />
+                <Ionicons name="key-outline" size={16} color={SLATE[500]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.summaryLabel}>Confirmation code</Text>
                   <Text style={styles.confirmationCode}>{confirmationCode}</Text>
@@ -191,7 +213,7 @@ export default function BookingConfirmationScreen() {
               </View>
 
               <View style={styles.summaryRow}>
-                <Ionicons name="calendar-outline" size={16} color="#64748B" />
+                <Ionicons name="calendar-outline" size={16} color={SLATE[500]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.summaryLabel}>Dates</Text>
                   <Text style={styles.summaryValue}>{formatDate(checkIn)} – {formatDate(checkOut)}</Text>
@@ -200,7 +222,7 @@ export default function BookingConfirmationScreen() {
               </View>
 
               <View style={styles.summaryRow}>
-                <Ionicons name="people-outline" size={16} color="#64748B" />
+                <Ionicons name="people-outline" size={16} color={SLATE[500]} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.summaryLabel}>Guests</Text>
                   <Text style={styles.summaryValue}>{guests} guest{guests > 1 ? 's' : ''}</Text>
@@ -220,10 +242,12 @@ export default function BookingConfirmationScreen() {
                   <Text style={[styles.priceValue, { color: RED }]}>-{formatCurrency(discount)}</Text>
                 </View>
               )}
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Taxes & fees</Text>
-                <Text style={styles.priceValue}>{formatCurrency(tax)}</Text>
-              </View>
+              {tax > 0 && (
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Taxes & fees</Text>
+                  <Text style={styles.priceValue}>{formatCurrency(tax)}</Text>
+                </View>
+              )}
               <View style={styles.priceDivider} />
               <View style={styles.priceRow}>
                 <Text style={styles.priceTotalLabel}>Total paid</Text>
@@ -256,10 +280,7 @@ export default function BookingConfirmationScreen() {
             {/* QR Code */}
             <View style={styles.qrCard}>
               <Text style={styles.qrTitle}>Booking QR Code</Text>
-              <View style={styles.qrPlaceholder}>
-                <Ionicons name="qr-code" size={100} color="#94A3B8" />
-              </View>
-              <Text style={styles.qrHint}>Show this QR code at check-in</Text>
+              <BookingQrCode value={confirmationCode} size={180} hint="Show this QR code at check-in" />
             </View>
           </View>
         </View>
@@ -275,27 +296,27 @@ export default function BookingConfirmationScreen() {
   );
 }
 
-const RED = '#d4111e';
+const RED = CORAL[600];
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: { flex: 1, backgroundColor: NEUTRAL[300] },
 
   // Banner
   banner: { backgroundColor: TEAL, paddingTop: Platform.OS === 'ios' ? 56 : 40, paddingBottom: 24, paddingHorizontal: 20 },
   bannerContent: { alignItems: 'center', gap: 8 },
   confirmedPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
-  confirmedPillText: { fontSize: 13, fontWeight: '600', color: '#FFF' },
-  bannerTitle: { fontSize: 22, fontWeight: '700', color: '#FFF', letterSpacing: -0.3 },
+  confirmedPillText: { fontSize: 13, fontWeight: '600', color: BG.white },
+  bannerTitle: { fontSize: 22, fontWeight: '700', color: BG.white, letterSpacing: -0.3 },
   bannerSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
 
   // Stepper
-  stepper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  stepper: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: SLATE[200] },
   stepperItem: { alignItems: 'center', width: 80 },
-  stepperDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  stepperDot: { width: 24, height: 24, borderRadius: 12, backgroundColor: SLATE[200], alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   stepperDotDone: { backgroundColor: TEAL },
-  stepperLabel: { fontSize: 9, color: '#94A3B8', textAlign: 'center' },
+  stepperLabel: { fontSize: 9, color: SLATE[400], textAlign: 'center' },
   stepperLabelDone: { color: NAVY, fontWeight: '600' },
-  stepperLine: { flex: 1, height: 2, backgroundColor: '#E2E8F0', marginBottom: 16, marginHorizontal: -4 },
+  stepperLine: { flex: 1, height: 2, backgroundColor: SLATE[200], marginBottom: 16, marginHorizontal: -4 },
   stepperLineDone: { backgroundColor: TEAL },
 
   // Layout
@@ -306,7 +327,7 @@ const styles = StyleSheet.create({
   rightCol: { width: 360, padding: 16, gap: 12 },
 
   // Cards
-  card: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  card: { backgroundColor: BG.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: SLATE[200] },
   cardTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12 },
 
   // Room Row
@@ -314,43 +335,43 @@ const styles = StyleSheet.create({
   roomImage: { width: 80, height: 80, borderRadius: 10 },
   roomInfo: { flex: 1, gap: 2 },
   roomName: { fontSize: 14, fontWeight: '700', color: NAVY },
-  roomBed: { fontSize: 12, color: '#64748B' },
-  roomGuests: { fontSize: 12, color: '#64748B' },
+  roomBed: { fontSize: 12, color: SLATE[500] },
+  roomGuests: { fontSize: 12, color: SLATE[500] },
   roomRate: { fontSize: 12, fontWeight: '600', color: TEAL, marginTop: 4 },
 
   // Detail Row
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-  detailLabel: { fontSize: 13, color: '#64748B' },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: SLATE[50] },
+  detailLabel: { fontSize: 13, color: SLATE[500] },
   detailValue: { fontSize: 13, fontWeight: '600', color: NAVY },
 
   // Info Row
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
-  infoText: { fontSize: 12, color: '#64748B', flex: 1, lineHeight: 18 },
+  infoText: { fontSize: 12, color: SLATE[500], flex: 1, lineHeight: 18 },
 
   // Cancellation
-  cancelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, backgroundColor: '#F0FFF4', borderWidth: 1, borderColor: '#C6F6D5' },
+  cancelRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, backgroundColor: GREEN.pale, borderWidth: 1, borderColor: GREEN.mint },
   cancelTitle: { fontSize: 13, fontWeight: '600', color: NAVY },
-  cancelDesc: { fontSize: 11, color: '#64748B', marginTop: 2 },
+  cancelDesc: { fontSize: 11, color: SLATE[500], marginTop: 2 },
 
   // Summary Card
-  summaryCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0' },
+  summaryCard: { backgroundColor: BG.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: SLATE[200] },
   summaryHeader: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   initialsBadge: { width: 44, height: 44, borderRadius: 12, backgroundColor: NAVY, alignItems: 'center', justifyContent: 'center' },
-  initialsText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  initialsText: { fontSize: 16, fontWeight: '700', color: BG.white },
   summaryHotelName: { fontSize: 15, fontWeight: '700', color: NAVY, lineHeight: 20 },
-  summaryLocation: { fontSize: 12, color: '#64748B' },
-  summaryDivider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 12 },
+  summaryLocation: { fontSize: 12, color: SLATE[500] },
+  summaryDivider: { height: 1, backgroundColor: SLATE[200], marginVertical: 12 },
   summaryRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 10 },
-  summaryLabel: { fontSize: 11, color: '#94A3B8', marginBottom: 2 },
+  summaryLabel: { fontSize: 11, color: SLATE[400], marginBottom: 2 },
   summaryValue: { fontSize: 13, fontWeight: '600', color: NAVY },
-  summarySub: { fontSize: 12, color: '#64748B' },
+  summarySub: { fontSize: 12, color: SLATE[500] },
   confirmationCode: { fontSize: 16, fontWeight: '700', color: NAVY, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 
   // Price
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  priceLabel: { fontSize: 13, color: '#64748B' },
+  priceLabel: { fontSize: 13, color: SLATE[500] },
   priceValue: { fontSize: 13, fontWeight: '600', color: NAVY },
-  priceDivider: { height: 1, backgroundColor: '#E2E8F0', marginVertical: 6 },
+  priceDivider: { height: 1, backgroundColor: SLATE[200], marginVertical: 6 },
   priceTotalLabel: { fontSize: 15, fontWeight: '700', color: NAVY },
   priceTotalValue: { fontSize: 16, fontWeight: '700', color: TEAL },
   paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
@@ -359,17 +380,16 @@ const styles = StyleSheet.create({
 
   // Actions
   actions: { flexDirection: 'row', gap: 8 },
-  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: SLATE[200], backgroundColor: BG.white },
   actionBtnText: { fontSize: 12, fontWeight: '600', color: NAVY },
 
   // QR
-  qrCard: { backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' },
+  qrCard: { backgroundColor: BG.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: SLATE[200], alignItems: 'center' },
   qrTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12, alignSelf: 'flex-start' },
-  qrPlaceholder: { width: 180, height: 180, borderRadius: 14, borderWidth: 2, borderColor: '#E2E8F0', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC', marginBottom: 10 },
-  qrHint: { fontSize: 12, color: '#94A3B8' },
+  qrHint: { fontSize: 12, color: SLATE[400] },
 
   // Bottom Bar
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 36 : 16, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 36 : 16, backgroundColor: BG.white, borderTopWidth: 1, borderTopColor: SLATE[200] },
   homeBtn: { paddingVertical: 14, borderRadius: 10, alignItems: 'center', backgroundColor: NAVY },
-  homeBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  homeBtnText: { fontSize: 14, fontWeight: '700', color: BG.white },
 });

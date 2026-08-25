@@ -1,6 +1,6 @@
 /**
  * Mock Property Data
- * Comprehensive demo hotel data for the StayEasy app
+ * Comprehensive demo hotel data for the ServeIQ app
  * Ref: Rich 10-hotel dataset from my-react-app
  */
 
@@ -86,6 +86,8 @@ export interface Hotel {
   hostReviews?: number;
   lat?: number;
   lng?: number;
+  /** Distance from the user's location (km) — set by the nearby search path. */
+  distance_km?: number;
   tag?: string;
 }
 
@@ -112,7 +114,7 @@ function rt(
 
 export const MOCK_PROPERTIES: Hotel[] = [
   {
-    id: '1', name: 'Himalayan Lakeview Resort', location: 'Lakeside, Pokhara, Nepal', city: 'Pokhara', country: 'Nepal',
+    id: '1', name: 'Himalayan Lakeview Resort', location: 'Lakeside, Pokhara, Nepal', city: 'Pokhara', country: 'Nepal', property_type: 'resort',
     address: 'Lakeside Road, Pokhara 33700, Nepal', rating: 4.94, review_count: 267, starRating: 5, price: 180,
     currency: 'NPR', brandColor: '#0891B2',
     description: 'Set on the tranquil shores of Phewa Lake with uninterrupted views of the Annapurna and Machhapuchhre peaks, this resort blends traditional Newari architecture with contemporary comfort. Wake to birdsong and the sight of paragliders drifting across a mirror-still lake. Enjoy farm-to-table dining on a lantern-lit terrace, or take a complimentary kayak out at dawn — Pokhara\'s magic is right at your doorstep.',
@@ -156,7 +158,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Raj Gurung', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'March 2019', hostReviews: 254,
   },
   {
-    id: '2', name: 'Durbar Square Heritage Haveli', location: 'Thamel, Kathmandu, Nepal', city: 'Kathmandu', country: 'Nepal',
+    id: '2', name: 'Durbar Square Heritage Haveli', location: 'Thamel, Kathmandu, Nepal', city: 'Kathmandu', country: 'Nepal', property_type: 'hotels',
     address: 'Thamel Marg, Kathmandu 44600, Nepal', rating: 4.87, review_count: 334, starRating: 4, price: 95,
     currency: 'NPR', brandColor: '#B45309',
     description: 'Tucked within the lively streets of Thamel, this restored 19th-century Newari merchant\'s house is a peaceful haven amid Kathmandu\'s vibrant chaos. Carved wooden windows, a central brick courtyard, and a rooftop terrace overlooking the city\'s temple spires transport you to another era. Steps away from Kathmandu Durbar Square, boutique shops, and some of the best momo joints in the valley.',
@@ -193,7 +195,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Maya Shrestha', hostAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop', hostJoined: 'August 2017', hostReviews: 311,
   },
   {
-    id: '3', name: 'Serenity Beachfront Villa', location: 'Maldives, South Malé Atoll', city: 'South Malé Atoll', country: 'Maldives',
+    id: '3', name: 'Serenity Beachfront Villa', location: 'Maldives, South Malé Atoll', city: 'South Malé Atoll', country: 'Maldives', property_type: 'villa',
     address: 'South Malé Atoll, Maldives', rating: 4.97, review_count: 312, starRating: 5, price: 420,
     currency: 'USD', brandColor: '#0D9488',
     description: 'Wake up to the sound of gentle waves in this stunning overwater villa perched above the crystal-clear lagoon. This exclusive retreat blends natural Maldivian craftsmanship with modern luxury — think handwoven rattan ceilings, a private infinity pool, and a direct-access ladder into the Indian Ocean. Ideal for couples seeking seclusion and unforgettable sunsets.',
@@ -231,7 +233,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Aisha Rasheed', hostAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop', hostJoined: 'March 2018', hostReviews: 289,
   },
   {
-    id: '4', name: 'The Grand Alpine Chalet', location: 'Zermatt, Switzerland', city: 'Zermatt', country: 'Switzerland',
+    id: '4', name: 'The Grand Alpine Chalet', location: 'Zermatt, Switzerland', city: 'Zermatt', country: 'Switzerland', property_type: 'others',
     address: 'Zermatt, Switzerland', rating: 4.89, review_count: 204, starRating: 5, price: 580,
     currency: 'CHF', brandColor: '#1D4ED8',
     description: 'Nestled at the foot of the iconic Matterhorn, this traditional Swiss chalet offers panoramic mountain views, a wood-panelled interior with a roaring fireplace, and direct ski-in/ski-out access. After a day on the slopes, unwind in the outdoor hot tub with the Alps stretching endlessly before you.',
@@ -269,7 +271,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Hans Müller', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'January 2016', hostReviews: 198,
   },
   {
-    id: '6', name: 'Bali Jungle Pool Villa', location: 'Ubud, Bali, Indonesia', city: 'Ubud', country: 'Indonesia',
+    id: '6', name: 'Bali Jungle Pool Villa', location: 'Ubud, Bali, Indonesia', city: 'Ubud', country: 'Indonesia', property_type: 'villa',
     address: 'Ubud, Bali, Indonesia', rating: 4.93, review_count: 451, starRating: 5, price: 195,
     currency: 'USD', brandColor: '#059669',
     description: 'Hidden within Ubud\'s lush rice-paddy terraces, this open-air villa channels traditional Balinese architecture — teak pavilions, hand-carved stone altars, and alang-alang thatch roofs. The 12-metre infinity pool seemingly merges with the jungle canopy below. A private chef, resident butler, and daily Balinese offerings make every moment feel ceremonial.',
@@ -307,7 +309,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Wayan Suartha', hostAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop', hostJoined: 'April 2017', hostReviews: 430,
   },
   {
-    id: '7', name: 'Tokyo Tower-View Penthouse', location: 'Minato, Tokyo, Japan', city: 'Tokyo', country: 'Japan',
+    id: '7', name: 'Tokyo Tower-View Penthouse', location: 'Minato, Tokyo, Japan', city: 'Tokyo', country: 'Japan', property_type: 'apartments',
     address: 'Minato, Tokyo, Japan', rating: 4.88, review_count: 267, starRating: 5, price: 475,
     currency: 'JPY', brandColor: '#DC2626',
     description: 'On the 38th floor of a glass tower in Minato, this minimalist penthouse frames Tokyo Tower in every window. Polished concrete, bespoke Japanese joinery, and a 180° city panorama define this space. Walk to Roppongi\'s galleries and restaurants, or spend an evening watching the city lights from the wraparound terrace.',
@@ -345,7 +347,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Yuki Tanaka', hostAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop', hostJoined: 'September 2020', hostReviews: 241,
   },
   {
-    id: '8', name: 'Amalfi Coastal Retreat', location: 'Positano, Italy', city: 'Positano', country: 'Italy',
+    id: '8', name: 'Amalfi Coastal Retreat', location: 'Positano, Italy', city: 'Positano', country: 'Italy', property_type: 'others',
     address: 'Positano, Italy', rating: 4.91, review_count: 389, starRating: 5, price: 290,
     currency: 'EUR', brandColor: '#DB2777',
     description: 'Terraced into the ochre-and-white cliffs of Positano, this sun-drenched retreat offers an al-fresco dining terrace, a saltwater pool, and direct steps down to a private beach cove. Hand-painted majolica tiles, lemon groves, and the scent of bougainvillea set the unmistakable Amalfi mood.',
@@ -383,7 +385,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Marco Esposito', hostAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop', hostJoined: 'May 2015', hostReviews: 367,
   },
   {
-    id: '9', name: 'Tuscany Countryside Estate', location: 'Siena, Tuscany, Italy', city: 'Siena', country: 'Italy',
+    id: '9', name: 'Tuscany Countryside Estate', location: 'Siena, Tuscany, Italy', city: 'Siena', country: 'Italy', property_type: 'others',
     address: 'Siena, Tuscany, Italy', rating: 4.96, review_count: 143, starRating: 5, price: 350,
     currency: 'EUR', brandColor: '#CA8A04',
     description: 'A restored 16th-century farmhouse surrounded by 20 acres of olive groves and vineyards between Siena and San Gimignano. Stone-vaulted ceilings, original terracotta floors, and a frescoed dining hall recall Tuscany\'s Renaissance grandeur. The heated outdoor pool, truffle-hunting excursions, and private wine cellar ensure a stay beyond the ordinary.',
@@ -421,7 +423,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Giulia Bianchi', hostAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop', hostJoined: 'February 2014', hostReviews: 139,
   },
   {
-    id: '10', name: 'Parisian Haussmann Apartment', location: '7th Arrondissement, Paris', city: 'Paris', country: 'France',
+    id: '10', name: 'Parisian Haussmann Apartment', location: '7th Arrondissement, Paris', city: 'Paris', country: 'France', property_type: 'apartments',
     address: '7th Arrondissement, Paris, France', rating: 4.85, review_count: 521, starRating: 4, price: 220,
     currency: 'EUR', brandColor: '#7C3AED',
     description: 'On the third floor of a classic Haussmann building in the 7th arrondissement, this elegantly proportioned apartment features parquet herringbone floors, ornate plasterwork cornices, and tall French windows with Juliet balconies overlooking a tree-lined boulevard. The Eiffel Tower is a 12-minute walk; Musée d\'Orsay is just around the corner.',
@@ -459,7 +461,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Claire Dubois', hostAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop', hostJoined: 'October 2013', hostReviews: 498,
   },
   {
-    id: '11', name: 'Santorini Cliffside Suite', location: 'Oia, Santorini, Greece', city: 'Oia', country: 'Greece',
+    id: '11', name: 'Santorini Cliffside Suite', location: 'Oia, Santorini, Greece', city: 'Oia', country: 'Greece', property_type: 'others',
     address: 'Oia, Santorini, Greece', rating: 4.95, review_count: 178, starRating: 5, price: 340,
     currency: 'EUR', brandColor: '#2563EB',
     description: 'Carved into the volcanic cliffs of Oia, this iconic blue-domed suite delivers Santorini\'s most celebrated views — the caldera, the Aegean Sea, and sunsets that seem painted by hand. White-washed walls, vaulted ceilings, and hand-picked Cycladic antiques create an intimate, timeless atmosphere. A private terrace with a plunge pool completes the picture.',
@@ -497,7 +499,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Elena Papadopoulos', hostAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop', hostJoined: 'June 2019', hostReviews: 162,
   },
   {
-    id: '12', name: 'Chitwan Jungle Safari Lodge', location: 'Sauraha, Chitwan, Nepal', city: 'Chitwan', country: 'Nepal',
+    id: '12', name: 'Chitwan Jungle Safari Lodge', location: 'Sauraha, Chitwan, Nepal', city: 'Chitwan', country: 'Nepal', property_type: 'resort',
     address: 'Sauraha Road, Chitwan 44200, Nepal', rating: 4.82, review_count: 156, starRating: 4, price: 75,
     currency: 'NPR', brandColor: '#059669',
     description: 'Nestled on the edge of Chitwan National Park, this eco-lodge puts you face-to-face with Nepal\'s incredible wildlife. Wake to the sounds of exotic birds, then head out on a guided jungle safari to spot rhinos, crocodiles, and if you\'re lucky, the elusive Bengal tiger. Evenings are spent around a crackling campfire under a canopy of stars.',
@@ -527,7 +529,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Bishnu Thapa', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'Jan 2020', hostReviews: 140,
   },
   {
-    id: '13', name: 'Nagarkot Mountain Retreat', location: 'Nagarkot, Bhaktapur, Nepal', city: 'Kathmandu', country: 'Nepal',
+    id: '13', name: 'Nagarkot Mountain Retreat', location: 'Nagarkot, Bhaktapur, Nepal', city: 'Kathmandu', country: 'Nepal', property_type: 'hotels',
     address: 'Nagarkot Road, Bhaktapur 44600, Nepal', rating: 4.78, review_count: 198, starRating: 4, price: 60,
     currency: 'NPR', brandColor: '#7C3AED',
     description: 'Perched at 2,175m above sea level, this mountain retreat offers sweeping panoramic views of the Himalayan range — from Dhaulagiri in the west to Kanchenjunga in the east. The property blends traditional Nepali architecture with modern comforts, making it the perfect escape from Kathmandu\'s hustle without straying too far.',
@@ -561,7 +563,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Anita Sharma', hostAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop', hostJoined: 'Aug 2018', hostReviews: 180,
   },
   {
-    id: '14', name: 'Lumbini Buddha Garden Resort', location: 'Lumbini, Nepal', city: 'Lumbini', country: 'Nepal',
+    id: '14', name: 'Lumbini Buddha Garden Resort', location: 'Lumbini, Nepal', city: 'Lumbini', country: 'Nepal', property_type: 'resort',
     address: 'Lumbini Development Zone, Lumbini 32900, Nepal', rating: 4.71, review_count: 112, starRating: 3, price: 45,
     currency: 'NPR', brandColor: '#D97706',
     description: 'A serene retreat in the birthplace of Lord Buddha. This peaceful resort sits within walking distance of the sacred Maya Devi Temple and the eternal flame. Lush gardens, meditation spaces, and a tranquil pond create the ideal setting for reflection and spiritual renewal.',
@@ -590,7 +592,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Ram Prajapati', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'Mar 2021', hostReviews: 95,
   },
   {
-    id: '15', name: 'Bandipur Heritage Inn', location: 'Bandipur, Tanahun, Nepal', city: 'Pokhara', country: 'Nepal',
+    id: '15', name: 'Bandipur Heritage Inn', location: 'Bandipur, Tanahun, Nepal', city: 'Pokhara', country: 'Nepal', property_type: 'hotels',
     address: 'Bandipur Bazaar, Tanahun 33500, Nepal', rating: 4.85, review_count: 87, starRating: 4, price: 55,
     currency: 'NPR', brandColor: '#DC2626',
     description: 'Step back in time in this beautifully restored Newari trading house perched on a hilltop between Kathmandu and Pokhara. Cobblestone streets, ancient temples, and sweeping views of the Marsyangdi River valley make Bandipur one of Nepal\'s best-kept secrets. The inn\'s rooftop restaurant serves authentic Nepali cuisine with a view that stretches to the Annapurnas.',
@@ -619,7 +621,7 @@ export const MOCK_PROPERTIES: Hotel[] = [
     hostName: 'Suman Gurung', hostAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop', hostJoined: 'Oct 2019', hostReviews: 78,
   },
   {
-    id: '16', name: 'Kathmandu Grand Hotel', location: 'Durbar Marg, Kathmandu, Nepal', city: 'Kathmandu', country: 'Nepal',
+    id: '16', name: 'Kathmandu Grand Hotel', location: 'Durbar Marg, Kathmandu, Nepal', city: 'Kathmandu', country: 'Nepal', property_type: 'hotels',
     address: 'Durbar Marg, Kathmandu 44600, Nepal', rating: 4.65, review_count: 445, starRating: 5, price: 150,
     currency: 'NPR', brandColor: '#1D4ED8',
     description: 'A landmark luxury hotel in the heart of Kathmandu, steps from Kathmandu Durbar Square and the shopping district. Grand marble lobbies, a rooftop infinity pool with Himalayan views, and world-class dining make this the city\'s premier address for discerning travelers. The spa offers traditional Nepali treatments alongside international wellness therapies.',

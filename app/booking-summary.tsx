@@ -6,8 +6,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FolioBreakdown, type FolioItem } from '@/components/feature/folio-breakdown';
 import { safeGoBack } from '@/lib/utils';
 import { useAuth } from '@/lib/context/auth-context';
+import { SRS, BRAND, STATUS_COLORS, SLATE, BG, NEUTRAL, TEXT } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2E86AB';
+const ACCENT = SRS.teal;
 
 export default function BookingSummaryScreen() {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ export default function BookingSummaryScreen() {
   const cleaningFee = parseInt((params.cleaningFee as string) || '0', 10);
   const serviceFee = parseInt((params.serviceFee as string) || '0', 10);
   const grandTotal = parseInt((params.grandTotal as string) || '0', 10);
+  const propertyId = (params.propertyId as string) || '';
   const roomId = params.roomId as string | undefined;
 
   const { user } = useAuth();
@@ -39,6 +41,7 @@ export default function BookingSummaryScreen() {
       pathname: '/booking-flow',
       params: {
         hotelName,
+        propertyId,
         checkIn: params.checkIn || '',
         checkOut: params.checkOut || '',
         guests: params.guests || '1',
@@ -57,7 +60,7 @@ export default function BookingSummaryScreen() {
       >
         {/* Back */}
         <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
-          <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+          <IconSymbol name="arrow.back" size={18} color={BRAND.navyLight} />
         </TouchableOpacity>
 
         {/* Main Card */}
@@ -66,7 +69,7 @@ export default function BookingSummaryScreen() {
           <View style={s.cardHeader}>
             <Text style={s.hotelName}>{hotelName}</Text>
             <View style={s.confirmedBadge}>
-              <IconSymbol name="check" size={12} color="#16A085" />
+              <IconSymbol name="check" size={12} color={STATUS_COLORS.cleaning} />
               <Text style={s.confirmedText}>{t('confirmation.statusConfirmed')}</Text>
             </View>
           </View>
@@ -76,13 +79,13 @@ export default function BookingSummaryScreen() {
             <View style={s.contactRow}>
               {hotelPhone ? (
                 <View style={s.contactItem}>
-                  <IconSymbol name="phone" size={14} color="#94A3B8" />
+                  <IconSymbol name="phone" size={14} color={SLATE[400]} />
                   <Text style={s.contactText}>{hotelPhone}</Text>
                 </View>
               ) : null}
               {hotelEmail ? (
                 <View style={s.contactItem}>
-                  <IconSymbol name="email" size={14} color="#94A3B8" />
+                  <IconSymbol name="email" size={14} color={SLATE[400]} />
                   <Text style={s.contactText}>{hotelEmail}</Text>
                 </View>
               ) : null}
@@ -136,7 +139,7 @@ export default function BookingSummaryScreen() {
           <Text style={s.bottomTotalVal}>NPR {grandTotal.toLocaleString()}</Text>
         </View>
         <TouchableOpacity onPress={handleBookNow} style={s.bookBtn} activeOpacity={0.9}>
-          <IconSymbol name="booking" size={16} color="#FFF" />
+          <IconSymbol name="booking" size={16} color={BG.white} />
           <Text style={s.bookBtnText}>Book Now</Text>
         </TouchableOpacity>
       </View>
@@ -145,32 +148,32 @@ export default function BookingSummaryScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, marginTop: 56, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  card: { marginHorizontal: 16, borderRadius: 20, backgroundColor: '#FFF', padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, marginTop: 56, marginBottom: 12, borderWidth: 1, borderColor: SLATE[100] },
+  card: { marginHorizontal: 16, borderRadius: 20, backgroundColor: BG.white, padding: 20, shadowColor: TEXT.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  hotelName: { fontSize: 18, fontWeight: '700', color: '#1A3C5E', flex: 1 },
+  hotelName: { fontSize: 18, fontWeight: '700', color: BRAND.navyLight, flex: 1 },
   confirmedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(22, 160, 133, 0.1)' },
-  confirmedText: { fontSize: 11, fontWeight: '600', color: '#16A085' },
+  confirmedText: { fontSize: 11, fontWeight: '600', color: STATUS_COLORS.cleaning },
   contactRow: { gap: 6, marginBottom: 12 },
   contactItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  contactText: { fontSize: 12, color: '#64748B' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 14 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A3C5E', marginBottom: 10 },
+  contactText: { fontSize: 12, color: SLATE[500] },
+  divider: { height: 1, backgroundColor: SLATE[100], marginVertical: 14 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: BRAND.navyLight, marginBottom: 10 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  summaryLabel: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  summaryLabel: { fontSize: 14, fontWeight: '600', color: SLATE[900] },
   summaryVal: { fontSize: 14, fontWeight: '700', color: ACCENT },
-  nightsText: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  nightsText: { fontSize: 11, color: SLATE[400], marginTop: 2 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  priceLabel: { fontSize: 13, color: '#64748B' },
-  priceVal: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
+  priceLabel: { fontSize: 13, color: SLATE[500] },
+  priceVal: { fontSize: 13, fontWeight: '600', color: SLATE[900] },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  totalLabel: { fontSize: 16, fontWeight: '700', color: '#1A3C5E' },
+  totalLabel: { fontSize: 16, fontWeight: '700', color: BRAND.navyLight },
   totalVal: { fontSize: 18, fontWeight: '700', color: ACCENT },
-  terms: { marginHorizontal: 16, marginTop: 16, fontSize: 11, color: '#94A3B8', textAlign: 'center', lineHeight: 16 },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 40, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  bottomTotalLabel: { fontSize: 13, color: '#64748B' },
+  terms: { marginHorizontal: 16, marginTop: 16, fontSize: 11, color: SLATE[400], textAlign: 'center', lineHeight: 16 },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 40, backgroundColor: BG.white, borderTopWidth: 1, borderTopColor: SLATE[100] },
+  bottomTotalLabel: { fontSize: 13, color: SLATE[500] },
   bottomTotalVal: { fontSize: 18, fontWeight: '700', color: ACCENT },
   bookBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, backgroundColor: ACCENT, shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
-  bookBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  bookBtnText: { fontSize: 15, fontWeight: '700', color: BG.white },
 });

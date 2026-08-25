@@ -2,8 +2,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Linking, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
+import { SRS, BRAND, SLATE } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2E86AB';
+const ACCENT = SRS.teal;
 
 interface ContactSectionProps {
   phone: string;
@@ -31,10 +32,10 @@ export function ContactSection({ phone, email, checkInTime, checkOutTime }: Cont
 
 const s = StyleSheet.create({
   title: {
-    fontSize: 14, fontWeight: '700', color: '#1A3C5E', marginBottom: 10,
+    fontSize: 14, fontWeight: '700', color: BRAND.navyLight, marginBottom: 10,
     letterSpacing: -0.2, fontFamily: FONTS.sora,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   text: { fontSize: 13, color: ACCENT, fontWeight: '500' },
-  times: { fontSize: 11, color: '#94A3B8', marginTop: 4 },
+  times: { fontSize: 11, color: SLATE[400], marginTop: 4 },
 });

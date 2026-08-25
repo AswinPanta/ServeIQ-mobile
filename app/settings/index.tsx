@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { ScreenContainer } from '@/components/screen-container';
 import { Alert } from 'react-native';
 import { safeGoBack } from '@/lib/utils';
+import { RED } from '@/lib/constants/figma-tokens';
 const SECTIONS = [
   {
     title: 'Account',
@@ -83,14 +84,14 @@ export default function SettingsScreen() {
           <TouchableOpacity onPress={handleLogout}
             style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-              paddingVertical: 16, borderRadius: 16, backgroundColor: '#FEE2E2', marginTop: 8,
+              paddingVertical: 16, borderRadius: 16, backgroundColor: RED[100], marginTop: 8,
             }}
           >
             <Text style={{ fontSize: 18 }}>🚪</Text>
             <Text className="text-base font-semibold text-red-600">Log Out</Text>
           </TouchableOpacity>
 
-          <Text className="text-xs text-muted text-center mt-8">StayEasy v1.0.0</Text>
+          <Text className="text-xs text-muted text-center mt-8">ServeIQ v1.0.0</Text>
         </View>
       </ScrollView>
     </ScreenContainer>

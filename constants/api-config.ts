@@ -9,6 +9,29 @@
 // API Base URL - Update based on environment
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://stay-easy-sizw.onrender.com/api/v1';
 
+// Khalti requires return_url to start with the base the backend is configured
+// with (KHALTI_RETURN_URL_BASE — the reference web app's /reserve page). The
+// live backend rejects any other URL, so the mobile app sends this base and the
+// hosted-checkout WebView intercepts Khalti's redirect to it after payment.
+export const KHALTI_RETURN_URL_BASE =
+  process.env.EXPO_PUBLIC_KHALTI_RETURN_URL || 'http://localhost:5173/reserve';
+
+// Backend date params require exact dates ("2026-08-10"), not ISO datetimes.
+// Callers may pass either an already-clean date or an ISO datetime produced by
+// Date#toISOString(). The latter is in UTC, so slicing it shifts the date
+// BACKWARD in positive-offset timezones (e.g. Nepal +5:45) and the backend
+// rejects it as "in the past". Reconstruct the original LOCAL date instead.
+export function toDateParam(value?: string): string {
+  const v = (value || '').trim();
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v.slice(0, 10);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 // API Endpoints — only those confirmed in the live backend
 export const API_ENDPOINTS = {
   // ─── Authentication — Guest portal ──────────────────────────────
@@ -39,9 +62,11 @@ export const API_ENDPOINTS = {
     CREATE: '/bookings/',
     MY_BOOKINGS: '/bookings/me',
     GET_BY_REF: (ref: string) => `/bookings/${ref}`,
+    DELETE: (ref: string) => `/bookings/${ref}`,
     PAYMENT_INTENT: (ref: string) => `/bookings/${ref}/payment-intent`,
     CONFIRM_PAYMENT: (ref: string) => `/bookings/${ref}/confirm`,
     APPLY_DISCOUNT: (ref: string) => `/bookings/${ref}/apply-discount`,
+    SPECIAL_REQUESTS: (ref: string) => `/bookings/${ref}/special-requests`,
   },
 
   // ─── Tenants (SuperAdmin) ──────────────────────────────────────
@@ -104,6 +129,8 @@ export const API_ENDPOINTS = {
     UPDATE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
     DELETE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
     UPLOAD_STAFF_IMAGE: (id: string) => `/properties/${id}/staffs/image`,
+    // Tasks
+    CREATE_TASK: (id: string) => `/properties/${id}/tasks`,
   },
 
   // ─── Search ────────────────────────────────────────────────────
@@ -112,9 +139,18 @@ export const API_ENDPOINTS = {
     SEARCH_NEARBY: '/search/nearby',
   },
 
+  // ─── Favorites ────────────────────────────────────────────────
+  FAVORITES: {
+    LIST: '/favorites',
+    TOGGLE: (propertyId: string) => `/favorites/${propertyId}/toggle`,
+  },
+
   // ─── Available rooms for a property ──────────────────────────
+  // Backend validates checkin/checkout as exact dates (zero time). Normalize
+  // any ISO datetime ("2026-08-10T14:00:00.000Z") to "YYYY-MM-DD" or the
+  // endpoint returns 422.
   AVAILABLE_ROOMS: (propertyId: string, checkin: string, checkout: string) =>
-    `/properties/${propertyId}/rooms/available-rooms?checkin_date=${checkin}&checkout_date=${checkout}`,
+    `/properties/${propertyId}/rooms/available-rooms?checkin_date=${toDateParam(checkin)}&checkout_date=${toDateParam(checkout)}`,
 };
 
 // Request/Response Configuration
@@ -138,6 +174,7 @@ export const STORAGE_KEYS = {
   PREFERENCES: 'preferences',
   LAST_SEARCH: 'last_search',
   ACTIVE_PORTAL: 'active_portal',
+  NEARBY_CACHE: 'nearby_cache',
 };
 
 // Portal-scoped storage key getter

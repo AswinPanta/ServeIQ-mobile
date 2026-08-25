@@ -8,6 +8,7 @@ import { useHotelAnalyticsStore } from '@/stores/useHotelAnalyticsStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/lib/context/auth-context';
 import { safeGoBack } from "@/lib/utils";
+import { PINK, BG } from '@/lib/constants/figma-tokens';
 
 const DATE_RANGES = ['Today', 'This Week', 'This Month', 'Custom'] as const;
 
@@ -20,7 +21,7 @@ const ROOM_TYPE_COLORS: Record<string, string> = {
 const CATEGORY_COLORS: Record<string, string> = {
   Food: SRS.teal,
   Beverages: SRS.orange,
-  Desserts: '#EC4899',
+  Desserts: PINK[500],
 };
 
 export default function AnalyticsScreen() {
@@ -36,10 +37,12 @@ export default function AnalyticsScreen() {
   const refresh = useHotelAnalyticsStore((s) => s.refresh);
 
   useEffect(() => {
+    let cancelled = false;
     refresh();
     if (operator?.property_id) {
       setPropertyId(operator.property_id);
     }
+    return () => { cancelled = true; };
   }, [operator?.property_id, setPropertyId, refresh]);
 
   // Subscribe to order store to re-render when POS orders change
@@ -102,7 +105,7 @@ export default function AnalyticsScreen() {
     Alert.alert('Export Data', 'Choose export format', [
       { text: '📊 Export as CSV', onPress: async () => {
         try {
-          await Share.share({ message: csv, title: `stayeasy_analytics_${activeRange.replace(/\s+/g, '')}.csv` });
+          await Share.share({ message: csv, title: `serveiq_analytics_${activeRange.replace(/\s+/g, '')}.csv` });
         } catch {/* share cancelled */}
       }},
       {
@@ -112,7 +115,7 @@ export default function AnalyticsScreen() {
             'Analytics CSV (first 8 lines)',
             csv.split('\n').slice(0, 8).join('\n') + '\n…',
             [
-              { text: 'Share full CSV', onPress: () => Share.share({ message: csv, title: `stayeasy_analytics_${activeRange.replace(/\s+/g, '')}.csv` }).catch(() => {}) },
+              { text: 'Share full CSV', onPress: () => Share.share({ message: csv, title: `serveiq_analytics_${activeRange.replace(/\s+/g, '')}.csv` }).catch(() => {}) },
               { text: 'OK' },
             ],
           ),
@@ -121,16 +124,16 @@ export default function AnalyticsScreen() {
         text: '📄 Generate Report',
         onPress: async () => {
           const reportText =
-            `StayEasy Analytics Report\n` +
+            `ServeIQ Analytics Report\n` +
             `Period: ${activeRange}\n` +
             `Generated: ${new Date().toLocaleDateString()}\n\n` +
             `📈 Occupancy: ${hotelData.occupancyRate}%\n` +
             `💰 ADR: ₹${hotelData.adr.toLocaleString()}\n` +
             `🏨 Room Revenue: ₹${hotelData.totalRoomRevenue.toLocaleString()}\n` +
             `📦 Restaurant Orders: ${orderCount}\n\n` +
-            `— StayEasy Operations`;
+            `— ServeIQ Operations`;
           try {
-            await Share.share({ message: reportText, title: `stayeasy_report_${activeRange.replace(/\s+/g, '')}.txt` });
+            await Share.share({ message: reportText, title: `serveiq_report_${activeRange.replace(/\s+/g, '')}.txt` });
           } catch {/* share cancelled */}
         },
       },
@@ -167,7 +170,7 @@ export default function AnalyticsScreen() {
               if (r === 'Custom') setShowCustomPicker(!showCustomPicker);
               else { setActiveRange(r); setShowCustomPicker(false); }
             }} style={[s.dateBtn, { backgroundColor: activeRange === r ? SRS.teal : 'transparent' }]}>
-              <Text style={[s.dateBtnText, { color: activeRange === r ? '#FFF' : GRAY[500] }]}>{r}</Text>
+              <Text style={[s.dateBtnText, { color: activeRange === r ? BG.white : GRAY[500] }]}>{r}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -192,7 +195,7 @@ export default function AnalyticsScreen() {
             </View>
             <TouchableOpacity onPress={() => { if (customStart && customEnd) { setActiveRange('Custom'); setShowCustomPicker(false); } }}
               style={s.applyBtn}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFF' }}>Apply</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: BG.white }}>Apply</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -436,11 +439,11 @@ export default function AnalyticsScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: GRAY[50] },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingTop: SPACING.xl, paddingBottom: SPACING.md },
-  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center' },
   title: { ...TYPOGRAPHY.h2, color: SRS.navy },
   sub: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 1 },
-  exportBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-  dateRangeRow: { flexDirection: 'row', gap: 4, backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: 4, borderWidth: 1, borderColor: GRAY[100] },
+  exportBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center' },
+  dateRangeRow: { flexDirection: 'row', gap: 4, backgroundColor: BG.white, borderRadius: RADIUS.card, padding: 4, borderWidth: 1, borderColor: GRAY[100] },
   dateBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.button },
   dateBtnText: { fontSize: 12, fontWeight: '600' },
   input: { backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, color: SRS.navy },
@@ -451,12 +454,12 @@ const s = StyleSheet.create({
   badgePill: { backgroundColor: SRS.teal + '12', paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.badge },
   badgePillText: { fontSize: 11, fontWeight: '600', color: SRS.teal },
   kpiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
-  kpiCard: { width: '48%', padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100] },
+  kpiCard: { width: '48%', padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[100] },
   kpiIcon: { width: 32, height: 32, borderRadius: RADIUS.card, alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm },
   kpiLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
   kpiValue: { fontSize: 22, fontWeight: '700', fontVariant: ['tabular-nums' as any] },
   kpiDetail: { ...TYPOGRAPHY.caption, color: GRAY[400], marginTop: 2 },
-  card: { padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100] },
+  card: { padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[100] },
   cardTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.md },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginBottom: SPACING.md },
   chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 160 },

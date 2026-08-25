@@ -17,6 +17,8 @@ import { useFavorites } from '@/lib/context/favorites-context';
 import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import { CORAL } from '@/lib/constants/figma-tokens';
+import { validateEmail, validatePhone } from '@/lib/utils/validation';
 
 export default function HotelDetailScreen() {
   const colors = useColors();
@@ -46,6 +48,7 @@ export default function HotelDetailScreen() {
       pathname: '/booking-flow',
       params: {
         hotelName: hotel.name,
+        propertyId: id,
         checkIn: '',
         checkOut: '',
         guests: '1',
@@ -60,7 +63,7 @@ export default function HotelDetailScreen() {
     if (isFavorite(hotel.id)) {
       removeFavorite(hotel.id);
     } else {
-      addFavorite(hotel.id);
+      addFavorite(hotel.id, hotel);
     }
   };
 
@@ -117,7 +120,7 @@ export default function HotelDetailScreen() {
                 <Text className="text-2xl font-bold text-foreground">{hotel.name}</Text>
                 <Text className="text-sm text-muted">{hotel.city}, {hotel.country}</Text>
               </View>
-              <View style={{ backgroundColor: (hotel.brandColor || '#E63946') + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, flexDirection: 'row', alignItems: 'center' }}>
                 <Text className="text-yellow-300 font-bold">★</Text>
                 <Text className="text-white font-semibold">{hotel.rating}</Text>
               </View>
@@ -134,43 +137,55 @@ export default function HotelDetailScreen() {
           {/* Amenities */}
           <View className="gap-2">
             <Text className="text-sm font-semibold text-foreground">Amenities</Text>
-            <View className="flex-row gap-2 flex-wrap">
-              {hotel.amenities.map((amenity) => (
-                <View key={amenity.name} className="bg-surface rounded-full px-3 py-2">
-                  <Text className="text-xs text-foreground">
-                    {amenity.icon} {amenity.name}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-6 px-6">
+              <View className="flex-row gap-2">
+                {hotel.amenities.map((amenity) => (
+                  <View key={amenity.name} className="bg-surface rounded-full px-3 py-2 flex-row items-center">
+                    <Text className="text-xs text-foreground" numberOfLines={1}>
+                      {amenity.icon}  {amenity.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
           </View>
 
-          {/* Contact Hotel */}
+          {/* Official Contact */}
           {(hotel.phone || hotel.email) && (
             <Card variant="outlined" padding="md">
               <View className="gap-3">
-                <Text className="text-sm font-semibold text-foreground">Contact Hotel</Text>
-                {hotel.phone ? (
-                  <TouchableOpacity 
-                    onPress={() => Linking.openURL(`tel:${hotel.phone}`)}
-                    className="flex-row items-center gap-3"
-                  >
-                    <Text className="text-lg">📞</Text>
-                    <Text className="text-sm text-foreground flex-1">{hotel.phone}</Text>
-                    <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || '#E63946' }}>Call</Text>
-                  </TouchableOpacity>
+                <Text className="text-sm font-semibold text-foreground">Official Contact</Text>
+                {hotel.phone && !validatePhone(hotel.phone) ? (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => Linking.openURL(`tel:${hotel.phone.replace(/[^+\d]/g, '')}`)}
+                      className="flex-row items-center gap-3"
+                    >
+                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: (hotel.brandColor || CORAL[500]) + '15', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 16 }}>📞</Text>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-[11px] text-muted">Phone</Text>
+                        <Text className="text-sm text-foreground font-medium">{hotel.phone}</Text>
+                      </View>
+                      <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || CORAL[500] }}>Call →</Text>
+                    </TouchableOpacity>
+                    {hotel.email && !validateEmail(hotel.email) ? <View className="h-px bg-border" /> : null}
+                  </>
                 ) : null}
-                {hotel.phone && hotel.email ? (
-                  <View className="h-px bg-border" />
-                ) : null}
-                {hotel.email ? (
-                  <TouchableOpacity 
+                {hotel.email && !validateEmail(hotel.email) ? (
+                  <TouchableOpacity
                     onPress={() => Linking.openURL(`mailto:${hotel.email}`)}
                     className="flex-row items-center gap-3"
                   >
-                    <Text className="text-lg">✉️</Text>
-                    <Text className="text-sm text-foreground flex-1">{hotel.email}</Text>
-                    <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || '#E63946' }}>Email</Text>
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: (hotel.brandColor || CORAL[500]) + '15', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 16 }}>✉️</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-[11px] text-muted">Email</Text>
+                      <Text className="text-sm text-foreground font-medium">{hotel.email}</Text>
+                    </View>
+                    <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || CORAL[500] }}>Email →</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -222,7 +237,7 @@ export default function HotelDetailScreen() {
                 </View>
                 <View className="flex-row items-center justify-between pt-2 border-t border-border">
                   <View>
-                    <Text style={{ fontSize: 18, fontWeight: '700', color: hotel.brandColor || '#E63946' }}>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: hotel.brandColor || CORAL[500] }}>
                       NPR {room.price.toLocaleString()}
                     </Text>
                     {room.available > 0 && room.available <= 3 && (
@@ -232,7 +247,7 @@ export default function HotelDetailScreen() {
                     )}
                   </View>
                   <TouchableOpacity onPress={() => handleBooking(room)}
-                    style={{ backgroundColor: hotel.brandColor || '#E63946', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 }}
+                    style={{ backgroundColor: hotel.brandColor || CORAL[500], paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 }}
                   >
                     <Text className="text-white font-semibold text-sm">Book Now</Text>
                   </TouchableOpacity>
@@ -284,7 +299,7 @@ export default function HotelDetailScreen() {
                           <Text className="text-yellow-400 text-xs">★</Text>
                           <Text className="text-xs text-muted">{h.rating} ({h.review_count})</Text>
                         </View>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: h.brandColor || '#E63946' }}>NPR {h.price.toLocaleString()} <Text className="text-[10px] font-normal text-muted">night</Text></Text>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: h.brandColor || CORAL[500] }}>NPR {h.price.toLocaleString()} <Text className="text-[10px] font-normal text-muted">night</Text></Text>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -293,26 +308,7 @@ export default function HotelDetailScreen() {
             </View>
           )}
 
-          {/* Contact */}
-          <View className="gap-3">
-            <Text className="text-lg font-bold text-foreground">Contact</Text>
-            <View className="gap-2">
-              <TouchableOpacity
-                className="flex-row items-center gap-2 p-3 rounded-lg bg-surface"
-                onPress={() => Linking.openURL(`tel:${hotel.phone}`)}
-              >
-                <Text className="text-xl">📞</Text>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: hotel.brandColor || '#E63946' }}>{hotel.phone}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-row items-center gap-2 p-3 rounded-lg bg-surface"
-                onPress={() => Linking.openURL(`mailto:${hotel.email}`)}
-              >
-                <Text className="text-xl">✉️</Text>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: hotel.brandColor || '#E63946' }}>{hotel.email}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+
         </View>
       </ScrollView>
     </ScreenContainer>

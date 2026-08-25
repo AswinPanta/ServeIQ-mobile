@@ -1,5 +1,5 @@
 /**
- * Unified Status Types — StayEasy Domain Model
+ * Unified Status Types — ServeIQ Domain Model
  *
  * Single source of truth for all status enums across the application.
  * Replaces scattered definitions in:

@@ -9,6 +9,8 @@ import { useFolioStore } from '@/stores/useFolioStore';
 import { useGuestStore } from '@/stores/useGuestStore';
 import { useActivityStore } from '@/stores/useActivityStore';
 import { safeGoBack } from "@/lib/utils";
+import { BG } from '@/lib/constants/figma-tokens';
+import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 
 type WizardStep = 'source' | 'guest' | 'dates' | 'room' | 'services' | 'review';
 
@@ -89,8 +91,33 @@ export default function NewBookingScreen() {
     d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10);
   });
+  const [showCalendar, setShowCalendar] = useState(false);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
+
+  const toISODate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const parseDate = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  const handleSelectDates = (checkIn: Date, checkOut: Date) => {
+    setCheckin(toISODate(checkIn));
+    setCheckout(toISODate(checkOut));
+    setShowCalendar(false);
+  };
+
+  const formatDisplayDate = (iso: string) => {
+    if (!iso) return '';
+    const d = parseDate(iso);
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
 
   const nights = useMemo(() => {
     if (!checkin || !checkout) return 1;
@@ -250,9 +277,9 @@ export default function NewBookingScreen() {
             }]}
           >
             {i < currentStep ? (
-              <IconSymbol name="check" size={12} color="#FFF" />
+              <IconSymbol name="check" size={12} color={BG.white} />
             ) : (
-              <Text style={[s.stepNum, { color: i === currentStep ? '#FFF' : GRAY[500] }]}>{i + 1}</Text>
+              <Text style={[s.stepNum, { color: i === currentStep ? BG.white : GRAY[500] }]}>{i + 1}</Text>
             )}
           </TouchableOpacity>
           <Text style={[s.stepLabel, { color: i === currentStep ? SRS.navy : GRAY[400] }]}>{step.label}</Text>
@@ -303,11 +330,11 @@ export default function NewBookingScreen() {
                 const active = source === sourceItem.id;
                 return (
                   <TouchableOpacity key={sourceItem.id} onPress={() => setSource(sourceItem.id)}
-                    style={[s.sourceOption, { backgroundColor: active ? SRS.teal + '08' : '#FFF', borderColor: active ? SRS.teal : GRAY[200] }]}
+                    style={[s.sourceOption, { backgroundColor: active ? SRS.teal + '08' : BG.white, borderColor: active ? SRS.teal : GRAY[200] }]}
                     activeOpacity={0.7}
                   >
                     <View style={[s.sourceIcon, { backgroundColor: active ? SRS.teal : GRAY[100] }]}>
-                      <IconSymbol name={sourceItem.icon as any} size={18} color={active ? '#FFF' : GRAY[500]} />
+                      <IconSymbol name={sourceItem.icon as any} size={18} color={active ? BG.white : GRAY[500]} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.sourceLabel, { color: active ? SRS.teal : SRS.navy }]}>{sourceItem.label}</Text>
@@ -371,20 +398,19 @@ export default function NewBookingScreen() {
           <View style={s.card}>
             <Text style={s.cardTitle}>Stay Details</Text>
 
-            <View style={{ flexDirection: 'row', gap: SPACING.md, marginBottom: SPACING.md }}>
+            <Text style={s.fieldLabel}>Check-in — Check-out <Text style={{ color: SRS.red }}>*</Text></Text>
+            <TouchableOpacity onPress={() => setShowCalendar(true)} style={s.dateRangeBtn} activeOpacity={0.7}>
+              <IconSymbol name="calendar" size={18} color={SRS.teal} />
               <View style={{ flex: 1 }}>
-                <Text style={s.fieldLabel}>Check-in <Text style={{ color: SRS.red }}>*</Text></Text>
-                <TextInput placeholder="YYYY-MM-DD" placeholderTextColor={GRAY[400]}
-                  value={checkin} onChangeText={setCheckin} style={s.input}
-                />
+                <Text style={[s.dateRangeValue, !checkin && { color: GRAY[400] }]}>
+                  {formatDisplayDate(checkin) || 'Select check-in date'}
+                </Text>
+                <Text style={[s.dateRangeValue, !checkout && { color: GRAY[400] }]}>
+                  {formatDisplayDate(checkout) || 'Select check-out date'}
+                </Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.fieldLabel}>Check-out <Text style={{ color: SRS.red }}>*</Text></Text>
-                <TextInput placeholder="YYYY-MM-DD" placeholderTextColor={GRAY[400]}
-                  value={checkout} onChangeText={setCheckout} style={s.input}
-                />
-              </View>
-            </View>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: SRS.teal }}>Edit ▾</Text>
+            </TouchableOpacity>
 
             {checkin && checkout && checkout >= checkin && (
               <View style={s.nightsBadge}>
@@ -392,6 +418,14 @@ export default function NewBookingScreen() {
                 <Text style={s.nightsBadgeText}>{nights} night{nights > 1 ? 's' : ''}</Text>
               </View>
             )}
+
+            <DatePickerCalendar
+              visible={showCalendar}
+              onClose={() => setShowCalendar(false)}
+              onSelectDates={handleSelectDates}
+              initialCheckIn={checkin ? parseDate(checkin) : undefined}
+              initialCheckOut={checkout ? parseDate(checkout) : undefined}
+            />
 
             <View style={{ gap: SPACING.md, marginTop: SPACING.md }}>
               {[
@@ -463,7 +497,7 @@ export default function NewBookingScreen() {
                         >
                           <Text style={{
                             fontSize: 15, fontWeight: '700',
-                            color: selectedRoomNumber === r.room_number ? '#FFF' : SRS.teal,
+                            color: selectedRoomNumber === r.room_number ? BG.white : SRS.teal,
                           }}>{r.room_number}</Text>
                         </TouchableOpacity>
                       ))}
@@ -483,7 +517,7 @@ export default function NewBookingScreen() {
                         >
                           <Text style={{
                             fontSize: 13, fontWeight: '600',
-                            color: selectedRoomNumber === r.room_number ? '#FFF' : GRAY[600],
+                            color: selectedRoomNumber === r.room_number ? BG.white : GRAY[600],
                           }}>{r.room_number}</Text>
                         </TouchableOpacity>
                       ))}
@@ -508,7 +542,7 @@ export default function NewBookingScreen() {
                 const active = selectedServices.includes(svc.id);
                 return (
                   <TouchableOpacity key={svc.id} onPress={() => toggleService(svc.id)}
-                    style={[s.serviceCard, { borderColor: active ? SRS.teal : GRAY[200], backgroundColor: active ? SRS.teal + '06' : '#FFF' }]}
+                    style={[s.serviceCard, { borderColor: active ? SRS.teal : GRAY[200], backgroundColor: active ? SRS.teal + '06' : BG.white }]}
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={[s.serviceLabel, { color: active ? SRS.teal : SRS.navy }]}>{svc.label}</Text>
@@ -516,7 +550,7 @@ export default function NewBookingScreen() {
                     </View>
                     <Text style={s.servicePrice}>NPR {svc.price.toLocaleString()}{svc.id === 'breakfast' ? '/night' : ''}</Text>
                     <View style={[s.checkbox, { backgroundColor: active ? SRS.teal : 'transparent', borderColor: active ? SRS.teal : GRAY[300] }]}>
-                      {active && <IconSymbol name="check" size={10} color="#FFF" />}
+                      {active && <IconSymbol name="check" size={10} color={BG.white} />}
                     </View>
                   </TouchableOpacity>
                 );
@@ -609,7 +643,7 @@ export default function NewBookingScreen() {
 
             {/* Confirm */}
             <TouchableOpacity onPress={handleSubmit} style={s.submitBtn} activeOpacity={0.85}>
-              <IconSymbol name="check" size={18} color="#FFF" />
+              <IconSymbol name="check" size={18} color={BG.white} />
               <Text style={s.submitText}>Confirm Reservation</Text>
             </TouchableOpacity>
           </View>
@@ -637,7 +671,7 @@ export default function NewBookingScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: GRAY[50] },
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs, flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center' },
   title: { ...TYPOGRAPHY.h2, color: SRS.navy },
   sub: { ...TYPOGRAPHY.small, color: GRAY[500], marginTop: 2 },
   body: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.lg },
@@ -648,7 +682,7 @@ const s = StyleSheet.create({
   stepLabel: { ...TYPOGRAPHY.caption, fontWeight: '600', marginLeft: 4, flex: 1 },
   stepLine: { flex: 1, height: 2, borderRadius: 1, marginHorizontal: 4 },
 
-  card: { backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
+  card: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
   cardTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.md },
   fieldLabel: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy, marginBottom: 4 },
   input: { backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: SRS.navy },
@@ -659,7 +693,7 @@ const s = StyleSheet.create({
   sourceLabel: { ...TYPOGRAPHY.body, fontWeight: '700' },
   sourceDesc: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 1 },
 
-  guestResults: { marginTop: SPACING.sm, backgroundColor: '#FFF', borderRadius: RADIUS.card, borderWidth: 1, borderColor: GRAY[200] },
+  guestResults: { marginTop: SPACING.sm, backgroundColor: BG.white, borderRadius: RADIUS.card, borderWidth: 1, borderColor: GRAY[200] },
   guestResultRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: GRAY[100] },
   guestAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: SRS.teal + '15', alignItems: 'center', justifyContent: 'center' },
   guestInitial: { fontSize: 13, fontWeight: '700', color: SRS.teal },
@@ -668,6 +702,8 @@ const s = StyleSheet.create({
 
   nightsBadge: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '08', alignSelf: 'flex-start' },
   nightsBadgeText: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.teal },
+  dateRangeBtn: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 12 },
+  dateRangeValue: { fontSize: 14, fontWeight: '600', color: SRS.navy },
 
   counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   counterBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: SRS.teal + '12', alignItems: 'center', justifyContent: 'center' },
@@ -702,11 +738,11 @@ const s = StyleSheet.create({
   totalValue: { ...TYPOGRAPHY.h3, fontWeight: '700', color: SRS.teal },
 
   submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.sm, paddingVertical: 16, borderRadius: RADIUS.card, backgroundColor: SRS.teal, ...SHADOWS.card },
-  submitText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  submitText: { fontSize: 16, fontWeight: '700', color: BG.white },
 
   navRow: { flexDirection: 'row', gap: SPACING.md, paddingBottom: SPACING.xl },
   navBack: { flex: 1, paddingVertical: 14, borderRadius: RADIUS.card, alignItems: 'center', backgroundColor: GRAY[100] },
   navBackText: { fontSize: 14, fontWeight: '600', color: GRAY[600] },
   navNext: { flex: 2, paddingVertical: 14, borderRadius: RADIUS.card, alignItems: 'center', backgroundColor: SRS.teal },
-  navNextText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  navNextText: { fontSize: 14, fontWeight: '700', color: BG.white },
 });

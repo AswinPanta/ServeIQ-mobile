@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Share, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from "@/lib/utils";
+import { PURPLE, STATUS, BLUE, AMBER, PINK, SLATE, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 
 const REPORT_TYPES = [
-  { icon: 'payment' as const, title: 'Revenue Report', description: 'Detailed revenue breakdown by tenant, property, and time period', lastGenerated: '2025-06-28', color: '#10B981' },
-  { icon: 'hotel' as const, title: 'Occupancy Report', description: 'Occupancy rates across all properties with trend analysis', lastGenerated: '2025-06-27', color: '#3B82F6' },
-  { icon: 'analytics' as const, title: 'Booking Trends', description: 'Booking patterns, seasonal trends, and forecast data', lastGenerated: '2025-06-25', color: '#F59E0B' },
+  { icon: 'payment' as const, title: 'Revenue Report', description: 'Detailed revenue breakdown by tenant, property, and time period', lastGenerated: '2025-06-28', color: STATUS.activeGreen },
+  { icon: 'hotel' as const, title: 'Occupancy Report', description: 'Occupancy rates across all properties with trend analysis', lastGenerated: '2025-06-27', color: BLUE[500] },
+  { icon: 'analytics' as const, title: 'Booking Trends', description: 'Booking patterns, seasonal trends, and forecast data', lastGenerated: '2025-06-25', color: AMBER[500] },
   { icon: 'person.fill' as const, title: 'User Activity', description: 'User engagement metrics, login frequency, and feature adoption', lastGenerated: '2025-06-20', color: ACCENT },
-  { icon: 'star' as const, title: 'Property Performance', description: 'Property ratings, reviews, and comparative performance analysis', lastGenerated: '2025-06-15', color: '#EC4899' },
+  { icon: 'star' as const, title: 'Property Performance', description: 'Property ratings, reviews, and comparative performance analysis', lastGenerated: '2025-06-15', color: PINK[500] },
 ];
 
 const RECENT_REPORTS = [
@@ -39,7 +40,7 @@ function formatReport(title: string, range: string): string {
       'Jan,2 600 000,baseline',
       '',
       `Total Q2: 18 430 000 NPR`,
-      '— StayEasy SuperAdmin',
+      '— ServeIQ SuperAdmin',
     ].join('\n');
   }
   if (title === 'Occupancy Report') {
@@ -49,7 +50,7 @@ function formatReport(title: string, range: string): string {
       `Generated: ${stamp}`,
       '',
       'Property,Total Rooms,Occupied,Occupancy %',
-      'StayEasy Hotel Thamel,42,33,78.6%',
+      'ServeIQ Hotel Thamel,42,33,78.6%',
       'Pokhara Lakeside Resort,28,21,75.0%',
       'Chitwan Jungle Lodge,18,9,50.0%',
       'Lumbini Garden Inn,12,5,41.7%',
@@ -91,7 +92,7 @@ function formatReport(title: string, range: string): string {
     '',
     'Performance: 4.6 / 5 average',
     'Sample size: 215 reviews',
-    'Top property: StayEasy Hotel Thamel (4.9)',
+    'Top property: ServeIQ Hotel Thamel (4.9)',
     'Top cuisine: Nepali',
   ].join('\n');
 }
@@ -158,7 +159,7 @@ export default function ReportsScreen() {
         <View style={s.recentCard}>
           <Text style={s.sectionTitle}>Recent Reports</Text>
           {recent.map((r, i) => (
-            <View key={r.name} style={[s.recentRow, i < recent.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }]}>
+            <View key={r.name} style={[s.recentRow, i < recent.length - 1 && { borderBottomWidth: 1, borderBottomColor: SLATE[100] }]}>
               <View style={s.fileIcon}>
                 <IconSymbol name="file" size={14} color={ACCENT} />
               </View>
@@ -178,30 +179,30 @@ export default function ReportsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
   filterRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: SLATE[100] },
   filterActive: { backgroundColor: ACCENT },
-  filterText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
-  filterTextActive: { color: '#FFF' },
-  reportCard: { padding: 16, borderRadius: 16, backgroundColor: '#FFF', borderLeftWidth: 4, borderWidth: 1, borderColor: '#F1F5F9' },
+  filterText: { fontSize: 14, fontWeight: '600', color: SLATE[500] },
+  filterTextActive: { color: BG.white },
+  reportCard: { padding: 16, borderRadius: 16, backgroundColor: BG.white, borderLeftWidth: 4, borderWidth: 1, borderColor: SLATE[100] },
   reportHead: { flexDirection: 'row', gap: 12 },
   iconWrap: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  reportTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  reportDesc: { fontSize: 13, color: '#64748B', marginTop: 3 },
-  reportDate: { fontSize: 12, color: '#64748B', marginTop: 4 },
+  reportTitle: { fontSize: 15, fontWeight: '700', color: SLATE[900] },
+  reportDesc: { fontSize: 13, color: SLATE[500], marginTop: 3 },
+  reportDate: { fontSize: 12, color: SLATE[500], marginTop: 4 },
   generateBtn: { marginTop: 12, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' },
-  generateText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
-  recentCard: { padding: 18, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 14 },
+  generateText: { fontSize: 14, fontWeight: '700', color: BG.white },
+  recentCard: { padding: 18, borderRadius: 16, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100] },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: SLATE[900], marginBottom: 14 },
   recentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10 },
   fileIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: ACCENT + '10', alignItems: 'center', justifyContent: 'center' },
-  recentName: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
-  recentMeta: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  recentName: { fontSize: 14, fontWeight: '600', color: SLATE[900] },
+  recentMeta: { fontSize: 12, color: SLATE[500], marginTop: 2 },
   downloadBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: ACCENT + '12' },
   downloadText: { fontSize: 12, fontWeight: '700', color: ACCENT },
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { HK_COLORS as C } from '@/lib/constants/housekeeping-theme';
+import { BG, TEXT } from '@/lib/constants/figma-tokens';
 
 const STEPS = ['Dirty', 'In Progress', 'Cleaned', 'Inspected'] as const;
 
@@ -45,15 +46,15 @@ export function HKStatusFlow({ currentStatus, onAdvance, allowSkip = false }: HK
                   {
                     backgroundColor: isCompleted || isCurrent ? cfg.color : C.inactive,
                     borderWidth: isCurrent ? 3 : 0,
-                    borderColor: '#FFF',
+                    borderColor: BG.white,
                     opacity: canTap ? 1 : (isCompleted || isCurrent ? 1 : 0.5),
                   },
                 ]}
               >
                 {isCompleted ? (
-                  <IconSymbol name="check" size={12} color="#FFF" />
+                  <IconSymbol name="check" size={12} color={BG.white} />
                 ) : (
-                  <Text style={[s.stepNumber, { color: isCurrent ? '#FFF' : C.textMuted }]}>
+                  <Text style={[s.stepNumber, { color: isCurrent ? BG.white : C.textMuted }]}>
                     {idx + 1}
                   </Text>
                 )}
@@ -111,7 +112,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   stepDotActive: {
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 6,

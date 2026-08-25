@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
+import { TEXT } from '@/lib/constants/figma-tokens';
 
 export interface FolioItem {
   label: string;
@@ -30,7 +31,7 @@ function Row({ label, value, bold, color, textColor }: { label: string; value: s
         style={{
           fontSize: bold ? 15 : 13,
           fontWeight: bold ? '700' : '400',
-          color: color || textColor || '#000',
+          color: color || textColor || TEXT.black,
         }}
       >
         {label}
@@ -39,7 +40,7 @@ function Row({ label, value, bold, color, textColor }: { label: string; value: s
         style={{
           fontSize: bold ? 15 : 13,
           fontWeight: bold ? '700' : '500',
-          color: color || textColor || '#000',
+          color: color || textColor || TEXT.black,
         }}
       >
         {value}

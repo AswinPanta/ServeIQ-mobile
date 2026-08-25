@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { useEffect, useRef, useMemo } from 'react';
 import { Animated } from 'react-native';
+import { SLATE, BG } from '@/lib/constants/figma-tokens';
 
 interface SkeletonProps {
   width?: number | string;
@@ -26,14 +27,14 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, style 
 
   return (
     <Animated.View
-      style={[{ width: width as any, height, borderRadius, backgroundColor: '#E2E8F0', opacity: opacityAnim }, style]}
+      style={[{ width: width as any, height, borderRadius, backgroundColor: SLATE[200], opacity: opacityAnim }, style]}
     />
   );
 }
 
 export function CardSkeleton() {
   return (
-    <View style={{ padding: 16, backgroundColor: '#FFF', borderRadius: 12, gap: 10 }}>
+    <View style={{ padding: 16, backgroundColor: BG.white, borderRadius: 12, gap: 10 }}>
       <Skeleton width="60%" height={14} />
       <Skeleton width="100%" height={12} />
       <Skeleton width="80%" height={12} />

@@ -5,13 +5,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from "@/constants/portal-theme";
 import { safeGoBack } from "@/lib/utils";
+import { BRAND, WARM, TEXT, BG, CLOUD, GRAY as GRAYTokens } from '@/lib/constants/figma-tokens';
+;
+;
 
-const BRAND_NAVY = "#16233A";
-const BRAND_GOLD = "#E8B84B";
-const BRAND_CREAM = "#FAF6EE";
-const BRAND_TERRACOTTA = "#C45B3E";
-const BRAND_SAND = "#EFE6D2";
-const BRAND_DARK = "#1C1B19";
+const BRAND_NAVY = BRAND.navyDark;
+const BRAND_GOLD = WARM.gold;
+const BRAND_CREAM = WARM.ivory;
+const BRAND_TERRACOTTA = WARM.terracotta;
+const BRAND_SAND = WARM.cream;
+const BRAND_DARK = TEXT.ink;
 
 const faqData = [
   { q: "Can I list a room I rent, not own?", a: "Yes — anyone with the legal right to rent out a property can host, including tenants with permission, property managers, and authorized representatives." },
@@ -31,7 +34,7 @@ const whyChoose = [
 const hostingBenefits = [
   { num: "01", title: "Nothing taken off the top", desc: "No commission, no listing fee, no quiet deductions. Whatever a guest pays lands in your account in full.", accent: BRAND_TERRACOTTA },
   { num: "02", title: "Run it your way", desc: "Change your rate tonight, block off next weekend, accept or decline a booking on your own schedule.", accent: BRAND_NAVY },
-  { num: "03", title: "Earn more, not just list", desc: "You're placed in front of identity-checked travelers, and we actively push your listing through our own marketing.", accent: "#B8862E" },
+  { num: "03", title: "Earn more, not just list", desc: "You're placed in front of identity-checked travelers, and we actively push your listing through our own marketing.", accent: WARM.bronzeLight },
 ];
 
 const processSteps = [
@@ -71,6 +74,9 @@ export default function HostLandingPage() {
               <Text style={s.heroCtaText}>List your space</Text>
               <IconSymbol name="arrow.forward" size={14} color={BRAND_DARK} />
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/(auth)/login?portal=host")} style={s.heroLoginLink}>
+              <Text style={s.heroLoginText}>Already a host? <Text style={s.heroLoginStrong}>Log in</Text></Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -96,7 +102,7 @@ export default function HostLandingPage() {
         {/* WHY CHOOSE */}
         <View style={s.chooseSection}>
           <Text style={s.chooseLabel}>FOR YOUR FUTURE GUESTS</Text>
-          <Text style={s.chooseTitle}>Why choose StayEasy?</Text>
+          <Text style={s.chooseTitle}>Why choose ServeIQ?</Text>
 
           {whyChoose.map((item) => (
             <View key={item.title} style={s.chooseCard}>
@@ -155,7 +161,7 @@ export default function HostLandingPage() {
 }
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
+  safeArea: { flex: 1, backgroundColor: BG.white },
   scroll: { paddingBottom: 120 },
 
   /* HERO */
@@ -163,24 +169,27 @@ const s = StyleSheet.create({
   backLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 },
   backText: { color: 'rgba(255,255,255,0.7)', fontSize: 14 },
   heroContent: {},
-  heroBadge: { color: '#FFD58A', fontSize: 11, letterSpacing: 1, fontWeight: '700', marginBottom: 16 },
-  heroBadgeDot: { fontSize: 7, color: '#FFD58A' },
-  heroTitle: { color: '#FFFFFF', fontSize: 36, fontWeight: '800', lineHeight: 40, marginBottom: 16 },
-  heroTitleAccent: { color: '#FFB088' },
-  heroDesc: { color: '#C9D6E0', fontSize: 15, lineHeight: 22, marginBottom: 28, maxWidth: 360 },
+  heroBadge: { color: WARM.apricot, fontSize: 11, letterSpacing: 1, fontWeight: '700', marginBottom: 16 },
+  heroBadgeDot: { fontSize: 7, color: WARM.apricot },
+  heroTitle: { color: BG.white, fontSize: 36, fontWeight: '800', lineHeight: 40, marginBottom: 16 },
+  heroTitleAccent: { color: WARM.peach },
+  heroDesc: { color: CLOUD.vapor, fontSize: 15, lineHeight: 22, marginBottom: 28, maxWidth: 360 },
   heroCta: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: BRAND_GOLD, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 999, alignSelf: 'flex-start' },
   heroCtaText: { color: BRAND_DARK, fontWeight: '700', fontSize: 15 },
+  heroLoginLink: { marginTop: 16 },
+  heroLoginText: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
+  heroLoginStrong: { color: BG.white, fontWeight: '700' },
 
   /* BENEFITS */
   benefitsSection: { backgroundColor: BRAND_CREAM, paddingVertical: 64, paddingHorizontal: 24 },
   sectionHeader: { alignItems: 'center', marginBottom: 40 },
   sectionLabel: { color: BRAND_TERRACOTTA, fontSize: 11, letterSpacing: 1, fontWeight: '700', marginBottom: 8 },
   sectionTitle: { color: BRAND_NAVY, fontSize: 28, fontWeight: '700', textAlign: 'center', lineHeight: 34 },
-  benefitCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 32, marginBottom: 16, borderWidth: 1, borderColor: BRAND_SAND },
+  benefitCard: { backgroundColor: BG.white, borderRadius: 16, padding: 32, marginBottom: 16, borderWidth: 1, borderColor: BRAND_SAND },
   benefitBar: { width: '100%', height: 4, borderRadius: 2, marginBottom: 20 },
   benefitNum: { fontFamily: 'monospace', fontSize: 13, fontWeight: '700', marginBottom: 16 },
   benefitTitle: { color: BRAND_NAVY, fontSize: 20, fontWeight: '600', marginBottom: 10 },
-  benefitDesc: { color: '#666', fontSize: 14, lineHeight: 22 },
+  benefitDesc: { color: GRAY[600], fontSize: 14, lineHeight: 22 },
 
   /* CHOOSE */
   chooseSection: { backgroundColor: BRAND_GOLD, paddingVertical: 64, paddingHorizontal: 24 },
@@ -188,33 +197,33 @@ const s = StyleSheet.create({
   chooseTitle: { color: BRAND_DARK, fontSize: 28, fontWeight: '700', marginBottom: 32 },
   chooseCard: { backgroundColor: BRAND_DARK, borderRadius: 16, padding: 28, marginBottom: 12 },
   chooseIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: BRAND_GOLD, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  chooseCardTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '600', marginBottom: 6 },
-  chooseCardDesc: { color: '#C9C2B4', fontSize: 13, lineHeight: 20 },
+  chooseCardTitle: { color: BG.white, fontSize: 18, fontWeight: '600', marginBottom: 6 },
+  chooseCardDesc: { color: WARM.taupe, fontSize: 13, lineHeight: 20 },
 
   /* PROCESS */
   processSection: { backgroundColor: BRAND_NAVY, paddingVertical: 64, paddingHorizontal: 24 },
-  processLabel: { color: '#FFD58A', fontSize: 11, letterSpacing: 1, fontWeight: '700', marginBottom: 6 },
-  processTitle: { color: '#FFFFFF', fontSize: 26, fontWeight: '700', marginBottom: 4 },
-  processSub: { color: '#c9c5ba', fontSize: 14, marginBottom: 32 },
+  processLabel: { color: WARM.apricot, fontSize: 11, letterSpacing: 1, fontWeight: '700', marginBottom: 6 },
+  processTitle: { color: BG.white, fontSize: 26, fontWeight: '700', marginBottom: 4 },
+  processSub: { color: WARM.sand, fontSize: 14, marginBottom: 32 },
   processStep: { paddingVertical: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' },
   processNum: { color: BRAND_GOLD, fontSize: 28, fontStyle: 'italic', marginBottom: 8 },
-  processStepTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '500', marginBottom: 4 },
-  processStepDesc: { color: '#c9c5ba', fontSize: 13, lineHeight: 20 },
-  processStat: { color: '#FFB088', fontSize: 11, fontFamily: 'monospace', marginTop: 8 },
+  processStepTitle: { color: BG.white, fontSize: 18, fontWeight: '500', marginBottom: 4 },
+  processStepDesc: { color: WARM.sand, fontSize: 13, lineHeight: 20 },
+  processStat: { color: WARM.peach, fontSize: 11, fontFamily: 'monospace', marginTop: 8 },
 
   /* FAQ */
   faqSection: { paddingVertical: 64, paddingHorizontal: 24 },
   faqLabel: { color: BRAND_TERRACOTTA, fontSize: 11, letterSpacing: 1, fontWeight: '700', marginBottom: 6 },
   faqTitle: { color: BRAND_NAVY, fontSize: 26, fontWeight: '700', marginBottom: 24 },
-  faqItem: { borderBottomWidth: 1, borderBottomColor: '#eee' },
+  faqItem: { borderBottomWidth: 1, borderBottomColor: GRAY[100] },
   faqQuestion: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 20 },
   faqQText: { fontSize: 16, fontWeight: '500', color: BRAND_NAVY, flex: 1 },
   faqToggle: { color: BRAND_TERRACOTTA, fontSize: 18 },
-  faqAnswer: { color: '#666', fontSize: 14, lineHeight: 22, paddingBottom: 20 },
+  faqAnswer: { color: GRAY[600], fontSize: 14, lineHeight: 22, paddingBottom: 20 },
 
   /* CTA */
   ctaSection: { marginHorizontal: 24, backgroundColor: BRAND_NAVY, borderRadius: 20, padding: 40 },
-  ctaTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '700', marginBottom: 24 },
+  ctaTitle: { color: BG.white, fontSize: 24, fontWeight: '700', marginBottom: 24 },
   ctaBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: BRAND_GOLD, paddingHorizontal: 32, paddingVertical: 16, borderRadius: 999, alignSelf: 'flex-start' },
   ctaBtnText: { color: BRAND_DARK, fontWeight: '700', fontSize: 15 },
 });

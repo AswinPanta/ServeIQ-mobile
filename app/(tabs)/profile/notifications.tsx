@@ -6,15 +6,16 @@ import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { useNotifications } from '@/lib/context/notification-context';
 import { FONTS } from '@/constants/portal-theme';
 import type { TFunction } from 'i18next';
+import { CORAL, SRS, AMBER, STATUS_COLORS, STATUS, SLATE, GRAY, BRAND, NEUTRAL, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#E63946';
+const ACCENT = CORAL[500];
 
 const TYPE_CONFIG: Record<string, { icon: IconSymbolName; color: string }> = {
-  booking_confirmation: { icon: 'booking', color: '#2E86AB' },
-  booking_reminder: { icon: 'clock', color: '#F59E0B' },
-  review_request: { icon: 'star', color: '#FFD700' },
-  promotion: { icon: 'tag', color: '#10B981' },
-  system: { icon: 'settings', color: '#94A3B8' },
+  booking_confirmation: { icon: 'booking', color: SRS.teal },
+  booking_reminder: { icon: 'clock', color: AMBER[500] },
+  review_request: { icon: 'star', color: STATUS_COLORS.gold },
+  promotion: { icon: 'tag', color: STATUS.activeGreen },
+  system: { icon: 'settings', color: SLATE[400] },
 };
 
 function formatTime(iso: string, t: TFunction): string {
@@ -60,7 +61,7 @@ export default function NotificationsScreen() {
           </View>
           <Text style={s.itemMsg} numberOfLines={2}>{item.message}</Text>
         </View>
-        <View style={[s.dot, { backgroundColor: item.read ? '#D1D5DB' : ACCENT }]} />
+        <View style={[s.dot, { backgroundColor: item.read ? GRAY[300] : ACCENT }]} />
       </View>
     );
   };
@@ -69,7 +70,7 @@ export default function NotificationsScreen() {
     <View style={s.container}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <IconSymbol name="chevron.left" size={20} color="#1A3C5E" />
+          <IconSymbol name="chevron.left" size={20} color={BRAND.navyLight} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.notifications.title')}</Text>
         {unreadCount > 0 && (
@@ -89,7 +90,7 @@ export default function NotificationsScreen() {
         }
         ListEmptyComponent={
           <View style={s.emptyBox}>
-            <IconSymbol name="notifications" size={48} color="#D1D5DB" />
+            <IconSymbol name="notifications" size={48} color={GRAY[300]} />
             <Text style={s.emptyTitle}>{t('profile.notifications.empty')}</Text>
             <Text style={s.emptySub}>{t('profile.notifications.allCaughtUp')}</Text>
           </View>
@@ -100,19 +101,19 @@ export default function NotificationsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingTop: 56,
     paddingBottom: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
   backBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, fontSize: 18, fontWeight: '700', color: '#1A3C5E', marginLeft: 4, fontFamily: FONTS.sora },
+  title: { flex: 1, fontSize: 18, fontWeight: '700', color: BRAND.navyLight, marginLeft: 4, fontFamily: FONTS.sora },
   markAllBtn: { paddingHorizontal: 12, paddingVertical: 6 },
   markAllText: { fontSize: 13, fontWeight: '600', color: ACCENT, fontFamily: FONTS.inter.semiBold },
   listContent: { paddingVertical: 8 },
@@ -122,9 +123,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: SLATE[50],
     minHeight: 72,
   },
   iconBox: {
@@ -137,11 +138,11 @@ const s = StyleSheet.create({
   },
   itemBody: { flex: 1, justifyContent: 'center' },
   itemTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
-  itemTitle: { fontSize: 14, fontWeight: '600', color: '#1A3C5E', flex: 1, fontFamily: FONTS.inter.semiBold },
-  itemTime: { fontSize: 11, color: '#94A3B8', marginLeft: 8, fontFamily: FONTS.inter.regular },
-  itemMsg: { fontSize: 12, color: '#64748B', lineHeight: 16, fontFamily: FONTS.inter.regular },
+  itemTitle: { fontSize: 14, fontWeight: '600', color: BRAND.navyLight, flex: 1, fontFamily: FONTS.inter.semiBold },
+  itemTime: { fontSize: 11, color: SLATE[400], marginLeft: 8, fontFamily: FONTS.inter.regular },
+  itemMsg: { fontSize: 12, color: SLATE[500], lineHeight: 16, fontFamily: FONTS.inter.regular },
   dot: { width: 8, height: 8, borderRadius: 4, marginLeft: 10 },
   emptyBox: { alignItems: 'center', gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: '#94A3B8', fontFamily: FONTS.inter.semiBold },
-  emptySub: { fontSize: 13, color: '#CBD5E1', fontFamily: FONTS.inter.regular },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: SLATE[400], fontFamily: FONTS.inter.semiBold },
+  emptySub: { fontSize: 13, color: SLATE[300], fontFamily: FONTS.inter.regular },
 });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, Modal, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert, Image,
+  View, Text, Modal, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,8 +9,11 @@ import { useHost } from '@/lib/context/host-context';
 import { getRoomStatusColor, getRoomCapacitySummary } from '@/lib/host/capacity-validation';
 import { hostApi } from '@/lib/api/host-api';
 import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
+import { SRS, NEUTRAL, BG, SLATE, BLUE, GRAY } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#2E86AB';
+const ACCENT = SRS.teal;
 const STATUS_OPTIONS: AdminRoomStatus[] = ['AVAILABLE', 'OCCUPIED', 'DIRTY', 'CLEANING', 'INSPECTED', 'MAINTENANCE', 'BLOCKED'];
 const AMENITY_OPTIONS = [
   'WiFi', 'AC', 'TV', 'Mini Bar', 'Balcony', 'Jacuzzi', 'Living Room',
@@ -27,7 +30,7 @@ interface Props {
 
 export function RoomEditModal({ room, visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
-  const { updateRoom, properties } = useHost();
+  const { updateRoom, properties, rooms } = useHost();
   const isNew = !room;
   const property = room ? properties.find(p => p.id === room.property_id) : null;
 
@@ -105,6 +108,19 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
       Alert.alert('Required', 'Room name is required');
       return;
     }
+
+    // Check for duplicate room names within the same property
+    const propertyId = room?.property_id || property?.id;
+    if (propertyId) {
+      const existingRoomNames = rooms
+        .filter(r => r.property_id === propertyId && r.id !== room?.id)
+        .map(r => r.room_name.toLowerCase().trim());
+      if (existingRoomNames.includes(form.room_name.toLowerCase().trim())) {
+        Alert.alert('Duplicate', 'A room with this name already exists in this property');
+        return;
+      }
+    }
+
     const adults = parseInt(form.max_adults) || 2;
     const children = parseInt(form.max_children) || 0;
     const maxOcc = parseInt(form.max_occupancy) || (adults + children);
@@ -115,7 +131,6 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
     }
 
     const amenities = form.amenitiesInput.split(',').map(a => a.trim()).filter(Boolean);
-    const propertyId = room?.property_id || property?.id;
 
     if (room && propertyId) {
       if (isNewRef.current) {
@@ -155,10 +170,10 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#F8F9FB' }}>
+      <View style={{ flex: 1, backgroundColor: NEUTRAL[100] }}>
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <Ionicons name="close" size={20} color="#111" />
+            <Ionicons name="close" size={20} color={GRAY[900]} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{isNew ? 'New Room' : `Edit ${room?.room_name}`}</Text>
           <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
@@ -166,7 +181,12 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={90}
+        >
+          <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Room Info</Text>
             <View style={styles.card}>
@@ -237,7 +257,7 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
                     onPress={() => set('status', st)}
                     style={[styles.statusChip, form.status === st && { backgroundColor: getRoomStatusColor(st), borderColor: getRoomStatusColor(st) }]}
                   >
-                    <Text style={[styles.statusChipText, form.status === st && { color: '#FFF' }]}>{st}</Text>
+                    <Text style={[styles.statusChipText, form.status === st && { color: BG.white }]}>{st}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -260,30 +280,30 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
                   <View style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}>
                     <Image source={{ uri: photos[0] }} style={{ width: '100%', height: 160 }} resizeMode="cover" />
                     <View style={{ position: 'absolute', top: 8, left: 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>COVER</Text>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: BG.white }}>COVER</Text>
                     </View>
                     <TouchableOpacity onPress={() => handleRemovePhoto(0)}
                       style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.9)', alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="close" size={14} color="#FFF" />
+                      <Ionicons name="close" size={14} color={BG.white} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setImagePickerVisible(true)}
                       style={{ position: 'absolute', bottom: 8, right: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.6)', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="camera-outline" size={12} color="#FFF" />
-                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#FFF' }}>Change</Text>
+                      <Ionicons name="camera-outline" size={12} color={BG.white} />
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: BG.white }}>Change</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
               {photos.length > 1 ? (
                 <>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 8 }}>More Photos</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: SLATE[500], marginBottom: 8 }}>More Photos</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {photos.slice(1).map((url, idx) => (
-                      <View key={idx} style={{ width: '30%', aspectRatio: 4 / 3, borderRadius: 8, overflow: 'hidden', backgroundColor: '#F1F5F9' }}>
+                      <View key={idx} style={{ width: '30%', aspectRatio: 4 / 3, borderRadius: 8, overflow: 'hidden', backgroundColor: SLATE[100] }}>
                         <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                         <TouchableOpacity onPress={() => handleRemovePhoto(idx + 1)}
                           style={{ position: 'absolute', top: 2, right: 2, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.85)', alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF' }}>×</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: BG.white }}>×</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => {
                           const reordered = [...photos];
@@ -293,7 +313,7 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
                           updateRoom(room!.id, { photos: reordered });
                         }}
                           style={{ position: 'absolute', bottom: 2, left: 2, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                          <Text style={{ fontSize: 9, fontWeight: '600', color: '#FFF' }}>Set as Cover</Text>
+                          <Text style={{ fontSize: 9, fontWeight: '600', color: BG.white }}>Set as Cover</Text>
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -329,7 +349,7 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Amenities</Text>
             <View style={styles.card}>
-              <Text style={{ fontSize: 11, color: '#94A3B8', marginBottom: 8 }}>Tap to toggle amenities</Text>
+              <Text style={{ fontSize: 11, color: SLATE[400], marginBottom: 8 }}>Tap to toggle amenities</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {AMENITY_OPTIONS.map(a => {
                   const selected = form.amenitiesInput.split(',').map(x => x.trim().toLowerCase()).includes(a.toLowerCase());
@@ -353,6 +373,7 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
             </View>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
 
         <ImagePickerOverlay
           visible={imagePickerVisible}
@@ -378,7 +399,7 @@ function Field({
         value={value}
         onChangeText={onChange}
         keyboardType={keyboard || 'default'}
-        placeholderTextColor="#CBD5E1"
+        placeholderTextColor={SLATE[300]}
       />
     </View>
   );
@@ -396,34 +417,34 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
 }
 
 const styles = StyleSheet.create({
-  header: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#111', flex: 1 },
+  header: { backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: SLATE[200], paddingBottom: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: GRAY[900], flex: 1 },
   saveBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: ACCENT },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  saveBtnText: { fontSize: 14, fontWeight: '700', color: BG.white },
   section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#111', marginBottom: 10 },
-  card: { backgroundColor: '#FFF', borderRadius: 14, padding: 16 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: GRAY[900], marginBottom: 10 },
+  card: { backgroundColor: BG.white, borderRadius: 14, padding: 16 },
   capacityRow: { flexDirection: 'row' },
-  capacityHint: { fontSize: 11, color: '#94A3B8', marginTop: -8, marginBottom: 4 },
-  statusChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#F8F9FB' },
-  statusChipText: { fontSize: 11, fontWeight: '600', color: '#475569' },
-  amenityChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
-  amenityChipSelected: { backgroundColor: '#EBF5FB', borderColor: ACCENT },
-  amenityChipText: { fontSize: 12, color: '#475569', fontWeight: '500' },
+  capacityHint: { fontSize: 11, color: SLATE[400], marginTop: -8, marginBottom: 4 },
+  statusChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1.5, borderColor: SLATE[200], backgroundColor: NEUTRAL[100] },
+  statusChipText: { fontSize: 11, fontWeight: '600', color: SLATE[600] },
+  amenityChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: SLATE[100], borderWidth: 1, borderColor: SLATE[200] },
+  amenityChipSelected: { backgroundColor: BLUE.tint, borderColor: ACCENT },
+  amenityChipText: { fontSize: 12, color: SLATE[600], fontWeight: '500' },
   amenityChipTextSelected: { color: ACCENT, fontWeight: '700' },
 });
 
 const fieldStyles = StyleSheet.create({
-  label: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: '#F8F9FB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111', borderWidth: 1, borderColor: '#E2E8F0' },
+  label: { fontSize: 12, fontWeight: '600', color: SLATE[500], marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  input: { backgroundColor: NEUTRAL[100], borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: GRAY[900], borderWidth: 1, borderColor: SLATE[200] },
 });
 
 const toggleStyles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
-  label: { fontSize: 14, color: '#111' },
-  track: { width: 48, height: 28, borderRadius: 14, backgroundColor: '#E2E8F0', justifyContent: 'center', paddingHorizontal: 3 },
+  label: { fontSize: 14, color: GRAY[900] },
+  track: { width: 48, height: 28, borderRadius: 14, backgroundColor: SLATE[200], justifyContent: 'center', paddingHorizontal: 3 },
   trackOn: { backgroundColor: ACCENT },
-  thumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFF' },
+  thumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: BG.white },
   thumbOn: { alignSelf: 'flex-end' },
 });

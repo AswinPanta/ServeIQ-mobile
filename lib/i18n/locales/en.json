@@ -12,6 +12,8 @@
 
   "auth.login.title": "Welcome back!",
   "auth.login.subtitle": "Please enter your details",
+  "auth.login.hostTitle": "Welcome back, Host!",
+  "auth.login.hostSubtitle": "Start a new hosting journey with ServeIQ",
   "auth.login.email": "Email",
   "auth.login.emailPlaceholder": "Enter your email",
   "auth.login.password": "Password",
@@ -24,6 +26,8 @@
 
   "auth.register.title": "Create account",
   "auth.register.subtitle": "Start finding your stay today",
+  "auth.register.hostTitle": "Become a Host",
+  "auth.register.hostSubtitle": "Start your hosting journey with ServeIQ",
   "auth.register.name": "Full name",
   "auth.register.namePlaceholder": "Enter your name",
   "auth.register.phone": "Phone",
@@ -62,7 +66,7 @@
   "auth.accountCreated.message": "Your account has been created. Start exploring!",
   "auth.accountCreated.next": "Get Started",
 
-  "auth.splash.title": "StayEasy",
+  "auth.splash.title": "ServeIQ",
   "auth.splash.subtitle": "Find your perfect stay",
   "auth.splash.getStarted": "Get Started",
 
@@ -74,7 +78,7 @@
   "home.browseByType": "Browse by property type",
   "home.exploreMore": "Explore More Properties",
   "home.seeAll": "See All",
-  "home.welcome": "Welcome to StayEasy",
+  "home.welcome": "Welcome to ServeIQ",
   "home.welcomeDesc": "Discover amazing hotels and restaurants curated for you",
   "home.getStarted": "Get Started",
   "home.becomeHost": "Become a Host",
@@ -286,16 +290,16 @@
   "roomSelect.addToBooking": "Add to Booking",
   "roomSelect.unavailable": "Unavailable",
 
-  "components.whyStayEasy.title": "Why StayEasy?",
-  "components.whyStayEasy.subtitle": "We make travel simple and memorable",
-  "components.whyStayEasy.secureBooking": "Secure Booking",
-  "components.whyStayEasy.support": "24/7 Support",
-  "components.whyStayEasy.bestPrice": "Best Price Guarantee",
-  "components.whyStayEasy.curated": "Curated Properties",
-  "components.whyStayEasy.secureBookingDesc": "Your payments and personal information are always protected with enterprise-grade security.",
-  "components.whyStayEasy.supportDesc": "Our team is available around the clock to help with any questions or issues.",
-  "components.whyStayEasy.bestPriceDesc": "Find a lower price elsewhere and we'll match it. Book with confidence.",
-  "components.whyStayEasy.curatedDesc": "Every property is hand-picked and verified for quality and comfort.",
+  "components.whyServeIQ.title": "Why ServeIQ?",
+  "components.whyServeIQ.subtitle": "We make travel simple and memorable",
+  "components.whyServeIQ.secureBooking": "Secure Booking",
+  "components.whyServeIQ.support": "24/7 Support",
+  "components.whyServeIQ.bestPrice": "Best Price Guarantee",
+  "components.whyServeIQ.curated": "Curated Properties",
+  "components.whyServeIQ.secureBookingDesc": "Your payments and personal information are always protected with enterprise-grade security.",
+  "components.whyServeIQ.supportDesc": "Our team is available around the clock to help with any questions or issues.",
+  "components.whyServeIQ.bestPriceDesc": "Find a lower price elsewhere and we'll match it. Book with confidence.",
+  "components.whyServeIQ.curatedDesc": "Every property is hand-picked and verified for quality and comfort.",
 
   "components.testimonials.title": "What travelers say",
 
@@ -323,9 +327,9 @@
 
   "components.footer.support": "Support",
   "components.footer.hosting": "Hosting",
-  "components.footer.company": "StayEasy",
+  "components.footer.company": "ServeIQ",
   "components.footer.legal": "Legal",
-  "components.footer.copyright": "© 2026 StayEasy, Inc. All rights reserved.",
+  "components.footer.copyright": "© 2026 ServeIQ, Inc. All rights reserved.",
   "components.footer.language": "English (US)",
   "components.footer.currency": "$ USD",
 

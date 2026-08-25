@@ -5,9 +5,10 @@ import {
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
+import { TEAL, BRAND, BLUE, RED, PURPLE, AMBER, STATUS, BG, SLATE, BORDER, GRAY, EMERALD } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#0D9488';
-const NAVY = '#002645';
+const ACCENT = TEAL[600];
+const NAVY = BRAND.navy;
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 type ApprovalType = 'discount' | 'refund' | 'upgrade' | 'comp';
@@ -66,10 +67,10 @@ const MOCK_APPROVALS: ApprovalRequest[] = [
 ];
 
 const TYPE_CONFIG: Record<ApprovalType, { label: string; icon: string; color: string }> = {
-  discount: { label: 'Discount', icon: 'percent', color: '#3B82F6' },
-  refund: { label: 'Refund', icon: 'payment', color: '#EF4444' },
-  upgrade: { label: 'Room Upgrade', icon: 'upgrade', color: '#8B5CF6' },
-  comp: { label: 'Complimentary', icon: 'redeem', color: '#F59E0B' },
+  discount: { label: 'Discount', icon: 'percent', color: BLUE[500] },
+  refund: { label: 'Refund', icon: 'payment', color: RED[500] },
+  upgrade: { label: 'Room Upgrade', icon: 'upgrade', color: PURPLE[500] },
+  comp: { label: 'Complimentary', icon: 'redeem', color: AMBER[500] },
 };
 
 export default function ApprovalsScreen() {
@@ -162,7 +163,7 @@ export default function ApprovalsScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}>
         {filtered.length === 0 ? (
           <View style={s.emptyState}>
-            <IconSymbol name="success" size={48} color="#10B981" />
+            <IconSymbol name="success" size={48} color={STATUS.activeGreen} />
             <Text style={s.emptyTitle}>All clear!</Text>
             <Text style={s.emptyDesc}>
               {filter === 'pending' ? 'No pending approvals' : `No ${filter} requests`}
@@ -193,7 +194,7 @@ export default function ApprovalsScreen() {
                 <Text style={s.guestName}>{req.guestName} — Room {req.roomNumber}</Text>
                 <Text style={s.details}>{req.details}</Text>
                 <Text style={s.reason} numberOfLines={selectedApproval?.id === req.id ? undefined : 2}>
-                  "{req.reason}"
+                  {"\u201C"}{req.reason}{"\u201D"}
                 </Text>
 
                 {selectedApproval?.id === req.id && (
@@ -209,7 +210,7 @@ export default function ApprovalsScreen() {
                     {req.amount && (
                       <View style={s.infoRow}>
                         <Text style={s.infoLabel}>Amount</Text>
-                        <Text style={[s.infoValue, { color: '#EF4444' }]}>NPR {req.amount.toLocaleString()}</Text>
+                        <Text style={[s.infoValue, { color: RED[500] }]}>NPR {req.amount.toLocaleString()}</Text>
                       </View>
                     )}
 
@@ -219,14 +220,14 @@ export default function ApprovalsScreen() {
                           onPress={() => handleApproveReject(req.id, 'rejected')}
                           style={s.rejectBtn}
                         >
-                          <IconSymbol name="close" size={14} color="#FFF" />
+                          <IconSymbol name="close" size={14} color={BG.white} />
                           <Text style={s.rejectBtnText}>Reject</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => handleApproveReject(req.id, 'approved')}
                           style={s.approveBtn}
                         >
-                          <IconSymbol name="check" size={14} color="#FFF" />
+                          <IconSymbol name="check" size={14} color={BG.white} />
                           <Text style={s.approveBtnText}>Approve</Text>
                         </TouchableOpacity>
                       </View>
@@ -256,7 +257,7 @@ export default function ApprovalsScreen() {
             </Text>
             <TextInput
               placeholder="Enter 4-digit code"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               value={managerCode}
               onChangeText={setManagerCode}
               keyboardType="number-pad"
@@ -285,31 +286,31 @@ const IM = FONTS.inter.medium;
 const IB = FONTS.inter.bold;
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F3F6' },
+  container: { flex: 1, backgroundColor: BG.card },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 40, paddingBottom: 12,
-    backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E8E8EB',
+    backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: BORDER.inactive,
   },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F4F3F6', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.card, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: NAVY, fontFamily: PF },
-  headerSub: { fontSize: 12, color: '#6B7280', fontFamily: IR },
+  headerSub: { fontSize: 12, color: GRAY[500], fontFamily: IR },
 
-  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#FFF', gap: 8, borderBottomWidth: 1, borderBottomColor: '#E8E8EB' },
-  filterTab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#F4F3F6' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: BG.white, gap: 8, borderBottomWidth: 1, borderBottomColor: BORDER.inactive },
+  filterTab: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: BG.card },
   filterTabActive: { backgroundColor: ACCENT },
-  filterTabText: { fontSize: 12, fontWeight: '600', color: '#6B7280', fontFamily: IM },
-  filterTabTextActive: { color: '#FFF' },
-  filterBadge: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#E8E8EB', alignItems: 'center', justifyContent: 'center' },
+  filterTabText: { fontSize: 12, fontWeight: '600', color: GRAY[500], fontFamily: IM },
+  filterTabTextActive: { color: BG.white },
+  filterBadge: { width: 18, height: 18, borderRadius: 9, backgroundColor: BORDER.inactive, alignItems: 'center', justifyContent: 'center' },
   filterBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
-  filterBadgeText: { fontSize: 10, fontWeight: '700', color: '#6B7280', fontFamily: IB },
-  filterBadgeTextActive: { color: '#FFF' },
+  filterBadgeText: { fontSize: 10, fontWeight: '700', color: GRAY[500], fontFamily: IB },
+  filterBadgeTextActive: { color: BG.white },
 
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: NAVY, fontFamily: PF },
-  emptyDesc: { fontSize: 13, color: '#9CA3AF', fontFamily: IR },
+  emptyDesc: { fontSize: 13, color: GRAY[400], fontFamily: IR },
 
-  approvalCard: { padding: 16, borderRadius: 14, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E8E8EB', gap: 6 },
+  approvalCard: { padding: 16, borderRadius: 14, backgroundColor: BG.white, borderWidth: 1, borderColor: BORDER.inactive, gap: 6 },
   approvalCardReviewed: { opacity: 0.7 },
   approvalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
@@ -319,35 +320,35 @@ const s = StyleSheet.create({
   statusApproved: { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
   statusRejected: { backgroundColor: 'rgba(239, 68, 68, 0.1)' },
   statusText: { fontSize: 11, fontWeight: '700', fontFamily: IB },
-  statusTextPending: { color: '#D97706' },
-  statusTextApproved: { color: '#059669' },
-  statusTextRejected: { color: '#DC2626' },
+  statusTextPending: { color: AMBER[600] },
+  statusTextApproved: { color: EMERALD[600] },
+  statusTextRejected: { color: RED[600] },
 
   guestName: { fontSize: 15, fontWeight: '700', color: NAVY, fontFamily: IM },
-  details: { fontSize: 13, color: '#374151', fontFamily: IR },
-  reason: { fontSize: 12, color: '#6B7280', fontStyle: 'italic', fontFamily: IR },
+  details: { fontSize: 13, color: GRAY[700], fontFamily: IR },
+  reason: { fontSize: 12, color: GRAY[500], fontStyle: 'italic', fontFamily: IR },
 
-  expandedSection: { marginTop: 8, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10, gap: 6 },
+  expandedSection: { marginTop: 8, borderTopWidth: 1, borderTopColor: GRAY[100], paddingTop: 10, gap: 6 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  infoLabel: { fontSize: 12, color: '#9CA3AF', fontFamily: IR },
+  infoLabel: { fontSize: 12, color: GRAY[400], fontFamily: IR },
   infoValue: { fontSize: 12, fontWeight: '600', color: NAVY, fontFamily: IM },
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, backgroundColor: '#EF4444' },
-  rejectBtnText: { fontSize: 13, fontWeight: '700', color: '#FFF', fontFamily: IB },
+  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, backgroundColor: RED[500] },
+  rejectBtnText: { fontSize: 13, fontWeight: '700', color: BG.white, fontFamily: IB },
   approveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 10, borderRadius: 10, backgroundColor: ACCENT },
-  approveBtnText: { fontSize: 13, fontWeight: '700', color: '#FFF', fontFamily: IB },
-  reviewedText: { fontSize: 11, color: '#9CA3AF', fontFamily: IR, marginTop: 4 },
+  approveBtnText: { fontSize: 13, fontWeight: '700', color: BG.white, fontFamily: IB },
+  reviewedText: { fontSize: 11, color: GRAY[400], fontFamily: IR, marginTop: 4 },
 
   modalOverlay: { ...StyleSheet.absoluteFill, zIndex: 1000, justifyContent: 'center', alignItems: 'center' },
   modalBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalCard: { width: '85%', backgroundColor: '#FFF', borderRadius: 16, padding: 24, gap: 12 },
+  modalCard: { width: '85%', backgroundColor: BG.white, borderRadius: 16, padding: 24, gap: 12 },
   modalTitle: { fontSize: 18, fontWeight: '700', color: NAVY, fontFamily: PF },
-  modalDesc: { fontSize: 13, color: '#6B7280', fontFamily: IR },
-  codeInput: { borderWidth: 1, borderColor: '#E8E8EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, color: NAVY, textAlign: 'center', letterSpacing: 8, fontFamily: IB },
+  modalDesc: { fontSize: 13, color: GRAY[500], fontFamily: IR },
+  codeInput: { borderWidth: 1, borderColor: BORDER.inactive, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, color: NAVY, textAlign: 'center', letterSpacing: 8, fontFamily: IB },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  modalCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E8E8EB', alignItems: 'center' },
-  modalCancelText: { fontSize: 14, fontWeight: '600', color: '#6B7280', fontFamily: IM },
+  modalCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: BORDER.inactive, alignItems: 'center' },
+  modalCancelText: { fontSize: 14, fontWeight: '600', color: GRAY[500], fontFamily: IM },
   modalConfirmBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: ACCENT, alignItems: 'center' },
-  modalConfirmText: { fontSize: 14, fontWeight: '700', color: '#FFF', fontFamily: IB },
+  modalConfirmText: { fontSize: 14, fontWeight: '700', color: BG.white, fontFamily: IB },
 });

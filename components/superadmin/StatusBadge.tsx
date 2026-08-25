@@ -1,5 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { STATUS, RED, AMBER, BLUE, GRAY, PURPLE, EMERALD } from '@/lib/constants/figma-tokens';
+;
+;
 
 interface StatusBadgeProps {
   status: string;
@@ -7,27 +10,27 @@ interface StatusBadgeProps {
 }
 
 const STATUS_MAP: Record<string, { bg: string; text: string }> = {
-  Active: { bg: '#10B98115', text: '#10B981' },
-  Suspended: { bg: '#EF444415', text: '#EF4444' },
-  Trial: { bg: '#F59E0B15', text: '#F59E0B' },
-  Pending: { bg: '#F59E0B15', text: '#F59E0B' },
-  Paid: { bg: '#10B98115', text: '#10B981' },
-  Overdue: { bg: '#EF444415', text: '#EF4444' },
-  Open: { bg: '#3B82F615', text: '#3B82F6' },
-  'In Progress': { bg: '#F59E0B15', text: '#F59E0B' },
-  Resolved: { bg: '#10B98115', text: '#10B981' },
-  Closed: { bg: '#6B728015', text: '#6B7280' },
-  Allowed: { bg: '#10B98115', text: '#10B981' },
-  Denied: { bg: '#EF444415', text: '#EF4444' },
-  Operational: { bg: '#10B98115', text: '#10B981' },
-  Degraded: { bg: '#F59E0B15', text: '#F59E0B' },
-  Down: { bg: '#EF444415', text: '#EF4444' },
-  Enterprise: { bg: '#7C3AED15', text: '#7C3AED' },
-  Pro: { bg: '#3B82F615', text: '#3B82F6' },
-  Basic: { bg: '#10B98115', text: '#10B981' },
+  Active: { bg: EMERALD[500] + '15', text: STATUS.activeGreen },
+  Suspended: { bg: RED[500] + '15', text: RED[500] },
+  Trial: { bg: AMBER[500] + '15', text: AMBER[500] },
+  Pending: { bg: AMBER[500] + '15', text: AMBER[500] },
+  Paid: { bg: EMERALD[500] + '15', text: STATUS.activeGreen },
+  Overdue: { bg: RED[500] + '15', text: RED[500] },
+  Open: { bg: BLUE[500] + '15', text: BLUE[500] },
+  'In Progress': { bg: AMBER[500] + '15', text: AMBER[500] },
+  Resolved: { bg: EMERALD[500] + '15', text: STATUS.activeGreen },
+  Closed: { bg: GRAY[500] + '15', text: GRAY[500] },
+  Allowed: { bg: EMERALD[500] + '15', text: STATUS.activeGreen },
+  Denied: { bg: RED[500] + '15', text: RED[500] },
+  Operational: { bg: EMERALD[500] + '15', text: STATUS.activeGreen },
+  Degraded: { bg: AMBER[500] + '15', text: AMBER[500] },
+  Down: { bg: RED[500] + '15', text: RED[500] },
+  Enterprise: { bg: PURPLE[700] + '15', text: PURPLE[700] },
+  Pro: { bg: BLUE[500] + '15', text: BLUE[500] },
+  Basic: { bg: EMERALD[500] + '15', text: STATUS.activeGreen },
 };
 
-const DEFAULT_STYLE = { bg: '#6B728015', text: '#6B7280' };
+const DEFAULT_STYLE = { bg: GRAY[500] + '15', text: GRAY[500] };
 
 export function StatusBadge({ status, size = 'sm' }: StatusBadgeProps) {
   const style = STATUS_MAP[status] || DEFAULT_STYLE;

@@ -1,16 +1,25 @@
 {
   "expo": {
-    "name": "stayeasy",
-    "slug": "stayeasy",
+    "name": "ServeIQ",
+    "slug": "serveiq",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "stayeasy",
+    "scheme": "serveiq",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.serveiq.app",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "tez",
+          "phonepe",
+          "paytmmp"
+        ]
+      }
     },
     "android": {
+      "package": "com.serveiq.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -28,14 +37,27 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#FAFAFA",
+          "image": "./assets/Splash.animation/preview/landmarks.png",
+          "imageWidth": 280,
+          "resizeMode": "contain",
           "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "image": "./assets/Splash.animation/preview/landmarks.png",
+            "imageWidth": 280,
+            "resizeMode": "contain"
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-video",
+      "expo-dev-client",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.serveiq",
+          "enableGooglePay": true
+        }
+      ]
     ],
     "updates": {
       "enabled": false

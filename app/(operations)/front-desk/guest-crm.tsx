@@ -5,14 +5,17 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { useGuestStore } from '@/stores/useGuestStore';
 import { safeGoBack } from "@/lib/utils";
+import { STATUS_COLORS, BG, SRS as SRSTokens, AMBER, FLAT } from '@/lib/constants/figma-tokens';
+;
+;
 
 type Tab = 'search' | 'profile' | 'recent';
 
 const LOYALTY_TIER_CONFIG: Record<string, { color: string; label: string; minPoints: number }> = {
-  standard: { color: '#CD7F32', label: 'Standard', minPoints: 0 },
-  silver: { color: '#C0C0C0', label: 'Silver', minPoints: 500 },
-  gold: { color: '#FFD700', label: 'Gold', minPoints: 2000 },
-  platinum: { color: '#E5E4E2', label: 'Platinum', minPoints: 5000 },
+  standard: { color: STATUS_COLORS.bronze, label: 'Standard', minPoints: 0 },
+  silver: { color: STATUS_COLORS.silver, label: 'Silver', minPoints: 500 },
+  gold: { color: STATUS_COLORS.gold, label: 'Gold', minPoints: 2000 },
+  platinum: { color: STATUS_COLORS.platinum, label: 'Platinum', minPoints: 5000 },
 };
 
 export default function GuestCRMScreen() {
@@ -92,7 +95,7 @@ export default function GuestCRMScreen() {
           <Text style={s.sub}>{guests.length} total guests</Text>
         </View>
         <TouchableOpacity onPress={() => setShowNewForm(true)} style={s.addBtn}>
-          <IconSymbol name="add" size={16} color="#FFF" />
+          <IconSymbol name="add" size={16} color={BG.white} />
         </TouchableOpacity>
       </View>
 
@@ -108,8 +111,8 @@ export default function GuestCRMScreen() {
             onPress={() => setActiveTab(tab.key)}
             style={[s.tabBtn, activeTab === tab.key && s.tabBtnActive]}
           >
-            <IconSymbol name={tab.icon} size={14} color={activeTab === tab.key ? '#FFF' : GRAY[500]} />
-            <Text style={[s.tabLabel, activeTab === tab.key && { color: '#FFF' }]}>{tab.label}</Text>
+            <IconSymbol name={tab.icon} size={14} color={activeTab === tab.key ? BG.white : GRAY[500]} />
+            <Text style={[s.tabLabel, activeTab === tab.key && { color: BG.white }]}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -139,8 +142,8 @@ export default function GuestCRMScreen() {
               <TouchableOpacity key={g.id} onPress={() => { setSelectedGuestId(g.id); setActiveTab('profile'); }}
                 style={s.guestCard}
               >
-                <View style={[s.guestAvatar, { backgroundColor: g.vip ? '#F59E0B20' : SRS.teal + '12' }]}>
-                  <Text style={[s.guestInitial, { color: g.vip ? '#D35400' : SRS.teal }]}>{g.name[0]}</Text>
+                <View style={[s.guestAvatar, { backgroundColor: g.vip ? AMBER[500] + '20' : SRS.teal + '12' }]}>
+                  <Text style={[s.guestInitial, { color: g.vip ? SRSTokens.orange : SRS.teal }]}>{g.name[0]}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -170,8 +173,8 @@ export default function GuestCRMScreen() {
             {/* Profile Header */}
             <View style={s.profileCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
-                <View style={[s.profileAvatar, { backgroundColor: selectedGuest.vip ? '#F59E0B20' : SRS.teal + '15' }]}>
-                  <Text style={[s.profileInitial, { color: selectedGuest.vip ? '#D35400' : SRS.teal, fontSize: 24 }]}>
+                <View style={[s.profileAvatar, { backgroundColor: selectedGuest.vip ? AMBER[500] + '20' : SRS.teal + '15' }]}>
+                  <Text style={[s.profileInitial, { color: selectedGuest.vip ? SRSTokens.orange : SRS.teal, fontSize: 24 }]}>
                     {selectedGuest.name[0]}
                   </Text>
                 </View>
@@ -213,7 +216,7 @@ export default function GuestCRMScreen() {
             {(() => {
               const info = nextTierInfo(selectedGuest.loyaltyPoints);
               if (!info) return (
-                <View style={[s.loyaltyCard, { backgroundColor: '#FFD70015', borderColor: '#FFD700' }]}>
+                <View style={[s.loyaltyCard, { backgroundColor: FLAT.gold + '15', borderColor: STATUS_COLORS.gold }]}>
                   <Text style={s.loyaltyTitle}>🏆 Platinum Member</Text>
                   <Text style={s.loyaltyDesc}>Top tier — all premium benefits unlocked</Text>
                 </View>
@@ -280,13 +283,13 @@ export default function GuestCRMScreen() {
             <Text style={s.sectionTitle}>Top Guests by Stays</Text>
             {recentGuests.map((g, i) => (
               <TouchableOpacity key={g.id} onPress={() => { setSelectedGuestId(g.id); setActiveTab('profile'); }}
-                style={[s.guestCard, i === 0 && { backgroundColor: '#FFD70010', borderColor: '#FFD700' }]}
+                style={[s.guestCard, i === 0 && { backgroundColor: FLAT.gold + '10', borderColor: STATUS_COLORS.gold }]}
               >
                 <View style={s.rankBadge}>
                   <Text style={s.rankText}>{i + 1}</Text>
                 </View>
-                <View style={[s.guestAvatar, { backgroundColor: g.vip ? '#F59E0B20' : SRS.teal + '12' }]}>
-                  <Text style={[s.guestInitial, { color: g.vip ? '#D35400' : SRS.teal }]}>{g.name[0]}</Text>
+                <View style={[s.guestAvatar, { backgroundColor: g.vip ? AMBER[500] + '20' : SRS.teal + '12' }]}>
+                  <Text style={[s.guestInitial, { color: g.vip ? SRSTokens.orange : SRS.teal }]}>{g.name[0]}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -346,51 +349,51 @@ export default function GuestCRMScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: GRAY[50] },
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.md, flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md },
-  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center' },
   title: { ...TYPOGRAPHY.h2, color: SRS.navy, flex: 1 },
   sub: { ...TYPOGRAPHY.small, color: GRAY[500], marginTop: 2 },
   addBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: SRS.teal, alignItems: 'center', justifyContent: 'center' },
   tabRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, gap: SPACING.sm, marginBottom: SPACING.md },
-  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[200] },
+  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[200] },
   tabBtnActive: { backgroundColor: SRS.navy, borderColor: SRS.navy },
   tabLabel: { ...TYPOGRAPHY.caption, fontWeight: '600', color: GRAY[600] },
   body: { paddingHorizontal: SPACING.lg, gap: SPACING.md },
-  searchInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: SRS.navy, marginBottom: SPACING.md },
+  searchInput: { backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: SRS.navy, marginBottom: SPACING.md },
 
-  guestCard: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100], marginBottom: SPACING.sm, gap: SPACING.md },
+  guestCard: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[100], marginBottom: SPACING.sm, gap: SPACING.md },
   guestAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   guestInitial: { fontSize: 16, fontWeight: '700' },
   guestName: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
   guestMeta: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 1 },
-  vipBadge: { fontSize: 10, fontWeight: '700', color: '#D35400', backgroundColor: '#F59E0B15', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 },
+  vipBadge: { fontSize: 10, fontWeight: '700', color: SRSTokens.orange, backgroundColor: AMBER[500] + '15', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 },
   tierBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   tierBadgeText: { fontSize: 10, fontWeight: '700' },
   rankBadge: { width: 24, height: 24, borderRadius: 12, backgroundColor: SRS.teal + '15', alignItems: 'center', justifyContent: 'center' },
   rankText: { fontSize: 12, fontWeight: '700', color: SRS.teal },
 
-  profileCard: { backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
+  profileCard: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
   profileAvatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
   profileInitial: { fontWeight: '700' },
   profileName: { fontSize: 18, fontWeight: '700', color: SRS.navy },
   profileMeta: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 2 },
 
   statsRow: { flexDirection: 'row', gap: SPACING.sm },
-  statCard: { flex: 1, backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: GRAY[100], gap: 2 },
+  statCard: { flex: 1, backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: GRAY[100], gap: 2 },
   statValue: { fontSize: 16, fontWeight: '700', color: SRS.navy, fontVariant: ['tabular-nums'] as any },
   statLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
 
-  loyaltyCard: { backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
+  loyaltyCard: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
   loyaltyTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.sm },
   loyaltyDesc: { ...TYPOGRAPHY.caption, color: GRAY[500] },
   progressBar: { height: 6, borderRadius: 3, backgroundColor: GRAY[200], overflow: 'hidden', marginBottom: 4 },
   progressFill: { height: '100%', borderRadius: 3 },
 
-  sectionCard: { backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
+  sectionCard: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
   sectionTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.md },
   noteInputRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.md },
   noteInput: { flex: 1, backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: SRS.navy, minHeight: 36 },
   noteAddBtn: { paddingHorizontal: 16, borderRadius: RADIUS.card, backgroundColor: SRS.teal, alignItems: 'center', justifyContent: 'center' },
-  noteAddText: { fontSize: 13, fontWeight: '600', color: '#FFF' },
+  noteAddText: { fontSize: 13, fontWeight: '600', color: BG.white },
   noteRow: { flexDirection: 'row', gap: SPACING.sm, paddingVertical: 4 },
   noteDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: SRS.teal, marginTop: 6 },
   noteText: { ...TYPOGRAPHY.small, color: GRAY[600], flex: 1 },
@@ -404,15 +407,15 @@ const s = StyleSheet.create({
   emptyText: { ...TYPOGRAPHY.body, color: GRAY[400] },
   hintText: { ...TYPOGRAPHY.small, color: GRAY[400], textAlign: 'center' },
   createBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: RADIUS.card, backgroundColor: SRS.teal },
-  createBtnText: { fontSize: 13, fontWeight: '600', color: '#FFF' },
+  createBtnText: { fontSize: 13, fontWeight: '600', color: BG.white },
 
   overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
-  modal: { backgroundColor: '#FFF', borderRadius: RADIUS.card * 2, padding: SPACING.xl, width: '90%', maxWidth: 400 },
+  modal: { backgroundColor: BG.white, borderRadius: RADIUS.card * 2, padding: SPACING.xl, width: '90%', maxWidth: 400 },
   modalTitle: { ...TYPOGRAPHY.h3, color: SRS.navy, marginBottom: SPACING.lg },
   fieldLabel: { ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy, marginBottom: 4 },
   input: { backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: SRS.navy },
   modalCancel: { flex: 1, paddingVertical: 12, borderRadius: RADIUS.card, alignItems: 'center', backgroundColor: GRAY[100] },
   modalCancelText: { fontSize: 14, fontWeight: '600', color: GRAY[600] },
   modalConfirm: { flex: 1, paddingVertical: 12, borderRadius: RADIUS.card, alignItems: 'center', backgroundColor: SRS.teal },
-  modalConfirmText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  modalConfirmText: { fontSize: 14, fontWeight: '700', color: BG.white },
 });

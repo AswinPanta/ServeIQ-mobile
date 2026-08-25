@@ -5,8 +5,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { PermissionToggle } from '@/components/superadmin/PermissionToggle';
 import { AdminCard } from '@/components/superadmin/AdminCard';
+import { PURPLE, SLATE, AMBER, BG, NEUTRAL } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 
 export default function EditRoleScreen() {
   const { roleId } = useLocalSearchParams<{ roleId: string }>();
@@ -93,7 +94,7 @@ export default function EditRoleScreen() {
             onChangeText={handleNameChange}
             style={styles.input}
             placeholder="Role name"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={SLATE[400]}
           />
 
           <Text style={styles.inputLabel}>Description</Text>
@@ -102,7 +103,7 @@ export default function EditRoleScreen() {
             onChangeText={handleDescChange}
             style={styles.input}
             placeholder="Describe this role"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={SLATE[400]}
           />
 
           {/* Color indicator */}
@@ -155,7 +156,7 @@ export default function EditRoleScreen() {
         {/* Warning for system roles */}
         {role.isSystem && (
           <View style={styles.warningCard}>
-            <IconSymbol name="warning" size={18} color="#F59E0B" />
+            <IconSymbol name="warning" size={18} color={AMBER[500]} />
             <Text style={styles.warningText}>
               This is a system role. Editing may affect platform-wide access control.
             </Text>
@@ -174,33 +175,33 @@ export default function EditRoleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   scroll: { padding: 20, paddingTop: 8, gap: 14, paddingBottom: 100 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  notFound: { fontSize: 16, color: '#64748B', marginBottom: 12 },
+  notFound: { fontSize: 16, color: SLATE[500], marginBottom: 12 },
   backLink: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: ACCENT + '12' },
   backLinkText: { fontSize: 14, fontWeight: '700', color: ACCENT },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
   saveBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: ACCENT },
-  saveText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 6, marginTop: 4 },
+  saveText: { fontSize: 14, fontWeight: '700', color: BG.white },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: SLATE[500], marginBottom: 6, marginTop: 4 },
   input: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: SLATE[200],
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#0F172A',
+    color: SLATE[900],
     marginBottom: 12,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: NEUTRAL[50],
   },
   colorSection: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 },
   colorPreview: { width: 28, height: 28, borderRadius: 14 },
-  permStats: { marginTop: 8, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, backgroundColor: '#F8FAFC' },
-  permStatsText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  permStats: { marginTop: 8, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, backgroundColor: SLATE[50] },
+  permStatsText: { fontSize: 13, fontWeight: '600', color: SLATE[500] },
   toggleAllBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: ACCENT + '10' },
   toggleAllText: { fontSize: 12, fontWeight: '700', color: ACCENT },
   warningCard: {
@@ -209,11 +210,11 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     borderRadius: 12,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: AMBER[50],
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: AMBER[200],
   },
-  warningText: { flex: 1, fontSize: 13, color: '#92400E', lineHeight: 18 },
+  warningText: { flex: 1, fontSize: 13, color: AMBER[800], lineHeight: 18 },
   bottomSaveBtn: {
     paddingVertical: 16,
     borderRadius: 14,
@@ -225,5 +226,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  bottomSaveText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  bottomSaveText: { fontSize: 16, fontWeight: '700', color: BG.white },
 });

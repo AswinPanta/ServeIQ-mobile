@@ -24,20 +24,34 @@ interface UseLocationResult {
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
 
-async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string; country?: string }> {
-  const url = `${NOMINATIM_URL}?lat=${lat}&lon=${lon}&format=json`;
+export interface ReverseGeocodeResult {
+  /** Street address (house number + road, when available) */
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  /** Postal / ZIP code */
+  postcode?: string;
+}
+
+export async function reverseGeocode(lat: number, lon: number): Promise<ReverseGeocodeResult> {
+  const url = `${NOMINATIM_URL}?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'StayEasyApp/1.0 (stayeasy@example.com)',
+      'User-Agent': 'ServeIQApp/1.0 (serveiq@example.com)',
       'Accept-Language': 'en',
     },
   });
   if (!res.ok) return {};
   const data = await res.json();
   const addr = data?.address ?? {};
+  const road = addr.road || addr.pedestrian || addr.footway || addr.street || addr.neighbourhood || undefined;
   return {
-    city: addr.city || addr.town || addr.village || addr.hamlet || addr.municipality || undefined,
+    street: road ? [addr.house_number, road].filter(Boolean).join(' ') : undefined,
+    city: addr.city || addr.town || addr.village || addr.hamlet || addr.municipality || addr.county || undefined,
+    state: addr.state || addr.region || addr.province || undefined,
     country: addr.country || undefined,
+    postcode: addr.postcode || addr.postal_code || undefined,
   };
 }
 

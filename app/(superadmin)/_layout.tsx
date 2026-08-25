@@ -7,9 +7,10 @@ import { AuthGuard } from '@/components/common/AuthGuard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SuperAdminProvider } from '@/lib/context/superadmin-context';
 import { AnalyticsProvider } from '@/lib/context/analytics-context';
+import { PURPLE, SLATE, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#7C3AED';
-const INACTIVE = '#94A3B8';
+const ACCENT = PURPLE[700];
+const INACTIVE = SLATE[400];
 
 const TABS = [
   { key: 'index', label: 'Dashboard', icon: 'home' as const, route: '/(superadmin)' },
@@ -103,9 +104,9 @@ const tabStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: SLATE[100],
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     paddingTop: 8,
   },

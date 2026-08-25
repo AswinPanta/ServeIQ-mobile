@@ -61,7 +61,7 @@ interface OperationsInviteContextType {
   getInvitesByProperty: (propertyId: string) => OperatorInvite[];
 }
 
-const STORAGE_KEY = '@stayeasy_operator_invites';
+const STORAGE_KEY = '@serveiq_operator_invites';
 
 // ─── Helpers ───────────────────────────────────────
 
@@ -122,6 +122,7 @@ export function OperationsInviteProvider({ children }: { children: React.ReactNo
 
   // Load from AsyncStorage on mount
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
@@ -134,20 +135,23 @@ export function OperationsInviteProvider({ children }: { children: React.ReactNo
               merged.push(inv);
             }
           }
-          setInvites(merged);
+          if (!cancelled) setInvites(merged);
         }
       } catch {
         // Keep mock data on parse failure
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, []);
 
   // Persist to AsyncStorage whenever invites change
   useEffect(() => {
     if (!isLoading) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(invites)).catch(() => {});
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(invites)).catch(e => {
+        console.warn('Failed to save invites:', e);
+      });
     }
   }, [invites, isLoading]);
 

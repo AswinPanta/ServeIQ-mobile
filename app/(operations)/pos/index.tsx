@@ -7,12 +7,13 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { SystemFlowBar } from '@/components/operations/SystemFlowBar';
 import { useMemo, useEffect, useRef } from 'react';
+import { STATUS_COLORS, BG } from '@/lib/constants/figma-tokens';
 
 const TBL_COLORS: Record<string, string> = {
   available: SRS.green,
   occupied: SRS.red,
   reserved: SRS.orange,
-  cleaning: '#16A085',
+  cleaning: STATUS_COLORS.cleaning,
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     padding: SPACING.md,
     alignItems: 'center',
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
   },
   tableCard: {
     width: '30%',
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.sm,

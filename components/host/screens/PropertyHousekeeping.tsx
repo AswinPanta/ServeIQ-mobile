@@ -3,9 +3,11 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Property } from '@/types/api';
 import { useHost } from '@/lib/context/host-context';
+import { GRAY, TYPOGRAPHY, RADIUS } from '@/constants/portal-theme';
+import { AMBER, PURPLE, STATUS, BG } from '@/lib/constants/figma-tokens';
 
 const STATUS_COLORS: Record<string, string> = {
-  DIRTY: '#F59E0B', CLEANING: '#8B5CF6', AVAILABLE: '#10B981',
+  DIRTY: AMBER[500], CLEANING: PURPLE[500], AVAILABLE: STATUS.activeGreen,
 };
 
 interface Props { property: Property }
@@ -18,11 +20,11 @@ export function PropertyHousekeeping({ property }: Props) {
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-        <View style={[styles.statCard, { borderLeftColor: '#F59E0B' }]}>
+        <View style={[styles.statCard, { borderLeftColor: AMBER[500] }]}>
           <Text style={styles.statValue}>{dirty.length}</Text>
           <Text style={styles.statLabel}>Dirty / Cleaning</Text>
         </View>
-        <View style={[styles.statCard, { borderLeftColor: '#10B981' }]}>
+        <View style={[styles.statCard, { borderLeftColor: STATUS.activeGreen }]}>
           <Text style={styles.statValue}>{rooms.filter(r => r.status === 'AVAILABLE').length}</Text>
           <Text style={styles.statLabel}>Clean</Text>
         </View>
@@ -30,8 +32,8 @@ export function PropertyHousekeeping({ property }: Props) {
 
       {dirty.length === 0 ? (
         <View style={{ alignItems: 'center', paddingTop: 40 }}>
-          <Ionicons name="sparkles-outline" size={48} color="#CBD5E1" />
-          <Text style={{ marginTop: 12, fontSize: 15, color: '#94A3B8' }}>All rooms are clean!</Text>
+          <Ionicons name="sparkles-outline" size={48} color={GRAY[300]} />
+          <Text style={{ marginTop: 12, fontSize: 15, color: GRAY[400] }}>All rooms are clean!</Text>
         </View>
       ) : (
         dirty.map(r => (
@@ -41,8 +43,8 @@ export function PropertyHousekeeping({ property }: Props) {
                 <Text style={styles.roomName}>Room {r.room_name}</Text>
                 <Text style={styles.roomType}>Floor {r.floor_number}</Text>
               </View>
-              <View style={[styles.badge, { backgroundColor: (STATUS_COLORS[r.status] || '#CBD5E1') + '20' }]}>
-                <Text style={[styles.badgeText, { color: STATUS_COLORS[r.status] || '#64748B' }]}>{r.status}</Text>
+              <View style={[styles.badge, { backgroundColor: (STATUS_COLORS[r.status] || GRAY[300]) + '20' }]}>
+                <Text style={[styles.badgeText, { color: STATUS_COLORS[r.status] || GRAY[500] }]}>{r.status}</Text>
               </View>
             </View>
           </View>
@@ -53,12 +55,12 @@ export function PropertyHousekeeping({ property }: Props) {
 }
 
 const styles = StyleSheet.create({
-  statCard: { flex: 1, backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderLeftWidth: 3, gap: 4 },
-  statValue: { fontSize: 24, fontWeight: '800', color: '#111' },
-  statLabel: { fontSize: 11, color: '#94A3B8' },
-  card: { backgroundColor: '#FFF', borderRadius: 14, padding: 14, marginBottom: 10 },
-  roomName: { fontSize: 15, fontWeight: '700', color: '#111' },
-  roomType: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  statCard: { flex: 1, backgroundColor: BG.white, borderRadius: RADIUS.card + 6, padding: 16, borderLeftWidth: 3, gap: 4 },
+  statValue: { fontSize: 24, fontWeight: '800', color: GRAY[900] },
+  statLabel: { fontSize: 11, color: GRAY[400] },
+  card: { backgroundColor: BG.white, borderRadius: RADIUS.card + 6, padding: 14, marginBottom: 10 },
+  roomName: { fontSize: 15, fontWeight: '700', color: GRAY[900] },
+  roomType: { ...TYPOGRAPHY.small, color: GRAY[400], marginTop: 2 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full },
   badgeText: { fontSize: 11, fontWeight: '700' },
 });

@@ -6,19 +6,20 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '@/constants/portal-theme';
 import type { StaffTask } from '@/types/api';
 import { safeGoBack } from "@/lib/utils";
+import { TEAL, RED, AMBER, GRAY, BLUE, STATUS, EMERALD, BG, SLATE } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#0D9488';
+const ACCENT = TEAL[600];
 
 const PRIORITY_CONFIG = {
-  high: { label: 'High', color: '#EF4444', bg: '#FEE2E2', icon: 'exclamationmark.triangle.fill' },
-  medium: { label: 'Medium', color: '#F59E0B', bg: '#FEF3C7', icon: 'exclamationmark.circle.fill' },
-  low: { label: 'Low', color: '#6B7280', bg: '#F3F4F6', icon: 'arrow.down.circle.fill' },
+  high: { label: 'High', color: RED[500], bg: RED[100], icon: 'exclamationmark.triangle.fill' },
+  medium: { label: 'Medium', color: AMBER[500], bg: AMBER[100], icon: 'exclamationmark.circle.fill' },
+  low: { label: 'Low', color: GRAY[500], bg: GRAY[100], icon: 'arrow.down.circle.fill' },
 } as const;
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pending', color: '#F59E0B', bg: '#FEF3C7' },
-  in_progress: { label: 'In Progress', color: '#3B82F6', bg: '#DBEAFE' },
-  completed: { label: 'Done', color: '#10B981', bg: '#D1FAE5' },
+  pending: { label: 'Pending', color: AMBER[500], bg: AMBER[100] },
+  in_progress: { label: 'In Progress', color: BLUE[500], bg: BLUE[100] },
+  completed: { label: 'Done', color: STATUS.activeGreen, bg: EMERALD[100] },
 } as const;
 
 type StatusTab = 'all' | 'pending' | 'in_progress' | 'completed';
@@ -153,7 +154,7 @@ export default function TaskManagementScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[TYPOGRAPHY.h2, { color: SRS.navy }]}>Tasks</Text>
-          <Text style={[TYPOGRAPHY.small, { color: '#6B7280', marginTop: 2 }]}>
+          <Text style={[TYPOGRAPHY.small, { color: GRAY[500], marginTop: 2 }]}>
             {taskCounts.total} tasks · {taskCounts.in_progress} active
           </Text>
         </View>
@@ -174,7 +175,7 @@ export default function TaskManagementScreen() {
           >
             <Text style={{
               fontSize: 13, fontWeight: '600',
-              color: statusTab === tab.key ? '#FFF' : colors.foreground,
+              color: statusTab === tab.key ? BG.white : colors.foreground,
             }}>
               {tab.label}
               {tab.key !== 'all' && taskCounts[tab.key] > 0 ? ` (${taskCounts[tab.key]})` : ''}
@@ -210,7 +211,7 @@ export default function TaskManagementScreen() {
                 value={title}
                 onChangeText={setTitle}
                 placeholder="e.g. Clean Room 105"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={GRAY[400]}
                 style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
               />
             </View>
@@ -222,7 +223,7 @@ export default function TaskManagementScreen() {
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Task details..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={GRAY[400]}
                 multiline
                 numberOfLines={3}
                 style={[styles.input, { borderColor: colors.border, color: colors.foreground, minHeight: 72, textAlignVertical: 'top' }]}
@@ -246,14 +247,14 @@ export default function TaskManagementScreen() {
                   >
                     <Text style={{
                       fontSize: 12, fontWeight: '600',
-                      color: assigneeId === s.id ? '#FFF' : colors.foreground,
+                      color: assigneeId === s.id ? BG.white : colors.foreground,
                     }}>
                       {s.first_name} {s.last_name}
                     </Text>
                   </TouchableOpacity>
                 ))}
                 {propertyStaff.length === 0 && (
-                  <Text style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+                  <Text style={{ fontSize: 12, color: GRAY[400], fontStyle: 'italic' }}>
                     No active staff to assign
                   </Text>
                 )}
@@ -277,7 +278,7 @@ export default function TaskManagementScreen() {
                   >
                     <Text style={{
                       fontSize: 12, fontWeight: '600',
-                      color: priority === key ? '#FFF' : colors.foreground,
+                      color: priority === key ? BG.white : colors.foreground,
                     }}>
                       {cfg.label}
                     </Text>
@@ -292,8 +293,8 @@ export default function TaskManagementScreen() {
               <TextInput
                 value={dueDate}
                 onChangeText={setDueDate}
-                placeholder={new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0]}
-                placeholderTextColor="#9CA3AF"
+                placeholder={(() => { const d = new Date(); d.setDate(d.getDate() + 2); return d.toISOString().split('T')[0]; })()}
+                placeholderTextColor={GRAY[400]}
                 style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
               />
             </View>
@@ -311,8 +312,8 @@ export default function TaskManagementScreen() {
               onPress={handleCreateTask}
               style={[styles.createBtn, { backgroundColor: ACCENT }]}
             >
-              <IconSymbol name="check" size={16} color="#FFF" />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFF' }}>Create Task</Text>
+              <IconSymbol name="check" size={16} color={BG.white} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Create Task</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -322,11 +323,11 @@ export default function TaskManagementScreen() {
       <View style={{ marginTop: showForm ? SPACING.lg : 0 }}>
         {filteredTasks.length === 0 && !showForm ? (
           <View style={styles.emptyState}>
-            <IconSymbol name="checklist" size={48} color="#D1D5DB" />
-            <Text style={[TYPOGRAPHY.body, { color: '#9CA3AF', marginTop: SPACING.md }]}>
+            <IconSymbol name="checklist" size={48} color={GRAY[300]} />
+            <Text style={[TYPOGRAPHY.body, { color: GRAY[400], marginTop: SPACING.md }]}>
               No tasks{statusTab !== 'all' ? ' in this status' : ' yet'}
             </Text>
-            <Text style={[TYPOGRAPHY.small, { color: '#D1D5DB', marginTop: 4 }]}>
+            <Text style={[TYPOGRAPHY.small, { color: GRAY[300], marginTop: 4 }]}>
               {statusTab !== 'all' ? 'Try a different filter' : 'Create your first task to get started'}
             </Text>
           </View>
@@ -355,13 +356,13 @@ export default function TaskManagementScreen() {
                       </Text>
                     </View>
                     {overdue && (
-                      <View style={[styles.statusBadge, { backgroundColor: '#FEE2E2' }]}>
-                        <Text style={{ fontSize: 10, fontWeight: '600', color: '#EF4444' }}>Overdue</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: RED[100] }]}>
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: RED[500] }}>Overdue</Text>
                       </View>
                     )}
                   </View>
                   <TouchableOpacity onPress={() => handleDeleteTask(task)} style={styles.deleteBtn}>
-                    <IconSymbol name="delete" size={16} color="#9CA3AF" />
+                    <IconSymbol name="delete" size={16} color={GRAY[400]} />
                   </TouchableOpacity>
                 </View>
 
@@ -372,7 +373,7 @@ export default function TaskManagementScreen() {
 
                 {/* Description */}
                 {task.description ? (
-                  <Text style={[TYPOGRAPHY.small, { color: '#6B7280', marginBottom: SPACING.md }]} numberOfLines={2}>
+                  <Text style={[TYPOGRAPHY.small, { color: GRAY[500], marginBottom: SPACING.md }]} numberOfLines={2}>
                     {task.description}
                   </Text>
                 ) : null}
@@ -380,12 +381,12 @@ export default function TaskManagementScreen() {
                 {/* Meta row */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginBottom: SPACING.md }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <IconSymbol name="person.fill" size={12} color="#9CA3AF" />
-                    <Text style={[TYPOGRAPHY.caption, { color: '#6B7280' }]}>{task.assigned_name}</Text>
+                    <IconSymbol name="person.fill" size={12} color={GRAY[400]} />
+                    <Text style={[TYPOGRAPHY.caption, { color: GRAY[500] }]}>{task.assigned_name}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <IconSymbol name="calendar" size={12} color={overdue ? '#EF4444' : '#9CA3AF'} />
-                    <Text style={[TYPOGRAPHY.caption, { color: overdue ? '#EF4444' : '#6B7280', fontWeight: overdue ? '600' : '400' }]}>
+                    <IconSymbol name="calendar" size={12} color={overdue ? RED[500] : GRAY[400]} />
+                    <Text style={[TYPOGRAPHY.caption, { color: overdue ? RED[500] : GRAY[500], fontWeight: overdue ? '600' : '400' }]}>
                       {formatDate(task.due_date)}
                     </Text>
                   </View>
@@ -397,34 +398,34 @@ export default function TaskManagementScreen() {
                     {task.status === 'pending' && (
                       <TouchableOpacity
                         onPress={() => handleStatusChange(task, 'in_progress')}
-                        style={[styles.actionBtn, { backgroundColor: '#DBEAFE' }]}
+                        style={[styles.actionBtn, { backgroundColor: BLUE[100] }]}
                       >
-                        <IconSymbol name="progress" size={12} color="#3B82F6" />
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6' }}>Start</Text>
+                        <IconSymbol name="progress" size={12} color={BLUE[500]} />
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: BLUE[500] }}>Start</Text>
                       </TouchableOpacity>
                     )}
                     {task.status === 'in_progress' && (
                       <TouchableOpacity
                         onPress={() => handleStatusChange(task, 'completed')}
-                        style={[styles.actionBtn, { backgroundColor: '#D1FAE5' }]}
+                        style={[styles.actionBtn, { backgroundColor: EMERALD[100] }]}
                       >
-                        <IconSymbol name="checkmark" size={12} color="#10B981" />
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981' }}>Complete</Text>
+                        <IconSymbol name="checkmark" size={12} color={STATUS.activeGreen} />
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS.activeGreen }}>Complete</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
                       onPress={() => handleStatusChange(task, 'pending')}
-                      style={[styles.actionBtn, { backgroundColor: '#F3F4F6' }]}
+                      style={[styles.actionBtn, { backgroundColor: GRAY[100] }]}
                     >
-                      <IconSymbol name="refresh" size={12} color="#6B7280" />
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280' }}>Reset</Text>
+                      <IconSymbol name="refresh" size={12} color={GRAY[500]} />
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: GRAY[500] }}>Reset</Text>
                     </TouchableOpacity>
                   </View>
                 )}
                 {task.status === 'completed' && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <IconSymbol name="success" size={14} color="#10B981" />
-                    <Text style={[TYPOGRAPHY.caption, { color: '#10B981', fontWeight: '600' }]}>
+                    <IconSymbol name="success" size={14} color={STATUS.activeGreen} />
+                    <Text style={[TYPOGRAPHY.caption, { color: STATUS.activeGreen, fontWeight: '600' }]}>
                       Completed {task.completed_at ? formatDate(task.completed_at) : ''}
                     </Text>
                   </View>
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: RADIUS.card,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: SLATE[100],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: GRAY[500],
   },
   input: {
     padding: 12,

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { PURPLE, BLUE, STATUS, AMBER, PINK } from '@/lib/constants/figma-tokens';
 
 // ── Types ──
 
@@ -55,7 +56,7 @@ const DEFAULT_ROLES: Role[] = [
     id: 'superadmin',
     name: 'SuperAdmin',
     description: 'Full platform access with all permissions',
-    color: '#7C3AED',
+    color: PURPLE[700],
     userCount: 1,
     permissions: DEFAULT_PERMISSIONS.map(p => ({ ...p, allowed: true })),
     isSystem: true,
@@ -64,7 +65,7 @@ const DEFAULT_ROLES: Role[] = [
     id: 'admin',
     name: 'Admin',
     description: 'Operational access with limited platform management',
-    color: '#3B82F6',
+    color: BLUE[500],
     userCount: 3,
     permissions: DEFAULT_PERMISSIONS.map(p => ({
       ...p,
@@ -75,7 +76,7 @@ const DEFAULT_ROLES: Role[] = [
     id: 'manager',
     name: 'Manager',
     description: 'Tenant management and billing view access',
-    color: '#10B981',
+    color: STATUS.activeGreen,
     userCount: 5,
     permissions: DEFAULT_PERMISSIONS.map(p => ({
       ...p,
@@ -86,7 +87,7 @@ const DEFAULT_ROLES: Role[] = [
     id: 'support',
     name: 'Support',
     description: 'Support ticket access only',
-    color: '#F59E0B',
+    color: AMBER[500],
     userCount: 4,
     permissions: DEFAULT_PERMISSIONS.map(p => ({ ...p, allowed: false })),
   },
@@ -94,7 +95,7 @@ const DEFAULT_ROLES: Role[] = [
     id: 'readonly',
     name: 'Read-Only',
     description: 'View-only access to reports and billing',
-    color: '#EC4899',
+    color: PINK[500],
     userCount: 2,
     permissions: DEFAULT_PERMISSIONS.map(p => ({
       ...p,
@@ -104,14 +105,14 @@ const DEFAULT_ROLES: Role[] = [
 ];
 
 const DEFAULT_SETTINGS: PlatformSettings = {
-  platformName: 'StayEasy',
-  supportEmail: 'support@stayeasy.com',
+  platformName: 'ServeIQ',
+  supportEmail: 'support@serveiq.com',
   defaultCurrency: 'NPR',
   mfaEnabled: false,
   sessionTimeout: '30',
   maintenanceMode: false,
   maintenanceMessage: 'Platform is under scheduled maintenance.',
-  webhookUrl: 'https://hooks.stayeasy.com/events',
+  webhookUrl: 'https://hooks.serveiq.com/events',
 };
 
 // ── Context ──

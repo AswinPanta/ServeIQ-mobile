@@ -9,9 +9,9 @@ const UNIFIED_LOGIN = '/(auth)/login';
 
 const PORTAL_LOGIN_MAP: Record<PortalType, string> = {
   guest: UNIFIED_LOGIN,
-  host: UNIFIED_LOGIN,
-  operations: UNIFIED_LOGIN,
-  superadmin: UNIFIED_LOGIN,
+  host: `${UNIFIED_LOGIN}?portal=host`,
+  operations: `${UNIFIED_LOGIN}?portal=operations`,
+  superadmin: `${UNIFIED_LOGIN}?portal=superadmin`,
 };
 
 const PORTAL_HOME_MAP: Record<PortalType, string> = {

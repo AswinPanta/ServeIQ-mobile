@@ -3,6 +3,7 @@ import { FONTS, SRS, RADIUS } from '@/constants/portal-theme';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { TEXT, BG, NEUTRAL, BORDER } from '@/lib/constants/figma-tokens';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function SplashScreen() {
         style={styles.backButton}
         onPress={() => router.replace('/')}
       >
-        <Ionicons name="arrow-back" size={24} color="#000" />
+        <Ionicons name="arrow-back" size={24} color={TEXT.black} />
       </Pressable>
 
       <View style={styles.imagePlaceholder} />
@@ -43,7 +44,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     alignItems: 'center',
   },
   backButton: {
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     width: 51,
     height: 51,
     borderRadius: 25.5,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -95,10 +96,10 @@ const styles = StyleSheet.create({
   loginText: {
     fontFamily: FONTS.itim,
     fontSize: 20,
-    color: '#fffafa',
+    color: NEUTRAL.snow,
   },
   signupButton: {
-    backgroundColor: '#d9d9d9',
+    backgroundColor: BORDER.input,
   },
   signupText: {
     fontFamily: FONTS.itim,

@@ -62,7 +62,7 @@
   "auth.accountCreated.message": "アカウントが作成されました。探索を始めましょう！",
   "auth.accountCreated.next": "始める",
 
-  "auth.splash.title": "StayEasy",
+  "auth.splash.title": "ServeIQ",
   "auth.splash.subtitle": "ぴったりの宿泊先を見つけよう",
   "auth.splash.getStarted": "始める",
 
@@ -74,7 +74,7 @@
   "home.browseByType": "タイプから探す",
   "home.exploreMore": "もっと見る",
   "home.seeAll": "すべて表示",
-  "home.welcome": "StayEasyへようこそ",
+  "home.welcome": "ServeIQへようこそ",
   "home.welcomeDesc": "あなたのために厳選した素晴らしいホテルとレストランをご紹介",
   "home.getStarted": "始める",
   "home.becomeHost": "ホストになる",
@@ -282,16 +282,16 @@
   "roomSelect.addToBooking": "予約に追加",
   "roomSelect.unavailable": "予約不可",
 
-  "components.whyStayEasy.title": "StayEasyの特長",
-  "components.whyStayEasy.subtitle": "旅をシンプルで思い出深いものに",
-  "components.whyStayEasy.secureBooking": "安心の予約",
-  "components.whyStayEasy.support": "年中無休サポート",
-  "components.whyStayEasy.bestPrice": "最安値保証",
-  "components.whyStayEasy.curated": "厳選された宿泊先",
-  "components.whyStayEasy.secureBookingDesc": "お支払いと個人情報はエンタープライズグレードのセキュリティで常に保護されています。",
-  "components.whyStayEasy.supportDesc": "ご質問や問題がございましたら、スタッフが年中無休で対応いたします。",
-  "components.whyStayEasy.bestPriceDesc": "他サイトでより低い価格を見つけた場合、その価格に合わせます。安心してご予約ください。",
-  "components.whyStayEasy.curatedDesc": "すべての宿泊先は品質と快適さを確認の上、厳選されています。",
+  "components.whyServeIQ.title": "ServeIQの特長",
+  "components.whyServeIQ.subtitle": "旅をシンプルで思い出深いものに",
+  "components.whyServeIQ.secureBooking": "安心の予約",
+  "components.whyServeIQ.support": "年中無休サポート",
+  "components.whyServeIQ.bestPrice": "最安値保証",
+  "components.whyServeIQ.curated": "厳選された宿泊先",
+  "components.whyServeIQ.secureBookingDesc": "お支払いと個人情報はエンタープライズグレードのセキュリティで常に保護されています。",
+  "components.whyServeIQ.supportDesc": "ご質問や問題がございましたら、スタッフが年中無休で対応いたします。",
+  "components.whyServeIQ.bestPriceDesc": "他サイトでより低い価格を見つけた場合、その価格に合わせます。安心してご予約ください。",
+  "components.whyServeIQ.curatedDesc": "すべての宿泊先は品質と快適さを確認の上、厳選されています。",
 
   "components.testimonials.title": "お客様の声",
 
@@ -319,9 +319,9 @@
 
   "components.footer.support": "サポート",
   "components.footer.hosting": "ホスティング",
-  "components.footer.company": "StayEasy",
+  "components.footer.company": "ServeIQ",
   "components.footer.legal": "法的情報",
-  "components.footer.copyright": "© 2026 StayEasy, Inc. All rights reserved.",
+  "components.footer.copyright": "© 2026 ServeIQ, Inc. All rights reserved.",
   "components.footer.language": "日本語",
   "components.footer.currency": "$ USD",
 

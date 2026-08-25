@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { operationsApi } from '@/lib/api/operations-api';
+import { hostApi } from '@/lib/api/host-api';
 import { loadOpsState, persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
 import { loadBridgedGuestBookings } from '@/lib/utils';
-const OPS_DEFAULT_PROPERTY_ID_KEY = '@stayeasy_default_ops_property_id';
+import type { AdminRoom } from '@/types/api';
+const OPS_DEFAULT_PROPERTY_ID_KEY = '@serveiq_default_ops_property_id';
 
 export type RoomStatus = 'available' | 'occupied' | 'dirty' | 'maintenance';
 
@@ -253,6 +255,42 @@ function nextId(propertyId: string) {
 }
 let timelineCounter = 0;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUuid(id: string): boolean { return UUID_RE.test(id); }
+
+function mapBackendRoomToFD(r: AdminRoom): FrontDeskRoom {
+  const statusMap: Record<string, RoomStatus> = {
+    AVAILABLE: 'available', OCCUPIED: 'occupied', DIRTY: 'dirty',
+    CLEANING: 'dirty', INSPECTED: 'available', MAINTENANCE: 'maintenance', BLOCKED: 'maintenance',
+  };
+  return {
+    id: r.id,
+    room_number: r.room_name,
+    floor: r.floor_number,
+    status: statusMap[r.status] || 'available',
+    room_type: r.room_type_name || r.room_name,
+  };
+}
+
+function mapBackendBookingToFD(b: any): FrontDeskBooking {
+  return {
+    id: b.id,
+    guest_name: b.guest_name || 'Guest',
+    email: b.guest_email || b.email || '',
+    phone: b.phone,
+    room_type: (b.room_type || (b.rooms?.[0]?.room_type) || 'Standard') as FrontDeskBooking['room_type'],
+    room_number: b.room_number || b.rooms?.[0]?.room_name,
+    ref: b.ref_number || b.booking_number || b.ref || '',
+    checkin: b.checkin_date || b.check_in || '',
+    checkout: b.checkout_date || b.check_out || '',
+    status: (b.status || 'confirmed') as BookingArrivalStatus,
+    adults: b.number_of_adults || b.adults || 1,
+    children: b.number_of_children || b.children || 0,
+    balance: typeof b.total_amount === 'number' ? b.total_amount : 0,
+    special_requests: b.special_requests,
+  };
+}
+
 const FrontDeskContext = createContext<FrontDeskContextValue | null>(null);
 
 export function FrontDeskProvider({ children, propertyId: propPropertyId }: { children: React.ReactNode; propertyId?: string }) {
@@ -286,7 +324,9 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
 
   useEffect(() => {
     if (!loaded) return;
+    let cancelled = false;
     loadBridgedGuestBookings(propertyId || 'prop-1').then(bridged => {
+      if (cancelled) return;
       if (bridged.length > 0) {
         const pid = propertyId || 'prop-1';
         const newBookings: FrontDeskBooking[] = bridged.map((b, i) => ({
@@ -321,16 +361,33 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
         });
       }
     });
+    return () => { cancelled = true; };
   }, [loaded]);
 
   useEffect(() => {
     if (!loaded) return;
-    operationsApi.getRooms(() => []).then(apiRooms => {
-      if (apiRooms.length > 0) setRooms(apiRooms as any);
-    });
-    operationsApi.getBookings(() => []).then(apiBookings => {
-      if (apiBookings.length > 0) setBookings(apiBookings as any);
-    });
+    let cancelled = false;
+    const pid = activePropertyId.current;
+    if (isValidUuid(pid)) {
+      hostApi.getRooms(pid, () => []).then((apiRooms: any[]) => {
+        if (!cancelled && apiRooms.length > 0) {
+          setRooms(apiRooms.map(mapBackendRoomToFD));
+        }
+      });
+      hostApi.getPropertyBookings(pid, () => []).then((apiBookings: any[]) => {
+        if (!cancelled && apiBookings.length > 0) {
+          setBookings(apiBookings.map(mapBackendBookingToFD));
+        }
+      });
+    } else {
+      operationsApi.getRooms(() => []).then(apiRooms => {
+        if (!cancelled && apiRooms.length > 0) setRooms(apiRooms as any);
+      });
+      operationsApi.getBookings(() => []).then(apiBookings => {
+        if (!cancelled && apiBookings.length > 0) setBookings(apiBookings as any);
+      });
+    }
+    return () => { cancelled = true; };
   }, [loaded]);
 
   const getRoom = useCallback((roomNumber: string) => rooms.find(r => r.room_number === roomNumber), [rooms]);

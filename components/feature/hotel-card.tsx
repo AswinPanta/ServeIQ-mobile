@@ -8,6 +8,7 @@ import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Hotel } from '@/types/api';
+import { CORAL } from '@/lib/constants/figma-tokens';
 
 interface HotelCardProps {
   hotel: Hotel;
@@ -43,7 +44,7 @@ export function HotelCard({
           />
 
           {/* Rating Badge */}
-          <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: (hotel.brandColor || '#E63946') + 'E6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+          <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
             <Text className="text-yellow-300 font-bold">★</Text>
             <Text className="text-white font-semibold text-sm">{hotel.rating.toFixed(1)}</Text>
           </View>
@@ -59,7 +60,7 @@ export function HotelCard({
           </TouchableOpacity>
 
           {/* Price Badge */}
-          <View style={{ position: 'absolute', bottom: 12, right: 12, backgroundColor: (hotel.brandColor || '#E63946') + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
+          <View style={{ position: 'absolute', bottom: 12, right: 12, backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
             <Text className="text-white font-bold text-sm">
               {hotel.currency} {minPrice.toLocaleString()}+
             </Text>

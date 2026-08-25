@@ -1,14 +1,16 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useFavorites } from '@/lib/context/favorites-context';
-import { MOCK_PROPERTIES, Hotel } from '@/lib/mock/properties';
+import { MOCK_PROPERTIES } from '@/lib/mock/properties';
+import type { Hotel as ApiHotel } from '@/types/api';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
+import { CORAL as CORALTokens, BRAND, GRAY, SLATE, NEUTRAL, BG } from '@/lib/constants/figma-tokens';
 
-const CORAL = '#E63946';
-const NAVY = '#1A3C5E';
+const CORAL = CORALTokens[500];
+const NAVY = BRAND.navyLight;
 
 function StarRating({ rating, size = 12 }: { rating: number; size?: number }) {
   return (
@@ -18,14 +20,14 @@ function StarRating({ rating, size = 12 }: { rating: number; size?: number }) {
           key={i}
           name="star"
           size={size}
-          color={i <= Math.round(rating) ? CORAL : '#E5E7EB'}
+          color={i <= Math.round(rating) ? CORAL : GRAY[200]}
         />
       ))}
     </View>
   );
 }
 
-function FavoriteCard({ hotel }: { hotel: Hotel }) {
+function FavoriteCard({ hotel }: { hotel: ApiHotel }) {
   const { t } = useTranslation();
   return (
     <TouchableOpacity
@@ -34,7 +36,7 @@ function FavoriteCard({ hotel }: { hotel: Hotel }) {
       style={s.card}
     >
       <View style={s.imagePlaceholder}>
-        <IconSymbol name="hotel" size={28} color="#CBD5E1" />
+        <IconSymbol name="hotel" size={28} color={SLATE[300]} />
       </View>
       <View style={s.cardBody}>
         <Text style={s.cardName} numberOfLines={1}>{hotel.name}</Text>
@@ -46,9 +48,14 @@ function FavoriteCard({ hotel }: { hotel: Hotel }) {
 }
 
 export default function FavoritesScreen() {
-  const { favorites } = useFavorites();
+  const { favorites, favoritesData } = useFavorites();
   const { t } = useTranslation();
-  const favoriteHotels = MOCK_PROPERTIES.filter(h => favorites.has(h.id));
+  const favoriteHotels = React.useMemo(() => {
+    return [...favorites].map(id => {
+      if (favoritesData[String(id)]) return favoritesData[String(id)];
+      return MOCK_PROPERTIES.find(h => h.id === id) ?? null;
+    }).filter(Boolean) as ApiHotel[];
+  }, [favorites, favoritesData]);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(() => {
@@ -101,7 +108,7 @@ export default function FavoritesScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -114,11 +121,11 @@ const s = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
   },
   title: {
     fontSize: 20,
@@ -138,19 +145,19 @@ const s = StyleSheet.create({
   card: {
     flex: 1,
     borderRadius: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
     overflow: 'hidden',
     ...SHADOWS.card,
   },
   imagePlaceholder: {
     height: 100,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: SLATE[50],
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
   cardBody: {
     padding: 10,
@@ -171,7 +178,7 @@ const s = StyleSheet.create({
   cardPerNight: {
     fontSize: 10,
     fontWeight: '400',
-    color: '#94A3B8',
+    color: SLATE[400],
     fontFamily: FONTS.inter.regular,
   },
   emptyState: {
@@ -198,7 +205,7 @@ const s = StyleSheet.create({
   },
   emptyDesc: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: SLATE[400],
     textAlign: 'center',
     lineHeight: 20,
     fontFamily: FONTS.inter.regular,
@@ -213,7 +220,7 @@ const s = StyleSheet.create({
   exploreBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFF',
+    color: BG.white,
     fontFamily: FONTS.inter.semiBold,
   },
 });

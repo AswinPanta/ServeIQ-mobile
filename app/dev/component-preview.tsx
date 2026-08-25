@@ -4,6 +4,9 @@ import { ScreenContainer } from '@/components/screen-container';
 import { ScarcityBadge } from '@/components/feature/scarcity-badge';
 import { useColors } from '@/hooks/use-colors';
 import { safeGoBack } from '@/lib/utils';
+import { TEXT, GRAY, SLATE, BG, RED, GREEN, STATUS, BLUE } from '@/lib/constants/figma-tokens';
+;
+;
 
 type DemoRowProps = {
   label: string;
@@ -41,7 +44,7 @@ function DemoSection({
               backgroundColor: colors.surface,
               borderWidth: 1,
               borderColor: colors.border,
-              shadowColor: '#000',
+              shadowColor: TEXT.black,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.04,
               shadowRadius: 6,
@@ -52,8 +55,8 @@ function DemoSection({
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
                 {row.label}
               </Text>
-              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#6B728020' }}>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: '#6B7280' }}>
+              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: GRAY[500] + '20' }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: GRAY[500] }}>
                   count={row.count}, maxThreshold=3
                 </Text>
               </View>
@@ -61,8 +64,8 @@ function DemoSection({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               {row.badge}
               {!row.badge && (
-                <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#6B728020' }}>
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#6B7280' }}>(not rendered)</Text>
+                <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: GRAY[500] + '20' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: GRAY[500] }}>(not rendered)</Text>
                 </View>
               )}
             </View>
@@ -82,18 +85,18 @@ function LiveDemo({ colors }: { colors: ReturnType<typeof useColors> }) {
         padding: 20,
         borderRadius: 20,
         marginBottom: 28,
-        backgroundColor: '#1E293B',
-        shadowColor: '#000',
+        backgroundColor: SLATE[800],
+        shadowColor: TEXT.black,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 6,
       }}
     >
-      <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', marginBottom: 4 }}>
+      <Text style={{ fontSize: 18, fontWeight: '700', color: BG.white, marginBottom: 4 }}>
         Live Demo
       </Text>
-      <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16 }}>
+      <Text style={{ fontSize: 13, color: SLATE[400], marginBottom: 16 }}>
         Adjust the count value and watch the badge update in real time
       </Text>
 
@@ -101,7 +104,7 @@ function LiveDemo({ colors }: { colors: ReturnType<typeof useColors> }) {
         style={{
           height: 100,
           borderRadius: 16,
-          backgroundColor: '#334155',
+          backgroundColor: SLATE[700],
           marginBottom: 16,
           alignItems: 'center',
           justifyContent: 'center',
@@ -109,7 +112,7 @@ function LiveDemo({ colors }: { colors: ReturnType<typeof useColors> }) {
           overflow: 'visible',
         }}
       >
-        <Text style={{ fontSize: 14, color: '#64748B' }}>
+        <Text style={{ fontSize: 14, color: SLATE[500] }}>
           Room image placeholder
         </Text>
         <ScarcityBadge count={liveCount} maxThreshold={3} position="absolute" />
@@ -122,15 +125,15 @@ function LiveDemo({ colors }: { colors: ReturnType<typeof useColors> }) {
             width: 48,
             height: 48,
             borderRadius: 24,
-            backgroundColor: '#FCA5A5',
+            backgroundColor: RED[300],
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: '800', color: '#991B1B' }}>−</Text>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: RED[800] }}>−</Text>
         </TouchableOpacity>
 
-        <Text style={{ fontSize: 36, fontWeight: '800', color: '#fff', minWidth: 60, textAlign: 'center' }}>
+        <Text style={{ fontSize: 36, fontWeight: '800', color: BG.white, minWidth: 60, textAlign: 'center' }}>
           {liveCount}
         </Text>
 
@@ -140,12 +143,12 @@ function LiveDemo({ colors }: { colors: ReturnType<typeof useColors> }) {
             width: 48,
             height: 48,
             borderRadius: 24,
-            backgroundColor: '#86EFAC',
+            backgroundColor: GREEN[300],
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: '800', color: '#166534' }}>+</Text>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: STATUS.bookingConfirmed }}>+</Text>
         </TouchableOpacity>
       </View>
 
@@ -160,10 +163,10 @@ function LiveDemo({ colors }: { colors: ReturnType<typeof useColors> }) {
               borderRadius: 16,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: liveCount === n ? '#3B82F6' : '#475569',
+              backgroundColor: liveCount === n ? BLUE[500] : SLATE[600],
             }}
           >
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>{n}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: BG.white }}>{n}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -180,8 +183,8 @@ export default function ComponentPreviewScreen() {
         <View className="px-5 pt-14 pb-4">
           {/* Header */}
           <View className="flex-row items-center gap-3 mb-2">
-            <TouchableOpacity onPress={() => safeGoBack()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: '#3B82F615', alignItems: 'center', justifyContent: 'center' }}>
-              <Text className="text-lg" style={{ color: '#3B82F6' }}>←</Text>
+            <TouchableOpacity onPress={() => safeGoBack()} style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: BLUE[500] + '15', alignItems: 'center', justifyContent: 'center' }}>
+              <Text className="text-lg" style={{ color: BLUE[500] }}>←</Text>
             </TouchableOpacity>
             <View className="flex-1">
               <Text style={{ fontSize: 26, fontWeight: '800', color: colors.foreground }}>
@@ -206,8 +209,8 @@ export default function ComponentPreviewScreen() {
                 label: 'Critical — 1 left',
                 count: 1,
                 badge: (
-                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: '#F1F5F9', position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#94A3B8' }}>Room image</Text>
+                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: SLATE[100], position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, color: SLATE[400] }}>Room image</Text>
                     <ScarcityBadge count={1} position="absolute" />
                   </View>
                 ),
@@ -216,8 +219,8 @@ export default function ComponentPreviewScreen() {
                 label: 'Warning — 2 left',
                 count: 2,
                 badge: (
-                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: '#F1F5F9', position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#94A3B8' }}>Room image</Text>
+                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: SLATE[100], position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, color: SLATE[400] }}>Room image</Text>
                     <ScarcityBadge count={2} position="absolute" />
                   </View>
                 ),
@@ -226,8 +229,8 @@ export default function ComponentPreviewScreen() {
                 label: 'Low — 3 left',
                 count: 3,
                 badge: (
-                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: '#F1F5F9', position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#94A3B8' }}>Room image</Text>
+                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: SLATE[100], position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, color: SLATE[400] }}>Room image</Text>
                     <ScarcityBadge count={3} position="absolute" />
                   </View>
                 ),
@@ -236,8 +239,8 @@ export default function ComponentPreviewScreen() {
                 label: 'Hidden — 0 left (count=0)',
                 count: 0,
                 badge: (
-                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: '#F1F5F9', position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#94A3B8' }}>Room image</Text>
+                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: SLATE[100], position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, color: SLATE[400] }}>Room image</Text>
                     <ScarcityBadge count={0} position="absolute" />
                   </View>
                 ),
@@ -246,8 +249,8 @@ export default function ComponentPreviewScreen() {
                 label: 'Hidden — 5 left (above threshold)',
                 count: 5,
                 badge: (
-                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: '#F1F5F9', position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 10, color: '#94A3B8' }}>Room image</Text>
+                  <View style={{ width: 160, height: 60, borderRadius: 8, backgroundColor: SLATE[100], position: 'relative', justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 10, color: SLATE[400] }}>Room image</Text>
                     <ScarcityBadge count={5} position="absolute" />
                   </View>
                 ),
@@ -304,14 +307,14 @@ export default function ComponentPreviewScreen() {
             }}
           >
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: SLATE[200], alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 20 }}>🛏️</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>Standard Room</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Queen • Up to 2 guests</Text>
                 <Text style={{ fontSize: 11, color: colors.muted, marginTop: 1 }}>WiFi, AC, TV, Bathroom</Text>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#3B82F6', marginTop: 4 }}>NPR 5,000</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: BLUE[500], marginTop: 4 }}>NPR 5,000</Text>
                 <ScarcityBadge count={1} position="relative" />
               </View>
               <View
@@ -320,13 +323,13 @@ export default function ComponentPreviewScreen() {
                   height: 24,
                   borderRadius: 12,
                   borderWidth: 2,
-                  borderColor: '#3B82F6',
-                  backgroundColor: '#3B82F6',
+                  borderColor: BLUE[500],
+                  backgroundColor: BLUE[500],
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✓</Text>
+                <Text style={{ color: BG.white, fontSize: 12, fontWeight: '700' }}>✓</Text>
               </View>
             </View>
           </View>

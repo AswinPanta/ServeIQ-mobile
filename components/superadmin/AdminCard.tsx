@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { BG, SLATE, TEXT } from '@/lib/constants/figma-tokens';
 
 interface AdminCardProps {
   title?: string;
@@ -26,10 +27,10 @@ const styles = StyleSheet.create({
   card: {
     padding: 18,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#000',
+    borderColor: SLATE[100],
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -41,5 +42,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 14,
   },
-  title: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  title: { fontSize: 15, fontWeight: '700', color: SLATE[900] },
 });

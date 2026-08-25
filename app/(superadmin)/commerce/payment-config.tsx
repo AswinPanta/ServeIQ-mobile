@@ -3,9 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, Alert, Sty
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from "@/lib/utils";
+import { PURPLE, STATUS, GRAY, SLATE, BG, TEAL, EMERALD } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#7C3AED';
-const STORAGE_KEY = 'stayeasy_superadmin_payment_config';
+const ACCENT = PURPLE[700];
+const STORAGE_KEY = 'serveiq_superadmin_payment_config';
 
 interface GatewayConfig {
   id: string; name: string; enabled: boolean;
@@ -34,7 +37,7 @@ const INITIAL_CONFIGS: GatewayConfig[] = [
       { key: 'bank_name', label: 'Bank Name', placeholder: 'e.g. Nepal Bank Ltd.', secure: false, value: 'Nepal Bank Ltd.' },
       { key: 'account_number', label: 'Account Number', placeholder: 'e.g. 1234567890', secure: false, value: '1234567890' },
       { key: 'routing_number', label: 'Routing Number', placeholder: 'e.g. 987654321', secure: false, value: '987654321' },
-      { key: 'account_holder', label: 'Account Holder', placeholder: 'e.g. StayEasy Pvt. Ltd.', secure: false, value: 'StayEasy Pvt. Ltd.' },
+      { key: 'account_holder', label: 'Account Holder', placeholder: 'e.g. ServeIQ Pvt. Ltd.', secure: false, value: 'ServeIQ Pvt. Ltd.' },
     ],
   },
 ];
@@ -82,8 +85,8 @@ export default function PaymentConfigScreen() {
           <View key={gw.id} style={s.card}>
             <View style={s.cardHead}>
               <Text style={s.gwName}>{gw.name}</Text>
-              <View style={[s.statusBadge, { backgroundColor: gw.enabled ? '#10B98112' : '#6B728012' }]}>
-                <Text style={[s.statusText, { color: gw.enabled ? '#10B981' : '#6B7280' }]}>{gw.enabled ? 'Active' : 'Inactive'}</Text>
+              <View style={[s.statusBadge, { backgroundColor: gw.enabled ? EMERALD[500] + '12' : GRAY[500] + '12' }]}>
+                <Text style={[s.statusText, { color: gw.enabled ? STATUS.activeGreen : GRAY[500] }]}>{gw.enabled ? 'Active' : 'Inactive'}</Text>
               </View>
             </View>
 
@@ -92,8 +95,8 @@ export default function PaymentConfigScreen() {
               <Switch
                 value={gw.enabled}
                 onValueChange={() => toggle(gw.id)}
-                trackColor={{ false: '#E2E8F0', true: ACCENT + '50' }}
-                thumbColor={gw.enabled ? ACCENT : '#94A3B8'}
+                trackColor={{ false: SLATE[200], true: ACCENT + '50' }}
+                thumbColor={gw.enabled ? ACCENT : SLATE[400]}
               />
             </View>
 
@@ -104,7 +107,7 @@ export default function PaymentConfigScreen() {
                   value={f.value}
                   onChangeText={t => updateField(gw.id, f.key, t)}
                   placeholder={f.placeholder}
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={SLATE[400]}
                   secureTextEntry={f.secure}
                   style={s.input}
                 />
@@ -122,21 +125,21 @@ export default function PaymentConfigScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
-  card: { padding: 16, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
+  card: { padding: 16, borderRadius: 16, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100] },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  gwName: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  gwName: { fontSize: 16, fontWeight: '700', color: SLATE[900] },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   statusText: { fontSize: 12, fontWeight: '700' },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  switchLabel: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  switchLabel: { fontSize: 14, fontWeight: '600', color: SLATE[900] },
   field: { marginBottom: 12 },
-  fieldLabel: { fontSize: 12, color: '#64748B', marginBottom: 6 },
-  input: { fontSize: 14, color: '#0F172A', paddingHorizontal: 14, paddingVertical: 11, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-  saveBtn: { paddingVertical: 15, borderRadius: 14, backgroundColor: '#0D9488', alignItems: 'center' },
-  saveText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  fieldLabel: { fontSize: 12, color: SLATE[500], marginBottom: 6 },
+  input: { fontSize: 14, color: SLATE[900], paddingHorizontal: 14, paddingVertical: 11, borderRadius: 12, backgroundColor: SLATE[50], borderWidth: 1, borderColor: SLATE[200] },
+  saveBtn: { paddingVertical: 15, borderRadius: 14, backgroundColor: TEAL[600], alignItems: 'center' },
+  saveText: { fontSize: 16, fontWeight: '700', color: BG.white },
 });

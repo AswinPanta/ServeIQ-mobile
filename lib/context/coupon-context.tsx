@@ -65,29 +65,33 @@ export function CouponProvider({ children }: { children: React.ReactNode }) {
   const [coupons, setCoupons] = useState<Coupon[]>([])
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       try {
         const key = getStorageKey(user?.id)
         const data = await AsyncStorage.getItem(key)
         if (data) {
-          setCoupons(JSON.parse(data))
+          if (!cancelled) setCoupons(JSON.parse(data))
         } else {
           const samples = getSampleCoupons()
           await AsyncStorage.setItem(key, JSON.stringify(samples))
-          setCoupons(samples)
+          if (!cancelled) setCoupons(samples)
         }
       } catch {
-        setCoupons(getSampleCoupons())
+        if (!cancelled) setCoupons(getSampleCoupons())
       }
     }
     load()
+    return () => { cancelled = true; }
   }, [user?.id])
 
   useEffect(() => {
     const save = async () => {
       try {
         await AsyncStorage.setItem(getStorageKey(user?.id), JSON.stringify(coupons))
-      } catch {}
+      } catch (e) {
+        console.warn('Failed to save coupons:', e)
+      }
     }
     if (coupons.length > 0) save()
   }, [coupons, user?.id])

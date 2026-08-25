@@ -246,7 +246,7 @@ export default function SplashVisual({ splashStart }: Props) {
     extrapolate: 'clamp',
   });
 
-  // ─── F2: S/E split → StayEasy (fixed at top for the whole journey) ────────
+  // ─── F2: S/E split → ServeIQ (fixed at top for the whole journey) ────────
   const wordmarkOpacity = progress.interpolate({ inputRange: [0.13, 0.16], outputRange: [0, 1], extrapolate: 'clamp' });
   const sX = progress.interpolate({ inputRange: [0.15, 0.24], outputRange: [72, 0], extrapolate: 'clamp' });
   const eX = progress.interpolate({ inputRange: [0.15, 0.24], outputRange: [-72, 0], extrapolate: 'clamp' });
@@ -300,7 +300,7 @@ export default function SplashVisual({ splashStart }: Props) {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Top brand: SE logo (F1) → StayEasy wordmark (F2+) */}
+      {/* Top brand: SE logo (F1) → ServeIQ wordmark (F2+) */}
       <Animated.View
         pointerEvents="none"
         style={[styles.brandWrap, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
@@ -320,12 +320,12 @@ export default function SplashVisual({ splashStart }: Props) {
       >
         <View style={styles.wordmarkRow}>
           <Animated.Text style={[styles.wordmark, styles.wordmarkBlue, { transform: [{ translateX: sX }] }]}>S</Animated.Text>
-          <Animated.Text style={[styles.wordmarkMid, styles.wordmarkBlue, { opacity: tayOpacity, transform: [{ translateY: tayY }] }]}>tay</Animated.Text>
-          <Animated.Text style={[styles.wordmark, styles.wordmarkGold, { transform: [{ translateX: eX }] }]}>E</Animated.Text>
-          <Animated.Text style={[styles.wordmarkMid, styles.wordmarkGold, { opacity: asyOpacity, transform: [{ translateY: asyY }] }]}>asy</Animated.Text>
+          <Animated.Text style={[styles.wordmarkMid, styles.wordmarkBlue, { opacity: tayOpacity, transform: [{ translateY: tayY }] }]}>erve</Animated.Text>
+          <Animated.Text style={[styles.wordmark, styles.wordmarkGold, { transform: [{ translateX: eX }] }]}>I</Animated.Text>
+          <Animated.Text style={[styles.wordmarkMid, styles.wordmarkGold, { opacity: asyOpacity, transform: [{ translateY: asyY }] }]}>Q</Animated.Text>
         </View>
         <Animated.Text style={[styles.subtitle, { opacity: subtitleOpacity }]}>
-          Hospitality Management Platform
+          Service with Intelligence and Quality
         </Animated.Text>
       </Animated.View>
 

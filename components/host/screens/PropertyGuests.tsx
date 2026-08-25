@@ -3,10 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import type { Property } from '@/types/api';
 import { useHost } from '@/lib/context/host-context';
+import { SRS, GRAY, TYPOGRAPHY, RADIUS, SHADOWS } from '@/constants/portal-theme';
+import { STATUS, BLUE, AMBER, RED, PURPLE, SLATE, BG } from '@/lib/constants/figma-tokens';
 
 const STATUS_COLORS: Record<string, string> = {
-  AVAILABLE: '#10B981', OCCUPIED: '#3B82F6', DIRTY: '#F59E0B',
-  MAINTENANCE: '#EF4444', CLEANING: '#8B5CF6', BLOCKED: '#64748B',
+  AVAILABLE: STATUS.activeGreen, OCCUPIED: BLUE[500], DIRTY: AMBER[500],
+  MAINTENANCE: RED[500], CLEANING: PURPLE[500], BLOCKED: SLATE[500],
 };
 
 interface Props { property: Property }
@@ -36,7 +38,7 @@ export function PropertyGuests({ property }: Props) {
           return (
             <TouchableOpacity
               key={r.id}
-              style={[styles.roomCard, { borderLeftColor: STATUS_COLORS[r.status] || '#CBD5E1' }]}
+              style={[styles.roomCard, { borderLeftColor: STATUS_COLORS[r.status] || GRAY[300] }]}
               activeOpacity={0.85}
               onPress={() => setExpandedRoom(isExpanded ? null : r.id)}
             >
@@ -45,7 +47,7 @@ export function PropertyGuests({ property }: Props) {
                   <Ionicons
                     name={isOccupied ? 'person' : 'bed-outline'}
                     size={18}
-                    color={isOccupied ? '#3B82F6' : '#94A3B8'}
+                    color={isOccupied ? BLUE[500] : GRAY[400]}
                   />
                   <View>
                     <Text style={styles.roomName}>{r.room_name}</Text>
@@ -59,7 +61,7 @@ export function PropertyGuests({ property }: Props) {
                 <Ionicons
                   name={isExpanded ? 'chevron-up' : 'chevron-down'}
                   size={16}
-                  color="#94A3B8"
+                  color={GRAY[400]}
                 />
               </View>
 
@@ -118,52 +120,51 @@ export function PropertyGuests({ property }: Props) {
 function Detail({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Ionicons name={icon} size={13} color="#94A3B8" />
+      <Ionicons name={icon} size={13} color={GRAY[400]} />
       <View>
-        <Text style={{ fontSize: 10, color: '#94A3B8' }}>{label}</Text>
-        <Text style={{ fontSize: 12, fontWeight: '600', color: '#111' }}>{value}</Text>
+        <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[400] }}>{label}</Text>
+        <Text style={{ ...TYPOGRAPHY.small, fontWeight: '600', color: GRAY[900] }}>{value}</Text>
       </View>
     </View>
   );
 }
 
-const ACCENT = '#2E86AB';
+const ACCENT = SRS.teal;
 
 const styles = StyleSheet.create({
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: '#111' },
-  sectionSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: GRAY[900] },
+  sectionSub: { ...TYPOGRAPHY.small, color: GRAY[400], marginTop: 2 },
 
   roomCard: {
-    backgroundColor: '#FFF', borderRadius: 14, padding: 14,
+    backgroundColor: BG.white, borderRadius: RADIUS.card + 6, padding: 14,
     borderLeftWidth: 3, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    ...SHADOWS.card,
   },
   roomHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  roomName: { fontSize: 15, fontWeight: '700', color: '#111' },
-  roomStatus: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
+  roomName: { fontSize: 15, fontWeight: '700', color: GRAY[900] },
+  roomStatus: { fontSize: 11, color: GRAY[400], marginTop: 1 },
   capacityBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
-    backgroundColor: '#EBF5FB',
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.full,
+    backgroundColor: BLUE.tint,
   },
   capacityText: { fontSize: 11, fontWeight: '600', color: ACCENT },
 
-  expandedContent: { borderTopWidth: 1, borderTopColor: '#F1F5F9', marginTop: 12, paddingTop: 12, gap: 12 },
+  expandedContent: { borderTopWidth: 1, borderTopColor: GRAY[100], marginTop: 12, paddingTop: 12, gap: 12 },
   detailRow: { flexDirection: 'row', gap: 16 },
 
   amenitiesRow: { gap: 6 },
-  amenitiesLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', marginBottom: 4 },
-  amenityChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#F1F5F9' },
-  amenityText: { fontSize: 11, color: '#475569' },
+  amenitiesLabel: { fontSize: 11, fontWeight: '600', color: GRAY[500], marginBottom: 4 },
+  amenityChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full, backgroundColor: GRAY[100] },
+  amenityText: { fontSize: 11, color: SLATE[600] },
 
   guestSection: { gap: 8 },
-  guestSectionTitle: { fontSize: 12, fontWeight: '700', color: '#111' },
-  guestRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  guestAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#EBF5FB', alignItems: 'center', justifyContent: 'center' },
-  guestAvatarText: { fontSize: 12, fontWeight: '700', color: ACCENT },
-  guestName: { fontSize: 13, fontWeight: '600', color: '#111' },
-  guestStay: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-  guestTotal: { fontSize: 13, fontWeight: '700', color: '#111' },
-  emptyGuest: { fontSize: 12, color: '#94A3B8', textAlign: 'center', paddingVertical: 8 },
+  guestSectionTitle: { fontSize: 12, fontWeight: '700', color: GRAY[900] },
+  guestRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: GRAY[100] },
+  guestAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: BLUE.tint, alignItems: 'center', justifyContent: 'center' },
+  guestAvatarText: { ...TYPOGRAPHY.small, fontWeight: '700', color: ACCENT },
+  guestName: { fontSize: 13, fontWeight: '600', color: GRAY[900] },
+  guestStay: { fontSize: 11, color: GRAY[400], marginTop: 1 },
+  guestTotal: { fontSize: 13, fontWeight: '700', color: GRAY[900] },
+  emptyGuest: { fontSize: 12, color: GRAY[400], textAlign: 'center', paddingVertical: 8 },
 });

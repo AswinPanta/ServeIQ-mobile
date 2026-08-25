@@ -1,0 +1,32 @@
+flowchart TD
+    START([Guest Opens App]) --> SEARCH["Search: Dates, Guests, Property"]
+    SEARCH --> API_SEARCH["GET /search<br/>Query Available Rooms"]
+    API_SEARCH --> RESULTS["Display Room Types<br/>Photos, Pricing, Amenities"]
+    RESULTS --> SELECT["Guest Selects Room"]
+    SELECT --> DETAILS["Enter Guest Details<br/>Name, Email, Phone"]
+    DETAILS --> PROMO["Apply Discount Code<br/>Optional"]
+    PROMO --> REVIEW["Review Booking<br/>Rate Breakdown"]
+    REVIEW --> PAY_INTENT["POST /bookings/payment-intent<br/>Create Payment Intent"]
+    PAY_INTENT --> GATEWAY{"Select Gateway"}
+    GATEWAY -->|"Stripe"| STRIPE_PAY["Stripe Native SDK<br/>or WebView"]
+    GATEWAY -->|"Razorpay"| RAZOR_PAY["Razorpay Native SDK<br/>or WebView"]
+    GATEWAY -->|"Khalti"| KHALTI_PAY["Khalti Native SDK<br/>or WebView"]
+    GATEWAY -->|"Test"| TEST_PAY["Dummy Payment<br/>Instant Confirm"]
+    STRIPE_PAY --> CONFIRM["Extract Transaction ID<br/>from Return URL"]
+    RAZOR_PAY --> CONFIRM
+    KHALTI_PAY --> CONFIRM
+    TEST_PAY --> CONFIRM
+    CONFIRM --> API_CONFIRM["POST /bookings/confirm<br/>Confirm with Backend"]
+    API_CONFIRM --> VERIFY{"Payment Verified?"}
+    VERIFY -->|"Yes"| BOOKED["Booking Confirmed"]
+    BOOKED --> EMAIL["Confirmation Email + SMS"]
+    BOOKED --> QR["QR Code + Booking Reference"]
+    BOOKED --> NOTIFY["Push Notification to Admin"]
+    VERIFY -->|"No"| RETRY["Retry Payment<br/>or Contact Support"]
+    RETRY --> PAY_INTENT
+
+    style START fill:#E63946,color:#fff,stroke:#E63946
+    style BOOKED fill:#1E8449,color:#fff,stroke:#1E8449
+    style RETRY fill:#C0392B,color:#fff,stroke:#C0392B
+    style GATEWAY fill:#2E86AB,color:#fff,stroke:#2E86AB
+    style VERIFY fill:#D35400,color:#fff,stroke:#D35400

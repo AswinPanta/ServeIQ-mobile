@@ -5,19 +5,22 @@ import { ScreenContainer } from '@/components/screen-container';
 import { useColors } from '@/hooks/use-colors';
 import { useCoupons } from '@/lib/context/coupon-context';
 import { safeGoBack } from '@/lib/utils';
+import { CORAL, BLUE, PURPLE, STATUS, AMBER, PINK, BG, RED, TEXT, GRAY, SLATE, EMERALD } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#E63946';
-const GRADIENT_START = '#E63946';
-const GRADIENT_END = '#FF6B6B';
+const ACCENT = CORAL[500];
+const GRADIENT_START = CORAL[500];
+const GRADIENT_END = CORAL[300];
 
 type OfferTab = 'coupons' | 'deals' | 'referral';
 
 const SPECIAL_DEALS = [
-  { id: 'deal-1', title: 'Early Bird Special', description: 'Book 30+ days ahead and save up to 25%', discount: '25% OFF', code: 'EARLY25', color: '#3B82F6', icon: '🐦' },
-  { id: 'deal-2', title: 'Weekend Getaway', description: 'Friday-Sunday stays at discounted rates', discount: '15% OFF', code: 'WEEKEND15', color: '#8B5CF6', icon: '🎉' },
-  { id: 'deal-3', title: 'Long Stay Value', description: 'Stay 7+ nights and get exclusive pricing', discount: '20% OFF', code: 'LONGSTAY20', color: '#10B981', icon: '🏡' },
-  { id: 'deal-4', title: 'Last Minute Escape', description: 'Book within 3 days and save instantly', discount: '10% OFF', code: 'LASTMIN10', color: '#F59E0B', icon: '⚡' },
-  { id: 'deal-5', title: 'Suite Upgrade', description: 'Complimentary upgrade to suite on 3+ night stays', discount: 'FREE UPGRADE', code: 'SUITEUP', color: '#EC4899', icon: '⭐' },
+  { id: 'deal-1', title: 'Early Bird Special', description: 'Book 30+ days ahead and save up to 25%', discount: '25% OFF', code: 'EARLY25', color: BLUE[500], icon: '🐦' },
+  { id: 'deal-2', title: 'Weekend Getaway', description: 'Friday-Sunday stays at discounted rates', discount: '15% OFF', code: 'WEEKEND15', color: PURPLE[500], icon: '🎉' },
+  { id: 'deal-3', title: 'Long Stay Value', description: 'Stay 7+ nights and get exclusive pricing', discount: '20% OFF', code: 'LONGSTAY20', color: STATUS.activeGreen, icon: '🏡' },
+  { id: 'deal-4', title: 'Last Minute Escape', description: 'Book within 3 days and save instantly', discount: '10% OFF', code: 'LASTMIN10', color: AMBER[500], icon: '⚡' },
+  { id: 'deal-5', title: 'Suite Upgrade', description: 'Complimentary upgrade to suite on 3+ night stays', discount: 'FREE UPGRADE', code: 'SUITEUP', color: PINK[500], icon: '⭐' },
 ];
 
 const REFERRAL_BENEFITS = [
@@ -47,9 +50,11 @@ export default function PromotionsScreen() {
   const handleShareReferral = async () => {
     try {
       await Share.share({
-        message: '🏨 StayEasy — Book amazing hotels with exclusive discounts! Use my referral link: https://stayeasy.com/refer/guest-1',
+        message: '🏨 ServeIQ — Book amazing hotels with exclusive discounts! Use my referral link: https://serveiq.com/refer/guest-1',
       });
-    } catch {}
+    } catch {
+      // User cancelled share or platform error — non-fatal
+    }
   };
 
   const renderCouponsTab = () => (
@@ -60,13 +65,13 @@ export default function PromotionsScreen() {
         backgroundColor: ACCENT,
         shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8,
       }}>
-        <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 4 }}>Your Offers</Text>
+        <Text style={{ fontSize: 28, fontWeight: '800', color: BG.white, marginBottom: 4 }}>Your Offers</Text>
         <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', lineHeight: 22 }}>
           You have {activeCoupons.length} active coupon{activeCoupons.length !== 1 ? 's' : ''} waiting
         </Text>
         <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
           <View style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#fff' }}>{activeCoupons.length} Active</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: BG.white }}>{activeCoupons.length} Active</Text>
           </View>
           <View style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)' }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.8)' }}>{usedCoupons.length} Used</Text>
@@ -90,17 +95,17 @@ export default function PromotionsScreen() {
             <View key={coupon.id} style={{
               padding: 20, borderRadius: 20,
               backgroundColor: colors.surface,
-              borderWidth: 1, borderColor: isUrgent ? '#EF444430' : colors.border,
-              borderLeftWidth: 4, borderLeftColor: isUrgent ? '#EF4444' : ACCENT,
-              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+              borderWidth: 1, borderColor: isUrgent ? RED[500] + '30' : colors.border,
+              borderLeftWidth: 4, borderLeftColor: isUrgent ? RED[500] : ACCENT,
+              shadowColor: TEXT.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
             }}>
               <View className="flex-row items-start justify-between mb-3">
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2 mb-1">
                     <Text style={{ fontSize: 20, fontWeight: '800', color: ACCENT, letterSpacing: 1 }}>{coupon.code}</Text>
                     {isUrgent && (
-                      <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#EF444415' }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>Expiring</Text>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: RED[500] + '15' }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: RED[500] }}>Expiring</Text>
                       </View>
                     )}
                   </View>
@@ -108,18 +113,18 @@ export default function PromotionsScreen() {
                 </View>
                 <View style={{
                   paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
-                  backgroundColor: '#10B98115',
+                  backgroundColor: EMERALD[500] + '15',
                 }}>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#10B981' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: STATUS.activeGreen }}>
                     {coupon.discountType === 'percentage' ? `${coupon.discount}%` : `रू${coupon.discount}`}
                   </Text>
-                  <Text style={{ fontSize: 9, fontWeight: '600', color: '#10B981', textAlign: 'center', textTransform: 'uppercase' }}>OFF</Text>
+                  <Text style={{ fontSize: 9, fontWeight: '600', color: STATUS.activeGreen, textAlign: 'center', textTransform: 'uppercase' }}>OFF</Text>
                 </View>
               </View>
 
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-1.5">
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: expiresDays <= 3 ? '#EF4444' : expiresDays <= 7 ? '#F59E0B' : '#10B981' }} />
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: expiresDays <= 3 ? RED[500] : expiresDays <= 7 ? AMBER[500] : STATUS.activeGreen }} />
                   <Text style={{ fontSize: 12, color: colors.muted }}>
                     {expiresDays === 0 ? 'Expires today!' : `${expiresDays} day${expiresDays !== 1 ? 's' : ''} left`}
                   </Text>
@@ -128,10 +133,10 @@ export default function PromotionsScreen() {
                   onPress={() => handleCopyCode(coupon.code)}
                   style={{
                     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
-                    backgroundColor: copiedCode === coupon.code ? '#10B981' : ACCENT,
+                    backgroundColor: copiedCode === coupon.code ? STATUS.activeGreen : ACCENT,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: BG.white }}>
                     {copiedCode === coupon.code ? '✓ Copied' : 'Copy Code'}
                   </Text>
                 </TouchableOpacity>
@@ -151,8 +156,8 @@ export default function PromotionsScreen() {
             }}>
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-3">
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#6B728020', alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 16, color: '#6B7280' }}>✓</Text>
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: GRAY[500] + '20', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 16, color: GRAY[500] }}>✓</Text>
                   </View>
                   <View>
                     <Text style={{ fontSize: 14, fontWeight: '600', color: colors.muted }}>{coupon.code}</Text>
@@ -174,7 +179,7 @@ export default function PromotionsScreen() {
         padding: 20, borderRadius: 20, backgroundColor: GRADIENT_START,
         shadowColor: GRADIENT_START, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6,
       }}>
-        <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff' }}>Exclusive Deals</Text>
+        <Text style={{ fontSize: 22, fontWeight: '800', color: BG.white }}>Exclusive Deals</Text>
         <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
           Limited-time offers curated just for you
         </Text>
@@ -186,7 +191,7 @@ export default function PromotionsScreen() {
           backgroundColor: colors.surface,
           borderWidth: 1, borderColor: colors.border,
           borderLeftWidth: 4, borderLeftColor: deal.color,
-          shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+          shadowColor: TEXT.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
         }}>
           <View className="flex-row items-start gap-3">
             <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: deal.color + '18', alignItems: 'center', justifyContent: 'center' }}>
@@ -203,10 +208,10 @@ export default function PromotionsScreen() {
                   onPress={() => handleCopyCode(deal.code)}
                   style={{
                     paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8,
-                    backgroundColor: copiedCode === deal.code ? '#10B981' : ACCENT,
+                    backgroundColor: copiedCode === deal.code ? STATUS.activeGreen : ACCENT,
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: BG.white }}>
                     {copiedCode === deal.code ? '✓ Copied' : `Use ${deal.code}`}
                   </Text>
                 </TouchableOpacity>
@@ -226,12 +231,12 @@ export default function PromotionsScreen() {
     <View className="gap-4">
       <View style={{
         padding: 28, borderRadius: 24,
-        backgroundColor: '#1E293B',
-        shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8,
+        backgroundColor: SLATE[800],
+        shadowColor: TEXT.black, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8,
       }}>
-        <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 4 }}>Refer & Earn</Text>
-        <Text style={{ fontSize: 15, color: '#94A3B8', lineHeight: 22 }}>
-          Share StayEasy with your friends and earn rewards for every booking they make
+        <Text style={{ fontSize: 28, fontWeight: '800', color: BG.white, marginBottom: 4 }}>Refer & Earn</Text>
+        <Text style={{ fontSize: 15, color: SLATE[400], lineHeight: 22 }}>
+          Share ServeIQ with your friends and earn rewards for every booking they make
         </Text>
       </View>
 
@@ -261,13 +266,13 @@ export default function PromotionsScreen() {
           shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6,
         }}
       >
-        <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff' }}>📤 Share Your Referral Link</Text>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: BG.white }}>📤 Share Your Referral Link</Text>
       </TouchableOpacity>
 
-      <View style={{ padding: 16, borderRadius: 16, backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B', marginTop: 4 }}>
+      <View style={{ padding: 16, borderRadius: 16, backgroundColor: AMBER[100], borderWidth: 1, borderColor: AMBER[500], marginTop: 4 }}>
         <View className="flex-row items-center gap-2">
           <Text style={{ fontSize: 16 }}>💡</Text>
-          <Text style={{ fontSize: 13, color: '#92400E', flex: 1 }}>
+          <Text style={{ fontSize: 13, color: AMBER[800], flex: 1 }}>
             Your referral link is unique to you. Share it via WhatsApp, Messenger, or any social app to start earning!
           </Text>
         </View>
@@ -304,7 +309,7 @@ export default function PromotionsScreen() {
                 >
                   <Text style={{
                     fontSize: 14, fontWeight: '700',
-                    color: activeTab === tab.key ? '#fff' : colors.foreground,
+                    color: activeTab === tab.key ? BG.white : colors.foreground,
                   }}>
                     {tab.icon} {tab.label}
                   </Text>

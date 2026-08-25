@@ -1,0 +1,48 @@
+graph TB
+    subgraph CLIENT["Client Layer - Expo React Native Mobile App"]
+        direction LR
+        G["Guest Portal<br/>Coral Theme<br/>Booking, Search, Profile"]
+        H["Host Portal<br/>Blue Theme<br/>Property Management"]
+        O["Operations Portal<br/>Teal Theme<br/>Front Desk, Housekeeping, POS, KDS"]
+        SA["SuperAdmin Portal<br/>Purple Theme<br/>Platform Administration"]
+    end
+
+    subgraph API["API Gateway Layer - FastAPI Python Backend"]
+        direction LR
+        AUTH["Auth Router<br/>/auth"]
+        PROP["Property Router<br/>/properties"]
+        BOOK["Booking Router<br/>/bookings"]
+        SEARCH["Search Router<br/>/search"]
+        ROOM["Room Router<br/>/properties/id/rooms"]
+        DISC["Discount Router<br/>/properties/id/discount-codes"]
+        OFFER["Offers Router<br/>/properties/id/special-offers"]
+        TENANT["Tenant Router<br/>/tenants"]
+        STAFF["Staff Router<br/>/properties/id/staffs"]
+        IMG["Image Router<br/>/properties"]
+    end
+
+    subgraph DATA["Data Layer"]
+        direction LR
+        PG[("PostgreSQL<br/>Primary Database")]
+        REDIS[("Redis<br/>Cache + Sessions")]
+        S3["AWS S3<br/>Media Storage"]
+    end
+
+    subgraph EXT["External Integrations"]
+        direction LR
+        STRIPE["Stripe<br/>Payment Gateway"]
+        RAZOR["Razorpay<br/>Payment Gateway"]
+        KHALTI["Khalti<br/>Payment Gateway"]
+        PUSH["Expo Push<br/>Notifications"]
+    end
+
+    CLIENT -->|"HTTPS REST API + WebSocket"| API
+    API --> DATA
+    API --> EXT
+    PG -->|"Query Results"| API
+    REDIS -->|"Cache + Session"| API
+    S3 -->|"Media URLs"| API
+    STRIPE -->|"Payment Response"| API
+    RAZOR -->|"Payment Response"| API
+    KHALTI -->|"Payment Response"| API
+    PUSH -->|"Push Tokens"| API

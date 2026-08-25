@@ -19,6 +19,7 @@ import { searchHotelsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SRS } from '@/lib/constants/figma-tokens';
 
 const PAGE_SIZE = 20;
 
@@ -38,6 +39,7 @@ export default function SearchResultsScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<FilterState>({
     priceRange: [0, 50000],
     minRating: 3.0,
@@ -52,6 +54,7 @@ export default function SearchResultsScreen() {
 
   const fetchResults = useCallback(async (currentSkip: number, append: boolean) => {
     try {
+      setSearchError(null);
       const result = await searchHotelsApi({
         destination: location || '',
         checkIn: checkIn as string,
@@ -69,7 +72,13 @@ export default function SearchResultsScreen() {
         setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
       }
       setFromApi(result.fromApi);
-    } catch {}
+    } catch (e) {
+      console.warn('Search failed:', e);
+      setSearchError('Search failed. Showing saved results.');
+      if (!append) {
+        setAllHotels(MOCK_PROPERTIES);
+      }
+    }
   }, [location, checkIn, checkOut, guests, adults, children, rooms]);
 
   useEffect(() => {
@@ -127,11 +136,11 @@ export default function SearchResultsScreen() {
     });
   };
 
-  const handleFavoritePress = (hotelId: string) => {
+  const handleFavoritePress = (hotelId: string, property?: Hotel) => {
     if (isFavorite(hotelId)) {
       removeFavorite(hotelId);
     } else {
-      addFavorite(hotelId);
+      addFavorite(hotelId, property);
     }
   };
 
@@ -148,6 +157,11 @@ export default function SearchResultsScreen() {
   return (
     <ScreenContainer className="flex-1" containerClassName="bg-background">
       <View className="px-6 py-4 border-b border-border">
+        {searchError ? (
+          <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+            <Text className="text-yellow-800 text-sm">{searchError}</Text>
+          </View>
+        ) : null}
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-1">
             <Text className="text-2xl font-bold text-foreground">{location}</Text>
@@ -232,7 +246,7 @@ export default function SearchResultsScreen() {
                 } as Hotel}
                 onPress={() => handleHotelPress(item.id)}
                 isFavorite={isFavorite(item.id)}
-                onFavoritePress={() => handleFavoritePress(item.id)}
+                onFavoritePress={() => handleFavoritePress(item.id, item)}
               />
             </View>
           )}
@@ -243,7 +257,7 @@ export default function SearchResultsScreen() {
           ListFooterComponent={
             <View className="py-4 items-center">
               {isLoadingMore ? (
-                <ActivityIndicator size="small" color="#2E86AB" />
+                <ActivityIndicator size="small" color={SRS.teal} />
               ) : !hasMore && filteredHotels.length > 0 ? (
                 <Text className="text-xs text-muted">All properties loaded ({filteredHotels.length})</Text>
               ) : null}

@@ -12,8 +12,9 @@ import { useColors } from '@/hooks/use-colors';
 import { useAuth } from '@/lib/context/auth-context';
 import { safeGoBack } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { CORAL, TEXT, AMBER, BG } from '@/lib/constants/figma-tokens';
 
-const STORAGE_KEY = 'stayeasy_dining_reservations';
+const STORAGE_KEY = 'serveiq_dining_reservations';
 
 interface DiningReservation {
   id: string;
@@ -28,7 +29,7 @@ interface DiningReservation {
   createdAt: string;
   guestEmail?: string;
 }
-const ACCENT = '#E63946';
+const ACCENT = CORAL[500];
 
 const RESTAURANTS = [
   {
@@ -160,7 +161,7 @@ export default function DiningReservationsScreen() {
                   style={{
                     padding: 16, borderRadius: 18, marginBottom: 12,
                     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+                    shadowColor: TEXT.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
                   }}
                 >
                   <View className="flex-row gap-3 mb-3">
@@ -171,7 +172,7 @@ export default function DiningReservationsScreen() {
                       <Text className="text-base font-bold text-foreground">{restaurant.name}</Text>
                       <Text className="text-xs text-muted">{restaurant.cuisine}</Text>
                       <View className="flex-row items-center gap-1 mt-1">
-                        <Text style={{ color: '#F59E0B', fontSize: 14 }}>★</Text>
+                        <Text style={{ color: AMBER[500], fontSize: 14 }}>★</Text>
                         <Text className="text-xs font-bold text-foreground">{restaurant.rating}</Text>
                       </View>
                     </View>
@@ -205,10 +206,10 @@ export default function DiningReservationsScreen() {
                         borderWidth: 1, borderColor: selectedSection === s.name ? ACCENT : colors.border,
                       }}
                     >
-                      <Text className="text-sm font-semibold" style={{ color: selectedSection === s.name ? '#fff' : colors.foreground }}>
+                      <Text className="text-sm font-semibold" style={{ color: selectedSection === s.name ? BG.white : colors.foreground }}>
                         {s.name}
                       </Text>
-                      <Text className="text-xs" style={{ color: selectedSection === s.name ? '#fff' : colors.muted }}>
+                      <Text className="text-xs" style={{ color: selectedSection === s.name ? BG.white : colors.muted }}>
                         {t('dining.upToGuests', { n: s.capacity })}
                       </Text>
                     </TouchableOpacity>
@@ -242,7 +243,7 @@ export default function DiningReservationsScreen() {
                         borderWidth: 1, borderColor: timeSlot === slot ? ACCENT : colors.border,
                       }}
                     >
-                      <Text className="text-xs font-semibold" style={{ color: timeSlot === slot ? '#fff' : colors.foreground }}>
+                      <Text className="text-xs font-semibold" style={{ color: timeSlot === slot ? BG.white : colors.foreground }}>
                         {slot}
                       </Text>
                     </TouchableOpacity>
@@ -262,7 +263,7 @@ export default function DiningReservationsScreen() {
                         borderWidth: 1, borderColor: partySize === size ? ACCENT : colors.border,
                       }}
                     >
-                      <Text className="text-sm font-bold" style={{ color: partySize === size ? '#fff' : colors.foreground }}>{size}</Text>
+                      <Text className="text-sm font-bold" style={{ color: partySize === size ? BG.white : colors.foreground }}>{size}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

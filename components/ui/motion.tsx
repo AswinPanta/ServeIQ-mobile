@@ -83,6 +83,8 @@ export interface AnimatedPressableProps extends ViewProps {
   /** Trigger haptic on press (fires from JS thread after gesture). */
   haptic?: HapticKind;
   disabled?: boolean;
+  /** Min ms between consecutive press callbacks (guards accidental double-taps). */
+  cooldownMs?: number;
   onPress?: () => void;
   onLongPress?: () => void;
 }
@@ -92,6 +94,7 @@ export function AnimatedPressable({
   scaleTo = 0.96,
   haptic = 'light',
   disabled = false,
+  cooldownMs = 350,
   onPress,
   onLongPress,
   children,
@@ -100,6 +103,7 @@ export function AnimatedPressable({
 }: AnimatedPressableProps) {
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
+  const lastPressAt = React.useRef(0);
 
   useEffect(() => {
     if (disabled) {
@@ -112,6 +116,10 @@ export function AnimatedPressable({
 
   // JS-thread callback invoked from the gesture's `onEnd`.
   const firePress = () => {
+    // eslint-disable-next-line react-hooks/purity -- event-handler timestamp guard, not render-phase
+    const now = Date.now();
+    if (now - lastPressAt.current < cooldownMs) return;
+    lastPressAt.current = now;
     triggerHaptic(haptic);
     onPress?.();
   };
@@ -137,6 +145,7 @@ export function AnimatedPressable({
           // eslint-disable-next-line react-hooks/immutability
           scale.value = withSpring(1, SPRING_PRESETS[portal].tap);
         })
+        // eslint-disable-next-line react-hooks/refs -- firePress is invoked on the JS thread via runOnJS, never during render
         .onEnd(() => {
           'worklet';
           runOnJS(firePress)();

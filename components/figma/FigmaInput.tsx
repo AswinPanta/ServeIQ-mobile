@@ -9,6 +9,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { FONTS, RADIUS, FIGMA_COLORS } from '@/constants/portal-theme';
+import { SRS, GRAY, TEXT } from '@/lib/constants/figma-tokens';
 
 interface FigmaInputProps extends TextInputProps {
   label: string;
@@ -31,9 +32,9 @@ export function FigmaInput({
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const borderColor = error
-    ? '#C0392B'
+    ? SRS.red
     : isFocused
-    ? '#2E86AB'
+    ? SRS.teal
     : FIGMA_COLORS.inputBorder;
 
   return (
@@ -43,7 +44,7 @@ export function FigmaInput({
         {leftIcon && <View style={styles.icon}>{leftIcon}</View>}
         <TextInput
           style={[styles.input, leftIcon ? styles.inputWithIcon : undefined]}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={GRAY[400]}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           secureTextEntry={showPasswordToggle ? !isPasswordVisible : secureTextEntry}
@@ -72,7 +73,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 18,
     fontFamily: FONTS.inknutAntiqua,
-    color: '#000000',
+    color: TEXT.black,
     marginBottom: 8,
   },
   inputWrapper: {
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontFamily: FONTS.inter.regular,
-    color: '#1A1C1E',
+    color: TEXT.heading,
     paddingVertical: 12,
   },
   inputWithIcon: {
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 12,
     fontFamily: FONTS.inter.regular,
-    color: '#C0392B',
+    color: SRS.red,
     marginTop: 4,
   },
 });

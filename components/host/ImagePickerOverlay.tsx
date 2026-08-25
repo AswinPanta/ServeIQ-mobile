@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { BG, BLUE, GRAY } from '@/lib/constants/figma-tokens';
+;
+;
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onImagePicked: (uri: string) => void;
+  onImagePicked?: (uri: string) => void;
+  onImagesPicked?: (uris: string[]) => void;
+  multiple?: boolean;
+  selectionLimit?: number;
 }
 
-export function ImagePickerOverlay({ visible, onClose, onImagePicked }: Props) {
+export function ImagePickerOverlay({ visible, onClose, onImagePicked, onImagesPicked, multiple, selectionLimit }: Props) {
   const [loading, setLoading] = useState<string | null>(null);
 
   const pickFromGallery = async () => {
@@ -19,12 +25,19 @@ export function ImagePickerOverlay({ visible, onClose, onImagePicked }: Props) {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
+      allowsEditing: !multiple,
       aspect: [4, 3],
       quality: 0.8,
+      allowsMultipleSelection: multiple,
+      selectionLimit,
     });
     if (!result.canceled && result.assets.length > 0) {
-      onImagePicked(result.assets[0].uri);
+      const uris = result.assets.map(a => a.uri);
+      if (multiple && onImagesPicked) {
+        onImagesPicked(uris);
+      } else {
+        uris.forEach(uri => onImagePicked?.(uri));
+      }
     }
     onClose();
   };
@@ -41,7 +54,7 @@ export function ImagePickerOverlay({ visible, onClose, onImagePicked }: Props) {
       quality: 0.8,
     });
     if (!result.canceled && result.assets.length > 0) {
-      onImagePicked(result.assets[0].uri);
+      onImagePicked?.(result.assets[0].uri);
     }
     onClose();
   };
@@ -53,25 +66,27 @@ export function ImagePickerOverlay({ visible, onClose, onImagePicked }: Props) {
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 16 }}>Add Photo</Text>
+        <View style={{ backgroundColor: BG.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 16 }}>
+            {multiple ? 'Add Photos' : 'Add Photo'}
+          </Text>
           <TouchableOpacity
             onPress={takePhoto}
-            style={{ paddingVertical: 16, borderRadius: 12, backgroundColor: '#2563EB10', alignItems: 'center', marginBottom: 8 }}
+            style={{ paddingVertical: 16, borderRadius: 12, backgroundColor: BLUE[600] + '10', alignItems: 'center', marginBottom: 8 }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#2563EB' }}>Take Photo</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: BLUE[600] }}>Take Photo</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={pickFromGallery}
-            style={{ paddingVertical: 16, borderRadius: 12, backgroundColor: '#2563EB10', alignItems: 'center', marginBottom: 8 }}
+            style={{ paddingVertical: 16, borderRadius: 12, backgroundColor: BLUE[600] + '10', alignItems: 'center', marginBottom: 8 }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#2563EB' }}>Choose from Library</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: BLUE[600] }}>Choose from Library</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onClose}
             style={{ paddingVertical: 16, borderRadius: 12, alignItems: 'center' }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#4B5563' }}>Cancel</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: GRAY[600] }}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>

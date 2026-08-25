@@ -3,6 +3,7 @@ import { TouchableOpacity, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useNotifications } from '@/lib/context/notification-context';
 import { useColors } from '@/hooks/use-colors';
+import { RED, BG } from '@/lib/constants/figma-tokens';
 
 interface NotificationBellProps {
   color?: string;
@@ -11,7 +12,7 @@ interface NotificationBellProps {
 export function NotificationBell({ color }: NotificationBellProps) {
   const colors = useColors();
   const { unreadCount } = useNotifications();
-  const dotColor = color || '#EF4444';
+  const dotColor = color || RED[500];
 
   return (
     <TouchableOpacity
@@ -29,7 +30,7 @@ export function NotificationBell({ color }: NotificationBellProps) {
             paddingHorizontal: 3,
           }}
         >
-          <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#fff' }}>
+          <Text style={{ fontSize: 9, fontWeight: 'bold', color: BG.white }}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </Text>
         </View>

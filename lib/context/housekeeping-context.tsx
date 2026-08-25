@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 import { operationsApi } from '@/lib/api/operations-api';
 import { loadOpsState, persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
+import { AMBER, BLUE, STATUS, PURPLE } from '@/lib/constants/figma-tokens';
 
 export type HKTaskStatus = 'Dirty' | 'In Progress' | 'Cleaned' | 'Inspected';
 export type HKPriority = 'High' | 'Normal' | 'Low';
@@ -19,10 +20,10 @@ export interface HKTask {
 export const STATUS_ORDER: HKTaskStatus[] = ['Dirty', 'In Progress', 'Cleaned', 'Inspected'];
 
 export const STATUS_FLOW_COLORS: Record<string, string> = {
-  Dirty: '#F59E0B',
-  'In Progress': '#3B82F6',
-  Cleaned: '#10B981',
-  Inspected: '#8B5CF6',
+  Dirty: AMBER[500],
+  'In Progress': BLUE[500],
+  Cleaned: STATUS.activeGreen,
+  Inspected: PURPLE[500],
 };
 
 interface HousekeepingContextValue {
@@ -53,18 +54,23 @@ export function HousekeepingProvider({ children }: { children: React.ReactNode }
 
   // Load persisted tasks on mount, fall back to INITIAL_TASKS
   useEffect(() => {
+    let cancelled = false;
     loadOpsState<HKTask[] | null>(OPS_STORAGE_KEYS.hkTasks, null).then(saved => {
+      if (cancelled) return;
       if (saved) setTasks(saved);
       setLoaded(true);
     });
+    return () => { cancelled = true; };
   }, []);
 
   // Fetch from API if backend is live
   useEffect(() => {
     if (!loaded) return;
+    let cancelled = false;
     operationsApi.getHkTasks(() => []).then(apiTasks => {
-      if (apiTasks.length > 0) setTasks(apiTasks as any);
+      if (!cancelled && apiTasks.length > 0) setTasks(apiTasks as any);
     });
+    return () => { cancelled = true; };
   }, [loaded]);
 
   const getTask = useCallback((room: string) => tasks.find(t => t.room === room), [tasks]);

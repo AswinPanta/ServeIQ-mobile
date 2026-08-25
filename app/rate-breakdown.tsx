@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS, SRS, RADIUS, SHADOWS, FIGMA_COLORS, GRAY } from '@/constants/portal-theme';
 import { safeGoBack } from '@/lib/utils';
+import { BG } from '@/lib/constants/figma-tokens';
 
 export default function RateBreakdownScreen() {
   const params = useLocalSearchParams();
@@ -29,11 +30,11 @@ export default function RateBreakdownScreen() {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => safeGoBack()} style={s.headerBtn}>
-          <IconSymbol name="arrow.back" size={20} color="#FFFFFF" />
+          <IconSymbol name="arrow.back" size={20} color={BG.white} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Rate Breakdown</Text>
         <TouchableOpacity style={s.headerBtn}>
-          <IconSymbol name="share" size={20} color="#FFFFFF" />
+          <IconSymbol name="share" size={20} color={BG.white} />
         </TouchableOpacity>
       </View>
 
@@ -151,7 +152,7 @@ export default function RateBreakdownScreen() {
 
           {hasDiscount && (
             <View style={s.savingsBanner}>
-              <IconSymbol name="tag" size={14} color="#FFFFFF" />
+              <IconSymbol name="tag" size={14} color={BG.white} />
               <Text style={s.savingsText}>You save NPR {discountAmount.toFixed(2)} with {discountCode}</Text>
             </View>
           )}
@@ -182,14 +183,14 @@ const s = StyleSheet.create({
   headerTitle: {
     fontFamily: FONTS.playfairDisplay.bold,
     fontSize: 20,
-    color: '#FFFFFF',
+    color: BG.white,
   },
   scroll: { flex: 1, backgroundColor: FIGMA_COLORS.pageBg },
   scrollContent: { paddingHorizontal: 32, paddingTop: 20, paddingBottom: 160 },
 
   infoBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     borderWidth: 1,
     borderColor: FIGMA_COLORS.cardBorder,
@@ -213,7 +214,7 @@ const s = StyleSheet.create({
   },
 
   breakdownCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     borderWidth: 1,
     borderColor: FIGMA_COLORS.cardBorder,
@@ -311,16 +312,16 @@ const s = StyleSheet.create({
   totalLabel: {
     fontFamily: FONTS.inter.semiBold,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BG.white,
   },
   totalValue: {
     fontFamily: FONTS.inter.semiBold,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BG.white,
   },
 
   summaryCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     borderWidth: 1,
     borderColor: FIGMA_COLORS.cardBorder,
@@ -371,7 +372,7 @@ const s = StyleSheet.create({
   savingsText: {
     fontFamily: FONTS.inter.semiBold,
     fontSize: 13,
-    color: '#FFFFFF',
+    color: BG.white,
   },
 
   bottomBar: {
@@ -379,7 +380,7 @@ const s = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderTopWidth: 1,
     borderTopColor: FIGMA_COLORS.cardBorder,
     paddingBottom: 24,
@@ -396,7 +397,7 @@ const s = StyleSheet.create({
   checkoutText: {
     fontFamily: FONTS.inter.semiBold,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BG.white,
   },
   bottomNav: {
     flexDirection: 'row',

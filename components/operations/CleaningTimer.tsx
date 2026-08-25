@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Text } from 'react-native';
+import { GREEN, RED, AMBER } from '@/lib/constants/figma-tokens';
 
 interface CleaningTimerProps {
   startTime: number;
@@ -22,9 +23,9 @@ export function CleaningTimer({ startTime, warningThreshold = 15, dangerThreshol
   const seconds = elapsed % 60;
   const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-  let color = '#22C55E';
-  if (minutes >= dangerThreshold) color = '#EF4444';
-  else if (minutes >= warningThreshold) color = '#F59E0B';
+  let color: string = GREEN[500];
+  if (minutes >= dangerThreshold) color = RED[500];
+  else if (minutes >= warningThreshold) color = AMBER[500];
 
   return (
     <Text style={{ fontSize: 14, fontWeight: '700', color, fontVariant: ['tabular-nums'] }}>{display}</Text>

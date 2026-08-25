@@ -62,7 +62,7 @@
   "auth.accountCreated.message": "Tu cuenta ha sido creada. ¡Empieza a explorar!",
   "auth.accountCreated.next": "Comenzar",
 
-  "auth.splash.title": "StayEasy",
+  "auth.splash.title": "ServeIQ",
   "auth.splash.subtitle": "Encuentra tu estancia perfecta",
   "auth.splash.getStarted": "Comenzar",
 
@@ -74,7 +74,7 @@
   "home.browseByType": "Explorar por tipo de propiedad",
   "home.exploreMore": "Explorar más propiedades",
   "home.seeAll": "Ver todo",
-  "home.welcome": "Bienvenido a StayEasy",
+  "home.welcome": "Bienvenido a ServeIQ",
   "home.welcomeDesc": "Descubre increíbles hoteles y restaurantes seleccionados para ti",
   "home.getStarted": "Comenzar",
   "home.becomeHost": "Conviértete en anfitrión",
@@ -286,16 +286,16 @@
   "roomSelect.addToBooking": "Añadir a la reserva",
   "roomSelect.unavailable": "No disponible",
 
-  "components.whyStayEasy.title": "¿Por qué StayEasy?",
-  "components.whyStayEasy.subtitle": "Hacemos que viajar sea simple y memorable",
-  "components.whyStayEasy.secureBooking": "Reserva segura",
-  "components.whyStayEasy.support": "Soporte 24/7",
-  "components.whyStayEasy.bestPrice": "Mejor precio garantizado",
-  "components.whyStayEasy.curated": "Propiedades seleccionadas",
-  "components.whyStayEasy.secureBookingDesc": "Tus pagos e información personal están siempre protegidos con seguridad de nivel empresarial.",
-  "components.whyStayEasy.supportDesc": "Nuestro equipo está disponible las 24 horas para ayudarte con cualquier pregunta.",
-  "components.whyStayEasy.bestPriceDesc": "Encuentra un precio más bajo en otro lado y lo igualamos. Reserva con confianza.",
-  "components.whyStayEasy.curatedDesc": "Cada propiedad es seleccionada y verificada por su calidad y comodidad.",
+  "components.whyServeIQ.title": "¿Por qué ServeIQ?",
+  "components.whyServeIQ.subtitle": "Hacemos que viajar sea simple y memorable",
+  "components.whyServeIQ.secureBooking": "Reserva segura",
+  "components.whyServeIQ.support": "Soporte 24/7",
+  "components.whyServeIQ.bestPrice": "Mejor precio garantizado",
+  "components.whyServeIQ.curated": "Propiedades seleccionadas",
+  "components.whyServeIQ.secureBookingDesc": "Tus pagos e información personal están siempre protegidos con seguridad de nivel empresarial.",
+  "components.whyServeIQ.supportDesc": "Nuestro equipo está disponible las 24 horas para ayudarte con cualquier pregunta.",
+  "components.whyServeIQ.bestPriceDesc": "Encuentra un precio más bajo en otro lado y lo igualamos. Reserva con confianza.",
+  "components.whyServeIQ.curatedDesc": "Cada propiedad es seleccionada y verificada por su calidad y comodidad.",
 
   "components.testimonials.title": "Lo que dicen los viajeros",
 
@@ -323,9 +323,9 @@
 
   "components.footer.support": "Soporte",
   "components.footer.hosting": "Alojamiento",
-  "components.footer.company": "StayEasy",
+  "components.footer.company": "ServeIQ",
   "components.footer.legal": "Legal",
-  "components.footer.copyright": "© 2026 StayEasy, Inc. Todos los derechos reservados.",
+  "components.footer.copyright": "© 2026 ServeIQ, Inc. Todos los derechos reservados.",
   "components.footer.language": "Español",
   "components.footer.currency": "$ USD",
 

@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useColors } from '@/hooks/use-colors';
 import { ScreenContainer } from '@/components/screen-container';
 import { safeGoBack } from '@/lib/utils';
+import { CORAL } from '@/lib/constants/figma-tokens';
 const FAQS = [
   { q: 'How do I cancel a booking?', a: 'Go to Profile > My Bookings, find your booking and tap "Cancel". Free cancellation is available up to 24 hours before check-in for most properties.' },
   { q: 'How do I contact the property?', a: 'Once your booking is confirmed, the property contact details will be available in your booking confirmation under Profile > My Bookings.' },
@@ -16,7 +17,7 @@ export default function HelpScreen() {
   const colors = useColors();
 
   const handleContact = () => {
-    Linking.openURL('mailto:support@stayeasy.com').catch(() =>
+    Linking.openURL('mailto:support@serveiq.com').catch(() =>
       Alert.alert('Error', 'Could not open email client')
     );
   };
@@ -52,7 +53,7 @@ export default function HelpScreen() {
           <TouchableOpacity onPress={handleContact}
             style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-              paddingVertical: 16, borderRadius: 16, backgroundColor: '#E63946',
+              paddingVertical: 16, borderRadius: 16, backgroundColor: CORAL[500],
             }}
             activeOpacity={0.85}
           >

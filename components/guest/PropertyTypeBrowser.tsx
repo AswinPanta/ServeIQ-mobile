@@ -3,6 +3,9 @@ import { View, Text, ScrollView, TouchableOpacity, ImageBackground, StyleSheet, 
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PROPERTY_TYPES } from '@/lib/mock/landing-data';
+import { BRAND, SRS, BG } from '@/lib/constants/figma-tokens';
+
+const IMAGE_SOURCES = PROPERTY_TYPES.map((p) => ({ uri: p.imageUrl }));
 
 interface Props {
   onSelect?: (type: string) => void;
@@ -20,16 +23,17 @@ export function PropertyTypeBrowser({ onSelect, selected }: Props) {
         contentContainerStyle={s.scrollContent}
       >
         {PROPERTY_TYPES.map((property, index) => {
-          const isActive = selected === property.type.toLowerCase();
+          const key = property.key || property.type.toLowerCase();
+          const isActive = selected === key;
           return (
             <TouchableOpacity
-              key={index}
-              onPress={() => onSelect?.(property.type.toLowerCase())}
+              key={key}
+              onPress={() => onSelect?.(key)}
               activeOpacity={0.85}
               style={[s.card, isActive && s.cardActive]}
             >
               <ImageBackground
-                source={{ uri: property.imageUrl }}
+                source={IMAGE_SOURCES[index]}
                 style={s.cardImage}
                 imageStyle={s.cardImageInner}
               >
@@ -62,7 +66,7 @@ const s = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     marginBottom: 14,
     letterSpacing: -0.3,
   },
@@ -75,10 +79,11 @@ const s = StyleSheet.create({
     height: 130,
     borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   cardActive: {
-    borderWidth: 2,
-    borderColor: '#2E86AB',
+    borderColor: SRS.teal,
   },
   cardImage: {
     flex: 1,
@@ -111,7 +116,7 @@ const s = StyleSheet.create({
   cardType: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,

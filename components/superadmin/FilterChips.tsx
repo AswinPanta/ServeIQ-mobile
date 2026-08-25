@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { PURPLE, SLATE, BG } from '@/lib/constants/figma-tokens';
 
 interface FilterChipsProps {
   filters: readonly string[];
@@ -8,7 +9,7 @@ interface FilterChipsProps {
   accentColor?: string;
 }
 
-export function FilterChips({ filters, active, onChange, accentColor = '#7C3AED' }: FilterChipsProps) {
+export function FilterChips({ filters, active, onChange, accentColor = PURPLE[700] }: FilterChipsProps) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {filters.map(f => {
@@ -34,8 +35,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: SLATE[100],
   },
-  text: { fontSize: 14, fontWeight: '600', color: '#64748B' },
-  textActive: { color: '#FFF' },
+  text: { fontSize: 14, fontWeight: '600', color: SLATE[500] },
+  textActive: { color: BG.white },
 });

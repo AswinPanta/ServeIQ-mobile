@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, Dimensions } from 'react-native';
 import { cn } from '@/lib/utils';
+import { BLUE, GRAY, BG } from '@/lib/constants/figma-tokens';
 
 interface DatePickerCalendarProps {
   visible: boolean;
@@ -126,7 +127,7 @@ export function DatePickerCalendar({
           <View
             style={[
               { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-              inRange && { backgroundColor: '#EFF6FF' },
+              inRange && { backgroundColor: BLUE[50] },
             ]}
           >
             <View
@@ -138,17 +139,17 @@ export function DatePickerCalendar({
                   alignItems: 'center',
                   justifyContent: 'center',
                 },
-                checkIn && { backgroundColor: '#2563EB' },
-                checkOut && { backgroundColor: '#111827' },
+                checkIn && { backgroundColor: BLUE[600] },
+                checkOut && { backgroundColor: GRAY[900] },
               ]}
             >
               <Text
                 style={[
                   { fontSize: 14, fontWeight: '500' },
-                  past && { color: '#D1D5DB' },
-                  !past && !checkIn && !checkOut && { color: '#111827' },
-                  (checkIn || checkOut) && { color: '#FFFFFF', fontWeight: '600' },
-                  isToday && !checkIn && !checkOut && { color: '#2563EB', fontWeight: '600' },
+                  past && { color: GRAY[300] },
+                  !past && !checkIn && !checkOut && { color: GRAY[900] },
+                  (checkIn || checkOut) && { color: BG.white, fontWeight: '600' },
+                  isToday && !checkIn && !checkOut && { color: BLUE[600], fontWeight: '600' },
                 ]}
               >
                 {day}
@@ -162,7 +163,7 @@ export function DatePickerCalendar({
                   width: 4,
                   height: 4,
                   borderRadius: 2,
-                  backgroundColor: '#2563EB',
+                  backgroundColor: BLUE[600],
                 }}
               />
             )}
@@ -185,7 +186,7 @@ export function DatePickerCalendar({
           style={{
             flex: 1,
             marginTop: 'auto',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: BG.white,
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             maxHeight: '90%',
@@ -197,35 +198,35 @@ export function DatePickerCalendar({
               paddingTop: 20,
               paddingBottom: 16,
               borderBottomWidth: 1,
-              borderBottomColor: '#F3F4F6',
+              borderBottomColor: GRAY[100],
             }}
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: GRAY[500], textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 Select dates
               </Text>
               <TouchableOpacity onPress={onClose} style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 18, color: '#6B7280' }}>✕</Text>
+                <Text style={{ fontSize: 18, color: GRAY[500] }}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 10, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10, color: GRAY[400], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
                   Check-in
                 </Text>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCheckIn ? '#111827' : '#D1D5DB' }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCheckIn ? GRAY[900] : GRAY[300] }}>
                   {selectedCheckIn ? formatDate(selectedCheckIn) : 'Add date'}
                 </Text>
               </View>
               <View style={{ paddingHorizontal: 12 }}>
-                <Text style={{ fontSize: 18, color: '#D1D5DB' }}>→</Text>
+                <Text style={{ fontSize: 18, color: GRAY[300] }}>→</Text>
               </View>
               <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 10, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
+                <Text style={{ fontSize: 10, color: GRAY[400], textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>
                   Check-out
                 </Text>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCheckOut ? '#111827' : '#D1D5DB' }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: selectedCheckOut ? GRAY[900] : GRAY[300] }}>
                   {selectedCheckOut ? formatDate(selectedCheckOut) : 'Add date'}
                 </Text>
               </View>
@@ -233,7 +234,7 @@ export function DatePickerCalendar({
 
             {nights && (
               <View style={{ marginTop: 8, alignItems: 'center' }}>
-                <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                <Text style={{ fontSize: 12, color: GRAY[500] }}>
                   {nights} {nights === 1 ? 'night' : 'nights'}
                 </Text>
               </View>
@@ -257,16 +258,16 @@ export function DatePickerCalendar({
                 onPress={handlePrevMonth}
                 style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text style={{ fontSize: 22, color: '#374151', lineHeight: 24 }}>‹</Text>
+                <Text style={{ fontSize: 22, color: GRAY[700], lineHeight: 24 }}>‹</Text>
               </TouchableOpacity>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: GRAY[900] }}>
                 {MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}
               </Text>
               <TouchableOpacity
                 onPress={handleNextMonth}
                 style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text style={{ fontSize: 22, color: '#374151', lineHeight: 24 }}>›</Text>
+                <Text style={{ fontSize: 22, color: GRAY[700], lineHeight: 24 }}>›</Text>
               </TouchableOpacity>
             </View>
 
@@ -277,7 +278,7 @@ export function DatePickerCalendar({
                     key={`${day}-${idx}`}
                     style={{ width: dayCellSize, alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>
+                    <Text style={{ fontSize: 12, color: GRAY[400], fontWeight: '500' }}>
                       {day}
                     </Text>
                   </View>
@@ -297,20 +298,20 @@ export function DatePickerCalendar({
                 marginTop: 20,
                 paddingTop: 16,
                 borderTopWidth: 1,
-                borderTopColor: '#F3F4F6',
+                borderTopColor: GRAY[100],
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#2563EB' }} />
-                <Text style={{ fontSize: 11, color: '#6B7280' }}>Check-in</Text>
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE[600] }} />
+                <Text style={{ fontSize: 11, color: GRAY[500] }}>Check-in</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#111827' }} />
-                <Text style={{ fontSize: 11, color: '#6B7280' }}>Check-out</Text>
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: GRAY[900] }} />
+                <Text style={{ fontSize: 11, color: GRAY[500] }}>Check-out</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#EFF6FF' }} />
-                <Text style={{ fontSize: 11, color: '#6B7280' }}>Night</Text>
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: BLUE[50] }} />
+                <Text style={{ fontSize: 11, color: GRAY[500] }}>Night</Text>
               </View>
             </View>
           </ScrollView>
@@ -323,11 +324,11 @@ export function DatePickerCalendar({
               paddingHorizontal: 20,
               paddingVertical: 14,
               borderTopWidth: 1,
-              borderTopColor: '#F3F4F6',
+              borderTopColor: GRAY[100],
             }}
           >
             <TouchableOpacity onPress={handleClear} style={{ paddingVertical: 8, paddingRight: 16 }}>
-              <Text style={{ fontSize: 13, color: '#6B7280', textDecorationLine: 'underline' }}>
+              <Text style={{ fontSize: 13, color: GRAY[500], textDecorationLine: 'underline' }}>
                 Clear dates
               </Text>
             </TouchableOpacity>
@@ -338,14 +339,14 @@ export function DatePickerCalendar({
                 paddingVertical: 10,
                 paddingHorizontal: 28,
                 borderRadius: 8,
-                backgroundColor: selectedCheckIn && selectedCheckOut ? '#111827' : '#F3F4F6',
+                backgroundColor: selectedCheckIn && selectedCheckOut ? GRAY[900] : GRAY[100],
               }}
             >
               <Text
                 style={{
                   fontSize: 14,
                   fontWeight: '600',
-                  color: selectedCheckIn && selectedCheckOut ? '#FFFFFF' : '#D1D5DB',
+                  color: selectedCheckIn && selectedCheckOut ? BG.white : GRAY[300],
                 }}
               >
                 Apply

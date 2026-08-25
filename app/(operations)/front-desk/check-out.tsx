@@ -14,6 +14,9 @@ import { useHousekeepingStore } from '@/stores/useHousekeepingStore';
 import { Stepper } from '@/components/ui/Stepper';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { safeGoBack } from "@/lib/utils";
+import { BLUE, PURPLE, STATUS_COLORS, PINK, BG, FLAT } from '@/lib/constants/figma-tokens';
+;
+;
 
 const STEPS = [
   { label: 'Search', description: 'Find guest' },
@@ -51,14 +54,14 @@ export default function CheckOutScreen() {
     // (also marks room as dirty, updates booking status to checked_out, and calls the API)
     frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number!);
     useFolioStore.getState().settleFolio(selectedBooking.ref);
-    useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: '#3B82F6', property_id: operator?.property_id || 'prop-1' });
+    useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: BLUE[500], property_id: operator?.property_id || 'prop-1' });
     useShiftStore.getState().incrementCheckOuts();
     useShiftStore.getState().addRevenue(folio?.total || 0);
     const guestFound = useGuestStore.getState().findGuest(selectedBooking.guest_name);
     if (guestFound.length > 0) useGuestStore.getState().recordStay(guestFound[0].id, folio?.total || 0);
     useHousekeepingStore.getState().createTask({ room: selectedBooking.room_number || '', floor: room?.floor || 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'turnover', property_id: operator?.property_id || 'prop-1' });
     useNotificationStore.getState().addNotification({ type: 'hk_alert', title: 'Room ready for cleaning', message: `Room ${selectedBooking.room_number} needs cleaning after checkout`, data: { roomNumber: selectedBooking.room_number || '' } });
-    useActivityStore.getState().addActivity({ type: 'email', title: `Post-stay review requested — Email queued for ${selectedBooking.guest_name}`, icon: '✉️', color: '#8B5CF6', property_id: operator?.property_id || 'prop-1' });
+    useActivityStore.getState().addActivity({ type: 'email', title: `Post-stay review requested — Email queued for ${selectedBooking.guest_name}`, icon: '✉️', color: PURPLE[500], property_id: operator?.property_id || 'prop-1' });
     useNotificationStore.getState().addNotification({ type: 'system', title: 'Review Request', message: `Post-stay review email queued for ${selectedBooking.guest_name}` });
     Alert.alert('Review Request', 'Check-out complete! Review request will be sent to guest.');
     setStep(3);
@@ -80,7 +83,7 @@ export default function CheckOutScreen() {
             {filtered.length === 0 && search.length > 0 && <Text style={s.empty}>No checked-in guests found</Text>}
             {filtered.map((g) => (
               <TouchableOpacity key={g.ref} onPress={() => handleSelectGuest(g)} style={s.guestRow}>
-                <View style={s.guestRoom}><Text style={{ fontSize: 14, fontWeight: '700', color: '#2980B9' }}>{g.room_number || '-'}</Text></View>
+                <View style={s.guestRoom}><Text style={{ fontSize: 14, fontWeight: '700', color: STATUS_COLORS.occupied }}>{g.room_number || '-'}</Text></View>
                 <View style={{ flex: 1 }}><Text style={s.guestName}>{g.guest_name}</Text><Text style={s.guestMeta}>{g.ref} · {g.checkin} → {g.checkout}</Text></View>
                 <StatusBadge label="In House" color={SRS.green} size="sm" />
               </TouchableOpacity>
@@ -123,7 +126,7 @@ export default function CheckOutScreen() {
             <View style={{ borderTopWidth: 1, borderTopColor: GRAY[200], marginTop: SPACING.lg, paddingTop: SPACING.lg }}>
               <Text style={{ ...TYPOGRAPHY.small, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.sm }}>Quick Charge</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm }}>
-                {[{ label: 'Minibar', amount: 500, category: 'minibar' as const, color: SRS.orange }, { label: 'Laundry', amount: 300, category: 'laundry' as const, color: '#2980B9' }, { label: 'Breakfast', amount: 400, category: 'restaurant' as const, color: SRS.green }, { label: 'Dinner', amount: 800, category: 'restaurant' as const, color: '#8E44AD' }, { label: 'Spa', amount: 1500, category: 'service' as const, color: '#EC4899' }, { label: 'Extra Bed', amount: 1000, category: 'other' as const, color: GRAY[500] }].map((item) => (
+                {[{ label: 'Minibar', amount: 500, category: 'minibar' as const, color: SRS.orange }, { label: 'Laundry', amount: 300, category: 'laundry' as const, color: STATUS_COLORS.occupied }, { label: 'Breakfast', amount: 400, category: 'restaurant' as const, color: SRS.green }, { label: 'Dinner', amount: 800, category: 'restaurant' as const, color: STATUS_COLORS.inspected }, { label: 'Spa', amount: 1500, category: 'service' as const, color: PINK[500] }, { label: 'Extra Bed', amount: 1000, category: 'other' as const, color: GRAY[500] }].map((item) => (
                   <TouchableOpacity key={item.label} onPress={() => { useFolioStore.getState().addCharge(selectedBooking.ref, { description: item.label, amount: item.amount, category: item.category }); Alert.alert('Charge Added', `${item.label} (₹${item.amount}) posted to folio`); }}
                     style={{ paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, borderRadius: RADIUS.card, backgroundColor: item.color + '12', borderWidth: 1, borderColor: item.color + '25' }}
                   ><Text style={{ fontSize: 11, fontWeight: '600', color: item.color }}>{item.label} ₹{item.amount}</Text></TouchableOpacity>
@@ -136,7 +139,7 @@ export default function CheckOutScreen() {
           <View style={s.card}>
             <Text style={s.cardTitle}>Payment Method</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md }}>
-              {[{ id: 'card', label: 'Card', icon: 'payment', color: SRS.teal }, { id: 'cash', label: 'Cash', icon: 'wallet', color: SRS.green }, { id: 'upi', label: 'UPI', icon: 'qr.code', color: '#8E44AD' }, { id: 'wallet', label: 'Wallet', icon: 'wallet', color: SRS.orange }].map((pm) => (
+              {[{ id: 'card', label: 'Card', icon: 'payment', color: SRS.teal }, { id: 'cash', label: 'Cash', icon: 'wallet', color: SRS.green }, { id: 'upi', label: 'UPI', icon: 'qr.code', color: STATUS_COLORS.inspected }, { id: 'wallet', label: 'Wallet', icon: 'wallet', color: SRS.orange }].map((pm) => (
                 <TouchableOpacity key={pm.id} onPress={() => setPaymentMethod(pm.id)}
                   style={[s.paymentOption, { backgroundColor: paymentMethod === pm.id ? pm.color + '12' : GRAY[50], borderColor: paymentMethod === pm.id ? pm.color : GRAY[200] }]}
                 >
@@ -152,7 +155,7 @@ export default function CheckOutScreen() {
             <View style={doneStyles.iconWrap}><IconSymbol name="check" size={36} color={SRS.green} /></View>
             <Text style={doneStyles.title}>✓ Checked Out Successfully</Text>
             <View style={doneStyles.receipt}>
-              <Text style={doneStyles.receiptTitle}>StayEasy Hotel</Text>
+              <Text style={doneStyles.receiptTitle}>ServeIQ Hotel</Text>
               <View style={{ gap: 6, marginBottom: SPACING.md }}>
                 <View style={doneStyles.receiptRow}><Text style={doneStyles.receiptLabel}>Guest</Text><Text style={doneStyles.receiptValue}>{selectedBooking.guest_name}</Text></View>
                 <View style={doneStyles.receiptRow}><Text style={doneStyles.receiptLabel}>Room</Text><Text style={[doneStyles.receiptValue, { color: SRS.teal }]}>{selectedBooking.room_number}</Text></View>
@@ -205,16 +208,16 @@ export default function CheckOutScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: GRAY[50] },
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs },
-  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm },
+  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.sm },
   title: { ...TYPOGRAPHY.h2, color: SRS.navy },
   sub: { ...TYPOGRAPHY.small, color: GRAY[500], marginTop: 2 },
   body: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.xs, gap: SPACING.lg },
-  card: { backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
+  card: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
   cardTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.md },
   input: { backgroundColor: GRAY[50], borderWidth: 1, borderColor: GRAY[200], borderRadius: RADIUS.card, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: SRS.navy },
   empty: { ...TYPOGRAPHY.small, color: GRAY[400], textAlign: 'center', paddingVertical: SPACING.lg },
   guestRow: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, marginTop: SPACING.sm, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '08', borderWidth: 1, borderColor: SRS.teal + '18' },
-  guestRoom: { width: 40, height: 40, borderRadius: RADIUS.card, backgroundColor: '#2980B912', alignItems: 'center', justifyContent: 'center', marginRight: SPACING.md },
+  guestRoom: { width: 40, height: 40, borderRadius: RADIUS.card, backgroundColor: FLAT.blue + '12', alignItems: 'center', justifyContent: 'center', marginRight: SPACING.md },
   guestName: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
   guestMeta: { ...TYPOGRAPHY.small, color: GRAY[500] },
   paymentOption: { width: '47%', padding: SPACING.lg, borderRadius: RADIUS.card, alignItems: 'center', borderWidth: 2 },
@@ -224,19 +227,19 @@ const doneStyles = StyleSheet.create({
   container: { alignItems: 'center', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.lg },
   iconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: SRS.green + '18', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.md },
   title: { fontSize: 16, fontWeight: '700', color: SRS.green, textAlign: 'center' },
-  receipt: { backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100], width: '100%', marginTop: SPACING.lg, marginBottom: SPACING.md },
+  receipt: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100], width: '100%', marginTop: SPACING.lg, marginBottom: SPACING.md },
   receiptTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, textAlign: 'center', marginBottom: SPACING.md },
   receiptRow: { flexDirection: 'row', justifyContent: 'space-between' },
   receiptLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
   receiptValue: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
   hkBanner: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: 14, borderRadius: RADIUS.card, backgroundColor: SRS.orange + '10', borderWidth: 1, borderColor: SRS.orange + '20', width: '100%', marginBottom: SPACING.lg },
   doneBtn: { paddingVertical: 14, paddingHorizontal: 48, borderRadius: RADIUS.card, backgroundColor: SRS.teal, alignItems: 'center' },
-  doneBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  doneBtnText: { fontSize: 15, fontWeight: '700', color: BG.white },
 });
 
 const navStyles = StyleSheet.create({
   back: { flex: 1, paddingVertical: 14, borderRadius: RADIUS.card, alignItems: 'center', backgroundColor: GRAY[100] },
   backText: { fontSize: 14, fontWeight: '600', color: GRAY[600] },
   next: { flex: 1, paddingVertical: 14, borderRadius: RADIUS.card, alignItems: 'center', backgroundColor: SRS.teal },
-  nextText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  nextText: { fontSize: 14, fontWeight: '700', color: BG.white },
 });

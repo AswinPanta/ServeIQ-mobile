@@ -1,5 +1,5 @@
 /**
- * Centralized State Machine — StayEasy Domain Model
+ * Centralized State Machine — ServeIQ Domain Model
  *
  * Single source of truth for all status transitions across the application.
  * Replaces scattered STATUS_TRANSITIONS in:

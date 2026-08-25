@@ -2,7 +2,7 @@
 
 ## Overview
 
-Three independent changes to the StayEasy app:
+Three independent changes to the ServeIQ app:
 
 1. **Patch expo-router** — Fix "state update on unmounted component" warning in NavigationContainer
 2. **Fix guest booking CSS** — Layout, styling, and cross-platform issues across guest screens

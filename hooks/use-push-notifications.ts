@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
+import { markEnd, markStart } from "@/lib/utils/perf";
 
 interface PushNotificationState {
   expoPushToken: string | null;
@@ -42,10 +43,12 @@ export function usePushNotifications() {
 
   useEffect(() => {
     let mounted = true;
+    markStart('push: setup');
 
     (async () => {
       const modules = await getExpoModules();
       if (!modules) {
+        markEnd('push: setup (no modules)');
         if (mounted) setState((prev) => ({ ...prev, loading: false }));
         return;
       }
@@ -86,7 +89,7 @@ export function usePushNotifications() {
       }
 
       if (finalStatus !== "granted") {
-        if (mounted) setState((prev) => ({ ...prev, loading: false, error: "Push notification permission not granted" }));
+        markEnd('push: setup (permission denied)');        if (mounted) setState((prev) => ({ ...prev, loading: false, error: "Push notification permission not granted" }));
         return;
       }
 
@@ -95,6 +98,7 @@ export function usePushNotifications() {
           projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
         });
 
+        markEnd('push: setup (token obtained)');
         if (mounted) {
           setState((prev) => ({ ...prev, expoPushToken: token.data, loading: false, error: null }));
         }

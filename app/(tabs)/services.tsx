@@ -7,8 +7,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
 import { safeGoBack } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { SRS, BRAND, SLATE, BG, NEUTRAL } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2E86AB';
+const ACCENT = SRS.teal;
 
 interface ServiceCategory {
   id: string;
@@ -110,7 +111,7 @@ export default function ServicesScreen() {
       <View style={s.container}>
         <View style={s.header}>
           <TouchableOpacity onPress={() => setShowHistory(false)} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+            <IconSymbol name="arrow.back" size={18} color={BRAND.navyLight} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>{t('services.requestHistory')}</Text>
           <View style={{ width: 36 }} />
@@ -119,7 +120,7 @@ export default function ServicesScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 100 }}>
           {requests.length === 0 ? (
             <View style={s.emptyState}>
-              <IconSymbol name="invoice" size={48} color="#CBD5E1" />
+              <IconSymbol name="invoice" size={48} color={SLATE[300]} />
               <Text style={s.emptyTitle}>{t('services.noRequests')}</Text>
               <Text style={s.emptyDesc}>{t('services.noRequestsDesc')}</Text>
             </View>
@@ -153,7 +154,7 @@ export default function ServicesScreen() {
       <View style={s.container}>
         <View style={s.header}>
           <TouchableOpacity onPress={() => { setSelectedCategory(null); setSelectedService(null); }} style={s.backBtn}>
-            <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+            <IconSymbol name="arrow.back" size={18} color={BRAND.navyLight} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>{cat?.name || t('services.title')}</Text>
           <View style={{ width: 36 }} />
@@ -215,7 +216,7 @@ export default function ServicesScreen() {
                   onPress={() => setSelectedService(opt.name)}
                   style={[s.hkCard, selectedService === opt.name && s.hkCardActive]}
                 >
-                  <IconSymbol name={opt.icon as any} size={24} color={selectedService === opt.name ? ACCENT : '#64748B'} />
+                  <IconSymbol name={opt.icon as any} size={24} color={selectedService === opt.name ? ACCENT : SLATE[500]} />
                   <Text style={[s.hkLabel, selectedService === opt.name && { color: ACCENT }]}>{opt.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -295,7 +296,7 @@ export default function ServicesScreen() {
             <View style={{ gap: 8 }}>
               <Text style={s.fieldLabel}>{t('services.additionalDetails')}</Text>
               <TextInput
-                placeholder={t('services.specialInstructions')} placeholderTextColor="#94A3B8"
+                placeholder={t('services.specialInstructions')} placeholderTextColor={SLATE[400]}
                 value={requestDetails} onChangeText={setRequestDetails}
                 multiline numberOfLines={3}
                 style={[s.input, { minHeight: 72, textAlignVertical: 'top' }]}
@@ -304,7 +305,7 @@ export default function ServicesScreen() {
           )}
 
           <View style={s.etaRow}>
-            <IconSymbol name="shift" size={16} color="#64748B" />
+            <IconSymbol name="shift" size={16} color={SLATE[500]} />
             <Text style={s.etaText}>{t('services.estimatedTime', { time: cat?.estimatedTime })}</Text>
           </View>
         </ScrollView>
@@ -327,11 +328,11 @@ export default function ServicesScreen() {
     <View style={s.container}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
-          <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+          <IconSymbol name="arrow.back" size={18} color={BRAND.navyLight} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>{t('services.title')}</Text>
         <TouchableOpacity onPress={() => setShowHistory(true)} style={s.historyBtn}>
-          <IconSymbol name="shift" size={18} color="#1A3C5E" />
+          <IconSymbol name="shift" size={18} color={BRAND.navyLight} />
         </TouchableOpacity>
       </View>
 
@@ -347,7 +348,7 @@ export default function ServicesScreen() {
               <Text style={s.activeBannerSub}>{activeRequests.map(r => r.service).join(', ')}</Text>
             </View>
             <TouchableOpacity onPress={() => setShowHistory(true)}>
-              <IconSymbol name="chevron.right" size={18} color="#FFF" />
+              <IconSymbol name="chevron.right" size={18} color={BG.white} />
             </TouchableOpacity>
           </View>
         )}
@@ -367,7 +368,7 @@ export default function ServicesScreen() {
               <Text style={s.categoryName}>{cat.name}</Text>
               <Text style={s.categoryBrief} numberOfLines={2}>{cat.description}</Text>
               <View style={s.categoryEta}>
-                <IconSymbol name="shift" size={12} color="#94A3B8" />
+                <IconSymbol name="shift" size={12} color={SLATE[400]} />
                 <Text style={s.categoryEtaText}>{cat.estimatedTime}</Text>
               </View>
             </TouchableOpacity>
@@ -384,89 +385,89 @@ const IM = FONTS.inter.medium;
 const IB = FONTS.inter.bold;
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 56 : 40, paddingBottom: 12,
-    backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: SLATE[100],
   },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#1A3C5E', fontFamily: PF },
-  historyBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: SLATE[50], alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: BRAND.navyLight, fontFamily: PF },
+  historyBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: SLATE[50], alignItems: 'center', justifyContent: 'center' },
 
-  pageDesc: { fontSize: 13, color: '#64748B', lineHeight: 19, fontFamily: IR },
+  pageDesc: { fontSize: 13, color: SLATE[500], lineHeight: 19, fontFamily: IR },
 
   activeBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
     borderRadius: 14, backgroundColor: ACCENT,
   },
-  activeBannerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' },
-  activeBannerTitle: { fontSize: 13, fontWeight: '700', color: '#FFF', fontFamily: IB },
+  activeBannerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: BG.white },
+  activeBannerTitle: { fontSize: 13, fontWeight: '700', color: BG.white, fontFamily: IB },
   activeBannerSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 1, fontFamily: IR },
 
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   categoryCard: {
-    width: '47%', backgroundColor: '#FFF', borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#F1F5F9',
+    width: '47%', backgroundColor: BG.white, borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: SLATE[100],
   },
   categoryIconWrap: {
     width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(46, 134, 171, 0.08)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 10,
   },
-  categoryName: { fontSize: 14, fontWeight: '700', color: '#1A3C5E', fontFamily: IM, marginBottom: 2 },
-  categoryBrief: { fontSize: 11, color: '#94A3B8', lineHeight: 16, fontFamily: IR, marginBottom: 8 },
+  categoryName: { fontSize: 14, fontWeight: '700', color: BRAND.navyLight, fontFamily: IM, marginBottom: 2 },
+  categoryBrief: { fontSize: 11, color: SLATE[400], lineHeight: 16, fontFamily: IR, marginBottom: 8 },
   categoryEta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  categoryEtaText: { fontSize: 10, color: '#94A3B8', fontFamily: IR },
+  categoryEtaText: { fontSize: 10, color: SLATE[400], fontFamily: IR },
 
-  categoryDesc: { fontSize: 13, color: '#64748B', lineHeight: 19, fontFamily: IR, marginBottom: 4 },
+  categoryDesc: { fontSize: 13, color: SLATE[500], lineHeight: 19, fontFamily: IR, marginBottom: 4 },
 
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#1A3C5E', letterSpacing: 0.3, marginTop: 8, marginBottom: 4, fontFamily: IM },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: BRAND.navyLight, letterSpacing: 0.3, marginTop: 8, marginBottom: 4, fontFamily: IM },
 
   serviceItem: {
     flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12,
-    backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E2E8F0',
+    backgroundColor: BG.white, borderWidth: 1.5, borderColor: SLATE[200],
   },
   serviceItemActive: { borderColor: ACCENT, backgroundColor: 'rgba(46, 134, 171, 0.04)' },
-  serviceName: { fontSize: 13, fontWeight: '600', color: '#1A3C5E', fontFamily: IM },
-  servicePrice: { fontSize: 11, color: '#94A3B8', marginTop: 2, fontFamily: IR },
-  radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
+  serviceName: { fontSize: 13, fontWeight: '600', color: BRAND.navyLight, fontFamily: IM },
+  servicePrice: { fontSize: 11, color: SLATE[400], marginTop: 2, fontFamily: IR },
+  radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: SLATE[300], alignItems: 'center', justifyContent: 'center' },
   radioActive: { borderColor: ACCENT },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT },
 
   hkGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   hkCard: {
-    width: '30%', backgroundColor: '#FFF', borderRadius: 12, padding: 12,
-    alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', gap: 6,
+    width: '30%', backgroundColor: BG.white, borderRadius: 12, padding: 12,
+    alignItems: 'center', borderWidth: 1.5, borderColor: SLATE[200], gap: 6,
   },
   hkCardActive: { borderColor: ACCENT, backgroundColor: 'rgba(46, 134, 171, 0.04)' },
-  hkLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', textAlign: 'center', fontFamily: IM },
+  hkLabel: { fontSize: 11, fontWeight: '600', color: SLATE[500], textAlign: 'center', fontFamily: IM },
 
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#1A3C5E', marginBottom: 4, fontFamily: IM },
-  input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#0F172A' },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: BRAND.navyLight, marginBottom: 4, fontFamily: IM },
+  input: { backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: SLATE[900] },
 
-  etaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, backgroundColor: '#F8FAFC' },
-  etaText: { fontSize: 12, color: '#64748B', fontFamily: IR },
+  etaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, backgroundColor: SLATE[50] },
+  etaText: { fontSize: 12, color: SLATE[500], fontFamily: IR },
 
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 36, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 36, backgroundColor: BG.white, borderTopWidth: 1, borderTopColor: SLATE[100] },
   submitBtn: { paddingVertical: 15, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' },
-  submitBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF', fontFamily: IB },
+  submitBtnText: { fontSize: 15, fontWeight: '700', color: BG.white, fontFamily: IB },
 
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#1A3C5E', fontFamily: PF },
-  emptyDesc: { fontSize: 13, color: '#94A3B8', fontFamily: IR },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: BRAND.navyLight, fontFamily: PF },
+  emptyDesc: { fontSize: 13, color: SLATE[400], fontFamily: IR },
 
-  historyCard: { padding: 14, borderRadius: 14, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', gap: 4 },
+  historyCard: { padding: 14, borderRadius: 14, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100], gap: 4 },
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  historyService: { fontSize: 14, fontWeight: '600', color: '#1A3C5E', fontFamily: IM },
-  historyCategory: { fontSize: 11, color: '#94A3B8', fontFamily: IR },
-  historyDetails: { fontSize: 12, color: '#64748B', fontFamily: IR },
-  historyTime: { fontSize: 10, color: '#CBD5E1', fontFamily: IR, marginTop: 2 },
+  historyService: { fontSize: 14, fontWeight: '600', color: BRAND.navyLight, fontFamily: IM },
+  historyCategory: { fontSize: 11, color: SLATE[400], fontFamily: IR },
+  historyDetails: { fontSize: 12, color: SLATE[500], fontFamily: IR },
+  historyTime: { fontSize: 10, color: SLATE[300], fontFamily: IR, marginTop: 2 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   statusPending: { backgroundColor: 'rgba(211, 84, 0, 0.08)' },
   statusProgress: { backgroundColor: 'rgba(46, 134, 171, 0.08)' },
   statusCompleted: { backgroundColor: 'rgba(30, 132, 73, 0.08)' },
   statusText: { fontSize: 10, fontWeight: '700', fontFamily: IB },
-  statusTextPending: { color: '#D35400' },
+  statusTextPending: { color: SRS.orange },
   statusTextProgress: { color: ACCENT },
-  statusTextCompleted: { color: '#1E8449' },
+  statusTextCompleted: { color: SRS.green },
 });

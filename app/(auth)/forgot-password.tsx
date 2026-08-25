@@ -7,7 +7,9 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
+import { setGuestMustChange } from '@/lib/context/host-utils';
 import { FONTS, SRS, RADIUS, GRAY } from '@/constants/portal-theme';
+import { TEXT, NEUTRAL, BG, GRAY as GRAYTokens, BORDER } from '@/lib/constants/figma-tokens';
 
 export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
@@ -25,6 +27,8 @@ export default function ForgotPasswordScreen() {
         body: JSON.stringify({ email: email.trim() }),
       });
       if (res.ok || res.status === 202) {
+        // Track this email so the next login forces a password change
+        await setGuestMustChange(email.trim());
         setSent(true);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -41,7 +45,7 @@ export default function ForgotPasswordScreen() {
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.inner}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#1A1C1E" />
+          <Ionicons name="arrow-back" size={22} color={TEXT.heading} />
         </TouchableOpacity>
 
         <Text style={s.title}>{t('auth.forgot.title')}</Text>
@@ -67,14 +71,10 @@ export default function ForgotPasswordScreen() {
 
             <TouchableOpacity style={s.sendBtn} onPress={handleSend} activeOpacity={0.8} disabled={loading}>
               {loading ? (
-                <ActivityIndicator color="#FFFAFA" />
+                <ActivityIndicator color={NEUTRAL.snow} />
               ) : (
                 <Text style={s.sendBtnText}>{t('auth.forgot.send')}</Text>
               )}
-            </TouchableOpacity>
-
-            <TouchableOpacity style={s.tokenLink} onPress={() => router.push('/(auth)/create-new-password')}>
-              <Text style={s.tokenLinkText}>Already have a reset token? Enter it here</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -84,14 +84,12 @@ export default function ForgotPasswordScreen() {
             </View>
             <Text style={s.successTitle}>Check your email</Text>
             <Text style={s.successText}>
-              We&apos;ve sent a password reset link to{'\n'}
-              <Text style={{ fontWeight: '600', color: '#1A1C1E' }}>{email}</Text>
+              We&apos;ve sent a temporary password to{'\n'}
+              <Text style={{ fontWeight: '600', color: TEXT.heading }}>{email}</Text>
+              {'\n\n'}Use it to sign in, then you&apos;ll be prompted to set a new password.
             </Text>
-            <TouchableOpacity style={s.sendBtn} onPress={() => router.push('/(auth)/create-new-password')} activeOpacity={0.8}>
-              <Text style={s.sendBtnText}>Enter Reset Token</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.secondaryBtn} onPress={() => router.replace('/(auth)/login')}>
-              <Text style={s.secondaryBtnText}>{t('auth.forgot.backToLogin')}</Text>
+            <TouchableOpacity style={s.sendBtn} onPress={() => router.replace('/(auth)/login')} activeOpacity={0.8}>
+              <Text style={s.sendBtnText}>Back to Login</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -101,34 +99,31 @@ export default function ForgotPasswordScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: BG.white },
   inner: { flex: 1, paddingHorizontal: 24, paddingTop: 60 },
   backBtn: {
-    width: 51, height: 51, borderRadius: 25.5, backgroundColor: '#F3F4F6',
+    width: 51, height: 51, borderRadius: 25.5, backgroundColor: GRAYTokens[100],
     alignItems: 'center', justifyContent: 'center', marginBottom: 32,
   },
-  title: { fontSize: 28, fontFamily: FONTS.playfairDisplay.bold, color: '#000', marginBottom: 12 },
-  subtitle: { fontSize: 14, fontFamily: FONTS.inter.regular, color: '#6B7280', lineHeight: 22, marginBottom: 32 },
+  title: { fontSize: 28, fontFamily: FONTS.playfairDisplay.bold, color: TEXT.black, marginBottom: 12 },
+  subtitle: { fontSize: 14, fontFamily: FONTS.inter.regular, color: GRAYTokens[500], lineHeight: 22, marginBottom: 32 },
   field: { marginBottom: 24 },
-  label: { fontSize: 16, fontFamily: FONTS.inter.medium, color: '#A7A4A4', marginBottom: 10 },
+  label: { fontSize: 16, fontFamily: FONTS.inter.medium, color: TEXT.label, marginBottom: 10 },
   inputWrap: {
-    borderWidth: 1.5, borderColor: '#D9D9D9', borderRadius: RADIUS.input,
-    paddingHorizontal: 16, backgroundColor: '#FFF',
+    borderWidth: 1.5, borderColor: BORDER.input, borderRadius: RADIUS.input,
+    paddingHorizontal: 16, backgroundColor: BG.white,
   },
-  input: { fontSize: 14, fontFamily: FONTS.inter.regular, color: '#1A1C1E', paddingVertical: 14 },
+  input: { fontSize: 14, fontFamily: FONTS.inter.regular, color: TEXT.heading, paddingVertical: 14 },
   sendBtn: {
     backgroundColor: SRS.navy, borderRadius: RADIUS.button, paddingVertical: 16, alignItems: 'center',
   },
-  sendBtnText: { fontSize: 20, fontFamily: FONTS.itim, color: '#FFFAFA' },
-  tokenLink: { marginTop: 16, alignItems: 'center' },
-  tokenLinkText: { fontSize: 13, color: SRS.teal, textDecorationLine: 'underline' },
-  secondaryBtn: { marginTop: 12, alignItems: 'center', paddingVertical: 12 },
-  secondaryBtnText: { fontSize: 14, color: '#6B7280', textDecorationLine: 'underline' },
+  sendBtnText: { fontSize: 20, fontFamily: FONTS.itim, color: NEUTRAL.snow },
+
   successBox: { alignItems: 'center', paddingTop: 40 },
   successIcon: {
     width: 80, height: 80, borderRadius: 40, backgroundColor: SRS.teal + '15',
     alignItems: 'center', justifyContent: 'center', marginBottom: 20,
   },
-  successTitle: { fontSize: 22, fontFamily: FONTS.playfairDisplay.bold, color: '#000', marginBottom: 12 },
-  successText: { fontSize: 14, fontFamily: FONTS.inter.regular, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  successTitle: { fontSize: 22, fontFamily: FONTS.playfairDisplay.bold, color: TEXT.black, marginBottom: 12 },
+  successText: { fontSize: 14, fontFamily: FONTS.inter.regular, color: GRAYTokens[500], textAlign: 'center', lineHeight: 22, marginBottom: 32 },
 });

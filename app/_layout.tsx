@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform, ActivityIndicator, View } from "react-native";
+import { Platform, View } from "react-native";
 import { ThemeProvider } from "@/lib/theme-provider";
 
 import { useFonts } from "expo-font";
@@ -38,7 +38,8 @@ import {
 } from "react-native-safe-area-context";
 import type { EdgeInsets, Rect } from "react-native-safe-area-context";
 
-import { AuthProvider, useAuth } from "@/lib/context/auth-context";
+import { AuthProvider } from "@/lib/context/auth-context";
+import { mark } from "@/lib/utils/perf";
 import { FavoritesProvider } from "@/lib/context/favorites-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { NotificationProvider, useNotifications } from "@/lib/context/notification-context";
@@ -47,9 +48,9 @@ import { CouponProvider } from "@/lib/context/coupon-context";
 import { PreferencesProvider } from "@/lib/context/preferences-context";
 import { CRMProvider } from "@/lib/context/crm-context";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
-import { useColors } from "@/hooks/use-colors";
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/lib/i18n';
+import { NEUTRAL } from '@/lib/constants/figma-tokens';
 
 // Suppress the InteractionManager deprecation warning from React Native dependencies
 // (react-native-gesture-handler, react-native-screens, etc. use it internally)
@@ -84,17 +85,8 @@ function PushNotificationInit() {
  * Routes between auth and app screens based on authentication state
  */
 function RootNavigator() {
-  const { isLoading } = useAuth();
-  const colors = useColors();
-
-  if (isLoading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
+  // The Stack is always mounted so the index splash plays continuously
+  // through auth initialization — no restart, no spinner.
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
@@ -155,6 +147,10 @@ export default function RootLayout() {
     };
   }, [initialInsets, initialFrame]);
 
+  useEffect(() => {
+    if (fontsLoaded) mark('fonts loaded');
+  }, [fontsLoaded]);
+
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <I18nextProvider i18n={i18n}>
@@ -181,12 +177,15 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 
+  // While fonts load, keep the screen #FAFAFA (the Journey Across Nepal
+  // splash background) so the native splash blends seamlessly into the
+  // animated splash (which mounts once, in the index route).
   if (!fontsLoaded) {
     return (
       <ThemeProvider>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff' }}>
-          <ActivityIndicator size="large" color="#1A3C5E" />
-        </View>
+        <SafeAreaProvider initialMetrics={providerInitialMetrics}>
+          <View style={{ flex: 1, backgroundColor: NEUTRAL[50] }} />
+        </SafeAreaProvider>
       </ThemeProvider>
     );
   }

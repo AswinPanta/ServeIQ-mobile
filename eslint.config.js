@@ -7,11 +7,27 @@ module.exports = [
       '.expo/**',
       'node_modules/**',
       'dist/**',
+      '_unused/**',
       // Skill / agent reference docs - not application source
       '.agents/**',
       '.claude/**',
       '.superpowers/**',
     ],
+  },
+  {
+    files: ['jest.setup.js', '**/__tests__/**', '**/*.test.*'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        expect: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
+    },
   },
   {
     rules: {

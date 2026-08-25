@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from '@/lib/utils';
+import { PURPLE, BLUE, STATUS, AMBER, RED, CYAN, PINK, GRAY, SLATE, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 
 type NotifType = 'booking' | 'checkin' | 'checkout' | 'cancellation' | 'maintenance' | 'payment' | 'review' | 'property' | 'system';
 
@@ -19,21 +20,21 @@ interface AdminNotification {
 }
 
 const TYPE_CONFIG: Record<NotifType, { icon: string; color: string; label: string }> = {
-  booking: { icon: 'calendar', color: '#3B82F6', label: 'Booking' },
-  checkin: { icon: 'checkin', color: '#10B981', label: 'Check-in' },
-  checkout: { icon: 'checkout', color: '#F59E0B', label: 'Check-out' },
-  cancellation: { icon: 'cancel', color: '#EF4444', label: 'Cancellation' },
-  maintenance: { icon: 'settings', color: '#8B5CF6', label: 'Maintenance' },
-  payment: { icon: 'payment', color: '#06B6D4', label: 'Payment' },
-  review: { icon: 'star', color: '#F59E0B', label: 'Review' },
-  property: { icon: 'hotel', color: '#EC4899', label: 'Property' },
-  system: { icon: 'verified', color: '#6B7280', label: 'System' },
+  booking: { icon: 'calendar', color: BLUE[500], label: 'Booking' },
+  checkin: { icon: 'checkin', color: STATUS.activeGreen, label: 'Check-in' },
+  checkout: { icon: 'checkout', color: AMBER[500], label: 'Check-out' },
+  cancellation: { icon: 'cancel', color: RED[500], label: 'Cancellation' },
+  maintenance: { icon: 'settings', color: PURPLE[500], label: 'Maintenance' },
+  payment: { icon: 'payment', color: CYAN[500], label: 'Payment' },
+  review: { icon: 'star', color: AMBER[500], label: 'Review' },
+  property: { icon: 'hotel', color: PINK[500], label: 'Property' },
+  system: { icon: 'verified', color: GRAY[500], label: 'System' },
 };
 
 const PRIORITY_DOT: Record<string, string> = {
-  high: '#EF4444',
-  medium: '#F59E0B',
-  low: '#10B981',
+  high: RED[500],
+  medium: AMBER[500],
+  low: STATUS.activeGreen,
 };
 
 const INITIAL_NOTIFICATIONS: AdminNotification[] = [
@@ -174,7 +175,7 @@ export default function AdminNotificationsScreen() {
         {filtered.length === 0 ? (
           <View style={s.emptyState}>
             <View style={s.emptyIcon}>
-              <IconSymbol name="notifications" size={32} color="#E2E8F0" />
+              <IconSymbol name="notifications" size={32} color={SLATE[200]} />
             </View>
             <Text style={s.emptyTitle}>No notifications</Text>
             <Text style={s.emptyDesc}>
@@ -227,27 +228,27 @@ export default function AdminNotificationsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   scroll: { padding: 20, paddingTop: 8, gap: 12 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A' },
-  unreadLabel: { fontSize: 13, color: '#94A3B8', marginTop: 2 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900] },
+  unreadLabel: { fontSize: 13, color: SLATE[400], marginTop: 2 },
   markAllBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: ACCENT + '10' },
   markAllText: { fontSize: 13, fontWeight: '600', color: ACCENT },
   filterRow: { gap: 8, paddingBottom: 4 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0' },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[200] },
   filterChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
-  filterText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-  filterTextActive: { color: '#FFF' },
+  filterText: { fontSize: 13, fontWeight: '600', color: SLATE[500] },
+  filterTextActive: { color: BG.white },
   card: {
     flexDirection: 'row',
     gap: 12,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
   },
   cardUnread: { borderColor: ACCENT + '30', backgroundColor: ACCENT + '04' },
   cardLeft: { alignItems: 'center', gap: 6 },
@@ -255,17 +256,17 @@ const s = StyleSheet.create({
   priorityDot: { width: 6, height: 6, borderRadius: 3 },
   cardContent: { flex: 1, gap: 6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', flex: 1 },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: SLATE[900], flex: 1 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
-  cardMessage: { fontSize: 13, color: '#64748B', lineHeight: 18 },
+  cardMessage: { fontSize: 13, color: SLATE[500], lineHeight: 18 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   propBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, flexShrink: 1 },
   propText: { fontSize: 11, fontWeight: '600', flexShrink: 1 },
-  timeText: { fontSize: 11, color: '#94A3B8' },
+  timeText: { fontSize: 11, color: SLATE[400] },
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  emptyDesc: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
-  clearBtn: { alignItems: 'center', paddingVertical: 14, marginTop: 8, borderRadius: 12, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
-  clearBtnText: { fontSize: 14, fontWeight: '700', color: '#EF4444' },
+  emptyIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: SLATE[900] },
+  emptyDesc: { fontSize: 14, color: SLATE[400], textAlign: 'center' },
+  clearBtn: { alignItems: 'center', paddingVertical: 14, marginTop: 8, borderRadius: 12, backgroundColor: RED[50], borderWidth: 1, borderColor: RED[200] },
+  clearBtnText: { fontSize: 14, fontWeight: '700', color: RED[500] },
 });

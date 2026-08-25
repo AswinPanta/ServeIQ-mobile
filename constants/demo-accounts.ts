@@ -20,7 +20,7 @@ export interface DemoAccount {
 
 export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
   guest: {
-    email: 'guest@stayeasy.com',
+    email: 'guest@serveiq.com',
     password: 'guest123',
     name: 'Demo Guest',
     portal: 'guest',
@@ -29,7 +29,7 @@ export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     color: '#E74C3C',
   },
   host: {
-    email: 'host@stayeasy.com',
+    email: 'host@serveiq.com',
     password: 'host123',
     name: 'Demo Host',
     portal: 'host',
@@ -38,7 +38,7 @@ export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     color: '#2980B9',
   },
   manager: {
-    email: 'manager@stayeasy.com',
+    email: 'manager@serveiq.com',
     password: 'manager123',
     name: 'Demo Manager',
     portal: 'operations',
@@ -48,7 +48,7 @@ export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     color: '#0D9488',
   },
   front_desk: {
-    email: 'frontdesk@stayeasy.com',
+    email: 'frontdesk@serveiq.com',
     password: 'frontdesk123',
     name: 'Demo Front Desk',
     portal: 'operations',
@@ -58,7 +58,7 @@ export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     color: '#0D9488',
   },
   housekeeping: {
-    email: 'housekeeping@stayeasy.com',
+    email: 'housekeeping@serveiq.com',
     password: 'housekeeping123',
     name: 'Demo Housekeeper',
     portal: 'operations',
@@ -68,7 +68,7 @@ export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     color: '#0D9488',
   },
   pos: {
-    email: 'pos@stayeasy.com',
+    email: 'pos@serveiq.com',
     password: 'pos123',
     name: 'Demo POS Staff',
     portal: 'operations',
@@ -78,7 +78,7 @@ export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     color: '#0D9488',
   },
   kds: {
-    email: 'kds@stayeasy.com',
+    email: 'kds@serveiq.com',
     password: 'kds123',
     name: 'Demo Kitchen Staff',
     portal: 'operations',
@@ -88,7 +88,7 @@ export const DEMO_ACCOUNTS: Record<string, DemoAccount> = {
     color: '#0D9488',
   },
   superadmin: {
-    email: 'admin@stayeasy.com',
+    email: 'admin@serveiq.com',
     password: 'Admin@123',
     name: 'Demo Admin',
     portal: 'superadmin',

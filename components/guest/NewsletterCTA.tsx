@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SLATE, BRAND, SRS, BG } from '@/lib/constants/figma-tokens';
 
 export function NewsletterCTA() {
   const { t } = useTranslation();
@@ -9,7 +10,7 @@ export function NewsletterCTA() {
 
   return (
     <LinearGradient
-      colors={['#0F172A', '#1A3C5E', '#2E86AB']}
+      colors={[SLATE[900], BRAND.navyLight, SRS.teal]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={s.container}
@@ -23,7 +24,7 @@ export function NewsletterCTA() {
           <TextInput
             style={s.input}
             placeholder={t('components.newsletter.emailPlaceholder')}
-            placeholderTextColor="rgba(255,255,255,0.4)"
+            placeholderTextColor={SLATE[400]}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -56,7 +57,7 @@ const s = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
     letterSpacing: -0.5,
   },
   subtitle: {
@@ -73,7 +74,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
     paddingHorizontal: 16,
     fontSize: 14,
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
   },
   btn: {
     height: 48,
@@ -85,7 +86,7 @@ const s = StyleSheet.create({
   btnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
   },
   checkboxRow: {
     flexDirection: 'row',

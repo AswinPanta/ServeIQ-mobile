@@ -4,9 +4,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { safeGoBack } from '@/lib/utils';
 import { useColors } from '@/hooks/use-colors';
+import { TEAL, BRAND, BLUE, STATUS, AMBER, ORANGE, PURPLE, RED, BG, SLATE, GRAY as GRAYTokens, EMERALD } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#0D9488';
-const NAVY = '#002645';
+const ACCENT = TEAL[600];
+const NAVY = BRAND.navy;
 
 type ShiftRole = 'front_desk' | 'housekeeping' | 'waiter' | 'kitchen' | 'manager' | 'maintenance';
 
@@ -21,12 +24,12 @@ interface Shift {
 }
 
 const ROLE_COLORS: Record<ShiftRole, string> = {
-  front_desk: '#3B82F6',
-  housekeeping: '#10B981',
-  waiter: '#F59E0B',
-  kitchen: '#F97316',
-  manager: '#8B5CF6',
-  maintenance: '#EF4444',
+  front_desk: BLUE[500],
+  housekeeping: STATUS.activeGreen,
+  waiter: AMBER[500],
+  kitchen: ORANGE[500],
+  manager: PURPLE[500],
+  maintenance: RED[500],
 };
 
 const ROLE_LABELS: Record<ShiftRole, string> = {
@@ -145,8 +148,8 @@ export default function ShiftsScreen() {
           {weekCoverage.map((w, i) => (
             <TouchableOpacity key={w.day} onPress={() => setSelectedDay(w.day)}
               style={[s.weekDay, i === todayIndex && s.weekDayToday, selectedDay === w.day && s.weekDayActive]}>
-              <Text style={[s.weekDayLabel, selectedDay === w.day && { color: '#FFF' }]}>{w.day}</Text>
-              <Text style={[s.weekDayCount, selectedDay === w.day && { color: '#FFF' }]}>{w.total}</Text>
+              <Text style={[s.weekDayLabel, selectedDay === w.day && { color: BG.white }]}>{w.day}</Text>
+              <Text style={[s.weekDayCount, selectedDay === w.day && { color: BG.white }]}>{w.total}</Text>
               <View style={s.weekDayDots}>
                 {Object.entries(w.roles).map(([role, count]) => (
                   <View key={role} style={[s.weekDot, { backgroundColor: ROLE_COLORS[role as ShiftRole] }]} />
@@ -161,14 +164,14 @@ export default function ShiftsScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 16 }}>
         <TouchableOpacity onPress={() => setRoleFilter('all')}
           style={[s.filterChip, roleFilter === 'all' && s.filterChipActive]}>
-          <Text style={[s.filterChipText, roleFilter === 'all' && { color: '#FFF' }]}>All ({dayShifts.length})</Text>
+          <Text style={[s.filterChipText, roleFilter === 'all' && { color: BG.white }]}>All ({dayShifts.length})</Text>
         </TouchableOpacity>
         {Object.entries(ROLE_LABELS).map(([role, label]) => {
           const count = shifts.filter(s => s.day === selectedDay && s.role === role).length;
           return (
             <TouchableOpacity key={role} onPress={() => setRoleFilter(role as ShiftRole)}
               style={[s.filterChip, { borderColor: ROLE_COLORS[role as ShiftRole] }, roleFilter === role && { backgroundColor: ROLE_COLORS[role as ShiftRole] }]}>
-              <Text style={[s.filterChipText, { color: roleFilter === role ? '#FFF' : ROLE_COLORS[role as ShiftRole] }]}>{label} ({count})</Text>
+              <Text style={[s.filterChipText, { color: roleFilter === role ? BG.white : ROLE_COLORS[role as ShiftRole] }]}>{label} ({count})</Text>
             </TouchableOpacity>
           );
         })}
@@ -176,16 +179,16 @@ export default function ShiftsScreen() {
 
       {/* Day Stats */}
       <View style={s.statsRow}>
-        <View style={[s.statCard, { backgroundColor: '#10B98115' }]}>
-          <Text style={[s.statVal, { color: '#10B981' }]}>{dayStats.checkedIn}</Text>
+        <View style={[s.statCard, { backgroundColor: EMERALD[500] + '15' }]}>
+          <Text style={[s.statVal, { color: STATUS.activeGreen }]}>{dayStats.checkedIn}</Text>
           <Text style={s.statLabel}>Checked In</Text>
         </View>
-        <View style={[s.statCard, { backgroundColor: '#3B82F615' }]}>
-          <Text style={[s.statVal, { color: '#3B82F6' }]}>{dayStats.scheduled}</Text>
+        <View style={[s.statCard, { backgroundColor: BLUE[500] + '15' }]}>
+          <Text style={[s.statVal, { color: BLUE[500] }]}>{dayStats.scheduled}</Text>
           <Text style={s.statLabel}>Scheduled</Text>
         </View>
-        <View style={[s.statCard, { backgroundColor: '#EF444415' }]}>
-          <Text style={[s.statVal, { color: '#EF4444' }]}>{dayStats.absent}</Text>
+        <View style={[s.statCard, { backgroundColor: RED[500] + '15' }]}>
+          <Text style={[s.statVal, { color: RED[500] }]}>{dayStats.absent}</Text>
           <Text style={s.statLabel}>Absent</Text>
         </View>
       </View>
@@ -199,12 +202,12 @@ export default function ShiftsScreen() {
               const minRequired = role === 'manager' ? 1 : role === 'maintenance' ? 1 : 2;
               const isUnder = count < minRequired;
               return (
-                <View key={role} style={[s.coverageCard, isUnder && { borderColor: '#EF4444' }]}>
+                <View key={role} style={[s.coverageCard, isUnder && { borderColor: RED[500] }]}>
                   <View style={[s.coverageIcon, { backgroundColor: ROLE_COLORS[role as ShiftRole] + '20' }]}>
                     <IconSymbol name={role === 'front_desk' ? 'front.desk' : role === 'housekeeping' ? 'cleaning' : role === 'kitchen' ? 'kitchen' : role === 'waiter' ? 'restaurant' : role === 'manager' ? 'manager' : 'maintenance'} size={16} color={ROLE_COLORS[role as ShiftRole]} />
                   </View>
                   <Text style={s.coverageRole}>{ROLE_LABELS[role as ShiftRole]}</Text>
-                  <Text style={[s.coverageCount, { color: isUnder ? '#EF4444' : '#10B981' }]}>{count}/{minRequired}+</Text>
+                  <Text style={[s.coverageCount, { color: isUnder ? RED[500] : STATUS.activeGreen }]}>{count}/{minRequired}+</Text>
                   {isUnder && <Text style={s.coverageWarning}>Understaffed</Text>}
                 </View>
               );
@@ -246,7 +249,7 @@ export default function ShiftsScreen() {
                         {isWorking && (
                           <View style={[s.timeBlock, {
                             backgroundColor: shift.status === 'checked_in' ? ROLE_COLORS[shift.role]
-                              : shift.status === 'absent' ? '#FEE2E2'
+                              : shift.status === 'absent' ? RED[100]
                               : ROLE_COLORS[shift.role] + '40',
                           }]} />
                         )}
@@ -270,10 +273,10 @@ export default function ShiftsScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={s.shiftName}>{shift.staffName}</Text>
                     <View style={[s.statusBadge, {
-                      backgroundColor: shift.status === 'checked_in' ? '#10B98115' : shift.status === 'absent' ? '#EF444415' : shift.status === 'swap_pending' ? '#F59E0B15' : '#F1F5F9',
+                      backgroundColor: shift.status === 'checked_in' ? EMERALD[500] + '15' : shift.status === 'absent' ? RED[500] + '15' : shift.status === 'swap_pending' ? AMBER[500] + '15' : SLATE[100],
                     }]}>
                       <Text style={[s.statusText, {
-                        color: shift.status === 'checked_in' ? '#10B981' : shift.status === 'absent' ? '#EF4444' : shift.status === 'swap_pending' ? '#F59E0B' : '#6B7280',
+                        color: shift.status === 'checked_in' ? STATUS.activeGreen : shift.status === 'absent' ? RED[500] : shift.status === 'swap_pending' ? AMBER[500] : GRAYTokens[500],
                       }]}>
                         {shift.status === 'checked_in' ? 'Checked In' : shift.status === 'absent' ? 'Absent' : shift.status === 'swap_pending' ? 'Swap Pending' : 'Scheduled'}
                       </Text>
@@ -299,51 +302,51 @@ export default function ShiftsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: GRAY[100] },
-  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: GRAY[100] },
+  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 18, fontWeight: '700', color: NAVY, fontFamily: TYPOGRAPHY.subtitle?.fontFamily },
-  sub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  iconBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  sub: { fontSize: 12, color: GRAYTokens[500], marginTop: 2 },
+  iconBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' },
   section: { paddingHorizontal: 16, marginTop: 20 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12 },
   weekGrid: { flexDirection: 'row', gap: 4 },
-  weekDay: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100] },
+  weekDay: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[100] },
   weekDayToday: { borderColor: ACCENT, borderWidth: 2 },
   weekDayActive: { backgroundColor: ACCENT, borderColor: ACCENT },
-  weekDayLabel: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
+  weekDayLabel: { fontSize: 11, fontWeight: '600', color: GRAYTokens[500] },
   weekDayCount: { fontSize: 18, fontWeight: '700', color: NAVY, marginTop: 2 },
   weekDayDots: { flexDirection: 'row', gap: 2, marginTop: 4 },
   weekDot: { width: 5, height: 5, borderRadius: 2.5 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: GRAY[200], backgroundColor: '#FFF' },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: GRAY[200], backgroundColor: BG.white },
   filterChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
-  filterChipText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: GRAYTokens[500] },
   statsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 4 },
   statCard: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: RADIUS.card },
   statVal: { fontSize: 20, fontWeight: '700' },
-  statLabel: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  statLabel: { fontSize: 11, color: GRAYTokens[500], marginTop: 2 },
   coverageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  coverageCard: { width: '30%', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100], gap: 4 },
+  coverageCard: { width: '30%', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[100], gap: 4 },
   coverageIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   coverageRole: { fontSize: 11, fontWeight: '600', color: NAVY },
   coverageCount: { fontSize: 13, fontWeight: '700' },
-  coverageWarning: { fontSize: 9, color: '#EF4444', fontWeight: '600' },
+  coverageWarning: { fontSize: 9, color: RED[500], fontWeight: '600' },
   timeGrid: { minWidth: 800 },
   timeGridHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: GRAY[100], paddingBottom: 6 },
-  timeGridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingVertical: 4 },
+  timeGridRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: SLATE[100], paddingVertical: 4 },
   timeGridStaffCell: { width: 100, justifyContent: 'center' },
   timeGridHourCell: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  timeGridHeaderText: { fontSize: 10, fontWeight: '600', color: '#94A3B8' },
+  timeGridHeaderText: { fontSize: 10, fontWeight: '600', color: SLATE[400] },
   roleTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
   roleDot: { width: 6, height: 6, borderRadius: 3 },
   staffName: { fontSize: 11, fontWeight: '600', color: NAVY, width: 70 },
   timeBlock: { width: 36, height: 20, borderRadius: 4 },
-  shiftCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: RADIUS.card, padding: 14, borderWidth: 1, borderColor: GRAY[100] },
+  shiftCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: BG.white, borderRadius: RADIUS.card, padding: 14, borderWidth: 1, borderColor: GRAY[100] },
   roleBar: { width: 4, height: 40, borderRadius: 2 },
   shiftName: { fontSize: 14, fontWeight: '600', color: NAVY },
-  shiftTime: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  shiftTime: { fontSize: 11, color: GRAYTokens[500], marginTop: 2 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   statusText: { fontSize: 10, fontWeight: '600' },
   emptyState: { alignItems: 'center', paddingVertical: 40, gap: 8 },
-  emptyText: { fontSize: 13, color: '#94A3B8' },
+  emptyText: { fontSize: 13, color: SLATE[400] },
 });

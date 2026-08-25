@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { getPortalStorageKeys } from '@/constants/api-config';
 import type { GuestProfile } from '@/types/api';
 import { safeGoBack } from '@/lib/utils';
+import { BG, SLATE, NEUTRAL, BRAND, SRS } from '@/lib/constants/figma-tokens';
 
 export default function ProfileEditScreen() {
   const { t } = useTranslation();
@@ -75,7 +76,7 @@ export default function ProfileEditScreen() {
               </View>
             )}
             <View style={s.cameraBadge}>
-              <IconSymbol name="camera" size={14} color="#FFF" />
+              <IconSymbol name="camera" size={14} color={BG.white} />
             </View>
           </TouchableOpacity>
           <Text style={s.photoHint}>{t('profileEdit.photoHint')}</Text>
@@ -95,7 +96,7 @@ export default function ProfileEditScreen() {
                 value={f.val}
                 onChangeText={f.set}
                 placeholder={f.placeholder}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={SLATE[400]}
                 keyboardType={(f as any).keyboard || 'default'}
                 autoCapitalize="none"
                 style={s.input}
@@ -109,20 +110,20 @@ export default function ProfileEditScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  cancelText: { fontSize: 14, color: '#94A3B8' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#1A3C5E' },
-  saveText: { fontSize: 14, fontWeight: '700', color: '#2E86AB' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 60, paddingBottom: 12, backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: SLATE[100] },
+  cancelText: { fontSize: 14, color: SLATE[400] },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: BRAND.navyLight },
+  saveText: { fontSize: 14, fontWeight: '700', color: SRS.teal },
   photoSection: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   photoWrap: { position: 'relative' },
   photo: { width: 88, height: 88, borderRadius: 44 },
   photoPlaceholder: { width: 88, height: 88, borderRadius: 44, backgroundColor: 'rgba(46, 134, 171, 0.15)', alignItems: 'center', justifyContent: 'center' },
-  photoInitial: { fontSize: 28, fontWeight: '700', color: '#2E86AB' },
-  cameraBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: '#2E86AB', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
-  photoHint: { fontSize: 12, color: '#94A3B8' },
+  photoInitial: { fontSize: 28, fontWeight: '700', color: SRS.teal },
+  cameraBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: SRS.teal, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: BG.white },
+  photoHint: { fontSize: 12, color: SLATE[400] },
   form: { paddingHorizontal: 16, gap: 16 },
   field: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#1A3C5E' },
-  input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, color: '#0F172A' },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: BRAND.navyLight },
+  input: { backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, color: SLATE[900] },
 });

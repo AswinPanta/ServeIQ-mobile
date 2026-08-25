@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { PURPLE, SLATE } from '@/lib/constants/figma-tokens';
 
 interface EmptyStateProps {
   icon: string;
@@ -9,7 +10,7 @@ interface EmptyStateProps {
   accentColor?: string;
 }
 
-export function EmptyState({ icon, title, message, accentColor = '#7C3AED' }: EmptyStateProps) {
+export function EmptyState({ icon, title, message, accentColor = PURPLE[700] }: EmptyStateProps) {
   return (
     <View style={styles.container}>
       <View style={[styles.iconWrap, { backgroundColor: accentColor + '10' }]}>
@@ -24,6 +25,6 @@ export function EmptyState({ icon, title, message, accentColor = '#7C3AED' }: Em
 const styles = StyleSheet.create({
   container: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 32 },
   iconWrap: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  title: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 6, textAlign: 'center' },
-  message: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 20 },
+  title: { fontSize: 16, fontWeight: '700', color: SLATE[900], marginBottom: 6, textAlign: 'center' },
+  message: { fontSize: 14, color: SLATE[500], textAlign: 'center', lineHeight: 20 },
 });

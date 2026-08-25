@@ -9,6 +9,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './auth-context';
 import type { GuestProfile } from '@/types/api';
+import { STATUS_COLORS } from '@/lib/constants/figma-tokens';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,10 +31,10 @@ export interface LoyaltyConfig {
 }
 
 export const LOYALTY_TIERS: LoyaltyConfig[] = [
-  { tier: 'BRONZE', minPoints: 0, color: '#CD7F32', benefits: ['Free welcome drink', 'Birthday bonus points'] },
-  { tier: 'SILVER', minPoints: 500, color: '#C0C0C0', benefits: ['5% discount on all bookings', 'Free welcome drink', 'Birthday bonus points', 'Early check-in (subject to availability)'] },
-  { tier: 'GOLD', minPoints: 2000, color: '#FFD700', benefits: ['10% discount on all bookings', 'Free room upgrade (subject to availability)', 'Late check-out (2 PM)', 'Free breakfast', 'Birthday bonus points', 'Priority customer support'] },
-  { tier: 'PLATINUM', minPoints: 5000, color: '#E5E4E2', benefits: ['15% discount on all bookings', 'Guaranteed room upgrade', 'Late check-out (6 PM)', 'Free breakfast + dinner', 'VIP airport transfer', 'Dedicated concierge', 'Birthday bonus points', 'Early access to promotions'] },
+  { tier: 'BRONZE', minPoints: 0, color: STATUS_COLORS.bronze, benefits: ['Free welcome drink', 'Birthday bonus points'] },
+  { tier: 'SILVER', minPoints: 500, color: STATUS_COLORS.silver, benefits: ['5% discount on all bookings', 'Free welcome drink', 'Birthday bonus points', 'Early check-in (subject to availability)'] },
+  { tier: 'GOLD', minPoints: 2000, color: STATUS_COLORS.gold, benefits: ['10% discount on all bookings', 'Free room upgrade (subject to availability)', 'Late check-out (2 PM)', 'Free breakfast', 'Birthday bonus points', 'Priority customer support'] },
+  { tier: 'PLATINUM', minPoints: 5000, color: STATUS_COLORS.platinum, benefits: ['15% discount on all bookings', 'Guaranteed room upgrade', 'Late check-out (6 PM)', 'Free breakfast + dinner', 'VIP airport transfer', 'Dedicated concierge', 'Birthday bonus points', 'Early access to promotions'] },
 ];
 
 export interface Promotion {
@@ -73,7 +74,7 @@ interface CRMContextValue {
 
 const CRMContext = createContext<CRMContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'stayeasy_crm_profiles';
+const STORAGE_KEY = 'serveiq_crm_profiles';
 
 const DEFAULT_PROMOTIONS: Promotion[] = [
   {
@@ -147,7 +148,9 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
           const parsed: [string, CRMProfile][] = JSON.parse(data);
           setCrmProfiles(new Map(parsed));
         }
-      } catch {}
+      } catch (e) {
+        console.warn('Failed to load CRM profiles:', e);
+      }
       setLoaded(true);
     };
     load();
@@ -155,7 +158,9 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loaded && crmProfiles.size > 0) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(crmProfiles.entries())));
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(crmProfiles.entries()))).catch(e => {
+        console.warn('Failed to save CRM profiles:', e);
+      });
     }
   }, [crmProfiles, loaded]);
 

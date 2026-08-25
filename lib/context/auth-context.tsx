@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL, API_ENDPOINTS, STORAGE_KEYS, getPortalStorageKeys } from '@/constants/api-config';
+import { mark, markEnd, markStart } from '@/lib/utils/perf';
 import { findDemoAccount, DEMO_ACCOUNTS, type DemoAccount } from '@/constants/demo-accounts';
+import { decodeJwtRole } from '@/lib/context/auth-utils';
+import { OPS_DEFAULT_PROPERTY_ID_KEY, OPS_DEFAULT_PROPERTY_NAME_KEY, getMustChangeGuestEmails } from '@/lib/context/host-utils';
 import type {
   GuestProfile,
   HostProfile,
@@ -12,6 +15,13 @@ import type {
   PortalProfile,
   OperatorRole,
 } from '@/types/api';
+
+export interface RegistrationResult {
+  message?: string;
+  guest_id?: string;
+  user_id?: string;
+  email?: string;
+}
 
 interface AuthContextType {
   user: PortalProfile | null;
@@ -29,17 +39,54 @@ interface AuthContextType {
   };
   login: (email: string, password: string) => Promise<PortalType>;
   demoLogin: (role: string) => Promise<PortalType>;
-  register: (email: string, phone: string, name: string, password: string, portal?: PortalType) => Promise<void>;
+  register: (email: string, phone: string, name: string, password: string, portal?: PortalType) => Promise<RegistrationResult>;
   verifyOTP: (email: string, otp: string, portal?: PortalType) => Promise<void>;
   resendOTP: (email: string, portal?: PortalType) => Promise<void>;
+  /** Returns false when the password changed but re-authentication with the new password failed. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   logout: () => Promise<void>;
   switchPortal: (portal: PortalType) => Promise<void>;
   setUser: (user: PortalProfile | null) => void;
   setTokens: (tokens: { accessToken: string; refreshToken: string }) => void;
   refreshAccessToken: () => Promise<string | null>;
+  /** True when the current user logged in with a temporary password and must change it. */
+  mustChangePassword: boolean;
+  /** The temporary password stored during login so the change-password flow can use it. */
+  tempPassword: string | null;
+  clearMustChangePassword: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const OPS_ROLES = [
+  'front_desk',
+  'housekeeping',
+  'pos',
+  'kds',
+  'manager',
+  'waiter',
+  'kitchen',
+  'maintenance',
+];
+
+/**
+ * Staff JWTs carry no property claims (the backend signs only `sub` + `role`),
+ * so a staff login can't know its property from the token. The host portal
+ * persists the last-selected property in these keys — reuse them so an invited
+ * staff member lands on their hotel's front desk on the same device.
+ */
+async function resolveOpsPropertyContext() {
+  try {
+    const [pid, name] = await Promise.all([
+      AsyncStorage.getItem(OPS_DEFAULT_PROPERTY_ID_KEY),
+      AsyncStorage.getItem(OPS_DEFAULT_PROPERTY_NAME_KEY),
+    ]);
+    if (pid) return { property_id: pid, property_name: name || '' };
+  } catch {
+    // Non-fatal — the profile falls back to the default ops property (prop-1).
+  }
+  return null;
+}
 
 function makeDemoUser(account: DemoAccount): PortalProfile {
   const now = new Date().toISOString();
@@ -117,6 +164,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     accessToken: null,
     refreshToken: null,
   });
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const isPortalType = (value: string): value is PortalType => {
     return ['guest', 'host', 'operations', 'superadmin'].includes(value);
@@ -124,73 +173,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initializeAuth = async () => {
+      markStart('auth-init');
+      // Restore the stored session from AsyncStorage first — no network.
+      let activePortal: PortalType | null = null;
+      let storedAccessToken: string | null = null;
+      let storedRefreshToken: string | null = null;
+      let keys: ReturnType<typeof getPortalStorageKeys> | null = null;
+
       try {
-        const activePortal = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_PORTAL);
-        if (activePortal && isPortalType(activePortal)) {
-          setPortal(activePortal);
-          const keys = getPortalStorageKeys(activePortal);
+        const stored = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_PORTAL);
+        if (stored && isPortalType(stored)) {
+          activePortal = stored;
+          setPortal(stored);
+          keys = getPortalStorageKeys(stored);
 
-          if (activePortal === 'guest') {
-            // Guest portal always opens signed out — clear any stored guest session
-            await Promise.all([
-              AsyncStorage.removeItem(keys.AUTH_TOKEN),
-              AsyncStorage.removeItem(keys.REFRESH_TOKEN),
-              AsyncStorage.removeItem(keys.USER_PROFILE),
-            ]);
-            return;
-          }
-
-          const [storedAccessToken, storedRefreshToken, storedUserProfile, storedOpRole] = await Promise.all([
+          const [access, refresh, profile, opRole] = await Promise.all([
             AsyncStorage.getItem(keys.AUTH_TOKEN),
             AsyncStorage.getItem(keys.REFRESH_TOKEN),
             AsyncStorage.getItem(keys.USER_PROFILE),
-            AsyncStorage.getItem('@stayeasy_operator_role'),
+            AsyncStorage.getItem('@serveiq_operator_role'),
           ]);
 
-          if (storedOpRole) {
-            setOperatorRole(storedOpRole as OperatorRole);
-          }
+          if (opRole) setOperatorRole(opRole as OperatorRole);
+          storedAccessToken = access;
+          storedRefreshToken = refresh;
 
-          if (storedAccessToken && storedRefreshToken) {
-            setTokens({
-              accessToken: storedAccessToken,
-              refreshToken: storedRefreshToken,
-            });
-            if (storedUserProfile) {
-              setUser(JSON.parse(storedUserProfile));
-            }
-            // Validate token with backend, but with a 5s timeout
-            // On timeout or network error, trust stored tokens (don't clear session)
-            try {
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), 5000);
-              const ep = API_ENDPOINTS.AUTH.USER_ME;
-              const meRes = await fetch(`${API_BASE_URL}${ep}`, {
-                headers: { Authorization: `Bearer ${storedAccessToken}` },
-                signal: controller.signal,
-              });
-              clearTimeout(timeoutId);
-              if (meRes.status === 401 || meRes.status === 403) {
-                // Token definitely expired — clear session
-                setTokens({ accessToken: null, refreshToken: null });
-                setUser(null);
-                await Promise.all([
-                  AsyncStorage.removeItem(keys.AUTH_TOKEN),
-                  AsyncStorage.removeItem(keys.REFRESH_TOKEN),
-                  AsyncStorage.removeItem(keys.USER_PROFILE),
-                ]);
-                await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_PORTAL);
+          if (access && refresh) {
+            setTokens({ accessToken: access, refreshToken: refresh });
+            if (profile) {
+              try {
+                setUser(JSON.parse(profile));
+              } catch {
+                // Corrupt stored profile — keep tokens, start signed out
               }
-              // On 200 or any other status, trust stored tokens and proceed
-            } catch {
-              // Network error, timeout, or abort — trust stored tokens, don't clear
             }
           }
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
+        // Auth init failure is non-fatal; stored tokens may still be valid.
+        // User will see the login screen if no session could be restored.
       } finally {
+        // Unblock launch immediately after restoring the stored session.
+        // The token validation below runs in the background so a slow or cold
+        // backend can never delay entry into the app (was 30-40s+ before).
         setIsLoading(false);
+        markEnd('auth-init (isLoading cleared)');
+      }
+
+      // Background token validation (fire-and-forget): only clear the session
+      // on a DEFINITIVE 401/403. Timeouts and network errors trust stored tokens.
+      if (activePortal && keys && storedAccessToken && storedRefreshToken) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const ep = activePortal === 'guest' ? API_ENDPOINTS.AUTH.GUEST_ME : API_ENDPOINTS.AUTH.USER_ME;
+          const meRes = await fetch(`${API_BASE_URL}${ep}`, {
+            headers: { Authorization: `Bearer ${storedAccessToken}` },
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          if (meRes.status === 401 || meRes.status === 403) {
+            // Token definitely expired — clear session, but only if the stored
+            // token is still the one we validated. The user may have logged in
+            // or switched portal while the probe was in flight; never wipe a
+            // newer session with a stale 401.
+            const currentToken = await AsyncStorage.getItem(keys.AUTH_TOKEN);
+            if (currentToken === storedAccessToken) {
+              setTokens({ accessToken: null, refreshToken: null });
+              setUser(null);
+              await Promise.all([
+                AsyncStorage.removeItem(keys.AUTH_TOKEN),
+                AsyncStorage.removeItem(keys.REFRESH_TOKEN),
+                AsyncStorage.removeItem(keys.USER_PROFILE),
+              ]);
+              await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_PORTAL);
+            }
+          }
+          // On 200 or any other status, trust stored tokens and proceed
+        } catch {
+          // Network error, timeout, or abort — trust stored tokens, don't clear
+        }
+        markEnd('auth probe done');
       }
     };
     initializeAuth();
@@ -205,7 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.setItem(keys.REFRESH_TOKEN, safeRefreshToken),
       AsyncStorage.setItem(keys.USER_PROFILE, JSON.stringify(profile)),
       AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_PORTAL, portalType),
-      opRole !== undefined ? AsyncStorage.setItem('@stayeasy_operator_role', opRole || '') : Promise.resolve(),
+      opRole !== undefined ? AsyncStorage.setItem('@serveiq_operator_role', opRole || '') : Promise.resolve(),
     ]);
   };
 
@@ -228,7 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_PORTAL);
     }
-    await AsyncStorage.removeItem('@stayeasy_operator_role');
+    await AsyncStorage.removeItem('@serveiq_operator_role');
   };
 
   /**
@@ -269,6 +333,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (loginRes.ok) {
+          const contentType = loginRes.headers?.get?.('content-type') || '';
+          if (!contentType.includes('application/json')) {
+            lastError = 'Backend is starting up, please try again in a moment';
+            throw new Error(lastError);
+          }
           const rawBody = await loginRes.json();
           const data: AuthResponse | null = (rawBody.success === true && rawBody.data)
             ? rawBody.data as AuthResponse
@@ -303,23 +372,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (userMeRes.ok) {
                 const rawProfile = await userMeRes.json();
                 const pd = (rawProfile.success === true && rawProfile.data) ? rawProfile.data : rawProfile;
-                const role = pd.role || '';
+                const role = String(pd.role || '').toLowerCase();
 
-                if (role === 'SUPER_ADMIN') {
+                if (role === 'super_admin') {
                   detectedPortal = 'superadmin';
                   profile = { ...pd, name: pd.full_name || pd.name, role: 'SUPER_ADMIN' } as SuperAdminProfile;
-                } else if (['front_desk', 'housekeeping', 'pos', 'kds', 'manager'].includes(role)) {
+                } else if (OPS_ROLES.includes(role)) {
                   detectedPortal = 'operations';
                   detectedOpRole = role as OperatorRole;
-                  profile = { ...pd, name: pd.full_name || pd.name, role } as OperatorProfile;
+                  const opsProp = await resolveOpsPropertyContext();
+                  profile = {
+                    ...pd,
+                    name: pd.full_name || pd.name,
+                    role,
+                    ...(opsProp || {}),
+                  } as OperatorProfile;
                 } else {
                   detectedPortal = 'host';
                   profile = { ...pd, name: pd.full_name || pd.name, firstName: pd.first_name, lastName: pd.last_name } as HostProfile;
                 }
               } else {
-                // Both /me endpoints failed — use token but set guest as default
-                profile = { email, name: email.split('@')[0] } as GuestProfile;
-                detectedPortal = 'guest';
+                // Both /me probes failed — fall back to the JWT role claim.
+                const jwtRole = (decodeJwtRole(data.access_token) || '').toLowerCase();
+                if (jwtRole === 'super_admin') {
+                  detectedPortal = 'superadmin';
+                  profile = { email, name: email.split('@')[0], role: 'SUPER_ADMIN' } as SuperAdminProfile;
+                } else if (OPS_ROLES.includes(jwtRole)) {
+                  detectedPortal = 'operations';
+                  detectedOpRole = jwtRole as OperatorRole;
+                  const opsProp = await resolveOpsPropertyContext();
+                  profile = {
+                    email,
+                    name: email.split('@')[0],
+                    role: jwtRole,
+                    ...(opsProp || {}),
+                  } as OperatorProfile;
+                } else if (jwtRole === 'admin') {
+                  detectedPortal = 'host';
+                  profile = { email, name: email.split('@')[0] } as HostProfile;
+                } else {
+                  profile = { email, name: email.split('@')[0] } as GuestProfile;
+                  detectedPortal = 'guest';
+                }
               }
             }
 
@@ -329,11 +423,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setOperatorRole(detectedOpRole);
             setTokens({ accessToken: data.access_token, refreshToken: loginRefreshToken });
             setUser(profile);
+            // Check if this email has a pending temp-password flag
+            const mustChangeMap = await getMustChangeGuestEmails();
+            if (mustChangeMap[email.toLowerCase()]) {
+              setMustChangePassword(true);
+              setTempPassword(password);
+            }
             return detectedPortal;
           }
         } else {
-          const errBody = await loginRes.json().catch(() => ({}));
-          lastError = errBody.error || errBody.detail || 'Login failed';
+          if (loginRes.status === 502 || loginRes.status === 503) {
+            lastError = 'Backend is starting up, please try again in a moment';
+          } else {
+            const errBody = await loginRes.json().catch(() => ({}));
+            lastError = errBody.error || errBody.detail || `Login failed (${loginRes.status})`;
+          }
         }
       } catch (e) {
         lastError = e instanceof Error ? e.message : 'Network error';
@@ -379,34 +483,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const register = useCallback(async (email: string, phone: string, name: string, password: string, portal?: PortalType) => {
+  const register = useCallback(async (email: string, phone: string, name: string, password: string, portal?: PortalType): Promise<RegistrationResult> => {
     try {
-      setIsLoading(true);
-      const body = { full_name: name, email, password, phone: phone || undefined };
+      const body: Record<string, string> = { full_name: name, email, password };
+      if (phone) body.phone = phone;
       const endpoint = portal === 'host' ? API_ENDPOINTS.AUTH.USER_REGISTER : API_ENDPOINTS.AUTH.GUEST_REGISTER;
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      const rawBody = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
         if (response.status >= 500) {
-          throw new Error('Our servers are temporarily unavailable. Please try the demo login instead.');
+          throw new Error('Our servers are temporarily unavailable. Please try again shortly.');
         }
-        throw new Error(errorBody.error || errorBody.detail?.[0]?.msg || errorBody.message || 'Registration failed');
+        const detail = rawBody.detail;
+        const message =
+          typeof detail === 'string' ? detail
+          : Array.isArray(detail) && detail[0]?.msg ? detail[0].msg
+          : rawBody.message || rawBody.error || 'Registration failed';
+        throw new Error(message);
       }
+      return rawBody as RegistrationResult;
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
   const verifyOTP = useCallback(async (email: string, otp: string, portal?: PortalType) => {
     try {
-      setIsLoading(true);
       const targetPortal = portal || 'guest';
       const verifyEndpoint = targetPortal === 'host' ? API_ENDPOINTS.AUTH.USER_VERIFY_OTP : API_ENDPOINTS.AUTH.GUEST_VERIFY_OTP;
       const response = await fetch(`${API_BASE_URL}${verifyEndpoint}`, {
@@ -435,9 +542,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profileResponse.ok) {
           const rawProfile = await profileResponse.json();
           const profileData = (rawProfile.success === true && rawProfile.data) ? rawProfile.data : rawProfile;
-          const profile = targetPortal === 'guest'
-            ? { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name } as GuestProfile
-            : { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name } as PortalProfile;
+          const profile = targetPortal === 'host'
+            ? { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name, firstName: profileData.first_name, lastName: profileData.last_name } as HostProfile
+            : { ...profileData, name: profileData.full_name || profileData.name, full_name: profileData.full_name } as GuestProfile;
           await Promise.all([
             AsyncStorage.setItem(getPortalStorageKeys(targetPortal).USER_PROFILE, JSON.stringify(profile)),
             AsyncStorage.setItem(getPortalStorageKeys(targetPortal).AUTH_TOKEN, otpAccessToken),
@@ -452,8 +559,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('OTP verification error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
@@ -484,6 +589,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTokens({ accessToken: null, refreshToken: null });
     } catch (error) {
       console.error('Logout error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -499,7 +605,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.getItem(keys.AUTH_TOKEN),
         AsyncStorage.getItem(keys.REFRESH_TOKEN),
         AsyncStorage.getItem(keys.USER_PROFILE),
-        AsyncStorage.getItem('@stayeasy_operator_role'),
+        AsyncStorage.getItem('@serveiq_operator_role'),
       ]);
       setPortal(newPortal);
       if (storedOpRole) setOperatorRole(storedOpRole as OperatorRole);
@@ -512,6 +618,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Switch portal error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -523,6 +630,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [],
   );
+
+  /**
+   * Change the signed-in account's password via the live backend.
+   * Guest accounts hit /auth/guest/change-password, all other portals hit
+   * /auth/user/change-password (both AUTH-gated, body ChangePasswordRequest).
+   * Demo accounts carry local-only tokens, so they can't hit the backend —
+   * surface a friendly error instead of a confusing 401.
+   */
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    const accessToken = tokens.accessToken;
+    if (!accessToken || !portal) throw new Error('You are not signed in. Please log in first.');
+    if (accessToken.startsWith('demo-')) {
+      throw new Error('Demo accounts can\'t change passwords. Sign in with a registered account to update your password.');
+    }
+
+    const endpoint = portal === 'guest'
+      ? API_ENDPOINTS.AUTH.CHANGE_PASSWORD_GUEST
+      : API_ENDPOINTS.AUTH.CHANGE_PASSWORD_USER;
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+
+    const rawBody = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Your current password is incorrect or your session has expired.');
+      }
+      if (response.status === 422) {
+        const detail = rawBody.detail;
+        const message = Array.isArray(detail) && detail[0]?.msg
+          ? detail[0].msg
+          : 'New password must be at least 8 characters.';
+        throw new Error(message);
+      }
+      throw new Error(rawBody.error || rawBody.message || rawBody.detail || 'Failed to change password. Please try again.');
+    }
+
+    // The backend changes the password but the deployed instance invalidates
+    // the old session afterwards (its response literally says "You can now log
+    // in with your new password"). Re-authenticate with the new password so
+    // the user stays signed in with fresh tokens instead of being logged out.
+    if (user?.email) {
+      try {
+        await login(user.email, newPassword);
+        return true;
+      } catch {
+        // The password WAS changed — only the re-login failed (e.g. backend
+        // hiccup). Keep the current session state and let the caller warn the
+        // user to sign in again with the new password if the old tokens die.
+        return false;
+      }
+    }
+    return true;
+  }, [tokens.accessToken, portal, user?.email, login]);
+
+  const clearMustChangePassword = useCallback(() => {
+    setMustChangePassword(false);
+  }, []);
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     try {
@@ -572,11 +743,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       verifyOTP,
       resendOTP,
+      changePassword,
       logout,
       switchPortal,
       setUser,
       setTokens: internalSetTokens,
       refreshAccessToken,
+      mustChangePassword,
+      tempPassword,
+      clearMustChangePassword,
     }),
     [
       user,
@@ -589,11 +764,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       verifyOTP,
       resendOTP,
+      changePassword,
       logout,
       switchPortal,
       setUser,
       internalSetTokens,
       refreshAccessToken,
+      mustChangePassword,
+      tempPassword,
+      clearMustChangePassword,
     ],
   );
 

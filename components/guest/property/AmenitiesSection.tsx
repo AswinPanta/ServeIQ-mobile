@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
+import { BRAND } from '@/lib/constants/figma-tokens';
 
 interface Amenity {
   name: string;
@@ -22,7 +23,7 @@ export function AmenitiesSection({ amenities }: AmenitiesSectionProps) {
       <View style={s.list}>
         {displayed.map((a) => (
           <View key={a.name} style={s.row}>
-            <IconSymbol name={(a.icon || 'wifi') as any} size={16} color="#1A3C5E" />
+            <IconSymbol name={(a.icon || 'wifi') as any} size={16} color={BRAND.navyLight} />
             <Text style={s.text}>{a.name}</Text>
           </View>
         ))}
@@ -40,15 +41,15 @@ export function AmenitiesSection({ amenities }: AmenitiesSectionProps) {
 
 const s = StyleSheet.create({
   title: {
-    fontSize: 14, fontWeight: '700', color: '#1A3C5E', marginBottom: 10,
+    fontSize: 14, fontWeight: '700', color: BRAND.navyLight, marginBottom: 10,
     letterSpacing: -0.2, fontFamily: FONTS.sora,
   },
   list: { gap: 2 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
-  text: { fontSize: 13, color: '#1A3C5E' },
+  text: { fontSize: 13, color: BRAND.navyLight },
   showMoreBtn: {
     marginTop: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
-    borderColor: '#1A3C5E', alignItems: 'center',
+    borderColor: BRAND.navyLight, alignItems: 'center',
   },
-  showMoreText: { fontSize: 12, fontWeight: '600', color: '#1A3C5E' },
+  showMoreText: { fontSize: 12, fontWeight: '600', color: BRAND.navyLight },
 });

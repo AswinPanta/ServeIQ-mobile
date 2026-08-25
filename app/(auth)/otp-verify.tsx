@@ -4,22 +4,22 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
-
-const NAVY = '#1A3C5E';
-const TEAL = '#2E86AB';
+import { BG, NEUTRAL, TEXT, CORAL, GRAY } from '@/lib/constants/figma-tokens';
+;
+;
 
 export default function OTPVerifyScreen() {
   const { t } = useTranslation();
-  const { verifyOTP, resendOTP, isLoading } = useAuth();
+  const { verifyOTP, resendOTP } = useAuth();
   const { email, portal: portalParam } = useLocalSearchParams<{ email: string; portal?: string }>();
   const portal = (portalParam as 'guest' | 'host' | undefined) || 'guest';
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const inputs = useRef<(TextInput | null)[]>([]);
   const [error, setError] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
 
@@ -46,12 +46,16 @@ export default function OTPVerifyScreen() {
 
   const handleVerify = async () => {
     const otp = code.join('');
+    if (verifyLoading) return;
     if (otp.length < 6) { setError('Enter the 6-digit code'); return; }
+    setVerifyLoading(true);
     try {
       await verifyOTP(email || '', otp, portal);
       router.replace('/(auth)/account-created');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');
+    } finally {
+      setVerifyLoading(false);
     }
   };
 
@@ -87,7 +91,9 @@ export default function OTPVerifyScreen() {
                 value={digit}
                 onChangeText={(t) => handleChange(t, i)}
                 onKeyPress={(e) => handleKeyPress(e, i)}
-                keyboardType="number-pad"
+                keyboardType="default"
+                autoCapitalize="characters"
+                autoCorrect={false}
                 maxLength={1}
                 selectTextOnFocus
               />
@@ -97,13 +103,13 @@ export default function OTPVerifyScreen() {
           {error ? <Text style={s.error}>{error}</Text> : null}
 
           <TouchableOpacity
-            style={[s.verifyBtn, (isLoading || code.join('').length < 6) && { opacity: 0.7 }]}
+            style={[s.verifyBtn, (verifyLoading || code.join('').length < 6) && { opacity: 0.7 }]}
             onPress={handleVerify}
-            disabled={isLoading || code.join('').length < 6}
+            disabled={verifyLoading || code.join('').length < 6}
             activeOpacity={0.85}
           >
-            {isLoading ? (
-              <ActivityIndicator color="#FFF" />
+            {verifyLoading ? (
+              <ActivityIndicator color={BG.white} />
             ) : (
               <Text style={s.verifyBtnText}>{t('auth.otp.verify')}</Text>
             )}
@@ -111,7 +117,7 @@ export default function OTPVerifyScreen() {
 
           <View style={s.resendRow}>
             <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0 || resendLoading}>
-              <Text style={[s.resendLink, (resendTimer > 0 || resendLoading) && { color: '#ccc' }]}>
+              <Text style={[s.resendLink, (resendTimer > 0 || resendLoading) && { color: GRAY[300] }]}>
                 {resendLoading ? t('common.loading') : resendTimer > 0 ? `Resend in ${resendTimer}s` : t('auth.otp.resend')}
               </Text>
             </TouchableOpacity>
@@ -125,7 +131,7 @@ export default function OTPVerifyScreen() {
 const s = StyleSheet.create({
   wrap: { flex: 1 },
   container: {
-    flex: 1, backgroundColor: '#E8E8E8',
+    flex: 1, backgroundColor: NEUTRAL[500],
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
@@ -137,43 +143,43 @@ const s = StyleSheet.create({
     zIndex: 10,
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.1,
     shadowRadius: 24,
     elevation: 8,
   },
-  title: { fontSize: 20, fontWeight: '700', color: '#111', marginBottom: 6 },
-  subtitle: { fontSize: 13, color: '#999', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+  title: { fontSize: 20, fontWeight: '700', color: GRAY[900], marginBottom: 6 },
+  subtitle: { fontSize: 13, color: GRAY[400], textAlign: 'center', marginBottom: 28, lineHeight: 20 },
 
   codeRow: { flexDirection: 'row', gap: 10, marginBottom: 28 },
   codeInput: {
     width: 44, height: 52,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#ddd',
+    borderColor: GRAY[200],
     textAlign: 'center',
     fontSize: 22,
     fontWeight: '700',
-    color: '#111',
+    color: GRAY[900],
   },
-  codeInputFilled: { borderColor: '#111', backgroundColor: '#F8F8F8' },
+  codeInputFilled: { borderColor: GRAY[900], backgroundColor: NEUTRAL[200] },
 
-  error: { color: '#e94560', fontSize: 12, marginBottom: 12 },
+  error: { color: CORAL[400], fontSize: 12, marginBottom: 12 },
 
   verifyBtn: {
     width: '100%', paddingVertical: 12,
-    backgroundColor: '#111', borderRadius: 8,
+    backgroundColor: GRAY[900], borderRadius: 8,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 16,
   },
-  verifyBtnText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+  verifyBtnText: { fontSize: 14, fontWeight: '600', color: BG.white },
 
   resendRow: { flexDirection: 'row', alignItems: 'center' },
-  resendText: { fontSize: 12, color: '#aaa' },
-  resendLink: { fontSize: 12, color: '#111', fontWeight: '600' },
+  resendText: { fontSize: 12, color: GRAY[400] },
+  resendLink: { fontSize: 12, color: GRAY[900], fontWeight: '600' },
 });

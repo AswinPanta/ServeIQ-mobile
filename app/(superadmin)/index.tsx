@@ -8,9 +8,10 @@ import { StatCard } from '@/components/superadmin/StatCard';
 import { AdminCard } from '@/components/superadmin/AdminCard';
 import { AnimatedPressable, FadeInView, Stagger } from '@/components/ui/motion';
 import { getTenants } from '@/lib/api';
+import { PURPLE, SLATE, BLUE, STATUS, AMBER, RED } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#7C3AED';
-const DARK = '#0F172A';
+const ACCENT = PURPLE[700];
+const DARK = SLATE[900];
 
 const SYSTEM_STATUS = [
   { label: 'API', value: '142ms', ok: true },
@@ -20,10 +21,10 @@ const SYSTEM_STATUS = [
 ];
 
 const QUICK_ACTIONS = [
-  { label: 'Create Tenant', icon: 'add' as const, color: '#7C3AED', route: '/(superadmin)/commerce/tenant-setup' },
-  { label: 'Reports', icon: 'report' as const, color: '#3B82F6', route: '/(superadmin)/platform/reports' },
-  { label: 'Health', icon: 'verified' as const, color: '#10B981', route: '/(superadmin)/system/health' },
-  { label: 'Flags', icon: 'flag' as const, color: '#F59E0B', route: '/(superadmin)/platform/feature-flags' },
+  { label: 'Create Tenant', icon: 'add' as const, color: PURPLE[700], route: '/(superadmin)/commerce/tenant-setup' },
+  { label: 'Reports', icon: 'report' as const, color: BLUE[500], route: '/(superadmin)/platform/reports' },
+  { label: 'Health', icon: 'verified' as const, color: STATUS.activeGreen, route: '/(superadmin)/system/health' },
+  { label: 'Flags', icon: 'flag' as const, color: AMBER[500], route: '/(superadmin)/platform/feature-flags' },
 ];
 
 export default function SuperAdminDashboard() {
@@ -32,7 +33,9 @@ export default function SuperAdminDashboard() {
   const [tenants, setTenants] = useState<any[]>([]);
 
   useEffect(() => {
-    getTenants().then(setTenants);
+    let cancelled = false;
+    getTenants().then(data => { if (!cancelled) setTenants(data); });
+    return () => { cancelled = true; };
   }, []);
 
   const greeting = () => {
@@ -56,7 +59,7 @@ export default function SuperAdminDashboard() {
           <Text style={styles.userName}>{user?.name || 'Admin'}</Text>
         </View>
         <TouchableOpacity onPress={() => router.replace('/')} style={styles.switchBtn}>
-          <IconSymbol name="arrow.back" size={16} color="#94A3B8" />
+          <IconSymbol name="arrow.back" size={16} color={SLATE[400]} />
         </TouchableOpacity>
       </View>
 
@@ -136,9 +139,9 @@ export default function SuperAdminDashboard() {
           {(tenants.length > 0 ? tenants.slice(0, 5).map((t: any, i: number) => ({
             action: `Tenant "${t.name || t.brand_name || 'Property'}" — ${t.status || 'active'}`,
             time: t.created_at ? new Date(t.created_at).toLocaleDateString() : `${i + 1} day${i > 0 ? 's' : ''} ago`,
-            color: t.status === 'suspended' ? '#EF4444' : '#10B981',
+            color: t.status === 'suspended' ? RED[500] : STATUS.activeGreen,
           })) : [
-            { action: 'Waiting for backend tenant data...', time: 'N/A', color: '#94A3B8' },
+            { action: 'Waiting for backend tenant data...', time: 'N/A', color: SLATE[400] },
           ]).map((act: any, i: number, arr: any[]) => (
             <View key={i} style={[styles.activityRow, i < arr.length - 1 && styles.activityBorder]}>
               <View style={[styles.activityDot, { backgroundColor: act.color }]} />
@@ -154,10 +157,10 @@ export default function SuperAdminDashboard() {
       {/* Plans Distribution — derived from tenant data */}
       <AdminCard title="Plan Distribution" style={styles.cardMargin}>
         {[
-          { name: 'Enterprise', value: Math.max(0, Math.floor(tenants.length * 0.17)) || 4, color: '#7C3AED' },
-          { name: 'Pro', value: Math.max(0, Math.floor(tenants.length * 0.33)) || 8, color: '#3B82F6' },
-          { name: 'Basic', value: Math.max(0, Math.floor(tenants.length * 0.33)) || 8, color: '#10B981' },
-          { name: 'Trial', value: Math.max(1, tenants.length - Math.floor(tenants.length * 0.83)) || 4, color: '#F59E0B' },
+          { name: 'Enterprise', value: Math.max(0, Math.floor(tenants.length * 0.17)) || 4, color: PURPLE[700] },
+          { name: 'Pro', value: Math.max(0, Math.floor(tenants.length * 0.33)) || 8, color: BLUE[500] },
+          { name: 'Basic', value: Math.max(0, Math.floor(tenants.length * 0.33)) || 8, color: STATUS.activeGreen },
+          { name: 'Trial', value: Math.max(1, tenants.length - Math.floor(tenants.length * 0.83)) || 4, color: AMBER[500] },
         ].map((plan) => (
           <View key={plan.name} style={styles.planRow}>
             <View style={[styles.planDot, { backgroundColor: plan.color }]} />
@@ -175,7 +178,7 @@ export default function SuperAdminDashboard() {
         <View style={styles.statusGrid}>
           {SYSTEM_STATUS.map((s) => (
             <View key={s.label} style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: s.ok ? '#10B981' : '#F59E0B' }]} />
+              <View style={[styles.statusDot, { backgroundColor: s.ok ? STATUS.activeGreen : AMBER[500] }]} />
               <Text style={styles.statusLabel}>{s.label}</Text>
               <Text style={styles.statusValue}>{s.value}</Text>
             </View>
@@ -188,7 +191,7 @@ export default function SuperAdminDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -197,20 +200,20 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
   },
-  greeting: { fontSize: 14, color: '#94A3B8', fontWeight: '500' },
+  greeting: { fontSize: 14, color: SLATE[400], fontWeight: '500' },
   userName: { fontSize: 26, fontWeight: '800', color: DARK, letterSpacing: -0.5, marginTop: 2 },
-  switchBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  switchBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' },
   kpiRow: { paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   cardMargin: { marginHorizontal: 16, marginBottom: 16 },
   chartRow: { flexDirection: 'row', justifyContent: 'space-between', height: 100 },
   chartCol: { alignItems: 'center', flex: 1 },
   barContainer: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 85 },
   bar: { width: 10, borderRadius: 5 },
-  chartLabel: { fontSize: 10, color: '#94A3B8', marginTop: 6, fontWeight: '500' },
+  chartLabel: { fontSize: 10, color: SLATE[400], marginTop: 6, fontWeight: '500' },
   legendRow: { flexDirection: 'row', gap: 16, marginTop: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: '#64748B' },
+  legendText: { fontSize: 11, color: SLATE[500] },
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -220,11 +223,11 @@ const styles = StyleSheet.create({
   },
   quickAction: { alignItems: 'center', gap: 6, flex: 1 },
   quickIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  quickLabel: { fontSize: 11, fontWeight: '600', color: '#64748B', textAlign: 'center' },
+  quickLabel: { fontSize: 11, fontWeight: '600', color: SLATE[500], textAlign: 'center' },
   planRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
   planDot: { width: 8, height: 8, borderRadius: 4 },
   planName: { fontSize: 13, color: DARK, width: 80 },
-  planBarBg: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F1F5F9' },
+  planBarBg: { flex: 1, height: 6, borderRadius: 3, backgroundColor: SLATE[100] },
   planBar: { height: 6, borderRadius: 3 },
   planValue: { fontSize: 13, fontWeight: '700', color: DARK, width: 24, textAlign: 'right' },
   statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -235,14 +238,14 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: SLATE[50],
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusLabel: { fontSize: 12, color: '#64748B', flex: 1 },
+  statusLabel: { fontSize: 12, color: SLATE[500], flex: 1 },
   statusValue: { fontSize: 12, fontWeight: '700', color: DARK },
   activityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 12 },
-  activityBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  activityBorder: { borderBottomWidth: 1, borderBottomColor: SLATE[100] },
   activityDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  activityAction: { fontSize: 13, color: '#0F172A', lineHeight: 18 },
-  activityTime: { fontSize: 11, color: '#94A3B8', marginTop: 3 },
+  activityAction: { fontSize: 13, color: SLATE[900], lineHeight: 18 },
+  activityTime: { fontSize: 11, color: SLATE[400], marginTop: 3 },
 });

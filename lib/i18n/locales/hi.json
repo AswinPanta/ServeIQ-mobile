@@ -62,7 +62,7 @@
   "auth.accountCreated.message": "आपका खाता बन गया है। अब खोजना शुरू करें!",
   "auth.accountCreated.next": "शुरू करें",
 
-  "auth.splash.title": "StayEasy",
+  "auth.splash.title": "ServeIQ",
   "auth.splash.subtitle": "अपना बेहतरीन ठहराव खोजें",
   "auth.splash.getStarted": "शुरू करें",
 
@@ -74,7 +74,7 @@
   "home.browseByType": "संपत्ति के प्रकार के अनुसार देखें",
   "home.exploreMore": "और संपत्तियां देखें",
   "home.seeAll": "सभी देखें",
-  "home.welcome": "StayEasy में आपका स्वागत है",
+  "home.welcome": "ServeIQ में आपका स्वागत है",
   "home.welcomeDesc": "आपके लिए चुने गए अद्भुत होटल और रेस्तरां खोजें",
   "home.getStarted": "शुरू करें",
   "home.becomeHost": "होस्ट बनें",
@@ -286,16 +286,16 @@
   "roomSelect.addToBooking": "बुकिंग में जोड़ें",
   "roomSelect.unavailable": "अनुपलब्ध",
 
-  "components.whyStayEasy.title": "क्यों StayEasy?",
-  "components.whyStayEasy.subtitle": "हम यात्रा को सरल और यादगार बनाते हैं",
-  "components.whyStayEasy.secureBooking": "सुरक्षित बुकिंग",
-  "components.whyStayEasy.support": "24/7 सहायता",
-  "components.whyStayEasy.bestPrice": "सर्वश्रेष्ठ मूल्य गारंटी",
-  "components.whyStayEasy.curated": "चुनिंदा संपत्तियां",
-  "components.whyStayEasy.secureBookingDesc": "आपके भुगतान और व्यक्तिगत जानकारी एंटरप्राइज़-ग्रेड सुरक्षा से हमेशा सुरक्षित हैं।",
-  "components.whyStayEasy.supportDesc": "हमारी टीम किसी भी प्रश्न या समस्या में मदद के लिए चौबीसों घंटे उपलब्ध है।",
-  "components.whyStayEasy.bestPriceDesc": "कहीं और कम कीमत मिले तो हम उससे मिलेंगे। विश्वास के साथ बुक करें।",
-  "components.whyStayEasy.curatedDesc": "हर संपत्ति गुणवत्ता और आराम के लिए चुनी और जांची गई है।",
+  "components.whyServeIQ.title": "क्यों ServeIQ?",
+  "components.whyServeIQ.subtitle": "हम यात्रा को सरल और यादगार बनाते हैं",
+  "components.whyServeIQ.secureBooking": "सुरक्षित बुकिंग",
+  "components.whyServeIQ.support": "24/7 सहायता",
+  "components.whyServeIQ.bestPrice": "सर्वश्रेष्ठ मूल्य गारंटी",
+  "components.whyServeIQ.curated": "चुनिंदा संपत्तियां",
+  "components.whyServeIQ.secureBookingDesc": "आपके भुगतान और व्यक्तिगत जानकारी एंटरप्राइज़-ग्रेड सुरक्षा से हमेशा सुरक्षित हैं।",
+  "components.whyServeIQ.supportDesc": "हमारी टीम किसी भी प्रश्न या समस्या में मदद के लिए चौबीसों घंटे उपलब्ध है।",
+  "components.whyServeIQ.bestPriceDesc": "कहीं और कम कीमत मिले तो हम उससे मिलेंगे। विश्वास के साथ बुक करें।",
+  "components.whyServeIQ.curatedDesc": "हर संपत्ति गुणवत्ता और आराम के लिए चुनी और जांची गई है।",
 
   "components.testimonials.title": "यात्री क्या कहते हैं",
 
@@ -323,9 +323,9 @@
 
   "components.footer.support": "सहायता",
   "components.footer.hosting": "होस्टिंग",
-  "components.footer.company": "StayEasy",
+  "components.footer.company": "ServeIQ",
   "components.footer.legal": "कानूनी",
-  "components.footer.copyright": "© 2026 StayEasy, Inc. सर्वाधिकार सुरक्षित।",
+  "components.footer.copyright": "© 2026 ServeIQ, Inc. सर्वाधिकार सुरक्षित।",
   "components.footer.language": "अंग्रेज़ी (US)",
   "components.footer.currency": "$ USD",
 

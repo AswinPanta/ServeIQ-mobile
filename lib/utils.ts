@@ -42,12 +42,12 @@ export function safeGoBack(fallbackRoute?: string) {
  * copy in AsyncStorage so the FrontDeskProvider can pick it up and show it
  * as an arriving guest.
  *
- * The key format: @stayeasy_ops_bridge_bookings_{propertyId}
+ * The key format: @serveiq_ops_bridge_bookings_{propertyId}
  * FrontDeskProvider checks for pending bridged bookings on mount and
  * loads them as arrivals.
  */
 
-const BRIDGE_PREFIX = '@stayeasy_ops_bridge_';
+const BRIDGE_PREFIX = '@serveiq_ops_bridge_';
 const BRIDGE_BOOKINGS_KEY = (propertyId: string) => `${BRIDGE_PREFIX}bookings_${propertyId}`;
 
 export interface BridgedBooking {

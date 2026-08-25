@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { BRAND, BG, RED, SLATE, TEXT, NEUTRAL } from '@/lib/constants/figma-tokens';
 
 interface ImageGalleryProps {
   images: string[];
@@ -30,7 +31,7 @@ export function ImageGallery({
       <View style={s.fullContainer}>
         <View style={s.topActions}>
           <TouchableOpacity onPress={onBack} style={s.actionBtn}>
-            <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+            <IconSymbol name="arrow.back" size={18} color={BRAND.navyLight} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onTogglePhotos} style={s.actionBtn}>
             <Text style={s.collapseText}>Collapse</Text>
@@ -55,17 +56,17 @@ export function ImageGallery({
             onPress={() => onSelectImage(selectedImageIndex === 0 ? images.length - 1 : selectedImageIndex - 1)}
             style={[s.galleryNav, { left: 12 }]}
           >
-            <IconSymbol name="chevron.left" size={18} color="#FFF" />
+            <IconSymbol name="chevron.left" size={18} color={BG.white} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onSelectImage(selectedImageIndex === images.length - 1 ? 0 : selectedImageIndex + 1)}
             style={[s.galleryNav, { right: 12 }]}
           >
-            <IconSymbol name="chevron.right" size={18} color="#FFF" />
+            <IconSymbol name="chevron.right" size={18} color={BG.white} />
           </TouchableOpacity>
           <View style={s.dotRow}>
             {images.map((_, i) => (
-              <View key={i} style={[s.dot, { backgroundColor: i === selectedImageIndex ? '#FFF' : 'rgba(255,255,255,0.4)' }]} />
+              <View key={i} style={[s.dot, { backgroundColor: i === selectedImageIndex ? BG.white : 'rgba(255,255,255,0.4)' }]} />
             ))}
           </View>
         </>
@@ -73,21 +74,21 @@ export function ImageGallery({
 
       <View style={s.topActions}>
         <TouchableOpacity onPress={onBack} style={s.actionBtn}>
-          <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+          <IconSymbol name="arrow.back" size={18} color={BRAND.navyLight} />
         </TouchableOpacity>
         <View style={s.topRight}>
           <TouchableOpacity onPress={onShare} style={s.actionBtn}>
-            <IconSymbol name="share" size={18} color="#1A3C5E" />
+            <IconSymbol name="share" size={18} color={BRAND.navyLight} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onToggleFavorite} style={s.actionBtn}>
-            <IconSymbol name="heart.fill" size={18} color={isFavorite ? '#EF4444' : '#94A3B8'} />
+            <IconSymbol name="heart.fill" size={18} color={isFavorite ? RED[500] : SLATE[400]} />
           </TouchableOpacity>
         </View>
       </View>
 
       {images.length > 1 && (
         <TouchableOpacity onPress={onTogglePhotos} style={s.photoCount}>
-          <IconSymbol name="photo" size={12} color="#1A3C5E" />
+          <IconSymbol name="photo" size={12} color={BRAND.navyLight} />
           <Text style={s.photoCountText}>{showAllPhotos ? 'Collapse' : `${images.length} photos`}</Text>
         </TouchableOpacity>
       )}
@@ -96,7 +97,7 @@ export function ImageGallery({
 }
 
 const s = StyleSheet.create({
-  gallery: { position: 'relative', backgroundColor: '#000', height: 320 },
+  gallery: { position: 'relative', backgroundColor: TEXT.black, height: 320 },
   mainImage: { width: '100%', height: '100%' },
   galleryNav: {
     position: 'absolute', top: '50%', marginTop: -18, width: 36, height: 36,
@@ -117,9 +118,9 @@ const s = StyleSheet.create({
     position: 'absolute', bottom: 12, right: 12, flexDirection: 'row', alignItems: 'center',
     gap: 4, backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
   },
-  photoCountText: { fontSize: 11, fontWeight: '600', color: '#1A3C5E' },
-  fullContainer: { flex: 1, backgroundColor: '#FAFAFA' },
+  photoCountText: { fontSize: 11, fontWeight: '600', color: BRAND.navyLight },
+  fullContainer: { flex: 1, backgroundColor: NEUTRAL[50] },
   fullGrid: { padding: 16, gap: 12 },
   fullImg: { width: '100%', height: 180, borderRadius: 12 },
-  collapseText: { fontSize: 12, fontWeight: '600', color: '#1A3C5E' },
+  collapseText: { fontSize: 12, fontWeight: '600', color: BRAND.navyLight },
 });

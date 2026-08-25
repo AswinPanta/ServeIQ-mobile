@@ -10,9 +10,10 @@ import { PHONE_CODES } from '@/lib/mock/phone-codes';
 import { COUNTRIES } from '@/lib/mock/countries';
 import { FONTS } from '@/constants/portal-theme';
 import type { GuestProfile } from '@/types/api';
+import { CORAL as CORALTokens, BRAND, BLUE, BG, SLATE, NEUTRAL } from '@/lib/constants/figma-tokens';
 
-const CORAL = '#E63946';
-const NAVY = '#1A3C5E';
+const CORAL = CORALTokens[500];
+const NAVY = BRAND.navyLight;
 
 export default function AboutScreen() {
   const { user: authUser } = useAuth();
@@ -44,7 +45,14 @@ export default function AboutScreen() {
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.about.title')}</Text>
-        <View style={{ width: 36 }} />
+        <View style={s.headerActions}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/profile/bookings')} style={s.actionBtn}>
+            <IconSymbol name="calendar" size={18} color={BLUE[600]} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/settings')} style={s.settingsBtn}>
+            <IconSymbol name="settings" size={18} color={NAVY} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
@@ -54,7 +62,7 @@ export default function AboutScreen() {
               <Text style={s.avatarInitials}>{initials}</Text>
             </View>
             <TouchableOpacity style={s.editOverlay}>
-              <IconSymbol name="edit" size={14} color="#FFF" />
+              <IconSymbol name="edit" size={14} color={BG.white} />
             </TouchableOpacity>
           </View>
           <Text style={s.profileName}>{user?.name || t('profile.userLabel')}</Text>
@@ -67,7 +75,7 @@ export default function AboutScreen() {
               value={name}
               onChangeText={setName}
               placeholder={t('profile.about.namePlaceholder')}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               style={s.input}
             />
           </View>
@@ -84,13 +92,13 @@ export default function AboutScreen() {
             <View style={s.phoneRow}>
               <TouchableOpacity style={s.dialPicker} onPress={() => setShowPhonePicker(true)}>
                 <Text style={s.dialText}>{selectedDial}</Text>
-                <IconSymbol name="chevron.down" size={12} color="#64748B" />
+                <IconSymbol name="chevron.down" size={12} color={SLATE[500]} />
               </TouchableOpacity>
               <TextInput
                 value={phoneNumber}
                 onChangeText={(v) => setPhone(selectedDial + v)}
                 placeholder={t('profile.about.phonePlaceholder')}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={SLATE[400]}
                 keyboardType="phone-pad"
                 style={[s.input, s.phoneInput]}
               />
@@ -103,7 +111,7 @@ export default function AboutScreen() {
               value={dob}
               onChangeText={setDob}
               placeholder={t('profile.about.dobPlaceholder')}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               style={s.input}
             />
           </View>
@@ -114,7 +122,7 @@ export default function AboutScreen() {
               <Text style={[s.pickerText, !nationality && s.pickerPlaceholder]}>
                 {nationality || t('profile.about.nationalityPlaceholder')}
               </Text>
-              <IconSymbol name="chevron.down" size={14} color="#94A3B8" />
+              <IconSymbol name="chevron.down" size={14} color={SLATE[400]} />
             </TouchableOpacity>
           </View>
 
@@ -127,7 +135,7 @@ export default function AboutScreen() {
               value={bio}
               onChangeText={(v) => setBio(v.slice(0, 500))}
               placeholder={t('profile.about.bioPlaceholder')}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               multiline
               numberOfLines={4}
               style={[s.input, s.bioInput]}
@@ -199,41 +207,44 @@ export default function AboutScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 12 },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SLATE[100] },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  actionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BLUE[100] },
+  settingsBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: BLUE[100] },
   title: { fontSize: 20, fontWeight: '700', color: NAVY, letterSpacing: -0.5, fontFamily: FONTS.sora },
-  profileCard: { alignItems: 'center', marginHorizontal: 16, padding: 24, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 12, gap: 12 },
+  profileCard: { alignItems: 'center', marginHorizontal: 16, padding: 24, borderRadius: 16, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100], marginBottom: 12, gap: 12 },
   avatarWrap: { position: 'relative' },
   avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: CORAL + '15', alignItems: 'center', justifyContent: 'center' },
   avatarInitials: { fontSize: 28, fontWeight: '700', color: CORAL, fontFamily: FONTS.inter.bold },
-  editOverlay: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: CORAL, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+  editOverlay: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: CORAL, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: BG.white },
   profileName: { fontSize: 18, fontWeight: '700', color: NAVY, fontFamily: FONTS.inter.semiBold },
-  formSection: { marginHorizontal: 16, padding: 16, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', gap: 16 },
+  formSection: { marginHorizontal: 16, padding: 16, borderRadius: 16, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100], gap: 16 },
   field: { gap: 6 },
   fieldLabel: { fontSize: 12, fontWeight: '600', color: NAVY, fontFamily: FONTS.inter.semiBold },
-  input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, color: '#0F172A', fontFamily: FONTS.inter.regular },
-  readOnlyInput: { backgroundColor: '#F8FAFC', justifyContent: 'center' },
-  readOnlyText: { fontSize: 14, color: '#94A3B8', fontFamily: FONTS.inter.regular },
+  input: { backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, color: SLATE[900], fontFamily: FONTS.inter.regular },
+  readOnlyInput: { backgroundColor: SLATE[50], justifyContent: 'center' },
+  readOnlyText: { fontSize: 14, color: SLATE[400], fontFamily: FONTS.inter.regular },
   phoneRow: { flexDirection: 'row', gap: 8 },
-  dialPicker: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, backgroundColor: '#FFF' },
-  dialText: { fontSize: 14, color: '#0F172A', fontFamily: FONTS.inter.medium },
+  dialPicker: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, backgroundColor: BG.white },
+  dialText: { fontSize: 14, color: SLATE[900], fontFamily: FONTS.inter.medium },
   phoneInput: { flex: 1 },
-  pickerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, backgroundColor: '#FFF' },
-  pickerText: { fontSize: 14, color: '#0F172A', fontFamily: FONTS.inter.regular, flex: 1 },
-  pickerPlaceholder: { color: '#94A3B8' },
+  pickerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, backgroundColor: BG.white },
+  pickerText: { fontSize: 14, color: SLATE[900], fontFamily: FONTS.inter.regular, flex: 1 },
+  pickerPlaceholder: { color: SLATE[400] },
   bioHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  charCount: { fontSize: 11, color: '#94A3B8', fontFamily: FONTS.inter.regular },
+  charCount: { fontSize: 11, color: SLATE[400], fontFamily: FONTS.inter.regular },
   bioInput: { minHeight: 100, paddingTop: 13 },
   saveBtn: { marginHorizontal: 16, marginTop: 20, paddingVertical: 16, borderRadius: 14, backgroundColor: CORAL, alignItems: 'center', justifyContent: 'center' },
-  saveBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF', fontFamily: FONTS.inter.semiBold },
+  saveBtnText: { fontSize: 16, fontWeight: '700', color: BG.white, fontFamily: FONTS.inter.semiBold },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  modalContent: { backgroundColor: BG.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: 40 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: SLATE[100] },
   modalTitle: { fontSize: 16, fontWeight: '700', color: NAVY, fontFamily: FONTS.inter.semiBold },
-  pickerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  pickerItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: SLATE[50] },
   pickerItemActive: { backgroundColor: CORAL + '06' },
   flag: { fontSize: 20 },
   countryName: { fontSize: 14, color: NAVY, flex: 1, fontFamily: FONTS.inter.regular },
-  dialCode: { fontSize: 14, color: '#64748B', fontFamily: FONTS.inter.regular },
+  dialCode: { fontSize: 14, color: SLATE[500], fontFamily: FONTS.inter.regular },
 });

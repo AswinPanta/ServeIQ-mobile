@@ -1,7 +1,7 @@
 # Guest Home UI Design — Mobile Replication
 
 ## Overview
-Replicate the web StayEasy guest homepage for mobile with creative enhancements.
+Replicate the web ServeIQ guest homepage for mobile with creative enhancements.
 
 ## Sections
 1. **Hero with Search** — Full-bleed hero image, animated search bar, gradient overlay
@@ -24,7 +24,7 @@ Replicate the web StayEasy guest homepage for mobile with creative enhancements.
 - `app/(tabs)/index.tsx` — Main home screen
 - `components/feature/hero-section.tsx` — Enhanced hero
 - `components/guest/Testimonials.tsx` — Enhanced testimonials
-- `components/guest/WhyStayEasy.tsx` — Trust badges
+- `components/guest/WhyServeIQ.tsx` — Trust badges
 - `components/guest/OtherHotels.tsx` — Related hotels
 - New: `components/guest/PropertyTypeBrowser.tsx`
 - New: `components/guest/TrendingDestinations.tsx`

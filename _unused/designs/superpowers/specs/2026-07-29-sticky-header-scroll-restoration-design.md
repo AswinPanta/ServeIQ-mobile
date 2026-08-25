@@ -2,7 +2,7 @@
 
 ## Summary
 
-Two small React Native features ported from `Thadaw/StayEasy2.0` that improve navigation UX: a persistent search bar and automatic scroll-to-top/restore on route changes.
+Two small React Native features ported from `Thadaw/ServeIQ2.0` that improve navigation UX: a persistent search bar and automatic scroll-to-top/restore on route changes.
 
 ## StickySearchHeader
 

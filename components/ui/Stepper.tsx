@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ACCENT, getAccentColor } from '@/constants/portal-theme';
+import { BG, SLATE } from '@/lib/constants/figma-tokens';
 
 interface Step {
   label: string;
@@ -30,14 +31,14 @@ export function Stepper({ steps, currentStep, onStepPress }: StepperProps) {
                   width: 28,
                   height: 28,
                   borderRadius: 14,
-                  backgroundColor: isCompleted ? ACCENT : isCurrent ? '#FFF' : '#E2E8F0',
+                  backgroundColor: isCompleted ? ACCENT : isCurrent ? BG.white : SLATE[200],
                   borderWidth: isCurrent ? 2.5 : 0,
                   borderColor: ACCENT,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: isCompleted || isCurrent ? (isCurrent ? ACCENT : '#FFF') : '#94A3B8' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: isCompleted || isCurrent ? (isCurrent ? ACCENT : BG.white) : SLATE[400] }}>
                   {isCompleted ? '✓' : index + 1}
                 </Text>
               </TouchableOpacity>
@@ -45,7 +46,7 @@ export function Stepper({ steps, currentStep, onStepPress }: StepperProps) {
                 style={{
                   fontSize: 10,
                   fontWeight: isCurrent ? '700' : '500',
-                  color: isCurrent ? ACCENT : isCompleted ? '#475569' : '#94A3B8',
+                  color: isCurrent ? ACCENT : isCompleted ? SLATE[600] : SLATE[400],
                   textAlign: 'center',
                   marginTop: 6,
                   maxWidth: 64,
@@ -62,7 +63,7 @@ export function Stepper({ steps, currentStep, onStepPress }: StepperProps) {
                     left: '50%',
                     right: -10,
                     height: 2,
-                    backgroundColor: isCompleted ? ACCENT : '#E2E8F0',
+                    backgroundColor: isCompleted ? ACCENT : SLATE[200],
                     zIndex: -1,
                   }}
                 />

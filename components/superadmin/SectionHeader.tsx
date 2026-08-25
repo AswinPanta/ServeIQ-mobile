@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { PURPLE, SLATE } from '@/lib/constants/figma-tokens';
 
 interface SectionHeaderProps {
   title: string;
@@ -9,7 +10,7 @@ interface SectionHeaderProps {
   accentColor?: string;
 }
 
-export function SectionHeader({ title, actionLabel, onAction, accentColor = '#7C3AED' }: SectionHeaderProps) {
+export function SectionHeader({ title, actionLabel, onAction, accentColor = PURPLE[700] }: SectionHeaderProps) {
   return (
     <View style={styles.row}>
       <Text style={styles.title}>{title}</Text>
@@ -25,7 +26,7 @@ export function SectionHeader({ title, actionLabel, onAction, accentColor = '#7C
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
-  title: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  title: { fontSize: 17, fontWeight: '700', color: SLATE[900] },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   actionText: { fontSize: 13, fontWeight: '700' },
 });

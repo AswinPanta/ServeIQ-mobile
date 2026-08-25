@@ -1,3 +1,4 @@
+import { BG, BORDER, TEXT, BRAND, STATUS } from '@/lib/constants/figma-tokens';
 /**
  * Housekeeping Figma Design Tokens
  * Extracted from figmahousekeepingsvg.svg (node-id=636-185)
@@ -8,43 +9,43 @@
 
 export const HK_COLORS = {
   // Page & card backgrounds
-  pageBg: '#FAF9FC',
-  cardBg: '#F4F3F6',
-  subCardBg: '#EEEDF1',
+  pageBg: BG.page,
+  cardBg: BG.card,
+  subCardBg: BG.subCard,
 
   // Borders & dividers
-  border: '#C3C6CF',
+  border: BORDER.primary,
   borderLight: 'rgba(195, 198, 207, 0.3)',
 
   // Text colors
-  textPrimary: '#43474E',
-  textHeading: '#1A1C1E',
-  textMuted: '#73777F',
+  textPrimary: TEXT.primary,
+  textHeading: TEXT.heading,
+  textMuted: TEXT.muted,
 
   // Brand colors
-  navy: '#002645',
-  navyLight: '#1A3C5E',
-  teal: '#006687',
-  tealDark: '#005D7C',
+  navy: BRAND.navy,
+  navyLight: BRAND.navyLight,
+  teal: BRAND.teal,
+  tealDark: BRAND.tealDark,
 
   // Status colors (foreground)
-  dirty: '#BA1A1A',
-  inProgress: '#006687',
-  cleaned: '#166534',
-  inspected: '#002645',
+  dirty: STATUS.danger,
+  inProgress: BRAND.teal,
+  cleaned: STATUS.bookingConfirmed,
+  inspected: BRAND.navy,
 
   // Status badge backgrounds (tinted)
-  badgeRed: '#FFDAD6',
-  badgeBlue: '#87D6FE',
-  badgeGreen: '#DCFCE7',
-  badgeOrange: '#FFDDB0',
+  badgeRed: STATUS.dangerBg,
+  badgeBlue: STATUS.badgeBlue,
+  badgeGreen: STATUS.badgeGreen,
+  badgeOrange: STATUS.badgeOrange,
 
   // Active green (from Figma CSS)
-  activeGreen: '#10B981',
+  activeGreen: STATUS.activeGreen,
 
   // UI element colors
-  inactive: '#E8E8EB',
-  white: '#FFF',
+  inactive: BORDER.inactive,
+  white: BG.white,
 
   // Shadows (from Figma CSS)
   shadowSm: '0px 1px 2px rgba(0, 0, 0, 0.05)',

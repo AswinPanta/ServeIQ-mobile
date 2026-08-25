@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Animated, ActivityIndicator, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ScreenContainer } from '@/components/screen-container';
@@ -7,17 +7,26 @@ import { HeroSection } from '@/components/feature/hero-section';
 import { SearchModal } from '@/components/feature/search-modal';
 import { PropertyTypeBrowser } from '@/components/guest/PropertyTypeBrowser';
 import { NewsletterCTA } from '@/components/guest/NewsletterCTA';
-import { WhyStayEasy } from '@/components/guest/WhyStayEasy';
+import { Testimonials } from '@/components/guest/Testimonials';
+import { TrustBadges } from '@/components/guest/TrustBadges';
+import { GuestFooter } from '@/components/guest/GuestFooter';
 import { useAuth } from '@/lib/context/auth-context';
 import { searchHotelsApi } from '@/lib/api';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import type { Hotel } from '@/types/api';
 import { POPULAR_DESTINATIONS } from '@/lib/mock/landing-data';
 import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
-import { FONTS } from '@/constants/portal-theme';
 import { useTranslation } from 'react-i18next';
 import { useNearbyProperties } from '@/hooks/use-nearby-properties';
+import { mark, markEnd, markStart } from '@/lib/utils/perf';
+import { BRAND, BG, SRS, AMBER, SLATE, RED, TEXT, CORAL } from '@/lib/constants/figma-tokens';
 
+
+function formatDistance(km?: number): string {
+  if (km == null || isNaN(km)) return '';
+  if (km < 1) return '<1 km';
+  return `${Math.round(km * 10) / 10} km`.replace('.0 km', ' km');
+}
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -36,13 +45,17 @@ export default function HomeScreen() {
     MOCK_PROPERTIES.filter(h => h.city === 'Pokhara')
   );
 
+  useEffect(() => { mark('home first render'); }, []);
+
   useEffect(() => {
     let cancelled = false;
+    markStart('home city fetches');
     (async () => {
       const [ktm, pkr] = await Promise.all([
         searchHotelsApi({ destination: 'Kathmandu' }),
         searchHotelsApi({ destination: 'Pokhara' }),
       ]);
+      markEnd('home city fetches');
       if (cancelled) return;
       if (ktm.hotels.length > 0) setKathmanduHotels(ktm.hotels);
       if (pkr.hotels.length > 0) setPokharaHotels(pkr.hotels);
@@ -50,28 +63,8 @@ export default function HomeScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  if (!isSignedIn) {
-    return (
-      <ScreenContainer className="flex-1" containerClassName="bg-background">
-        <View style={s.signedOutContainer}>
-          <View style={s.signedOutIcon}>
-            <IconSymbol name="hotel" size={40} color="#FFF" />
-          </View>
-          <Text style={s.signedOutTitle}>{t('home.welcome')}</Text>
-          <Text style={s.signedOutDesc}>{t('home.welcomeDesc')}</Text>
-          <TouchableOpacity
-            onPress={() => router.push('/(auth)/login')}
-            style={s.signedOutBtn}
-            activeOpacity={0.85}
-          >
-            <Text style={s.signedOutBtnText}>{t('home.getStarted')}</Text>
-          </TouchableOpacity>
-        </View>
-      </ScreenContainer>
-    );
-  }
-
   return (
+    <>
     <ScreenContainer className="flex-1" containerClassName="bg-background">
       <ScrollView
         ref={scrollRef}
@@ -84,17 +77,22 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={s.header}>
           <View style={s.brandRow}>
-            <View style={s.logoDot} />
+            <Image source={require('@/assets/images/serveiq-logo.png')} style={s.logoImage} />
             <Text style={s.brandName}>
-              Stay<Text style={s.brandAccent}>Easy</Text>
+              Serve<Text style={s.brandAccent}>IQ</Text>
             </Text>
           </View>
           <View style={s.headerRight}>
+            {!isSignedIn && (
+              <TouchableOpacity style={s.signInBtn} onPress={() => router.push('/(auth)/login')} activeOpacity={0.85}>
+                <Text style={s.signInBtnText}>Sign in</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={s.hostBtn} onPress={() => router.push('/(host)/landing')}>
               <Text style={s.hostBtnText}>{t('home.becomeHost')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.notifBtn}>
-              <IconSymbol name="notifications" size={18} color="#1A3C5E" />
+            <TouchableOpacity style={s.notifBtn} onPress={() => router.push('/(tabs)/profile/notifications')} activeOpacity={0.7}>
+              <IconSymbol name="notifications" size={18} color={BRAND.navyLight} />
               <View style={s.notifDot} />
             </TouchableOpacity>
           </View>
@@ -107,69 +105,79 @@ export default function HomeScreen() {
         <View style={s.section}>
           <PropertyTypeBrowser
             selected={selectedPropertyType}
-            onSelect={setSelectedPropertyType}
+            onSelect={(type) => {
+              setSelectedPropertyType(type);
+              router.push({ pathname: '/guest-search-results', params: { type } });
+            }}
           />
         </View>
 
-        {/* Stays nearby */}
+        {/* Stays nearby — hidden until the user grants location permission */}
         <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <View style={s.sectionTitleRow}>
-              <IconSymbol name="location" size={18} color="#2E86AB" />
-              <Text style={s.sectionTitle}>{t('home.staysNearby')}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setShowSearch(true)}>
-              <View style={s.seeAllBtn}>
-                <Text style={s.seeAll}>{t('components.destinations.viewAll')}</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-          <Text style={s.sectionHint}>{t('home.staysNearbyHint')}</Text>
-
-          {!locationGranted && (
+          {!locationGranted ? (
             <TouchableOpacity style={s.locationBanner} onPress={requestLocation} activeOpacity={0.8}>
-              <IconSymbol name="location" size={18} color="#FFF" />
+              <IconSymbol name="location" size={18} color={BG.white} />
               <View style={{ flex: 1 }}>
                 <Text style={s.locationBannerTitle}>Enable location</Text>
-                <Text style={s.locationBannerDesc}>Find properties near you</Text>
+                <Text style={s.locationBannerDesc}>Unlock stays nearby — find properties around you</Text>
               </View>
               <IconSymbol name="chevron.right" size={16} color="rgba(255,255,255,0.7)" />
             </TouchableOpacity>
-          )}
-
-          {nearbyLoading ? (
-            <View style={s.nearbyLoading}>
-              <ActivityIndicator size="small" color="#2E86AB" />
-              <Text style={s.nearbyLoadingText}>Finding nearby properties...</Text>
-            </View>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingTop: 12 }}>
-              {nearbyHotels.map((hotel) => (
-                <TouchableOpacity
-                  key={hotel.id}
-                  style={s.nearbyCard}
-                  onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
-                  activeOpacity={0.85}
-                >
-                  <Image
-                    source={{ uri: hotel.images[0] }}
-                    style={s.nearbyImage}
-                    resizeMode="cover"
-                  />
-                  <View style={s.nearbyInfo}>
-                    <Text style={s.nearbyName} numberOfLines={1}>{hotel.name}</Text>
-                    <Text style={s.nearbyLocation} numberOfLines={1}>{hotel.city}, {hotel.country}</Text>
-                    <View style={s.nearbyBottom}>
-                      <View style={s.nearbyRating}>
-                        <Text style={s.nearbyStar}>⭐</Text>
-                        <Text style={s.nearbyRatingText}>{hotel.rating}</Text>
-                      </View>
-                      <Text style={s.nearbyPrice}>{hotel.currency} {hotel.price}</Text>
-                    </View>
+            <>
+              <View style={s.sectionHeader}>
+                <View style={s.sectionTitleRow}>
+                  <IconSymbol name="location" size={18} color={SRS.teal} />
+                  <Text style={s.sectionTitle}>{t('home.staysNearby')}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowSearch(true)}>
+                  <View style={s.seeAllBtn}>
+                    <Text style={s.seeAll}>{t('components.destinations.viewAll')}</Text>
                   </View>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
+              <Text style={s.sectionHint}>{t('home.staysNearbyHint')}</Text>
+
+              {nearbyLoading && nearbyHotels.length === 0 ? (
+                <View style={s.nearbyLoading}>
+                  <ActivityIndicator size="small" color={SRS.teal} />
+                  <Text style={s.nearbyLoadingText}>Finding nearby properties...</Text>
+                </View>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingTop: 12 }}>
+                  {nearbyHotels.map((hotel) => (
+                    <TouchableOpacity
+                      key={hotel.id}
+                      style={s.nearbyCard}
+                      onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
+                      activeOpacity={0.85}
+                    >
+                      <Image
+                        source={{ uri: hotel.images[0] }}
+                        style={s.nearbyImage}
+                        resizeMode="cover"
+                      />
+                      <View style={s.nearbyInfo}>
+                        <Text style={s.nearbyName} numberOfLines={1}>{hotel.name}</Text>
+                        <View style={s.nearbyLocRow}>
+                          <Text style={s.nearbyLocation} numberOfLines={1}>{hotel.city}, {hotel.country}</Text>
+                          {formatDistance(hotel.distance_km) ? (
+                            <Text style={s.nearbyDistance}>📍 {formatDistance(hotel.distance_km)}</Text>
+                          ) : null}
+                        </View>
+                        <View style={s.nearbyBottom}>
+                          <View style={s.nearbyRating}>
+                            <Text style={s.nearbyStar}>⭐</Text>
+                            <Text style={s.nearbyRatingText}>{hotel.rating}</Text>
+                          </View>
+                          <Text style={s.nearbyPrice}>{hotel.currency} {hotel.price}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </>
           )}
         </View>
 
@@ -180,7 +188,7 @@ export default function HomeScreen() {
               <Text style={s.cityEmoji}>🏛️</Text>
               <View>
                 <Text style={s.sectionTitle}>Stay in Kathmandu</Text>
-                <Text style={s.sectionHint}>Nepal's capital — temples, history, vibrant culture</Text>
+                <Text style={s.sectionHint}>Nepal{"'"}s capital — temples, history, vibrant culture</Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => router.push({ pathname: '/guest-search-results', params: { location: 'Kathmandu' } })}>
@@ -261,7 +269,7 @@ export default function HomeScreen() {
         <View style={s.section}>
           <View style={s.sectionHeader}>
             <View style={s.sectionTitleRow}>
-              <IconSymbol name="star" size={18} color="#F59E0B" />
+              <IconSymbol name="star" size={18} color={AMBER[500]} />
               <Text style={s.sectionTitle}>{t('components.destinations.popular') || 'Popular destinations'}</Text>
             </View>
             <TouchableOpacity onPress={() => setShowSearch(true)}>
@@ -295,18 +303,27 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Why StayEasy */}
-        <View style={s.section}>
-          <WhyStayEasy />
-        </View>
-
         {/* Newsletter CTA */}
         <View style={{ marginTop: 24 }}>
           <NewsletterCTA />
         </View>
+
+        {/* Testimonials */}
+        <View style={{ marginTop: 24 }}>
+          <Testimonials />
+        </View>
+
+        {/* Trust Badges */}
+        <View style={{ marginTop: 24 }}>
+          <TrustBadges />
+        </View>
+
+        {/* Footer */}
+        <GuestFooter />
       </ScrollView>
-      <SearchModal visible={showSearch} onClose={() => setShowSearch(false)} />
     </ScreenContainer>
+    <SearchModal visible={showSearch} onClose={() => setShowSearch(false)} />
+    </>
   );
 }
 
@@ -318,29 +335,28 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  logoDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#2E86AB',
+  logoImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
   },
   brandName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     letterSpacing: -0.5,
   },
   brandAccent: {
-    color: '#2E86AB',
+    color: SRS.teal,
   },
   headerRight: {
     flexDirection: 'row',
@@ -352,22 +368,33 @@ const s = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: SLATE[200],
   },
   hostBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
+    color: SLATE[600],
+  },
+  signInBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: BRAND.navyLight,
+  },
+  signInBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: BG.white,
   },
   notifBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
   },
   notifDot: {
     position: 'absolute',
@@ -376,7 +403,7 @@ const s = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#EF4444',
+    backgroundColor: RED[500],
   },
   section: {
     paddingHorizontal: 16,
@@ -396,13 +423,13 @@ const s = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     letterSpacing: -0.3,
   },
   seeAll: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2E86AB',
+    color: SRS.teal,
   },
   seeAllBtn: {
     paddingHorizontal: 10,
@@ -412,7 +439,7 @@ const s = StyleSheet.create({
   },
   sectionHint: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: SLATE[400],
     marginTop: 4,
   },
   locationBanner: {
@@ -422,8 +449,8 @@ const s = StyleSheet.create({
     marginTop: 12,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: '#2E86AB',
-    shadowColor: '#2E86AB',
+    backgroundColor: SRS.teal,
+    shadowColor: SRS.teal,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -432,7 +459,7 @@ const s = StyleSheet.create({
   locationBannerTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
   },
   locationBannerDesc: {
     fontSize: 12,
@@ -447,16 +474,16 @@ const s = StyleSheet.create({
   },
   nearbyLoadingText: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: SLATE[400],
   },
   nearbyCard: {
     width: 200,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -465,7 +492,7 @@ const s = StyleSheet.create({
   nearbyImage: {
     width: '100%',
     height: 120,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: SLATE[100],
   },
   nearbyInfo: {
     padding: 12,
@@ -473,13 +500,30 @@ const s = StyleSheet.create({
   nearbyName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     marginBottom: 2,
+  },
+  nearbyLocRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 8,
   },
   nearbyLocation: {
     fontSize: 11,
-    color: '#94A3B8',
-    marginBottom: 8,
+    color: SLATE[400],
+    flexShrink: 1,
+  },
+  nearbyDistance: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: SRS.teal,
+    backgroundColor: 'rgba(46,134,171,0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
   nearbyBottom: {
     flexDirection: 'row',
@@ -497,67 +541,22 @@ const s = StyleSheet.create({
   nearbyRatingText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
   },
   nearbyPrice: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#E63946',
-  },
-  signedOutContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    backgroundColor: '#0F172A',
-  },
-  signedOutIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  signedOutTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: FONTS.sora,
-    color: '#FFF',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  signedOutDesc: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  signedOutBtn: {
-    marginTop: 28,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: '#FFF',
-  },
-  signedOutBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A3C5E',
+    color: CORAL[500],
   },
   cityCard: {
     flex: 1,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -569,11 +568,11 @@ const s = StyleSheet.create({
   cityPropCard: {
     width: 220,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -582,7 +581,7 @@ const s = StyleSheet.create({
   cityPropImage: {
     width: '100%',
     height: 130,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: SLATE[100],
   },
   cityPropInfo: {
     padding: 12,
@@ -590,12 +589,12 @@ const s = StyleSheet.create({
   cityPropName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     marginBottom: 2,
   },
   cityPropLocation: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: SLATE[400],
     marginBottom: 8,
   },
   cityPropBottom: {
@@ -611,23 +610,23 @@ const s = StyleSheet.create({
   cityPropRatingText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
   },
   cityPropReviews: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: SLATE[400],
   },
   cityPropPrice: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#E63946',
+    color: CORAL[500],
   },
   popularCard: {
     width: 140,
     height: 180,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: SLATE[100],
   },
   popularImage: {
     width: '100%',
@@ -646,7 +645,7 @@ const s = StyleSheet.create({
   popularCity: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
   },
   popularCountry: {
     fontSize: 11,
@@ -670,7 +669,7 @@ const s = StyleSheet.create({
   popularRatingText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
   },
   popularProps: {
     fontSize: 10,

@@ -9,6 +9,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="coupons" />
       <Stack.Screen name="reviews" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="security" />
     </Stack>
   );
 }

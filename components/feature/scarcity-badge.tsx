@@ -9,6 +9,7 @@ import Animated, {
   Easing,
   interpolateColor,
 } from 'react-native-reanimated';
+import { RED, BG, AMBER, BLUE, TEXT } from '@/lib/constants/figma-tokens';
 
 interface ScarcityBadgeProps {
   /** How many rooms are still available */
@@ -20,9 +21,9 @@ interface ScarcityBadgeProps {
 }
 
 const BADGE_COLORS: Record<string, { bg: string; pulse: string; text: string }> = {
-  critical: { bg: '#DC2626', pulse: '#FCA5A5', text: '#fff' },
-  warning: { bg: '#D97706', pulse: '#FDE68A', text: '#fff' },
-  low: { bg: '#2563EB', pulse: '#93C5FD', text: '#fff' },
+  critical: { bg: RED[600], pulse: RED[300], text: BG.white },
+  warning: { bg: AMBER[600], pulse: AMBER[200], text: BG.white },
+  low: { bg: BLUE[600], pulse: BLUE[300], text: BG.white },
 };
 
 function getColorConfig(count: number) {
@@ -91,7 +92,7 @@ export function ScarcityBadge({ count, maxThreshold = 3, position = 'absolute' }
           paddingHorizontal: 10,
           paddingVertical: 5,
           borderRadius: 8,
-          shadowColor: '#000',
+          shadowColor: TEXT.black,
           shadowOffset: { width: 0, height: 3 },
           shadowOpacity: 0.25,
           shadowRadius: 6,

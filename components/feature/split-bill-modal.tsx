@@ -7,8 +7,9 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import type { CartItem } from '@/lib/context/restaurant-context';
+import { TEAL, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#0D9488';
+const ACCENT = TEAL[600];
 
 interface SplitBillModalProps {
   visible: boolean;
@@ -90,7 +91,7 @@ export function SplitBillModal({ visible, onClose, items, subtotal, onApplySplit
                     borderWidth: 1, borderColor: mode === m ? ACCENT : colors.border,
                   }}
                 >
-                  <Text className="text-xs font-semibold" style={{ color: mode === m ? '#fff' : colors.text }}>
+                  <Text className="text-xs font-semibold" style={{ color: mode === m ? BG.white : colors.text }}>
                     {m === 'equal' ? 'Equal' : m === 'by_item' ? 'By Item' : 'Custom'}
                   </Text>
                 </TouchableOpacity>
@@ -109,7 +110,7 @@ export function SplitBillModal({ visible, onClose, items, subtotal, onApplySplit
                         borderWidth: 1.5, borderColor: numParts === n ? ACCENT : colors.border,
                       }}
                     >
-                      <Text className="text-sm font-bold" style={{ color: numParts === n ? '#fff' : colors.foreground }}>{n}</Text>
+                      <Text className="text-sm font-bold" style={{ color: numParts === n ? BG.white : colors.foreground }}>{n}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -133,7 +134,7 @@ export function SplitBillModal({ visible, onClose, items, subtotal, onApplySplit
                         borderWidth: 1.5, borderColor: numParts === n ? ACCENT : colors.border,
                       }}
                     >
-                      <Text className="text-sm font-bold" style={{ color: numParts === n ? '#fff' : colors.foreground }}>{n}</Text>
+                      <Text className="text-sm font-bold" style={{ color: numParts === n ? BG.white : colors.foreground }}>{n}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>

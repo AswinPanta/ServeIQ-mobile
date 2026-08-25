@@ -6,6 +6,7 @@ import { useNotifications, AppNotification } from '@/lib/context/notification-co
 import { ScreenContainer } from '@/components/screen-container';
 import { safeGoBack } from '@/lib/utils';
 import type { TFunction } from 'i18next';
+import { RED, INDIGO, TEXT, BLUE } from '@/lib/constants/figma-tokens';
 
 const TYPE_ICONS: Record<string, string> = {
   booking_confirmation: '✅',
@@ -45,7 +46,7 @@ export default function NotificationsScreen() {
             </TouchableOpacity>
             <Text className="text-2xl font-bold text-foreground">{t('notificationsScreen.title')}</Text>
             {unreadCount > 0 && (
-              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: '#EF4444' }}>
+              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: RED[500] }}>
                 <Text className="text-xs font-bold text-white">{unreadCount}</Text>
               </View>
             )}
@@ -74,17 +75,17 @@ export default function NotificationsScreen() {
                 onLongPress={() => clearNotification(notification.id)}
                 style={{
                   padding: 16, borderRadius: 18,
-                  backgroundColor: notification.read ? colors.surface : '#EEF2FF',
+                  backgroundColor: notification.read ? colors.surface : INDIGO[50],
                   borderWidth: 1,
-                  borderColor: notification.read ? colors.border : '#C7D2FE',
-                  shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+                  borderColor: notification.read ? colors.border : INDIGO[200],
+                  shadowColor: TEXT.black, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
                 }}
                 activeOpacity={0.8}
               >
                 <View className="flex-row gap-3">
                   <View style={{
                     width: 40, height: 40, borderRadius: 14,
-                    backgroundColor: notification.read ? colors.border : '#E0E7FF',
+                    backgroundColor: notification.read ? colors.border : INDIGO[100],
                     alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Text style={{ fontSize: 18 }}>{TYPE_ICONS[notification.type] || '🔔'}</Text>
@@ -99,7 +100,7 @@ export default function NotificationsScreen() {
                     <Text className="text-xs text-muted mt-1 leading-5">{notification.message}</Text>
                   </View>
                   {!notification.read && (
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3B82F6', marginTop: 4 }} />
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: BLUE[500], marginTop: 4 }} />
                   )}
                 </View>
               </TouchableOpacity>

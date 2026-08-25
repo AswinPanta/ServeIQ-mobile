@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { TESTIMONIALS } from '@/lib/mock/landing-data';
+import { NEUTRAL, BRAND, BG, TEXT, SLATE, SRS, GRAY } from '@/lib/constants/figma-tokens';
 
 export function Testimonials() {
   const { t } = useTranslation();
@@ -31,7 +32,7 @@ export function Testimonials() {
         {TESTIMONIALS.map((t) => (
           <View key={t.id} style={s.card}>
             {/* Quote mark */}
-            <Text style={s.quoteMark}>"</Text>
+            <Text style={s.quoteMark}>{"\u201C"}</Text>
             <Text style={s.quote}>{t.quote}</Text>
             <View style={s.authorRow}>
               <View style={s.avatar}>
@@ -66,12 +67,12 @@ const s = StyleSheet.create({
   container: {
     paddingTop: 24,
     paddingBottom: 8,
-    backgroundColor: '#F8F9FB',
+    backgroundColor: NEUTRAL[100],
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     textAlign: 'center',
     marginBottom: 20,
     letterSpacing: -0.3,
@@ -82,10 +83,10 @@ const s = StyleSheet.create({
   },
   card: {
     width: 300,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
@@ -100,7 +101,7 @@ const s = StyleSheet.create({
   },
   quote: {
     fontSize: 13,
-    color: '#64748B',
+    color: SLATE[500],
     lineHeight: 20,
     marginBottom: 16,
   },
@@ -113,23 +114,23 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2E86AB',
+    backgroundColor: SRS.teal,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
   },
   authorName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
   },
   authorRole: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: SLATE[400],
   },
   dots: {
     flexDirection: 'row',
@@ -141,10 +142,10 @@ const s = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: GRAY[300],
   },
   dotActive: {
-    backgroundColor: '#2E86AB',
+    backgroundColor: SRS.teal,
     width: 24,
   },
 });

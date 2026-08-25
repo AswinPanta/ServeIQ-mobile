@@ -25,28 +25,39 @@ import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import { getPropertyById } from '@/lib/api';
 import type { Hotel } from '@/types/api';
 import { cn, safeGoBack } from '@/lib/utils';
+import { SRS } from '@/lib/constants/figma-tokens';
 
 export default function HotelDetailScreen() {
   const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const { user } = useAuth();
 
-  const [hotel, setHotel] = useState<Hotel>(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0]);
+  // No blind fallback to MOCK_PROPERTIES[0] — a real backend UUID must never
+  // silently render the Himalayan mock. Start with the id-matched mock (or
+  // null) and let the fetch decide; if the fetch fails we show a retry state.
+  const [hotel, setHotel] = useState<Hotel | null>(() => MOCK_PROPERTIES.find(h => h.id === id) || null);
+  const [isFetching, setIsFetching] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setIsFetching(true);
+      setHotel(MOCK_PROPERTIES.find(h => h.id === id) || null);
       const result = await getPropertyById(id as string);
-      if (!cancelled && result) setHotel(result);
+      if (cancelled) return;
+      if (result) setHotel(result);
+      setIsFetching(false);
     })();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, reloadKey]);
 
   const roomStoreRooms = useRoomStore((s) => s.rooms);
 
   const getRoomAvailability = useCallback((roomName: string): number => {
     // First check the mock data 'available' field
-    const mtRoom = hotel.roomTypes.find(r => r.name === roomName);
+    const mtRoom = (hotel?.roomTypes ?? []).find(r => r.name === roomName);
     if (mtRoom && mtRoom.available != null) return mtRoom.available;
     // Fall back to room store count
     const nameLower = roomName.toLowerCase();
@@ -57,7 +68,7 @@ export default function HotelDetailScreen() {
   }, [hotel, roomStoreRooms]);
 
   const relatedHotels = useMemo(
-    () => MOCK_PROPERTIES.filter(h => h.city === hotel.city && h.id !== hotel.id).slice(0, 3),
+    () => MOCK_PROPERTIES.filter(h => h.city === hotel?.city && h.id !== hotel?.id).slice(0, 3),
     [hotel]
   );
 
@@ -66,12 +77,12 @@ export default function HotelDetailScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [checkInDate, setCheckInDate] = useState<Date | null>(null);
   const [checkOutDate, setCheckOutDate] = useState<Date | null>(null);
-  const [selectedRoom, setSelectedRoom] = useState<typeof hotel.roomTypes[0] | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<Hotel['roomTypes'][number] | null>(null);
   const [guestCount, setGuestCount] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [hotelReviews, setHotelReviews] = useState<Review[]>(
-    () => hotel.reviews.map(r => ({
+    () => (hotel?.reviews ?? []).map(r => ({
       id: r.id,
       author: r.author,
       rating: r.rating,
@@ -82,6 +93,22 @@ export default function HotelDetailScreen() {
     }))
   );
 
+  // Re-sync reviews when the loaded property changes (mock → backend or
+  // navigating between properties).
+  useEffect(() => {
+    setHotelReviews(
+      (hotel?.reviews ?? []).map(r => ({
+        id: r.id,
+        author: r.author,
+        rating: r.rating,
+        date: r.date,
+        title: '',
+        comment: r.comment,
+        verified: true,
+      }))
+    );
+  }, [hotel]);
+
   const nights = useMemo(() => {
     if (checkInDate && checkOutDate) {
       return Math.max(1, Math.ceil(
@@ -91,17 +118,49 @@ export default function HotelDetailScreen() {
     return 1;
   }, [checkInDate, checkOutDate]);
 
-  const roomPrice = selectedRoom?.price || hotel.price;
+  const roomPrice = selectedRoom?.price || hotel?.price || 0;
   const subtotal = roomPrice * nights;
   const cleaningFee = Math.round(roomPrice * 0.15);
   const serviceFee = Math.round(subtotal * 0.12);
   const total = subtotal + cleaningFee + serviceFee;
 
+  if (!hotel) {
+    return (
+      <ScreenContainer containerClassName="bg-background" className="flex-1">
+        <View className="flex-1 items-center justify-center px-8">
+          {isFetching ? (
+            <>
+              <ActivityIndicator size="large" color={SRS.teal} />
+              <Text className="text-base font-semibold text-foreground mt-4">Loading property…</Text>
+            </>
+          ) : (
+            <>
+              <Text className="text-4xl">🏨</Text>
+              <Text className="text-lg font-bold text-foreground mt-3">Couldn&apos;t load this property</Text>
+              <Text className="text-sm text-muted text-center mt-1">
+                It may be offline or no longer listed.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setReloadKey(k => k + 1)}
+                className="mt-5 bg-primary px-8 py-3 rounded-xl"
+              >
+                <Text className="text-sm font-bold text-white">Try Again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => safeGoBack()} className="mt-4">
+                <Text className="text-sm text-muted font-semibold">← Go back</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   const toggleFavorite = () => {
     if (isFavorite(hotel.id)) {
       removeFavorite(hotel.id);
     } else {
-      addFavorite(hotel.id);
+      addFavorite(hotel.id, hotel);
     }
   };
 
@@ -111,7 +170,9 @@ export default function HotelDetailScreen() {
         message: `Check out ${hotel.name} in ${hotel.city}, Nepal!\n${hotel.description}`,
         title: hotel.name,
       });
-    } catch {}
+    } catch {
+      // User cancelled share or platform error — non-fatal
+    }
   };
 
   const handleDateSelect = (inDate: Date, outDate: Date) => {
@@ -120,11 +181,9 @@ export default function HotelDetailScreen() {
     setShowDatePicker(false);
   };
 
-  const handleSelectRoom = (room: typeof hotel.roomTypes[0]) => {
+  const handleSelectRoom = (room: Hotel['roomTypes'][number]) => {
     setSelectedRoom(room);
   };
-
-  const { user } = useAuth();
 
   const handleBookNow = () => {
     if (!user) {
@@ -149,7 +208,7 @@ export default function HotelDetailScreen() {
         pathname: '/booking-flow',
         params: {
           hotelName: hotel.name,
-          id: hotel.id,
+          propertyId: hotel.id,
           checkIn: checkInDate.toISOString(),
           checkOut: checkOutDate.toISOString(),
           guests: String(guestCount),

@@ -42,7 +42,7 @@ export interface SmartSuggestion {
   confidence: number; // 0-100
 }
 
-const DRAFTS_STORAGE_KEY = '@stayeasy_booking_drafts';
+const DRAFTS_STORAGE_KEY = '@serveiq_booking_drafts';
 
 const STATUS_TRANSITIONS: Record<ReservationStatus, ReservationStatus[]> = {
   draft: ['pending', 'cancelled'],

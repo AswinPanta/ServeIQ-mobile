@@ -62,7 +62,7 @@
   "auth.accountCreated.message": "您的账号已创建。开始探索吧！",
   "auth.accountCreated.next": "开始使用",
 
-  "auth.splash.title": "StayEasy",
+  "auth.splash.title": "ServeIQ",
   "auth.splash.subtitle": "找到您的完美住宿",
   "auth.splash.getStarted": "开始使用",
 
@@ -74,7 +74,7 @@
   "home.browseByType": "按住宿类型浏览",
   "home.exploreMore": "探索更多住宿",
   "home.seeAll": "查看全部",
-  "home.welcome": "欢迎来到StayEasy",
+  "home.welcome": "欢迎来到ServeIQ",
   "home.welcomeDesc": "发现为您精心挑选的优质酒店和餐厅",
   "home.getStarted": "开始使用",
   "home.becomeHost": "成为房东",
@@ -282,16 +282,16 @@
   "roomSelect.addToBooking": "加入预订",
   "roomSelect.unavailable": "不可用",
 
-  "components.whyStayEasy.title": "为什么选择StayEasy？",
-  "components.whyStayEasy.subtitle": "我们让旅行简单而难忘",
-  "components.whyStayEasy.secureBooking": "安全预订",
-  "components.whyStayEasy.support": "24/7客服支持",
-  "components.whyStayEasy.bestPrice": "最优价格保证",
-  "components.whyStayEasy.curated": "精选住宿",
-  "components.whyStayEasy.secureBookingDesc": "您的支付和个人信息始终受到企业级安全的保护。",
-  "components.whyStayEasy.supportDesc": "我们的团队全天候为您解答任何问题。",
-  "components.whyStayEasy.bestPriceDesc": "在其他地方找到更低价格，我们将匹配。放心预订。",
-  "components.whyStayEasy.curatedDesc": "每处住宿都经过精心挑选和质量验证，确保舒适体验。",
+  "components.whyServeIQ.title": "为什么选择ServeIQ？",
+  "components.whyServeIQ.subtitle": "我们让旅行简单而难忘",
+  "components.whyServeIQ.secureBooking": "安全预订",
+  "components.whyServeIQ.support": "24/7客服支持",
+  "components.whyServeIQ.bestPrice": "最优价格保证",
+  "components.whyServeIQ.curated": "精选住宿",
+  "components.whyServeIQ.secureBookingDesc": "您的支付和个人信息始终受到企业级安全的保护。",
+  "components.whyServeIQ.supportDesc": "我们的团队全天候为您解答任何问题。",
+  "components.whyServeIQ.bestPriceDesc": "在其他地方找到更低价格，我们将匹配。放心预订。",
+  "components.whyServeIQ.curatedDesc": "每处住宿都经过精心挑选和质量验证，确保舒适体验。",
 
   "components.testimonials.title": "旅行者说",
 
@@ -319,9 +319,9 @@
 
   "components.footer.support": "客服支持",
   "components.footer.hosting": "房东服务",
-  "components.footer.company": "StayEasy",
+  "components.footer.company": "ServeIQ",
   "components.footer.legal": "法律条款",
-  "components.footer.copyright": "© 2026 StayEasy, Inc. 保留所有权利。",
+  "components.footer.copyright": "© 2026 ServeIQ, Inc. 保留所有权利。",
   "components.footer.language": "简体中文",
   "components.footer.currency": "$ USD",
 

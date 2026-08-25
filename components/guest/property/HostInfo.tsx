@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SRS, BRAND, SLATE } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2E86AB';
+const ACCENT = SRS.teal;
 
 interface HostInfoProps {
   hotelName: string;
@@ -32,8 +33,8 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   info: { flex: 1 },
-  name: { fontSize: 13, fontWeight: '600', color: '#1A3C5E' },
-  meta: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
+  name: { fontSize: 13, fontWeight: '600', color: BRAND.navyLight },
+  meta: { fontSize: 11, color: SLATE[400], marginTop: 1 },
   badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, backgroundColor: 'rgba(46,134,171,0.1)' },
   badgeText: { fontSize: 10, fontWeight: '600', color: ACCENT },
 });

@@ -6,8 +6,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { NotificationBell } from '@/components/ui/notification-bell';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import type { SuperAdminProfile } from '@/types/api';
+import { STATUS_COLORS, BG } from '@/lib/constants/figma-tokens';
 
-const SUPERADMIN = '#8E44AD';
+const SUPERADMIN = STATUS_COLORS.inspected;
 
 export function SuperAdminHeader({ title }: { title?: string }) {
   const { user, logout } = useAuth();
@@ -46,10 +47,6 @@ export function SuperAdminHeader({ title }: { title?: string }) {
               <IconSymbol name="settings" size={14} color={GRAY[600]} />
               <Text style={s.dropdownText}>Settings</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setShowMenu(false); logout(); router.replace('/'); }} style={s.dropdownItem}>
-              <IconSymbol name="refresh" size={14} color={GRAY[600]} />
-              <Text style={s.dropdownText}>Switch portal</Text>
-            </TouchableOpacity>
             <TouchableOpacity onPress={handleLogout} style={[s.dropdownItem, s.dropdownLast]}>
               <IconSymbol name="logout" size={14} color={SRS.red} />
               <Text style={[s.dropdownText, { color: SRS.red }]}>Sign Out</Text>
@@ -75,7 +72,7 @@ export function SuperAdminHeader({ title }: { title?: string }) {
 }
 
 const s = StyleSheet.create({
-  header: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: GRAY[100] },
+  header: { backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: GRAY[100] },
   topRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingVertical: 12 },
   titleSection: { flex: 1 },
   title: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy },
@@ -83,7 +80,7 @@ const s = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatarBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: SUPERADMIN + '18', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 14, color: SUPERADMIN, fontWeight: '700' },
-  dropdown: { position: 'absolute', top: 52, right: SPACING.lg, backgroundColor: '#FFF', borderRadius: RADIUS.modal, borderWidth: 1, borderColor: GRAY[200], ...SHADOWS.dropdown, zIndex: 100, minWidth: 160 },
+  dropdown: { position: 'absolute', top: 52, right: SPACING.lg, backgroundColor: BG.white, borderRadius: RADIUS.modal, borderWidth: 1, borderColor: GRAY[200], ...SHADOWS.dropdown, zIndex: 100, minWidth: 160 },
   dropdownItem: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, paddingHorizontal: SPACING.lg, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: GRAY[100] },
   dropdownLast: { borderBottomWidth: 0 },
   dropdownText: { ...TYPOGRAPHY.body, color: GRAY[600] },

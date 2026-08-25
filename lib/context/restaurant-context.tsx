@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 import { operationsApi } from '@/lib/api/operations-api';
 import { loadOpsState, persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
+import { CYAN, EMERALD, TEAL, BLUE, PURPLE } from '@/lib/constants/figma-tokens';
 
 export type TableStatus = 'Free' | 'Occupied' | 'Reserved';
 
@@ -224,7 +225,7 @@ const INITIAL_SECTIONS: SectionData[] = [
   {
     name: 'Indoor',
     icon: '🏠',
-    color: '#0891B2',
+    color: CYAN[600],
     tables: [
       { id: 'T1', capacity: 2, status: 'Free' },
       { id: 'T2', capacity: 4, status: 'Occupied' },
@@ -235,7 +236,7 @@ const INITIAL_SECTIONS: SectionData[] = [
   {
     name: 'Outdoor',
     icon: '🌿',
-    color: '#059669',
+    color: EMERALD[600],
     tables: [
       { id: 'T5', capacity: 4, status: 'Occupied' },
       { id: 'T6', capacity: 4, status: 'Free' },
@@ -336,22 +337,24 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
   // Fetch from API if backend is live (only after local state is hydrated)
   useEffect(() => {
     if (!loaded) return;
+    let cancelled = false;
     operationsApi.getMenu(() => []).then(apiMenu => {
-      if (apiMenu.length > 0) {
+      if (!cancelled && apiMenu.length > 0) {
         // Menu shape differs — kept for future mapping
       }
     });
     operationsApi.getTables(() => []).then(apiTables => {
-      if (apiTables.length > 0) setSections(apiTables as any);
+      if (!cancelled && apiTables.length > 0) setSections(apiTables as any);
     });
     operationsApi.getOrders(() => []).then(apiOrders => {
-      if (apiOrders.length > 0) {
+      if (!cancelled && apiOrders.length > 0) {
         // Orders shape differs — kept for future mapping
       }
     });
     operationsApi.getKdsTickets(() => []).then(apiTickets => {
-      if (apiTickets.length > 0) setTickets(apiTickets as any);
+      if (!cancelled && apiTickets.length > 0) setTickets(apiTickets as any);
     });
+    return () => { cancelled = true; };
   }, [loaded]);
 
   // MN-004: Time-based menu
@@ -652,15 +655,15 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     const total = Object.values(catRevenue).reduce((s, v) => s + v, 0);
     if (total === 0) {
       return [
-        { label: 'Food', percentage: 72, color: '#0D9488' },
-        { label: 'Beverages', percentage: 18, color: '#3B82F6' },
-        { label: 'Desserts', percentage: 10, color: '#8B5CF6' },
+        { label: 'Food', percentage: 72, color: TEAL[600] },
+        { label: 'Beverages', percentage: 18, color: BLUE[500] },
+        { label: 'Desserts', percentage: 10, color: PURPLE[500] },
       ];
     }
     return [
-      { label: 'Food', percentage: Math.round((catRevenue.Food / total) * 100), color: '#0D9488' },
-      { label: 'Beverages', percentage: Math.round((catRevenue.Beverages / total) * 100), color: '#3B82F6' },
-      { label: 'Desserts', percentage: Math.round((catRevenue.Desserts / total) * 100), color: '#8B5CF6' },
+      { label: 'Food', percentage: Math.round((catRevenue.Food / total) * 100), color: TEAL[600] },
+      { label: 'Beverages', percentage: Math.round((catRevenue.Beverages / total) * 100), color: BLUE[500] },
+      { label: 'Desserts', percentage: Math.round((catRevenue.Desserts / total) * 100), color: PURPLE[500] },
     ];
   }, [completedOrders]);
 

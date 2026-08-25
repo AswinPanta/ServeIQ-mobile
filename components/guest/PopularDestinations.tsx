@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ImageBackground, StyleSheet, 
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { POPULAR_DESTINATIONS } from '@/lib/mock/landing-data';
+import { BRAND, SRS, BG } from '@/lib/constants/figma-tokens';
 
 interface Props {
   onSelect?: (destination: string) => void;
@@ -68,13 +69,13 @@ const s = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     letterSpacing: -0.3,
   },
   viewAll: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2E86AB',
+    color: SRS.teal,
   },
   scrollContent: {
     gap: 12,
@@ -104,7 +105,7 @@ const s = StyleSheet.create({
   cardCity: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
     letterSpacing: -0.2,
   },
   cardCountry: {
@@ -132,6 +133,6 @@ const s = StyleSheet.create({
   rating: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#FFF',
+    color: BG.white,
   },
 });

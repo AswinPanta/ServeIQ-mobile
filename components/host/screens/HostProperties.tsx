@@ -5,8 +5,9 @@ import { useHost } from '@/lib/context/host-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
+import { BLUE, PURPLE, CYAN, EMERALD, YELLOW, PINK, RED, TEAL, AMBER, STATUS, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2563EB';
+const ACCENT = BLUE[600];
 const PHOTO_CATEGORIES = ['exterior', 'lobby', 'rooms', 'dining', 'amenities'];
 
 export function HostProperties() {
@@ -26,7 +27,7 @@ export function HostProperties() {
   const [brandColorInput, setBrandColorInput] = useState('');
   const [editingBrand, setEditingBrand] = useState(false);
 
-  const PRESET_COLORS = ['#2563EB', '#7C3AED', '#0891B2', '#059669', '#CA8A04', '#DB2777', '#DC2626', '#1D4ED8', '#0D9488', '#B45309'];
+  const PRESET_COLORS = [BLUE[600], PURPLE[700], CYAN[600], EMERALD[600], YELLOW[600], PINK[600], RED[600], BLUE[700], TEAL[600], AMBER[700]];
 
   const toggleExpand = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
@@ -159,10 +160,10 @@ export function HostProperties() {
                       <Switch
                         value={property.is_active}
                         onValueChange={() => togglePropertyActivation(property.id)}
-                        trackColor={{ false: '#FEE2E2', true: '#DCFCE7' }}
-                        thumbColor={property.is_active ? '#16A34A' : '#EF4444'}
+                        trackColor={{ false: RED[100], true: STATUS.badgeGreen }}
+                        thumbColor={property.is_active ? STATUS.activeGreenDark : RED[500]}
                       />
-                      <Text style={{ fontSize: 10, fontWeight: '600', color: property.is_active ? '#10B981' : '#EF4444' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: property.is_active ? STATUS.activeGreen : RED[500] }}>
                         {property.is_active ? 'Active' : 'Inactive'}
                       </Text>
                     </View>
@@ -256,7 +257,7 @@ export function HostProperties() {
                       <TouchableOpacity onPress={() => saveProperty(property.id)}
                         style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' }}
                       >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Save</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Save</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -295,7 +296,7 @@ export function HostProperties() {
                       <View className="flex-row items-center justify-between mb-2">
                         <Text className="text-xs text-muted">Branding</Text>
                         <TouchableOpacity onPress={() => { setEditingBrand(!editingBrand); setBrandColorInput(property.brand_color ?? ''); }}>
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: editingBrand ? '#EF4444' : ACCENT }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: editingBrand ? RED[500] : ACCENT }}>
                             {editingBrand ? 'Done' : 'Edit'}
                           </Text>
                         </TouchableOpacity>
@@ -307,7 +308,7 @@ export function HostProperties() {
                             <TextInput
                               value={brandColorInput}
                               onChangeText={setBrandColorInput}
-                              placeholder="#2563EB"
+                              placeholder={BLUE[600]}
                               placeholderTextColor={colors.muted}
                               autoCapitalize="none"
                               onBlur={() => { if (brandColorInput && brandColorInput !== property.brand_color) updateProperty(property.id, { brand_color: brandColorInput }); }}
@@ -316,7 +317,7 @@ export function HostProperties() {
                             <View className="flex-row flex-wrap gap-2 mb-2">
                               {PRESET_COLORS.map(c => (
                                 <TouchableOpacity key={c} onPress={() => { setBrandColorInput(c); updateProperty(property.id, { brand_color: c }); }}
-                                  style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c, borderWidth: brandColorInput === c ? 2 : 0, borderColor: '#fff' }}
+                                  style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: c, borderWidth: brandColorInput === c ? 2 : 0, borderColor: BG.white }}
                                 />
                               ))}
                             </View>
@@ -350,7 +351,7 @@ export function HostProperties() {
                         )}
                         {property.logo_url && (
                           <TouchableOpacity onPress={() => { updateProperty(property.id, { logo_url: null }); }}>
-                            <Text style={{ fontSize: 11, color: '#EF4444', fontWeight: '600' }}>Remove Logo</Text>
+                            <Text style={{ fontSize: 11, color: RED[500], fontWeight: '600' }}>Remove Logo</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -374,7 +375,7 @@ export function HostProperties() {
                               }}
                               style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 14, backgroundColor: ACCENT, alignItems: 'center', justifyContent: 'center' }}
                             >
-                              <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>+</Text>
+                              <Text style={{ fontSize: 14, fontWeight: '700', color: BG.white }}>+</Text>
                             </TouchableOpacity>
                           </View>
                         ) : (
@@ -402,7 +403,7 @@ export function HostProperties() {
                                 backgroundColor: isActive ? ACCENT : colors.border,
                               }}
                             >
-                              <Text style={{ fontSize: 12, fontWeight: '600', color: isActive ? '#fff' : colors.foreground, textTransform: 'capitalize' }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: isActive ? BG.white : colors.foreground, textTransform: 'capitalize' }}>
                                 {cat} ({count})
                               </Text>
                             </TouchableOpacity>
@@ -424,7 +425,7 @@ export function HostProperties() {
                                   onPress={() => handleRemovePhoto(property.id, photo.id)}
                                   style={{ position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(239,68,68,0.9)', alignItems: 'center', justifyContent: 'center' }}
                                 >
-                                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff' }}>×</Text>
+                                  <Text style={{ fontSize: 12, fontWeight: '700', color: BG.white }}>×</Text>
                                 </TouchableOpacity>
                               </View>
                             ))}
@@ -481,7 +482,7 @@ export function HostProperties() {
                                             onPress={() => handleRemoveRoomTypePhoto(rt.id, idx)}
                                             style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: 'rgba(239,68,68,0.9)', alignItems: 'center', justifyContent: 'center' }}
                                           >
-                                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>×</Text>
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: BG.white }}>×</Text>
                                           </TouchableOpacity>
                                         </View>
                                       ))}
@@ -530,7 +531,7 @@ export function HostProperties() {
                       <TouchableOpacity onPress={() => router.push('/(host)/listing-wizard')}
                         style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' }}
                       >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Manage Property</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Manage Property</Text>
                       </TouchableOpacity>
                     </View>
                   </View>

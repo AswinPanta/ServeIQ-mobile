@@ -141,7 +141,7 @@ Source-of-truth English file with all ~200 keys:
   "auth.accountCreated.message": "Your account has been created. Start exploring!",
   "auth.accountCreated.next": "Get Started",
 
-  "auth.splash.title": "StayEasy",
+  "auth.splash.title": "ServeIQ",
   "auth.splash.subtitle": "Find your perfect stay",
   "auth.splash.getStarted": "Get Started",
 
@@ -321,12 +321,12 @@ Source-of-truth English file with all ~200 keys:
   "roomSelect.addToBooking": "Add to Booking",
   "roomSelect.unavailable": "Unavailable",
 
-  "components.whyStayEasy.title": "Why StayEasy?",
-  "components.whyStayEasy.subtitle": "We make travel simple and memorable",
-  "components.whyStayEasy.secureBooking": "Secure Booking",
-  "components.whyStayEasy.support": "24/7 Support",
-  "components.whyStayEasy.bestPrice": "Best Price Guarantee",
-  "components.whyStayEasy.curated": "Curated Properties",
+  "components.whyServeIQ.title": "Why ServeIQ?",
+  "components.whyServeIQ.subtitle": "We make travel simple and memorable",
+  "components.whyServeIQ.secureBooking": "Secure Booking",
+  "components.whyServeIQ.support": "24/7 Support",
+  "components.whyServeIQ.bestPrice": "Best Price Guarantee",
+  "components.whyServeIQ.curated": "Curated Properties",
 
   "components.testimonials.title": "What travelers say",
 
@@ -353,9 +353,9 @@ Source-of-truth English file with all ~200 keys:
 
   "components.footer.support": "Support",
   "components.footer.hosting": "Hosting",
-  "components.footer.company": "StayEasy",
+  "components.footer.company": "ServeIQ",
   "components.footer.legal": "Legal",
-  "components.footer.copyright": "© 2026 StayEasy, Inc. All rights reserved.",
+  "components.footer.copyright": "© 2026 ServeIQ, Inc. All rights reserved.",
   "components.footer.language": "English (US)",
   "components.footer.currency": "$ USD",
 
@@ -536,7 +536,7 @@ git commit -m "feat: add useAppLanguage hook + wire language picker in GuestFoot
 
 - **account-created.tsx**: `Congratulations!`→`'auth.accountCreated.title'`, etc.
 
-- **splash.tsx**: `StayEasy`→`'auth.splash.title'`, `Get Started`→`'auth.splash.getStarted'`
+- **splash.tsx**: `ServeIQ`→`'auth.splash.title'`, `Get Started`→`'auth.splash.getStarted'`
 
 - [ ] **Step 1: Migrate login.tsx**
 - [ ] **Step 2: Migrate register.tsx**
@@ -634,11 +634,11 @@ git commit -m "feat: i18n profile sub-pages (about, bookings, favorites, coupons
 ### Task 7: Migrate guest components
 
 **Files:**
-- Modify: `components/guest/WhyStayEasy.tsx`, `Testimonials.tsx`, `OtherHotels.tsx`, `NewsletterCTA.tsx`, `TrustBadges.tsx`, `PropertyTypeBrowser.tsx`, `PopularDestinations.tsx`, `TrendingDestinations.tsx`
+- Modify: `components/guest/WhyServeIQ.tsx`, `Testimonials.tsx`, `OtherHotels.tsx`, `NewsletterCTA.tsx`, `TrustBadges.tsx`, `PropertyTypeBrowser.tsx`, `PopularDestinations.tsx`, `TrendingDestinations.tsx`
 
 **Pattern same as Task 3.** Map strings to `components.*` keys.
 
-- [ ] **Step 1: Migrate WhyStayEasy.tsx**
+- [ ] **Step 1: Migrate WhyServeIQ.tsx**
 - [ ] **Step 2: Migrate Testimonials.tsx**
 - [ ] **Step 3: Migrate OtherHotels.tsx**
 - [ ] **Step 4: Migrate NewsletterCTA.tsx**
@@ -652,7 +652,7 @@ git commit -m "feat: i18n profile sub-pages (about, bookings, favorites, coupons
 ```bash
 npx tsc --noEmit
 git add components/guest/
-git commit -m "feat: i18n guest components (WhyStayEasy, Testimonials, etc.)"
+git commit -m "feat: i18n guest components (WhyServeIQ, Testimonials, etc.)"
 ```
 
 ---

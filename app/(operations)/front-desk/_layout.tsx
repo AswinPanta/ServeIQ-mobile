@@ -1,21 +1,17 @@
 import { useMemo } from "react";
 import { Stack } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
-import { useAuth } from "@/lib/context/auth-context";
-import { FrontDeskProvider } from "@/lib/context/frontdesk-context";
-import type { OperatorProfile } from "@/types/api";
+import { RoleGuard } from "@/components/common/RoleGuard";
+import { MODULE_ROLES } from "@/constants/operations-access";
 
 export default function FrontDeskLayout() {
   const colors = useColors();
-  const { user } = useAuth();
-  const operator = user as OperatorProfile | null;
-  const propertyId = operator?.property_id;
   const screenOptions = useMemo(() => ({
     headerShown: false,
     contentStyle: { backgroundColor: colors.background },
   }), [colors.background]);
   return (
-    <FrontDeskProvider propertyId={propertyId}>
+    <RoleGuard allowedRoles={MODULE_ROLES['front-desk']}>
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="index" />
         <Stack.Screen name="new-booking" />
@@ -23,6 +19,6 @@ export default function FrontDeskLayout() {
         <Stack.Screen name="check-out" />
         <Stack.Screen name="guest-crm" />
       </Stack>
-    </FrontDeskProvider>
+    </RoleGuard>
   );
 }

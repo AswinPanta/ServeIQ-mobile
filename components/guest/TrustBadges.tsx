@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TRUST_BADGES } from '@/lib/mock/landing-data';
+import { BRAND, SLATE } from '@/lib/constants/figma-tokens';
 
 const BADGE_ICONS = ['💰', '🛡️', '🔄', '🎧'];
 
@@ -49,12 +50,12 @@ const s = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     textAlign: 'center',
   },
   desc: {
     fontSize: 11,
-    color: '#64748B',
+    color: SLATE[500],
     textAlign: 'center',
     lineHeight: 16,
   },

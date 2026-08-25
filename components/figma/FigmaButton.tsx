@@ -8,6 +8,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { FONTS, RADIUS } from '@/constants/portal-theme';
+import { BG, BRAND, SRS, SLATE } from '@/lib/constants/figma-tokens';
 
 interface FigmaButtonProps {
   title: string;
@@ -58,7 +59,7 @@ export function FigmaButton({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' ? '#FFFFFF' : '#1A3C5E'}
+          color={variant === 'primary' ? BG.white : BRAND.navyLight}
         />
       ) : (
         <>
@@ -78,17 +79,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primary: {
-    backgroundColor: '#1A3C5E',
+    backgroundColor: BRAND.navyLight,
     borderRadius: RADIUS.button,
   },
   secondary: {
-    backgroundColor: '#2E86AB',
+    backgroundColor: SRS.teal,
     borderRadius: RADIUS.button,
   },
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: SLATE[200],
     borderRadius: RADIUS.button,
   },
   ghost: {
@@ -117,22 +118,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   text_primary: {
-    color: '#FFFFFF',
+    color: BG.white,
     fontFamily: FONTS.inter.semiBold,
     fontSize: 14,
   },
   text_secondary: {
-    color: '#FFFFFF',
+    color: BG.white,
     fontFamily: FONTS.inter.semiBold,
     fontSize: 14,
   },
   text_outline: {
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     fontFamily: FONTS.inter.semiBold,
     fontSize: 14,
   },
   text_ghost: {
-    color: '#2E86AB',
+    color: SRS.teal,
     fontFamily: FONTS.inter.semiBold,
     fontSize: 14,
   },

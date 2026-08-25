@@ -68,7 +68,7 @@ export const useCommunicationStore = create<CommunicationStore>((set, get) => ({
       channel: 'email',
       template: 'booking_confirmation',
       subject: 'Booking Confirmed — ' + booking.ref,
-      content: `Dear ${booking.guestName},\n\nYour booking at StayEasy has been confirmed.\n\nRef: ${booking.ref}\nRoom: ${booking.roomType}\nCheck-in: ${booking.checkin}\nCheck-out: ${booking.checkout}\nTotal: NPR ${booking.totalPrice.toLocaleString()}\n\nThank you for choosing StayEasy!`,
+      content: `Dear ${booking.guestName},\n\nYour booking at ServeIQ has been confirmed.\n\nRef: ${booking.ref}\nRoom: ${booking.roomType}\nCheck-in: ${booking.checkin}\nCheck-out: ${booking.checkout}\nTotal: NPR ${booking.totalPrice.toLocaleString()}\n\nThank you for choosing ServeIQ!`,
       sentBy: 'System',
     });
   },

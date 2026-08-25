@@ -1,4 +1,5 @@
 import { View, Text } from 'react-native';
+import { SLATE } from '@/lib/constants/figma-tokens';
 
 interface TimelineEvent {
   id: string;
@@ -28,7 +29,7 @@ export function Timeline({ events, emptyMessage = 'No recent activity' }: Timeli
   if (events.length === 0) {
     return (
       <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-        <Text style={{ fontSize: 13, color: '#94A3B8' }}>{emptyMessage}</Text>
+        <Text style={{ fontSize: 13, color: SLATE[400] }}>{emptyMessage}</Text>
       </View>
     );
   }
@@ -42,16 +43,16 @@ export function Timeline({ events, emptyMessage = 'No recent activity' }: Timeli
               <Text style={{ fontSize: 11 }}>{event.icon}</Text>
             </View>
             {idx < events.length - 1 && (
-              <View style={{ flex: 1, width: 2, backgroundColor: '#E2E8F0', marginTop: 4 }} />
+              <View style={{ flex: 1, width: 2, backgroundColor: SLATE[200], marginTop: 4 }} />
             )}
           </View>
           <View style={{ flex: 1, paddingLeft: 10, paddingBottom: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#1E293B' }}>{event.title}</Text>
-              <Text style={{ fontSize: 11, color: '#94A3B8' }}>{relativeTime(event.time)}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: SLATE[800] }}>{event.title}</Text>
+              <Text style={{ fontSize: 11, color: SLATE[400] }}>{relativeTime(event.time)}</Text>
             </View>
             {event.description && (
-              <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{event.description}</Text>
+              <Text style={{ fontSize: 12, color: SLATE[500], marginTop: 2 }}>{event.description}</Text>
             )}
           </View>
         </View>

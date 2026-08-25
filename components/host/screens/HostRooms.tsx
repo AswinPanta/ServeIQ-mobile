@@ -4,23 +4,24 @@ import { useColors } from '@/hooks/use-colors';
 import { useHost } from '@/lib/context/host-context';
 import { router } from 'expo-router';
 import type { AdminRoomStatus } from '@/types/api';
+import { BLUE, STATUS, AMBER, PURPLE, RED, GRAY, BG } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2563EB';
+const ACCENT = BLUE[600];
 const STATUS_COLORS: Record<AdminRoomStatus, string> = {
-  AVAILABLE: '#10B981',
-  OCCUPIED: '#F59E0B',
-  DIRTY: '#3B82F6',
-  CLEANING: '#3B82F6',
-  INSPECTED: '#8B5CF6',
-  MAINTENANCE: '#EF4444',
-  BLOCKED: '#6B7280',
+  AVAILABLE: STATUS.activeGreen,
+  OCCUPIED: AMBER[500],
+  DIRTY: BLUE[500],
+  CLEANING: BLUE[500],
+  INSPECTED: PURPLE[500],
+  MAINTENANCE: RED[500],
+  BLOCKED: GRAY[500],
 };
 const STATUS_OPTIONS: AdminRoomStatus[] = [
   'AVAILABLE', 'OCCUPIED', 'DIRTY', 'CLEANING', 'INSPECTED', 'MAINTENANCE', 'BLOCKED',
 ];
 
 function statusBadgeColor(status: AdminRoomStatus): string {
-  return STATUS_COLORS[status] || '#6B7280';
+  return STATUS_COLORS[status] || GRAY[500];
 }
 
 export function HostRooms() {
@@ -109,9 +110,9 @@ export function HostRooms() {
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
         {[
           { label: 'Total', value: totalRooms, color: ACCENT },
-          { label: 'Available', value: available, color: '#10B981' },
-          { label: 'Occupied', value: occupied, color: '#F59E0B' },
-          { label: 'Maint.', value: maintenance, color: '#EF4444' },
+          { label: 'Available', value: available, color: STATUS.activeGreen },
+          { label: 'Occupied', value: occupied, color: AMBER[500] },
+          { label: 'Maint.', value: maintenance, color: RED[500] },
         ].map((item, i) => (
           <View key={i} style={{ flex: 1, padding: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
             <Text style={{ fontSize: 22, fontWeight: '700', color: item.color }}>{item.value}</Text>
@@ -127,7 +128,7 @@ export function HostRooms() {
             style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT }}
             onPress={() => router.push('/(host)/listing-wizard')}
           >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Add Rooms</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Add Rooms</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -216,7 +217,7 @@ export function HostRooms() {
                           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.muted, marginBottom: 4 }}>BLOCKED DATES</Text>
                           {room.blocked_dates.map((bd, i) => (
                             <View key={i} style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 2 }}>
-                              <Text style={{ fontSize: 12, color: '#EF4444' }}>{bd.start} - {bd.end}</Text>
+                              <Text style={{ fontSize: 12, color: RED[500] }}>{bd.start} - {bd.end}</Text>
                               <Text style={{ fontSize: 11, color: colors.muted }}>({bd.reason})</Text>
                             </View>
                           ))}
@@ -227,7 +228,7 @@ export function HostRooms() {
                         style={{ paddingVertical: 10, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center', marginTop: 4 }}
                         onPress={() => handleChangeStatus(room)}
                       >
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Change Status</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: BG.white }}>Change Status</Text>
                       </TouchableOpacity>
                     </View>
                   )}

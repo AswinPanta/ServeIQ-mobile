@@ -3,8 +3,9 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
+import { CORAL as CORALTokens, GRAY, BRAND, NEUTRAL, BG, SLATE } from '@/lib/constants/figma-tokens';
 
-const CORAL = '#E63946';
+const CORAL = CORALTokens[500];
 
 interface MockReview {
   id: string;
@@ -46,7 +47,7 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
           key={i}
           name="star"
           size={size}
-          color={i <= rating ? CORAL : '#E5E7EB'}
+          color={i <= rating ? CORAL : GRAY[200]}
         />
       ))}
     </View>
@@ -63,7 +64,7 @@ export default function ReviewsScreen() {
     >
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <IconSymbol name="chevron.left" size={20} color="#1A3C5E" />
+          <IconSymbol name="chevron.left" size={20} color={BRAND.navyLight} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.reviews.title')}</Text>
         <View style={{ width: 36 }} />
@@ -100,7 +101,7 @@ export default function ReviewsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -113,16 +114,16 @@ const s = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     letterSpacing: -0.5,
     fontFamily: FONTS.sora,
   },
@@ -136,13 +137,13 @@ const s = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     fontFamily: FONTS.inter.semiBold,
     marginTop: 8,
   },
   emptyDesc: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: SLATE[400],
     textAlign: 'center',
     lineHeight: 20,
     fontFamily: FONTS.inter.regular,
@@ -150,9 +151,9 @@ const s = StyleSheet.create({
   reviewCard: {
     padding: 16,
     borderRadius: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
     gap: 8,
     ...SHADOWS.card,
   },
@@ -164,18 +165,18 @@ const s = StyleSheet.create({
   hotelName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     flex: 1,
     fontFamily: FONTS.inter.semiBold,
   },
   reviewDate: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: SLATE[400],
     fontFamily: FONTS.inter.regular,
   },
   comment: {
     fontSize: 13,
-    color: '#4B5563',
+    color: GRAY[600],
     lineHeight: 20,
     fontFamily: FONTS.inter.regular,
   },

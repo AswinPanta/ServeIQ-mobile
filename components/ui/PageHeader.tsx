@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ACCENT, getAccentColor } from '@/constants/portal-theme';
 import { safeGoBack } from '@/lib/utils';
+import { SLATE } from '@/lib/constants/figma-tokens';
 
 interface PageHeaderProps {
   title: string;
@@ -18,21 +19,21 @@ export function PageHeader({ title, subtitle, count, showBack = true, rightActio
           {showBack && (
             <TouchableOpacity
               onPress={() => safeGoBack()}
-              style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}
+              style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text style={{ fontSize: 18, color: '#475569' }}>←</Text>
+              <Text style={{ fontSize: 18, color: SLATE[600] }}>←</Text>
             </TouchableOpacity>
           )}
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E293B' }}>{title}</Text>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: SLATE[800] }}>{title}</Text>
               {count !== undefined && (
                 <View style={{ backgroundColor: getAccentColor(0.12), paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: ACCENT }}>{count}</Text>
                 </View>
               )}
             </View>
-            {subtitle && <Text style={{ fontSize: 13, color: '#64748B', marginTop: 1 }}>{subtitle}</Text>}
+            {subtitle && <Text style={{ fontSize: 13, color: SLATE[500], marginTop: 1 }}>{subtitle}</Text>}
           </View>
         </View>
         {rightAction}

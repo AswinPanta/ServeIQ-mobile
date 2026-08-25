@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, StyleSheet, ActivityIndicator, Dimensions, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { Hotel } from '@/types/api';
@@ -8,10 +8,13 @@ import { searchHotelsApi } from '@/lib/api';
 import { safeGoBack } from '@/lib/utils';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { StickySearchHeader } from '@/components/StickySearchHeader';
+import { PaginationControls } from '@/components/feature/pagination-controls';
 import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
+import { normalizePropertyType, PROPERTY_TYPE_LABELS } from '@/lib/mock/landing-data';
+import { BRAND, SRS, SLATE, STATUS, RED, GRAY, BG, NEUTRAL, TEXT, GREEN } from '@/lib/constants/figma-tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 const PROPERTY_TYPE_FILTERS = ['All types', 'Hotels', 'Apartments', 'Villa', 'Resort', 'Others'];
 const AMENITY_FILTERS = ['Pool', 'Free WiFi', 'Breakfast included', 'Free cancellation', 'Beachfront', 'Kitchen', 'Air conditioning', 'Hot tub'];
@@ -19,8 +22,11 @@ const BED_TYPE_FILTERS = ['King bed', 'Queen bed', 'Single bed', 'Sofa bed'];
 const GUEST_RATINGS = ['Any', '4.0+', '4.5+', '5.0'];
 
 export default function GuestSearchResults() {
-  const { location, checkIn, checkOut, guests, adults, children, rooms, filter: quickFilter } = useLocalSearchParams();
+  const { location, checkIn, checkOut, guests, adults, children, rooms, filter: quickFilter, type: typeParam, vibe: vibeParam } = useLocalSearchParams();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+
+  const typeKey = normalizePropertyType(typeParam ? String(typeParam) : undefined);
+  const typeLabel = typeParam ? PROPERTY_TYPE_LABELS[typeKey] || null : null;
 
   const [allHotels, setAllHotels] = useState<Hotel[]>(MOCK_PROPERTIES);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,13 +35,17 @@ export default function GuestSearchResults() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('Recommended');
   const [hasMore, setHasMore] = useState(true);
-  const [skip, setSkip] = useState(0);
+  const [page, setPage] = useState(0);
+  const [totalResults, setTotalResults] = useState<number | undefined>(undefined);
 
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['All types']);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(() =>
+    typeLabel ? [typeLabel] : ['All types']
+  );
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
   const [guestRating, setGuestRating] = useState('Any');
+  const [vibe, setVibe] = useState<string | null>(vibeParam ? String(vibeParam) : null);
 
   const scrollRef = useRef<ScrollView>(null);
   const routeKey = '/guest-search-results';
@@ -51,56 +61,78 @@ export default function GuestSearchResults() {
     }
   }, [quickFilter]);
 
-  const fetchResults = useCallback(async (currentSkip: number, append: boolean) => {
-    try {
-      const result = await searchHotelsApi({
-        destination: (location as string) || '',
-        checkIn: checkIn as string,
-        checkOut: checkOut as string,
-        adults: adults ? Number(adults) : (guests ? Number(guests) : 1),
-        children: children ? Number(children) : 0,
-        rooms: rooms ? Number(rooms) : 1,
-        limit: PAGE_SIZE,
-        skip: currentSkip,
-      });
-      if (result.hotels.length < PAGE_SIZE) setHasMore(false);
-      if (append) {
-        setAllHotels(prev => [...prev, ...result.hotels]);
-      } else {
-        setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
-      }
-      setFromApi(result.fromApi);
-    } catch {}
+  const fetchResults = useCallback(async (pageNum: number) => {
+    const result = await searchHotelsApi({
+      destination: (location as string) || '',
+      checkIn: checkIn as string,
+      checkOut: checkOut as string,
+      adults: adults ? Number(adults) : (guests ? Number(guests) : 1),
+      children: children ? Number(children) : 0,
+      rooms: rooms ? Number(rooms) : 1,
+      limit: PAGE_SIZE,
+      skip: pageNum * PAGE_SIZE,
+    });
+    if (result.hotels.length < PAGE_SIZE) setHasMore(false);
+    else setHasMore(true);
+    // Only seed the list from MOCK_PROPERTIES on the FIRST page — an empty
+    // later page just means "no more results", never a full mock swap-in.
+    if (pageNum === 0) {
+      setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
+      // Seed the total from the backend meta on the first page
+      setTotalResults(result.total ?? (result.hotels.length > 0 ? undefined : 0));
+    } else if (result.hotels.length > 0) {
+      setAllHotels(result.hotels);
+    }
+    setFromApi(result.fromApi);
+    return result;
   }, [location, checkIn, checkOut, guests, adults, children, rooms]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setIsLoading(true);
-      setHasMore(true);
-      setSkip(0);
-      await fetchResults(0, false);
+      setPage(0);
+      await fetchResults(0);
       if (!cancelled) setIsLoading(false);
     })();
     return () => { cancelled = true; };
   }, [fetchResults]);
 
-  const handleLoadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore) return;
-    const nextSkip = skip + PAGE_SIZE;
+  const goToPage = useCallback(async (nextPage: number) => {
+    if (nextPage < 0) return;
     setIsLoadingMore(true);
-    fetchResults(nextSkip, true).then(() => {
-      setSkip(nextSkip);
+    const result = await fetchResults(nextPage);
+    // Never advance to an empty page (page 0 handled by the effect)
+    if (nextPage > 0 && result.hotels.length === 0) {
+      setHasMore(false);
       setIsLoadingMore(false);
-    });
-  }, [skip, isLoadingMore, hasMore, fetchResults]);
+      return;
+    }
+    setPage(nextPage);
+    setIsLoadingMore(false);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [fetchResults]);
+
+  const totalPages = totalResults != null ? Math.max(1, Math.ceil(totalResults / PAGE_SIZE)) : undefined;
+
+  const typeActive = selectedTypes.length > 0 && !selectedTypes.includes('All types');
 
   const filteredHotels = allHotels.filter((hotel) => {
     if (hotel.price < priceRange[0] || hotel.price > priceRange[1]) return false;
     if (guestRating !== 'Any' && hotel.rating < parseFloat(guestRating)) return false;
+    if (typeActive) {
+      const label = PROPERTY_TYPE_LABELS[normalizePropertyType(hotel.property_type)] || 'Others';
+      if (!selectedTypes.includes(label)) return false;
+    }
     if (selectedAmenities.length > 0) {
       const hotelAmenityNames = hotel.amenities.map(a => a.name.toLowerCase());
       if (!selectedAmenities.every(a => hotelAmenityNames.some(ha => ha.includes(a.toLowerCase())))) return false;
+    }
+    // Vibe filtering: match hotel name, description, or city against the vibe keyword
+    if (vibe) {
+      const vibeLower = vibe.toLowerCase();
+      const haystack = `${hotel.name} ${hotel.description || ''} ${hotel.city} ${hotel.property_type || ''}`.toLowerCase();
+      if (!haystack.includes(vibeLower)) return false;
     }
     return true;
   }).sort((a, b) => {
@@ -127,7 +159,17 @@ export default function GuestSearchResults() {
   };
 
   const handleHotelPress = (hotelId: string) => {
-    router.push({ pathname: '/guest-hotel-detail/[id]', params: { id: hotelId, checkIn: checkIn || '', checkOut: checkOut || '', guests: guests || '2' } });
+    router.push({
+      pathname: '/guest-hotel-detail/[id]',
+      params: {
+        id: hotelId,
+        checkIn: checkIn || '',
+        checkOut: checkOut || '',
+        guests: guests || '2',
+        adults: adults || (guests ? String(guests) : '2'),
+        children: children || '0',
+      },
+    });
   };
 
   return (
@@ -135,10 +177,10 @@ export default function GuestSearchResults() {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
-          <IconSymbol name="arrow.back" size={18} color="#1A3C5E" />
+          <IconSymbol name="arrow.back" size={18} color={BRAND.navyLight} />
         </TouchableOpacity>
         <View style={s.headerCenter}>
-          <Text style={s.headerTitle} numberOfLines={1}>{location || 'All stays'}</Text>
+          <Text style={s.headerTitle} numberOfLines={1}>{typeLabel || location || 'All stays'}</Text>
           <Text style={s.headerSub}>{guests || '2'} guests · {checkIn || 'Flexible dates'}</Text>
         </View>
         <View style={{ width: 36 }} />
@@ -163,12 +205,12 @@ export default function GuestSearchResults() {
 
       {isLoading ? (
         <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color="#2E86AB" />
+          <ActivityIndicator size="large" color={SRS.teal} />
           <Text style={s.loadingText}>Searching properties...</Text>
         </View>
       ) : filteredHotels.length === 0 ? (
         <View style={s.emptyState}>
-          <IconSymbol name="hotel" size={48} color="#E2E8F0" />
+          <IconSymbol name="hotel" size={48} color={SLATE[200]} />
           <Text style={s.emptyTitle}>No hotels found</Text>
           <Text style={s.emptyDesc}>Try adjusting your filters or search a different destination.</Text>
           <TouchableOpacity onPress={clearAll} style={s.clearBtn}>
@@ -179,7 +221,7 @@ export default function GuestSearchResults() {
         <ScrollView ref={scrollRef} onScroll={handleScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
           {fromApi && (
             <View style={s.apiBadge}>
-              <IconSymbol name="checkin" size={12} color="#10B981" />
+              <IconSymbol name="checkin" size={12} color={STATUS.activeGreen} />
               <Text style={s.apiBadgeText}>Live results from property database</Text>
             </View>
           )}
@@ -197,14 +239,14 @@ export default function GuestSearchResults() {
                   <Image source={{ uri: hotel.images[0] }} style={s.hotelImage} />
                 ) : (
                   <View style={s.hotelImagePlaceholder}>
-                    <IconSymbol name="hotel" size={32} color="#CBD5E1" />
+                    <IconSymbol name="hotel" size={32} color={SLATE[300]} />
                   </View>
                 )}
                 <TouchableOpacity
-                  onPress={() => isFavorite(hotel.id) ? removeFavorite(hotel.id) : addFavorite(hotel.id)}
+                  onPress={() => isFavorite(hotel.id) ? removeFavorite(hotel.id) : addFavorite(hotel.id, hotel)}
                   style={s.favBtn}
                 >
-                  <IconSymbol name={isFavorite(hotel.id) ? 'heart.fill' : 'heart'} size={16} color={isFavorite(hotel.id) ? '#EF4444' : '#6B7280'} />
+                  <IconSymbol name={isFavorite(hotel.id) ? 'heart.fill' : 'heart'} size={16} color={isFavorite(hotel.id) ? RED[500] : GRAY[500]} />
                 </TouchableOpacity>
               </View>
 
@@ -243,26 +285,32 @@ export default function GuestSearchResults() {
             </TouchableOpacity>
           ))}
 
-          {/* Load More */}
-          {hasMore && (
-            <TouchableOpacity onPress={handleLoadMore} disabled={isLoadingMore} style={s.loadMoreBtn}>
-              {isLoadingMore ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={s.loadMoreText}>Load more properties</Text>
-              )}
-            </TouchableOpacity>
+          {/* Pagination — 10 properties per page */}
+          {filteredHotels.length > 0 && totalPages != null && totalPages > 0 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              canGoNext={hasMore && (totalPages == null || page < totalPages - 1)}
+              onPrev={() => goToPage(page - 1)}
+              onNext={() => goToPage(page + 1)}
+              loading={isLoadingMore}
+            />
           )}
           {!hasMore && filteredHotels.length > 0 && (
-            <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-              <Text style={{ fontSize: 12, color: '#94A3B8' }}>All {filteredHotels.length} properties loaded</Text>
+            <View style={{ alignItems: 'center', paddingBottom: 16 }}>
+              <Text style={{ fontSize: 12, color: SLATE[400] }}>All properties loaded</Text>
+            </View>
+          )}
+          {totalResults === 0 && (
+            <View style={{ alignItems: 'center', paddingBottom: 16 }}>
+              <Text style={{ fontSize: 12, color: SLATE[400] }}>No properties found</Text>
             </View>
           )}
         </ScrollView>
       )}
 
       {/* Filter Bottom Sheet */}
-      {showFilters && (
+      <Modal visible={showFilters} transparent animationType="slide" onRequestClose={() => setShowFilters(false)}>
         <View style={s.filterOverlay}>
           <TouchableOpacity style={s.filterBackdrop} onPress={() => setShowFilters(false)} />
           <View style={s.filterSheet}>
@@ -329,12 +377,12 @@ export default function GuestSearchResults() {
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
 
       {/* Filter FAB */}
       {!showFilters && (
         <TouchableOpacity onPress={() => setShowFilters(true)} style={s.filterFAB}>
-          <IconSymbol name="filter" size={18} color="#FFF" />
+          <IconSymbol name="filter" size={18} color={BG.white} />
           <Text style={s.filterFABText}>Filters</Text>
         </TouchableOpacity>
       )}
@@ -343,70 +391,68 @@ export default function GuestSearchResults() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12, backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: SLATE[100] },
+  backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: SLATE[50], alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#1A3C5E' },
-  headerSub: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-  sortBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  resultCount: { fontSize: 16, fontWeight: '700', color: '#1A3C5E' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: BRAND.navyLight },
+  headerSub: { fontSize: 11, color: SLATE[400], marginTop: 1 },
+  sortBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: SLATE[100] },
+  resultCount: { fontSize: 16, fontWeight: '700', color: BRAND.navyLight },
   sortRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sortLabel: { fontSize: 12, color: '#94A3B8' },
-  sortValue: { fontSize: 13, fontWeight: '600', color: '#1A3C5E' },
+  sortLabel: { fontSize: 12, color: SLATE[400] },
+  sortValue: { fontSize: 13, fontWeight: '600', color: BRAND.navyLight },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { marginTop: 12, fontSize: 14, color: '#94A3B8' },
+  loadingText: { marginTop: 12, fontSize: 14, color: SLATE[400] },
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 8 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#94A3B8' },
-  emptyDesc: { fontSize: 14, color: '#CBD5E1', textAlign: 'center', paddingHorizontal: 40 },
-  clearBtn: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: '#2E86AB' },
-  clearBtnText: { fontSize: 13, fontWeight: '600', color: '#FFF' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: SLATE[400] },
+  emptyDesc: { fontSize: 14, color: SLATE[300], textAlign: 'center', paddingHorizontal: 40 },
+  clearBtn: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: SRS.teal },
+  clearBtnText: { fontSize: 13, fontWeight: '600', color: BG.white },
   apiBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginHorizontal: 16, marginTop: 12, marginBottom: 4 },
-  apiBadgeText: { fontSize: 11, color: '#10B981', fontWeight: '600' },
+  apiBadgeText: { fontSize: 11, color: STATUS.activeGreen, fontWeight: '600' },
 
-  hotelCard: { marginHorizontal: 16, marginTop: 14, backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  hotelCard: { marginHorizontal: 16, marginTop: 14, backgroundColor: BG.white, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: SLATE[100], shadowColor: TEXT.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   hotelImageWrap: { height: 180, position: 'relative' },
   hotelImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  hotelImagePlaceholder: { width: '100%', height: '100%', backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  hotelImagePlaceholder: { width: '100%', height: '100%', backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' },
   favBtn: { position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   hotelInfo: { flexDirection: 'row', padding: 14, gap: 12 },
-  hotelName: { fontSize: 15, fontWeight: '700', color: '#1A3C5E', marginBottom: 4 },
-  hotelAddress: { fontSize: 11, color: '#64748B', marginBottom: 8 },
+  hotelName: { fontSize: 15, fontWeight: '700', color: BRAND.navyLight, marginBottom: 4 },
+  hotelAddress: { fontSize: 11, color: SLATE[500], marginBottom: 8 },
   amenityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 },
-  amenityChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#F1F5F9' },
-  amenityText: { fontSize: 10, color: '#64748B' },
-  moreAmenities: { fontSize: 10, color: '#94A3B8', alignSelf: 'center' },
-  availableText: { fontSize: 11, fontWeight: '600', color: '#16A34A' },
+  amenityChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: SLATE[100] },
+  amenityText: { fontSize: 10, color: SLATE[500] },
+  moreAmenities: { fontSize: 10, color: SLATE[400], alignSelf: 'center' },
+  availableText: { fontSize: 11, fontWeight: '600', color: STATUS.activeGreenDark },
   priceBlock: { alignItems: 'flex-end', justifyContent: 'space-between', minWidth: 90 },
-  priceNights: { fontSize: 10, color: '#94A3B8', textAlign: 'right' },
-  priceAmount: { fontSize: 18, fontWeight: '700', color: '#1A3C5E', marginTop: 2 },
-  priceNote: { fontSize: 9, color: '#94A3B8', textAlign: 'right' },
-  seeAvailBtn: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#EBF6EF' },
-  seeAvailText: { fontSize: 11, fontWeight: '600', color: '#16A34A' },
+  priceNights: { fontSize: 10, color: SLATE[400], textAlign: 'right' },
+  priceAmount: { fontSize: 18, fontWeight: '700', color: BRAND.navyLight, marginTop: 2 },
+  priceNote: { fontSize: 9, color: SLATE[400], textAlign: 'right' },
+  seeAvailBtn: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: GREEN.tint },
+  seeAvailText: { fontSize: 11, fontWeight: '600', color: STATUS.activeGreenDark },
 
   filterOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
   filterBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' },
-  filterSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingTop: 20, paddingHorizontal: 20 },
+  filterSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: BG.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingTop: 20, paddingHorizontal: 20 },
   filterHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  filterTitle: { fontSize: 18, fontWeight: '700', color: '#1A3C5E' },
-  clearAll: { fontSize: 13, fontWeight: '600', color: '#2E86AB' },
-  filterSectionTitle: { fontSize: 14, fontWeight: '700', color: '#1A3C5E', marginTop: 20, marginBottom: 8 },
-  filterSectionSub: { fontSize: 12, color: '#64748B', marginBottom: 8 },
+  filterTitle: { fontSize: 18, fontWeight: '700', color: BRAND.navyLight },
+  clearAll: { fontSize: 13, fontWeight: '600', color: SRS.teal },
+  filterSectionTitle: { fontSize: 14, fontWeight: '700', color: BRAND.navyLight, marginTop: 20, marginBottom: 8 },
+  filterSectionSub: { fontSize: 12, color: SLATE[500], marginBottom: 8 },
   filterOption: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
-  checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: '#D1D5DB', alignItems: 'center', justifyContent: 'center' },
-  checkboxActive: { backgroundColor: '#2E86AB', borderColor: '#2E86AB' },
-  checkmark: { fontSize: 12, color: '#FFF', fontWeight: '700' },
-  filterOptionText: { fontSize: 13, color: '#374151', flex: 1 },
+  checkbox: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: GRAY[300], alignItems: 'center', justifyContent: 'center' },
+  checkboxActive: { backgroundColor: SRS.teal, borderColor: SRS.teal },
+  checkmark: { fontSize: 12, color: BG.white, fontWeight: '700' },
+  filterOptionText: { fontSize: 13, color: GRAY[700], flex: 1 },
   ratingRow: { flexDirection: 'row', gap: 8 },
-  ratingBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: '#E2E8F0' },
-  ratingBtnActive: { backgroundColor: '#1A3C5E', borderColor: '#1A3C5E' },
-  ratingBtnText: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  ratingBtnTextActive: { color: '#FFF' },
-  applyBtn: { marginTop: 16, marginBottom: 20, paddingVertical: 14, borderRadius: 12, backgroundColor: '#1A3C5E', alignItems: 'center' },
-  applyBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  ratingBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: SLATE[200] },
+  ratingBtnActive: { backgroundColor: BRAND.navyLight, borderColor: BRAND.navyLight },
+  ratingBtnText: { fontSize: 13, fontWeight: '600', color: GRAY[700] },
+  ratingBtnTextActive: { color: BG.white },
+  applyBtn: { marginTop: 16, marginBottom: 20, paddingVertical: 14, borderRadius: 12, backgroundColor: BRAND.navyLight, alignItems: 'center' },
+  applyBtnText: { fontSize: 15, fontWeight: '700', color: BG.white },
 
-  filterFAB: { position: 'absolute', bottom: 24, left: '50%', marginLeft: -60, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999, backgroundColor: '#1A3C5E', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6, zIndex: 50 },
-  filterFABText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
-  loadMoreBtn: { marginVertical: 16, marginHorizontal: 16, paddingVertical: 14, borderRadius: 12, backgroundColor: '#1A3C5E', alignItems: 'center' },
-  loadMoreText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  filterFAB: { position: 'absolute', bottom: 24, left: '50%', marginLeft: -60, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999, backgroundColor: BRAND.navyLight, shadowColor: TEXT.black, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 6, zIndex: 50 },
+  filterFABText: { fontSize: 14, fontWeight: '700', color: BG.white },
 });

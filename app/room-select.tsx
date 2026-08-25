@@ -11,6 +11,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FONTS, SRS, RADIUS, SHADOWS, FIGMA_COLORS, GRAY } from '@/constants/portal-theme';
+import { BG } from '@/lib/constants/figma-tokens';
 
 interface RoomType {
   id: string;
@@ -60,12 +61,14 @@ export default function RoomSelectScreen() {
   const params = useLocalSearchParams<{
     hotelName?: string;
     hotelLocation?: string;
+    propertyId?: string;
     checkIn?: string;
     checkOut?: string;
     guests?: string;
   }>();
 
-  const hotelName = params.hotelName || 'StayEasy Resort';
+  const hotelName = params.hotelName || 'ServeIQ Resort';
+  const propertyId = params.propertyId || '';
   const hotelLocation = params.hotelLocation || 'Pokhara, Nepal';
   const checkIn = params.checkIn || '';
   const checkOut = params.checkOut || '';
@@ -120,6 +123,7 @@ export default function RoomSelectScreen() {
       pathname: '/booking-flow',
       params: {
         hotelName,
+        propertyId,
         checkIn,
         checkOut,
         guests: String(guests),
@@ -150,7 +154,7 @@ export default function RoomSelectScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={22} color={BG.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Room</Text>
         <View style={{ width: 36 }} />
@@ -266,7 +270,7 @@ export default function RoomSelectScreen() {
                         onPress={(e) => { e.stopPropagation?.(); handleQuantity(room.id, 1); }}
                         style={[styles.qtyBtn, styles.qtyBtnActive]}
                       >
-                        <Ionicons name="add" size={16} color="#FFFFFF" />
+                        <Ionicons name="add" size={16} color={BG.white} />
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -307,7 +311,7 @@ export default function RoomSelectScreen() {
           </View>
           <TouchableOpacity onPress={handleContinue} style={styles.continueBtn}>
             <Text style={styles.continueBtnText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+            <Ionicons name="arrow-forward" size={18} color={BG.white} />
           </TouchableOpacity>
         </View>
       )}
@@ -340,7 +344,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: FONTS.playfairDisplay.bold,
     fontSize: 20,
-    color: '#FFFFFF',
+    color: BG.white,
     letterSpacing: 0.3,
   },
   scrollView: {
@@ -373,7 +377,7 @@ const styles = StyleSheet.create({
   dateCard: {
     marginHorizontal: 20,
     marginTop: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     padding: 16,
     ...SHADOWS.card,
@@ -412,7 +416,7 @@ const styles = StyleSheet.create({
   guestCard: {
     marginHorizontal: 20,
     marginTop: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     padding: 16,
     flexDirection: 'row',
@@ -446,7 +450,7 @@ const styles = StyleSheet.create({
   roomCard: {
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderRadius: RADIUS.card,
     overflow: 'hidden',
     borderWidth: 2,
@@ -481,7 +485,7 @@ const styles = StyleSheet.create({
   priceBadgeText: {
     fontFamily: FONTS.inter.bold,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BG.white,
   },
   priceBadgeSub: {
     fontFamily: FONTS.inter.regular,
@@ -567,10 +571,10 @@ const styles = StyleSheet.create({
   selectBtnText: {
     fontFamily: FONTS.inter.semiBold,
     fontSize: 13,
-    color: '#FFFFFF',
+    color: BG.white,
   },
   selectBtnTextActive: {
-    color: '#FFFFFF',
+    color: BG.white,
   },
   quantityControls: {
     flexDirection: 'row',
@@ -587,7 +591,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -609,7 +613,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -652,6 +656,6 @@ const styles = StyleSheet.create({
   continueBtnText: {
     fontFamily: FONTS.inter.semiBold,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: BG.white,
   },
 });

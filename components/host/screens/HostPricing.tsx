@@ -3,8 +3,11 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'reac
 import { useColors } from '@/hooks/use-colors';
 import { useHost } from '@/lib/context/host-context';
 import type { RatePlan } from '@/types/api';
+import { BLUE, RED, STATUS, BG, PURPLE, GRAY, AMBER, TEAL, EMERALD } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#2563EB';
+const ACCENT = BLUE[600];
 
 type TabKey = 'rate-plans' | 'pricing-calendar' | 'date-overrides' | 'discount-codes' | 'offers-taxes';
 
@@ -41,12 +44,12 @@ function MinRateFloorCard({
   const violations = allRates.filter(r => r.rate < floor);
 
   return (
-    <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: violations.length > 0 ? '#EF4444' : '#10B981', marginBottom: 16 }}>
+    <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: violations.length > 0 ? RED[500] : STATUS.activeGreen, marginBottom: 16 }}>
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <Text className="text-base font-bold text-foreground">Rate Floor</Text>
-          <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: violations.length > 0 ? '#EF444420' : '#10B98120' }}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: violations.length > 0 ? '#EF4444' : '#10B981' }}>
+          <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: violations.length > 0 ? RED[500] + '20' : EMERALD[500] + '20' }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: violations.length > 0 ? RED[500] : STATUS.activeGreen }}>
               {violations.length > 0 ? `${violations.length} below` : 'OK'}
             </Text>
           </View>
@@ -61,9 +64,9 @@ function MinRateFloorCard({
             setEditing(true);
           }
         }}
-          style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: editing ? '#10B98120' : '#3B82F615' }}
+          style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: editing ? EMERALD[500] + '20' : BLUE[500] + '15' }}
         >
-          <Text style={{ fontSize: 12, fontWeight: '600', color: editing ? '#10B981' : '#3B82F6' }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: editing ? STATUS.activeGreen : BLUE[500] }}>
             {editing ? 'Save' : 'Edit'}
           </Text>
         </TouchableOpacity>
@@ -76,7 +79,7 @@ function MinRateFloorCard({
           style={{ marginTop: 8, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, fontSize: 16, fontWeight: '700', color: colors.foreground, backgroundColor: colors.background }}
         />
       ) : (
-        <Text style={{ fontSize: 24, fontWeight: '800', color: violations.length > 0 ? '#EF4444' : '#10B981', marginTop: 4 }}>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: violations.length > 0 ? RED[500] : STATUS.activeGreen, marginTop: 4 }}>
           {currency}{floor}
         </Text>
       )}
@@ -84,12 +87,12 @@ function MinRateFloorCard({
         Minimum allowed rate per night across all room types
       </Text>
       {violations.length > 0 && (
-        <View style={{ marginTop: 8, padding: 10, borderRadius: 8, backgroundColor: '#EF444410' }}>
-          <Text style={{ fontSize: 11, fontWeight: '600', color: '#EF4444', marginBottom: 4 }}>
+        <View style={{ marginTop: 8, padding: 10, borderRadius: 8, backgroundColor: RED[500] + '10' }}>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: RED[500], marginBottom: 4 }}>
             Rates below floor:
           </Text>
           {violations.map((v, i) => (
-            <Text key={i} style={{ fontSize: 11, color: '#EF4444' }}>
+            <Text key={i} style={{ fontSize: 11, color: RED[500] }}>
               {v.label}: {currency}{v.rate} (floor: {currency}{floor})
             </Text>
           ))}
@@ -312,6 +315,11 @@ export function HostPricing() {
     if (isNaN(pct) || pct <= 0 || pct > 100) { Alert.alert('Error', 'Enter a valid discount percentage (1-100)'); return; }
     const start = newOfferStart || new Date().toISOString().split('T')[0];
     const end = newOfferEnd || new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0];
+    // Validate end date is not before start date
+    if (new Date(end) < new Date(start)) {
+      Alert.alert('Error', 'End date must be on or after start date');
+      return;
+    }
     const conditions: { advance_days?: number; within_days?: number; min_nights?: number } = {};
     if (newOfferAdvanceDays) conditions.advance_days = parseInt(newOfferAdvanceDays, 10);
     if (newOfferWithinDays) conditions.within_days = parseInt(newOfferWithinDays, 10);
@@ -372,15 +380,31 @@ export function HostPricing() {
   };
 
   const handleAddDiscountCode = () => {
-    if (!newCode.trim() || !newCodeValue.trim()) return;
+    const code = newCode.trim().toUpperCase();
+    if (!code || !newCodeValue.trim()) return;
     const val = parseFloat(newCodeValue);
     if (isNaN(val) || val <= 0) return;
-    const minAmt = parseFloat(newCodeMin) || 0;
+    // Backend rejects codes longer than 10 chars (verified against live OpenAPI).
+    if (code.length > 10) {
+      Alert.alert('Invalid Code', 'Discount codes can be at most 10 characters.');
+      return;
+    }
+    // Backend rejects a FIXED discount larger than the minimum spend ("Fixed
+    // discount cannot be greater than the minimum required spend configuration").
+    // When no minimum spend is entered, default it to the discount value so the
+    // code stays valid; only reject an explicit conflicting minimum.
+    const minAmt = newCodeType === 'FIXED'
+      ? (parseFloat(newCodeMin) || val)
+      : (parseFloat(newCodeMin) || 0);
+    if (newCodeType === 'FIXED' && parseFloat(newCodeMin) > 0 && minAmt < val) {
+      Alert.alert('Minimum Spend Required', `A fixed discount of ${currency}${val} needs a minimum spend of at least ${currency}${val}.`);
+      return;
+    }
     const maxUses = parseInt(newCodeMaxUses, 10) || 100;
     const codeObj = {
       id: `dc-${Date.now()}`,
       property_id: activePropertyId || '',
-      code: newCode.trim().toUpperCase(),
+      code,
       type: newCodeType,
       discount_value: val,
       min_amount: minAmt,
@@ -474,11 +498,11 @@ export function HostPricing() {
       <View className="flex-row gap-2 mb-3">
         <TouchableOpacity onPress={() => setNewRatePlanType('standard')}
           style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: newRatePlanType === 'standard' ? ACCENT : colors.border }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: newRatePlanType === 'standard' ? '#fff' : colors.foreground }}>Standard</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: newRatePlanType === 'standard' ? BG.white : colors.foreground }}>Standard</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setNewRatePlanType('day_of_week')}
-          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: newRatePlanType === 'day_of_week' ? '#8B5CF6' : colors.border }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: newRatePlanType === 'day_of_week' ? '#fff' : colors.foreground }}>Day of Week</Text>
+          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: newRatePlanType === 'day_of_week' ? PURPLE[500] : colors.border }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: newRatePlanType === 'day_of_week' ? BG.white : colors.foreground }}>Day of Week</Text>
         </TouchableOpacity>
       </View>
       <View className="flex-row gap-2 mb-3">
@@ -502,11 +526,11 @@ export function HostPricing() {
               <TextInput placeholder="Weekday" placeholderTextColor={colors.muted}
                 value={newRatePlanWeekday[rt.id] ?? ''} onChangeText={t => setNewRatePlanWeekday(p => ({ ...p, [rt.id]: t }))}
                 keyboardType="numeric"
-                style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 8, fontSize: 13, color: '#10B981', backgroundColor: colors.background }} />
+                style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 8, fontSize: 13, color: STATUS.activeGreen, backgroundColor: colors.background }} />
               <TextInput placeholder="Weekend" placeholderTextColor={colors.muted}
                 value={newRatePlanWeekend[rt.id] ?? ''} onChangeText={t => setNewRatePlanWeekend(p => ({ ...p, [rt.id]: t }))}
                 keyboardType="numeric"
-                style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 8, fontSize: 13, color: '#EF4444', backgroundColor: colors.background }} />
+                style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 8, fontSize: 13, color: RED[500], backgroundColor: colors.background }} />
             </View>
           ) : (
             <TextInput placeholder="Rate" placeholderTextColor={colors.muted}
@@ -523,7 +547,7 @@ export function HostPricing() {
         </TouchableOpacity>
         <TouchableOpacity onPress={handleAddRatePlan}
           style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: ACCENT }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Create Plan</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Create Plan</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -534,7 +558,7 @@ export function HostPricing() {
       {showAddRatePlan && renderCreateRatePlanForm()}
       <TouchableOpacity onPress={() => { setShowAddRatePlan(true); initNewRatePlanRates(); }}
         style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12, backgroundColor: ACCENT }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>+ Add Rate Plan</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>+ Add Rate Plan</Text>
       </TouchableOpacity>
       {filteredRatePlans.length === 0 ? (
         <View style={{ padding: 24, alignItems: 'center' }}>
@@ -556,10 +580,10 @@ export function HostPricing() {
                   <TouchableOpacity onPress={() => toggleRateType(rp.id)}
                     style={{
                       paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
-                      backgroundColor: isDow ? '#8B5CF620' : '#6B728020',
+                      backgroundColor: isDow ? PURPLE[500] + '20' : GRAY[500] + '20',
                     }}
                   >
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: isDow ? '#8B5CF6' : '#6B7280' }}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: isDow ? PURPLE[500] : GRAY[500] }}>
                       {isDow ? 'Day-of-Week' : 'Standard'}
                     </Text>
                   </TouchableOpacity>
@@ -569,27 +593,27 @@ export function HostPricing() {
                 {isEditing ? (
                   <>
                     <TouchableOpacity onPress={() => saveEditingPlan(rp)}
-                      style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6, backgroundColor: '#10B98120' }}
+                      style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6, backgroundColor: EMERALD[500] + '20' }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981' }}>Save</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS.activeGreen }}>Save</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setEditingPlanId(null)}
-                      style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6, backgroundColor: '#6B728020' }}
+                      style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6, backgroundColor: GRAY[500] + '20' }}
                     >
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280' }}>Cancel</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: GRAY[500] }}>Cancel</Text>
                     </TouchableOpacity>
                   </>
                 ) : (
                   <TouchableOpacity onPress={() => startEditingPlan(rp)}
-                    style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6, backgroundColor: '#3B82F615' }}
+                    style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6, backgroundColor: BLUE[500] + '15' }}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6' }}>Edit</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: BLUE[500] }}>Edit</Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity onPress={() => handleDeleteRatePlan(rp.id, rp.name)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#EF444420' }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: RED[500] + '20' }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>Delete</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: RED[500] }}>Delete</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -616,21 +640,21 @@ export function HostPricing() {
                             value={editWeekdayRate[rtId] ?? String(rate)}
                             onChangeText={t => setEditWeekdayRate(p => ({ ...p, [rtId]: t }))}
                             keyboardType="numeric"
-                            style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: '#10B981', borderWidth: 1, borderColor: colors.border, borderRadius: 6, marginHorizontal: 2, paddingVertical: 2 }}
+                            style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: STATUS.activeGreen, borderWidth: 1, borderColor: colors.border, borderRadius: 6, marginHorizontal: 2, paddingVertical: 2 }}
                           />
                           <TextInput
                             value={editWeekendRate[rtId] ?? String(rp.weekend_rate?.[rtId] ?? Math.round(rate * 1.2))}
                             onChangeText={t => setEditWeekendRate(p => ({ ...p, [rtId]: t }))}
                             keyboardType="numeric"
-                            style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: '#EF4444', borderWidth: 1, borderColor: colors.border, borderRadius: 6, marginHorizontal: 2, paddingVertical: 2 }}
+                            style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: RED[500], borderWidth: 1, borderColor: colors.border, borderRadius: 6, marginHorizontal: 2, paddingVertical: 2 }}
                           />
                         </>
                       ) : (
                         <>
-                          <Text style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: '#10B981' }}>
+                          <Text style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: STATUS.activeGreen }}>
                             {currency}{rp.weekday_rate?.[rtId] ?? rate}
                           </Text>
-                          <Text style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: '#EF4444' }}>
+                          <Text style={{ flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '600', color: RED[500] }}>
                             {currency}{rp.weekend_rate?.[rtId] ?? Math.round(rate * 1.2)}
                           </Text>
                         </>
@@ -664,10 +688,10 @@ export function HostPricing() {
             <TouchableOpacity onPress={() => toggleRatePlan(rp.id, rp.is_active)}
               style={{
                 marginTop: 10, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12,
-                backgroundColor: rp.is_active ? '#10B98120' : '#EF444420', alignSelf: 'flex-start',
+                backgroundColor: rp.is_active ? EMERALD[500] + '20' : RED[500] + '20', alignSelf: 'flex-start',
               }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: rp.is_active ? '#10B981' : '#EF4444' }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: rp.is_active ? STATUS.activeGreen : RED[500] }}>
                 {rp.is_active ? 'Active' : 'Inactive'}
               </Text>
             </TouchableOpacity>
@@ -682,8 +706,8 @@ export function HostPricing() {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
       {roomTypes.filter(rt => rt.property_id === activePropertyId).map(rt => (
         <TouchableOpacity key={rt.id} onPress={() => setNewOverrideRoomTypeId(rt.id)}
-          style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, marginRight: 6, backgroundColor: newOverrideRoomTypeId === rt.id ? '#8B5CF6' : colors.border }}>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: newOverrideRoomTypeId === rt.id ? '#fff' : colors.foreground }}>{rt.room_type_name}</Text>
+          style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, marginRight: 6, backgroundColor: newOverrideRoomTypeId === rt.id ? PURPLE[500] : colors.border }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: newOverrideRoomTypeId === rt.id ? BG.white : colors.foreground }}>{rt.room_type_name}</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
@@ -708,8 +732,8 @@ export function HostPricing() {
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleAddDateOverride}
-          style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: '#F59E0B' }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Add Override</Text>
+          style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: AMBER[500] }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Add Override</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -719,8 +743,8 @@ export function HostPricing() {
     <View>
       {showAddDateOverride && renderCreateDateOverrideForm()}
       <TouchableOpacity onPress={() => setShowAddDateOverride(true)}
-        style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12, backgroundColor: '#F59E0B' }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>+ Add Date Override</Text>
+        style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12, backgroundColor: AMBER[500] }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>+ Add Date Override</Text>
       </TouchableOpacity>
       {filteredDateOverrides.length === 0 ? (
         <View style={{ padding: 24, alignItems: 'center' }}>
@@ -739,9 +763,9 @@ export function HostPricing() {
                 </Text>
               </View>
               <TouchableOpacity onPress={() => handleDeleteDateOverride(d.id)}
-                style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#EF444420' }}
+                style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: RED[500] + '20' }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>Delete</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: RED[500] }}>Delete</Text>
               </TouchableOpacity>
             </View>
             <View className="flex-row items-center justify-between mt-2">
@@ -749,7 +773,7 @@ export function HostPricing() {
               <Text style={{ fontSize: 15, fontWeight: '700', color: ACCENT }}>{currency}{d.override_price}</Text>
             </View>
             {d.reason ? (
-              <View style={{ marginTop: 6, padding: 8, borderRadius: 8, backgroundColor: '#F3F4F6' }}>
+              <View style={{ marginTop: 6, padding: 8, borderRadius: 8, backgroundColor: GRAY[100] }}>
                 <Text className="text-xs text-muted">{d.reason}</Text>
               </View>
             ) : null}
@@ -772,7 +796,7 @@ export function HostPricing() {
               <View className="flex-row items-center flex-1">
                 <View style={{
                   width: 10, height: 10, borderRadius: 5, marginRight: 8,
-                  backgroundColor: dc.is_active ? '#10B981' : '#EF4444',
+                  backgroundColor: dc.is_active ? STATUS.activeGreen : RED[500],
                 }} />
                 <Text className="text-base font-bold text-foreground tracking-wider">{dc.code}</Text>
               </View>
@@ -780,28 +804,28 @@ export function HostPricing() {
                 <TouchableOpacity onPress={() => toggleDiscountCode(dc.id, dc.is_active)}
                   style={{
                     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6,
-                    backgroundColor: dc.is_active ? '#10B98120' : '#6B728020',
+                    backgroundColor: dc.is_active ? EMERALD[500] + '20' : GRAY[500] + '20',
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: dc.is_active ? '#10B981' : '#6B7280' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: dc.is_active ? STATUS.activeGreen : GRAY[500] }}>
                     {dc.is_active ? 'Active' : 'Off'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDeleteDiscountCode(dc.id, dc.code)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#EF444420' }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: RED[500] + '20' }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>Delete</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: RED[500] }}>Delete</Text>
                 </TouchableOpacity>
               </View>
             </View>
             <View className="flex-row items-center mt-2">
               <View style={{
                 paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
-                backgroundColor: dc.type === 'PERCENTAGE' ? '#3B82F620' : '#8B5CF620',
+                backgroundColor: dc.type === 'PERCENTAGE' ? BLUE[500] + '20' : PURPLE[500] + '20',
               }}>
                 <Text style={{
                   fontSize: 10, fontWeight: '700', letterSpacing: 0.5,
-                  color: dc.type === 'PERCENTAGE' ? '#3B82F6' : '#8B5CF6',
+                  color: dc.type === 'PERCENTAGE' ? BLUE[500] : PURPLE[500],
                 }}>
                   {dc.type}
                 </Text>
@@ -829,6 +853,7 @@ export function HostPricing() {
             value={newCode}
             onChangeText={setNewCode}
             autoCapitalize="characters"
+            maxLength={10}
             style={{
               borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12,
               fontSize: 14, color: colors.foreground, backgroundColor: colors.background, marginBottom: 8,
@@ -841,7 +866,7 @@ export function HostPricing() {
                 backgroundColor: newCodeType === 'PERCENTAGE' ? ACCENT : colors.border,
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: newCodeType === 'PERCENTAGE' ? '#fff' : colors.foreground }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: newCodeType === 'PERCENTAGE' ? BG.white : colors.foreground }}>
                 Percentage
               </Text>
             </TouchableOpacity>
@@ -851,7 +876,7 @@ export function HostPricing() {
                 backgroundColor: newCodeType === 'FIXED' ? ACCENT : colors.border,
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: newCodeType === 'FIXED' ? '#fff' : colors.foreground }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: newCodeType === 'FIXED' ? BG.white : colors.foreground }}>
                 Fixed
               </Text>
             </TouchableOpacity>
@@ -882,7 +907,12 @@ export function HostPricing() {
             placeholder="Max uses"
             placeholderTextColor={colors.muted}
             value={newCodeMaxUses}
-            onChangeText={setNewCodeMaxUses}
+            onChangeText={t => {
+              const num = parseInt(t, 10);
+              if (t === '' || (num >= 0 && !t.includes('-'))) {
+                setNewCodeMaxUses(t);
+              }
+            }}
             keyboardType="numeric"
             style={{
               borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12,
@@ -904,7 +934,7 @@ export function HostPricing() {
                 backgroundColor: ACCENT,
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Add Code</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Add Code</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -915,7 +945,7 @@ export function HostPricing() {
           backgroundColor: ACCENT,
         }}
       >
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>+ Add Discount Code</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>+ Add Discount Code</Text>
       </TouchableOpacity>
     </View>
   );
@@ -957,8 +987,8 @@ export function HostPricing() {
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleAddSpecialOffer}
-          style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: '#F59E0B' }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Create Offer</Text>
+          style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: AMBER[500] }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Create Offer</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -971,12 +1001,12 @@ export function HostPricing() {
         style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, fontSize: 14, color: colors.foreground, backgroundColor: colors.background, marginBottom: 8 }} />
       <View className="flex-row gap-2 mb-3">
         <TouchableOpacity onPress={() => setNewTaxType('PERCENTAGE')}
-          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: newTaxType === 'PERCENTAGE' ? '#3B82F6' : colors.border }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: newTaxType === 'PERCENTAGE' ? '#fff' : colors.foreground }}>Percentage</Text>
+          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: newTaxType === 'PERCENTAGE' ? BLUE[500] : colors.border }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: newTaxType === 'PERCENTAGE' ? BG.white : colors.foreground }}>Percentage</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setNewTaxType('FLAT')}
-          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: newTaxType === 'FLAT' ? '#8B5CF6' : colors.border }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: newTaxType === 'FLAT' ? '#fff' : colors.foreground }}>Flat Amount</Text>
+          style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: newTaxType === 'FLAT' ? PURPLE[500] : colors.border }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: newTaxType === 'FLAT' ? BG.white : colors.foreground }}>Flat Amount</Text>
         </TouchableOpacity>
       </View>
       <TextInput placeholder={newTaxType === 'PERCENTAGE' ? 'Rate %' : `Amount (${currency})`} placeholderTextColor={colors.muted}
@@ -984,8 +1014,8 @@ export function HostPricing() {
         style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, fontSize: 14, color: colors.foreground, backgroundColor: colors.background, marginBottom: 8 }} />
       <TouchableOpacity onPress={() => setNewTaxInclusive(!newTaxInclusive)}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: newTaxInclusive ? '#10B981' : colors.border, backgroundColor: newTaxInclusive ? '#10B981' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-          {newTaxInclusive && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✓</Text>}
+        <View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: newTaxInclusive ? STATUS.activeGreen : colors.border, backgroundColor: newTaxInclusive ? STATUS.activeGreen : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+          {newTaxInclusive && <Text style={{ color: BG.white, fontSize: 12, fontWeight: '700' }}>✓</Text>}
         </View>
         <Text style={{ fontSize: 13, color: colors.foreground }}>Inclusive tax (included in listed price)</Text>
       </TouchableOpacity>
@@ -995,8 +1025,8 @@ export function HostPricing() {
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleAddTaxConfig}
-          style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: '#0D9488' }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Add Tax</Text>
+          style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: TEAL[600] }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Add Tax</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -1007,8 +1037,8 @@ export function HostPricing() {
       <Text className="text-base font-bold text-foreground mb-3">Special Offers</Text>
       {showAddSpecialOffer && renderCreateSpecialOfferForm()}
       <TouchableOpacity onPress={() => setShowAddSpecialOffer(true)}
-        style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12, backgroundColor: '#F59E0B' }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>+ Add Special Offer</Text>
+        style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12, backgroundColor: AMBER[500] }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>+ Add Special Offer</Text>
       </TouchableOpacity>
       {filteredSpecialOffers.length === 0 ? (
         <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 16, alignItems: 'center' }}>
@@ -1028,23 +1058,23 @@ export function HostPricing() {
                 <TouchableOpacity onPress={() => toggleSpecialOffer(so.id, so.is_active)}
                   style={{
                     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6,
-                    backgroundColor: so.is_active ? '#10B98120' : '#6B728020',
+                    backgroundColor: so.is_active ? EMERALD[500] + '20' : GRAY[500] + '20',
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: so.is_active ? '#10B981' : '#6B7280' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: so.is_active ? STATUS.activeGreen : GRAY[500] }}>
                     {so.is_active ? 'Active' : 'Off'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDeleteSpecialOffer(so.id, so.title)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#EF444420' }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: RED[500] + '20' }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>Delete</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: RED[500] }}>Delete</Text>
                 </TouchableOpacity>
               </View>
             </View>
             <View className="flex-row items-center mt-2">
-              <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#F59E0B20' }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#F59E0B' }}>
+              <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: AMBER[500] + '20' }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: AMBER[500] }}>
                   {so.discount_percentage}% OFF
                 </Text>
               </View>
@@ -1055,22 +1085,22 @@ export function HostPricing() {
             {so.conditions && (
               <View className="flex-row flex-wrap mt-2">
                 {so.conditions.advance_days != null && (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#3B82F615', marginRight: 6, marginTop: 4 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '500', color: '#3B82F6' }}>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: BLUE[500] + '15', marginRight: 6, marginTop: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '500', color: BLUE[500] }}>
                       Book {so.conditions.advance_days}+ days ahead
                     </Text>
                   </View>
                 )}
                 {so.conditions.within_days != null && (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#8B5CF615', marginRight: 6, marginTop: 4 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '500', color: '#8B5CF6' }}>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: PURPLE[500] + '15', marginRight: 6, marginTop: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '500', color: PURPLE[500] }}>
                       Within {so.conditions.within_days} days
                     </Text>
                   </View>
                 )}
                 {so.conditions.min_nights != null && (
-                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#10B98115', marginRight: 6, marginTop: 4 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '500', color: '#10B981' }}>
+                  <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: EMERALD[500] + '15', marginRight: 6, marginTop: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '500', color: STATUS.activeGreen }}>
                       Min {so.conditions.min_nights} night{so.conditions.min_nights !== 1 ? 's' : ''}
                     </Text>
                   </View>
@@ -1084,8 +1114,8 @@ export function HostPricing() {
       <Text className="text-base font-bold text-foreground mb-3 mt-4">Taxes</Text>
       {showAddTaxConfig && renderCreateTaxConfigForm()}
       <TouchableOpacity onPress={() => setShowAddTaxConfig(true)}
-        style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12, backgroundColor: '#0D9488' }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>+ Add Tax Config</Text>
+        style={{ paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12, backgroundColor: TEAL[600] }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>+ Add Tax Config</Text>
       </TouchableOpacity>
       {filteredTaxConfigs.length === 0 ? (
         <View style={{ padding: 16, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
@@ -1102,17 +1132,17 @@ export function HostPricing() {
                 <TouchableOpacity onPress={() => toggleTaxConfig(tx.id, tx.is_active)}
                   style={{
                     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 6,
-                    backgroundColor: tx.is_active ? '#10B98120' : '#6B728020',
+                    backgroundColor: tx.is_active ? EMERALD[500] + '20' : GRAY[500] + '20',
                   }}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: tx.is_active ? '#10B981' : '#6B7280' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: tx.is_active ? STATUS.activeGreen : GRAY[500] }}>
                     {tx.is_active ? 'Active' : 'Off'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDeleteTaxConfig(tx.id, tx.name)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#EF444420' }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: RED[500] + '20' }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#EF4444' }}>Delete</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: RED[500] }}>Delete</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1122,22 +1152,22 @@ export function HostPricing() {
               </Text>
               <View style={{
                 paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginLeft: 10,
-                backgroundColor: tx.type === 'PERCENTAGE' ? '#3B82F620' : '#8B5CF620',
+                backgroundColor: tx.type === 'PERCENTAGE' ? BLUE[500] + '20' : PURPLE[500] + '20',
               }}>
                 <Text style={{
                   fontSize: 10, fontWeight: '700', letterSpacing: 0.5,
-                  color: tx.type === 'PERCENTAGE' ? '#3B82F6' : '#8B5CF6',
+                  color: tx.type === 'PERCENTAGE' ? BLUE[500] : PURPLE[500],
                 }}>
                   {tx.type}
                 </Text>
               </View>
               <View style={{
                 paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginLeft: 6,
-                backgroundColor: tx.is_inclusive ? '#10B98115' : '#F59E0B15',
+                backgroundColor: tx.is_inclusive ? EMERALD[500] + '15' : AMBER[500] + '15',
               }}>
                 <Text style={{
                   fontSize: 10, fontWeight: '600',
-                  color: tx.is_inclusive ? '#10B981' : '#F59E0B',
+                  color: tx.is_inclusive ? STATUS.activeGreen : AMBER[500],
                 }}>
                   {tx.is_inclusive ? 'Included' : 'Excluded'}
                 </Text>
@@ -1232,12 +1262,12 @@ export function HostPricing() {
                 <TouchableOpacity key={day}
                   style={{
                     flex: 1, alignItems: 'center', paddingVertical: 8, marginHorizontal: 4, borderRadius: 8,
-                    backgroundColor: isOverride ? '#F59E0B40' : isToday ? ACCENT + '30' : 'transparent',
+                    backgroundColor: isOverride ? AMBER[500] + '40' : isToday ? ACCENT + '30' : 'transparent',
                     borderWidth: isToday ? 1 : 0, borderColor: ACCENT,
                   }}
                 >
                   <Text style={{ fontSize: 12, fontWeight: isToday ? '700' : '500', color: colors.foreground }}>{day}</Text>
-                  <Text style={{ fontSize: 10, color: isOverride ? '#F59E0B' : colors.muted, marginTop: 4 }}>
+                  <Text style={{ fontSize: 10, color: isOverride ? AMBER[500] : colors.muted, marginTop: 4 }}>
                     {currency}{rate > 0 ? rate >= 1000 ? `${(rate / 1000).toFixed(0)}k` : rate : '-'}
                   </Text>
                 </TouchableOpacity>
@@ -1252,7 +1282,7 @@ export function HostPricing() {
             <Text className="text-xs text-muted">Today</Text>
           </View>
           <View className="flex-row items-center gap-1.5">
-            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#F59E0B40', borderWidth: 1, borderColor: '#F59E0B' }} />
+            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: AMBER[500] + '40', borderWidth: 1, borderColor: AMBER[500] }} />
             <Text className="text-xs text-muted">Override</Text>
           </View>
         </View>
@@ -1275,7 +1305,7 @@ export function HostPricing() {
           >
             <Text style={{
               fontSize: 13, fontWeight: '600',
-              color: activeTab === tab.key ? '#fff' : colors.foreground,
+              color: activeTab === tab.key ? BG.white : colors.foreground,
             }}>
               {tab.label}
             </Text>

@@ -6,17 +6,20 @@ import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { StatusBadge } from '@/components/superadmin/StatusBadge';
 import { SectionHeader } from '@/components/superadmin/SectionHeader';
 import { EmptyState } from '@/components/superadmin/EmptyState';
+import { PURPLE, INDIGO, BLUE, STATUS, AMBER, PINK, RED, BG, SLATE, TEXT, EMERALD } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 
 export default function RolesScreen() {
   const { roles, createRole, deleteRole } = useSuperAdmin();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newColor, setNewColor] = useState('#6366F1');
+  const [newColor, setNewColor] = useState<string>(INDIGO[500]);
 
-  const PRESET_COLORS = ['#7C3AED', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#EF4444', '#6366F1', '#8B5CF6'];
+  const PRESET_COLORS = [PURPLE[700], BLUE[500], STATUS.activeGreen, AMBER[500], PINK[500], RED[500], INDIGO[500], PURPLE[500]];
 
   const handleCreate = () => {
     if (!newName.trim()) {
@@ -67,7 +70,7 @@ export default function RolesScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Roles & Permissions</Text>
           <TouchableOpacity onPress={() => setShowCreate(true)} style={styles.addBtn} activeOpacity={0.7}>
-            <IconSymbol name="add" size={14} color="#FFF" />
+            <IconSymbol name="add" size={14} color={BG.white} />
             <Text style={styles.addText}>Role</Text>
           </TouchableOpacity>
         </View>
@@ -111,8 +114,8 @@ export default function RolesScreen() {
                 {/* Permission chips */}
                 <View style={styles.permChips}>
                   {role.permissions.map(p => (
-                    <View key={p.id} style={[styles.permChip, { backgroundColor: p.allowed ? '#10B98112' : '#F1F5F9' }]}>
-                      <Text style={[styles.permChipText, { color: p.allowed ? '#10B981' : '#94A3B8' }]}>
+                    <View key={p.id} style={[styles.permChip, { backgroundColor: p.allowed ? EMERALD[500] + '12' : SLATE[100] }]}>
+                      <Text style={[styles.permChipText, { color: p.allowed ? STATUS.activeGreen : SLATE[400] }]}>
                         {p.name}
                       </Text>
                     </View>
@@ -131,7 +134,7 @@ export default function RolesScreen() {
                       style={styles.deleteBtn}
                       activeOpacity={0.7}
                     >
-                      <IconSymbol name="delete" size={14} color="#EF4444" />
+                      <IconSymbol name="delete" size={14} color={RED[500]} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -152,7 +155,7 @@ export default function RolesScreen() {
               value={newName}
               onChangeText={setNewName}
               placeholder="e.g. Billing Manager"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               style={styles.input}
             />
 
@@ -161,7 +164,7 @@ export default function RolesScreen() {
               value={newDesc}
               onChangeText={setNewDesc}
               placeholder="What can this role do?"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               style={styles.input}
             />
 
@@ -192,21 +195,21 @@ export default function RolesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: ACCENT },
-  addText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  addText: { fontSize: 14, fontWeight: '700', color: BG.white },
   card: {
     padding: 18,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderLeftWidth: 4,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: '#000',
+    borderColor: SLATE[100],
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -214,31 +217,31 @@ const styles = StyleSheet.create({
   },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   roleDot: { width: 12, height: 12, borderRadius: 6 },
-  roleName: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
-  roleDesc: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  roleName: { fontSize: 17, fontWeight: '700', color: SLATE[900] },
+  roleDesc: { fontSize: 13, color: SLATE[500], marginTop: 2 },
   permSummary: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  permBar: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#F1F5F9' },
+  permBar: { flex: 1, height: 6, borderRadius: 3, backgroundColor: SLATE[100] },
   permBarFill: { height: 6, borderRadius: 3 },
-  permCount: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  permCount: { fontSize: 12, fontWeight: '600', color: SLATE[500] },
   permChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   permChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
   permChipText: { fontSize: 11, fontWeight: '600' },
   cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   userBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   userCount: { fontSize: 13, fontWeight: '700' },
-  deleteBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' },
+  deleteBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: RED[50], alignItems: 'center', justifyContent: 'center' },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 20 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#0F172A', marginBottom: 16 },
+  modalContent: { backgroundColor: BG.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: SLATE[900], marginBottom: 20 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: SLATE[500], marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: SLATE[900], marginBottom: 16 },
   colorRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   colorDot: { width: 32, height: 32, borderRadius: 16 },
-  colorDotActive: { borderWidth: 3, borderColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
+  colorDotActive: { borderWidth: 3, borderColor: BG.white, shadowColor: TEXT.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
   modalActions: { flexDirection: 'row', gap: 12 },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' },
-  cancelText: { fontSize: 15, fontWeight: '700', color: '#64748B' },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: SLATE[100], alignItems: 'center' },
+  cancelText: { fontSize: 15, fontWeight: '700', color: SLATE[500] },
   createBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' },
-  createText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  createText: { fontSize: 15, fontWeight: '700', color: BG.white },
 });

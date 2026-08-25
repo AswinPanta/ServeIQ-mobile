@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 import { useTranslation } from 'react-i18next';
+import { SLATE, SRS, BG, NEUTRAL, BRAND } from '@/lib/constants/figma-tokens';
 
 export default function SearchScreen() {
   const { t } = useTranslation();
@@ -30,13 +31,21 @@ export default function SearchScreen() {
   const handleScroll = useScrollRestoration(scrollRef, routeKey);
 
   const handleSearch = () => {
+    const toLocalDate = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
     router.push({
       pathname: '/guest-search-results',
       params: {
         location: location || '',
-        checkIn: selectedCheckIn ? selectedCheckIn.toISOString() : '',
-        checkOut: selectedCheckOut ? selectedCheckOut.toISOString() : '',
+        checkIn: selectedCheckIn ? toLocalDate(selectedCheckIn) : '',
+        checkOut: selectedCheckOut ? toLocalDate(selectedCheckOut) : '',
         guests: (adults + children).toString(),
+        adults: adults.toString(),
+        children: children.toString(),
         filter: activeFilter || '',
       },
     });
@@ -59,10 +68,10 @@ export default function SearchScreen() {
         <View style={s.field}>
           <Text style={s.fieldLabel}>{t('search.location')}</Text>
           <View style={s.inputRow}>
-            <IconSymbol name="search" size={18} color="#94A3B8" />
+            <IconSymbol name="search" size={18} color={SLATE[400]} />
             <TextInput
               placeholder={t('search.locationPlaceholder')}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               value={location}
               onChangeText={setLocation}
               style={s.input}
@@ -74,13 +83,13 @@ export default function SearchScreen() {
         <View style={s.field}>
           <Text style={s.fieldLabel}>{t('search.dates')}</Text>
           <TouchableOpacity onPress={() => setShowDatePicker(true)} style={s.inputRow}>
-            <IconSymbol name="calendar" size={18} color="#94A3B8" />
+            <IconSymbol name="calendar" size={18} color={SLATE[400]} />
             <Text style={[s.dateText, selectedCheckIn && s.dateTextFilled]}>
               {selectedCheckIn && selectedCheckOut
                 ? `${selectedCheckIn.toLocaleDateString()} — ${selectedCheckOut.toLocaleDateString()}`
                 : t('search.datesPlaceholder')}
             </Text>
-            <IconSymbol name="chevron.down" size={16} color="#94A3B8" />
+            <IconSymbol name="chevron.down" size={16} color={SLATE[400]} />
           </TouchableOpacity>
           {selectedCheckIn && selectedCheckOut && (
             <Text style={s.nightsText}>
@@ -110,11 +119,11 @@ export default function SearchScreen() {
               <Text style={s.fieldLabel}>{item.label}</Text>
               <View style={s.counterBox}>
                 <TouchableOpacity onPress={() => item.val > item.min && item.set(item.val - 1)} style={s.counterBtn}>
-                  <IconSymbol name="minus" size={14} color="#2E86AB" />
+                  <IconSymbol name="minus" size={14} color={SRS.teal} />
                 </TouchableOpacity>
                 <Text style={s.counterVal}>{item.val}</Text>
                 <TouchableOpacity onPress={() => item.val < item.max && item.set(item.val + 1)} style={s.counterBtn}>
-                  <IconSymbol name="add" size={14} color="#2E86AB" />
+                  <IconSymbol name="add" size={14} color={SRS.teal} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -123,7 +132,7 @@ export default function SearchScreen() {
 
         {/* Search CTA */}
         <TouchableOpacity onPress={handleSearch} style={s.searchBtn} activeOpacity={0.9}>
-          <IconSymbol name="search" size={18} color="#FFF" />
+          <IconSymbol name="search" size={18} color={BG.white} />
           <Text style={s.searchBtnText}>{t('search.button')}</Text>
         </TouchableOpacity>
 
@@ -137,7 +146,7 @@ export default function SearchScreen() {
                 onPress={() => setActiveFilter(activeFilter === f.param ? null : f.param)}
                 style={[s.filterChip, activeFilter === f.param && s.filterChipActive]}
               >
-                <IconSymbol name={f.icon} size={14} color={activeFilter === f.param ? '#FFF' : '#64748B'} />
+                <IconSymbol name={f.icon} size={14} color={activeFilter === f.param ? BG.white : SLATE[500]} />
                 <Text style={[s.filterLabel, activeFilter === f.param && s.filterLabelActive]}>{f.label}</Text>
               </TouchableOpacity>
             ))}
@@ -149,27 +158,27 @@ export default function SearchScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   headerSection: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8, gap: 4 },
-  title: { fontSize: 24, fontWeight: '700', color: '#1A3C5E', letterSpacing: -0.5 },
-  sub: { fontSize: 13, color: '#94A3B8' },
+  title: { fontSize: 24, fontWeight: '700', color: BRAND.navyLight, letterSpacing: -0.5 },
+  sub: { fontSize: 13, color: SLATE[400] },
   form: { paddingHorizontal: 16, gap: 20, marginTop: 16 },
   field: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#1A3C5E' },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
-  input: { flex: 1, fontSize: 14, color: '#0F172A', padding: 0 },
-  dateText: { flex: 1, fontSize: 14, color: '#94A3B8' },
-  dateTextFilled: { color: '#0F172A', fontWeight: '500' },
-  nightsText: { fontSize: 11, color: '#94A3B8', marginTop: 4, marginLeft: 2 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: BRAND.navyLight },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  input: { flex: 1, fontSize: 14, color: SLATE[900], padding: 0 },
+  dateText: { flex: 1, fontSize: 14, color: SLATE[400] },
+  dateTextFilled: { color: SLATE[900], fontWeight: '500' },
+  nightsText: { fontSize: 11, color: SLATE[400], marginTop: 4, marginLeft: 2 },
   counterRow: { flexDirection: 'row', gap: 12 },
-  counterBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingVertical: 6, paddingHorizontal: 10 },
+  counterBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[200], borderRadius: 12, paddingVertical: 6, paddingHorizontal: 10 },
   counterBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(46, 134, 171, 0.1)', alignItems: 'center', justifyContent: 'center' },
-  counterVal: { fontSize: 16, fontWeight: '700', color: '#0F172A', minWidth: 24, textAlign: 'center' },
-  searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, backgroundColor: '#1A3C5E', shadowColor: '#1A3C5E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-  searchBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  counterVal: { fontSize: 16, fontWeight: '700', color: SLATE[900], minWidth: 24, textAlign: 'center' },
+  searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, backgroundColor: BRAND.navyLight, shadowColor: BRAND.navyLight, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  searchBtnText: { fontSize: 15, fontWeight: '700', color: BG.white },
   filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#E2E8F0' },
-  filterChipActive: { backgroundColor: '#2E86AB', borderColor: '#2E86AB' },
-  filterLabel: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-  filterLabelActive: { color: '#FFF' },
+  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: BG.white, borderWidth: 1.5, borderColor: SLATE[200] },
+  filterChipActive: { backgroundColor: SRS.teal, borderColor: SRS.teal },
+  filterLabel: { fontSize: 12, fontWeight: '600', color: SLATE[500] },
+  filterLabelActive: { color: BG.white },
 });

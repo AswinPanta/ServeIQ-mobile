@@ -3,14 +3,20 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
+import { useAuth } from '@/lib/context/auth-context';
+import { clearGuestMustChange } from '@/lib/context/host-utils';
 import { FONTS, SRS, RADIUS, GRAY } from '@/constants/portal-theme';
+import { TEXT, NEUTRAL, BG, GRAY as GRAYTokens, BORDER, SRS as SRSTokens, RED } from '@/lib/constants/figma-tokens';
 
 export default function CreateNewPasswordScreen() {
   const { t } = useTranslation();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isTempMode = mode === 'temp';
+  const { user, changePassword, clearMustChangePassword, logout, tempPassword } = useAuth();
+
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,7 +27,7 @@ export default function CreateNewPasswordScreen() {
 
   const handleConfirm = async () => {
     const newErrors: Record<string, string> = {};
-    if (!token.trim()) newErrors.token = 'Reset token is required';
+    if (!isTempMode && !token.trim()) newErrors.token = 'Reset token is required';
     if (!newPassword.trim()) newErrors.newPassword = 'Password is required';
     else if (newPassword.length < 6) newErrors.newPassword = 'Min 6 characters';
     if (!confirmPassword.trim()) newErrors.confirmPassword = 'Please confirm';
@@ -31,18 +37,31 @@ export default function CreateNewPasswordScreen() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.RESET_PASSWORD}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token.trim(), new_password: newPassword }),
-      });
-      if (res.ok) {
-        Alert.alert(t('auth.reset.success'), 'Your password has been reset successfully.', [
-          { text: t('common.ok'), onPress: () => router.replace('/(auth)/login') },
-        ]);
+      if (isTempMode) {
+        // Temp password flow: user logged in with temp password, now setting a real one.
+        // Use the changePassword endpoint with the stored temp password.
+        if (!tempPassword) {
+          Alert.alert('Error', 'Session expired. Please log in again with your temp password.');
+          return;
+        }
+        try {
+          await changePassword(tempPassword, newPassword);
+          await clearGuestMustChange(user?.email || '');
+          clearMustChangePassword();
+          Alert.alert(t('auth.reset.success'), 'Your password has been updated. Please log in with your new password.', [
+            { text: t('common.ok'), onPress: async () => { await logout(); router.replace('/(auth)/login'); } },
+          ]);
+        } catch (e: any) {
+          Alert.alert('Error', e?.message || 'Failed to update password. Please try again.');
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
-        Alert.alert('Error', data.detail || data.message || 'Invalid or expired token. Please request a new one.');
+        // Legacy token flow — backend does not have a reset-password endpoint,
+        // so direct the user to log in with their current password instead.
+        Alert.alert(
+          'Not Available',
+          'Token-based password reset is not supported. Please log in with your current password and change it from your profile settings.',
+          [{ text: t('common.ok'), onPress: () => router.replace('/(auth)/login') }],
+        );
       }
     } catch {
       Alert.alert('Error', 'Network error. Please check your connection and try again.');
@@ -55,25 +74,33 @@ export default function CreateNewPasswordScreen() {
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.inner}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#1A1C1E" />
+          <Ionicons name="arrow-back" size={22} color={TEXT.heading} />
         </TouchableOpacity>
 
-        <Text style={s.title}>{t('auth.reset.title')}</Text>
+        <Text style={s.title}>{isTempMode ? 'Set a New Password' : t('auth.reset.title')}</Text>
 
-        <View style={s.field}>
-          <Text style={s.label}>Reset Token</Text>
-          <View style={[s.inputWrap, errors.token && s.inputError]}>
-            <TextInput
-              style={s.input}
-              placeholder="Paste the token from your email"
-              placeholderTextColor={GRAY[400]}
-              value={token}
-              onChangeText={(val) => { setToken(val); if (errors.token) setErrors({ ...errors, token: '' }); }}
-              autoCapitalize="none"
-            />
+        {isTempMode ? (
+          <View style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 12, padding: 12, marginBottom: 20 }}>
+            <Text style={{ fontSize: 12.5, lineHeight: 18, color: '#92400E' }}>
+              You signed in with a temporary password. Choose a new password to secure your account.
+            </Text>
           </View>
-          {errors.token && <Text style={s.error}>{errors.token}</Text>}
-        </View>
+        ) : (
+          <View style={s.field}>
+            <Text style={s.label}>Reset Token</Text>
+            <View style={[s.inputWrap, errors.token && s.inputError]}>
+              <TextInput
+                style={s.input}
+                placeholder="Paste the token from your email"
+                placeholderTextColor={GRAY[400]}
+                value={token}
+                onChangeText={(val) => { setToken(val); if (errors.token) setErrors({ ...errors, token: '' }); }}
+                autoCapitalize="none"
+              />
+            </View>
+            {errors.token && <Text style={s.error}>{errors.token}</Text>}
+          </View>
+        )}
 
         <View style={s.field}>
           <Text style={s.label}>{t('auth.reset.password')}</Text>
@@ -113,7 +140,7 @@ export default function CreateNewPasswordScreen() {
 
         <TouchableOpacity style={s.confirmBtn} onPress={handleConfirm} activeOpacity={0.8} disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#FFFAFA" />
+            <ActivityIndicator color={NEUTRAL.snow} />
           ) : (
             <Text style={s.confirmBtnText}>{t('auth.reset.button')}</Text>
           )}
@@ -124,25 +151,25 @@ export default function CreateNewPasswordScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: BG.white },
   inner: { flex: 1, paddingHorizontal: 24, paddingTop: 60 },
   backBtn: {
-    width: 51, height: 51, borderRadius: 25.5, backgroundColor: '#F3F4F6',
+    width: 51, height: 51, borderRadius: 25.5, backgroundColor: GRAYTokens[100],
     alignItems: 'center', justifyContent: 'center', marginBottom: 32,
   },
-  title: { fontSize: 28, fontFamily: FONTS.playfairDisplay.bold, color: '#000', marginBottom: 32 },
+  title: { fontSize: 28, fontFamily: FONTS.playfairDisplay.bold, color: TEXT.black, marginBottom: 32 },
   field: { marginBottom: 20 },
-  label: { fontSize: 16, fontFamily: FONTS.inter.medium, color: '#A7A4A4', marginBottom: 10 },
+  label: { fontSize: 16, fontFamily: FONTS.inter.medium, color: TEXT.label, marginBottom: 10 },
   inputWrap: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#D9D9D9',
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: BORDER.input,
     borderRadius: RADIUS.input, paddingHorizontal: 16,
   },
-  inputError: { borderColor: '#C0392B', backgroundColor: '#FEF2F2' },
-  input: { flex: 1, fontSize: 14, fontFamily: FONTS.inter.regular, color: '#000', paddingVertical: 12 },
+  inputError: { borderColor: SRSTokens.red, backgroundColor: RED[50] },
+  input: { flex: 1, fontSize: 14, fontFamily: FONTS.inter.regular, color: TEXT.black, paddingVertical: 12 },
   eyeBtn: { padding: 8 },
-  error: { fontSize: 12, fontFamily: FONTS.inter.regular, color: '#C0392B', marginTop: 4 },
+  error: { fontSize: 12, fontFamily: FONTS.inter.regular, color: SRSTokens.red, marginTop: 4 },
   confirmBtn: {
     backgroundColor: SRS.navy, borderRadius: RADIUS.button, paddingVertical: 16, alignItems: 'center', marginTop: 8,
   },
-  confirmBtnText: { fontSize: 20, fontFamily: FONTS.itim, color: '#FFFAFA' },
+  confirmBtnText: { fontSize: 20, fontFamily: FONTS.itim, color: NEUTRAL.snow },
 });

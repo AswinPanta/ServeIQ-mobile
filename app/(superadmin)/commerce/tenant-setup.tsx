@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { createTenant } from "@/lib/api";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { PURPLE, BG, SLATE, STATUS, RED } from '@/lib/constants/figma-tokens';
+import { validateName } from '@/lib/utils/validation';
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 
 const STEPS = [
   { title: 'Brand Name', subtitle: 'What should we call your tenant?', icon: 'hotel' },
   { title: 'Confirm', subtitle: 'Review and create your tenant', icon: 'check' },
 ];
+
+// Backend TenantCreateSchema constraints (Pydantic):
+// - name: str, min_length=1, max_length=255, required
+const NAME_MIN = 2;
+const NAME_MAX = 100;
 
 export default function TenantSetup() {
   const router = useRouter();
@@ -18,26 +25,40 @@ export default function TenantSetup() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const validate = (): boolean => {
+    const nameErr = validateName(name, { min: NAME_MIN, max: NAME_MAX, label: 'Tenant name' });
+    if (nameErr) { setError(nameErr); return false; }
+    setError("");
+    return true;
+  };
+
   const handleSubmit = async () => {
     setError("");
-    if (!name.trim()) { setError("Tenant / brand name is required."); return; }
 
     if (step === 0) {
+      if (!validate()) return;
       setStep(1);
       return;
     }
 
+    if (!validate()) return;
+
     setLoading(true);
     try {
-      await createTenant({ brand_name: name.trim() });
-      Alert.alert('Success', `"${name}" has been created.`, [
+      await createTenant({ name: name.trim() });
+      Alert.alert('Success', `"${name.trim()}" has been created.`, [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e: any) {
+      // handleResponse already extracts the backend error message string
+      // (e.g. "Field required", "name: ensure this value has at least 2 characters").
       Alert.alert("Error", e?.message || "Failed to create tenant.");
     }
     setLoading(false);
   };
+
+  const charCount = name.length;
+  const charWarning = charCount > NAME_MAX * 0.8;
 
   return (
     <View style={styles.container}>
@@ -55,9 +76,9 @@ export default function TenantSetup() {
           <View key={i} style={styles.progressItem}>
             <View style={[styles.progressDot, i <= step && { backgroundColor: ACCENT }]}>
               {i < step ? (
-                <IconSymbol name="check" size={12} color="#FFF" />
+                <IconSymbol name="check" size={12} color={BG.white} />
               ) : (
-                <Text style={[styles.progressNum, i <= step && { color: '#FFF' }]}>{i + 1}</Text>
+                <Text style={[styles.progressNum, i <= step && { color: BG.white }]}>{i + 1}</Text>
               )}
             </View>
             <Text style={[styles.progressLabel, i <= step && { color: ACCENT, fontWeight: '600' }]}>{s.title}</Text>
@@ -66,7 +87,7 @@ export default function TenantSetup() {
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         {step === 0 ? (
           <>
             <View style={styles.iconWrap}>
@@ -80,16 +101,33 @@ export default function TenantSetup() {
               value={name}
               onChangeText={(t) => { setName(t); setError(''); }}
               placeholder="e.g. Sunset Hospitality"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={SLATE[400]}
               style={[styles.input, error ? styles.inputError : null]}
+              maxLength={NAME_MAX}
               autoFocus
             />
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {/* Character counter */}
+            <View style={styles.charRow}>
+              {error ? (
+                <Text style={styles.errorText}>{error}</Text>
+              ) : (
+                <Text style={{ flex: 1 }} />
+              )}
+              <Text style={[styles.charCount, charWarning && { color: RED[500] }]}>
+                {charCount}/{NAME_MAX}
+              </Text>
+            </View>
+
+            {/* Requirements hint */}
+            <View style={styles.hints}>
+              <Hint icon="checkmark.circle" text={`At least ${NAME_MIN} characters`} ok={name.trim().length >= NAME_MIN} />
+              <Hint icon="checkmark.circle" text="No special control characters" ok={!/[\x00-\x08\x0e-\x1f]/.test(name)} />
+            </View>
           </>
         ) : (
           <>
             <View style={styles.iconWrap}>
-              <IconSymbol name="check" size={28} color="#10B981" />
+              <IconSymbol name="check" size={28} color={STATUS.activeGreen} />
             </View>
             <Text style={styles.stepTitle}>Review your tenant</Text>
             <Text style={styles.stepDesc}>Confirm the details below</Text>
@@ -97,7 +135,7 @@ export default function TenantSetup() {
             <View style={styles.reviewCard}>
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewLabel}>Brand Name</Text>
-                <Text style={styles.reviewValue}>{name}</Text>
+                <Text style={styles.reviewValue}>{name.trim()}</Text>
               </View>
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewLabel}>Plan</Text>
@@ -116,7 +154,7 @@ export default function TenantSetup() {
             </View>
           </>
         )}
-      </View>
+      </ScrollView>
 
       {/* CTA */}
       <TouchableOpacity
@@ -126,11 +164,11 @@ export default function TenantSetup() {
         activeOpacity={0.7}
       >
         {loading ? (
-          <ActivityIndicator color="#FFF" />
+          <ActivityIndicator color={BG.white} />
         ) : (
           <>
             <Text style={styles.submitText}>{step === 0 ? 'Continue' : 'Create Tenant'}</Text>
-            <IconSymbol name="arrow.forward" size={18} color="#FFF" />
+            <IconSymbol name="arrow.forward" size={18} color={BG.white} />
           </>
         )}
       </TouchableOpacity>
@@ -138,11 +176,21 @@ export default function TenantSetup() {
   );
 }
 
+/** Small inline requirement hint with check icon */
+function Hint({ icon, text, ok }: { icon: string; text: string; ok: boolean }) {
+  return (
+    <View style={styles.hintRow}>
+      <IconSymbol name={icon as any} size={14} color={ok ? STATUS.activeGreen : SLATE[400]} />
+      <Text style={[styles.hintText, ok && { color: STATUS.activeGreen }]}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
   progressRow: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -151,31 +199,36 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   progressItem: { alignItems: 'center', gap: 6 },
-  progressDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
-  progressNum: { fontSize: 12, fontWeight: '700', color: '#94A3B8' },
-  progressLabel: { fontSize: 12, color: '#94A3B8' },
+  progressDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: SLATE[200], alignItems: 'center', justifyContent: 'center' },
+  progressNum: { fontSize: 12, fontWeight: '700', color: SLATE[400] },
+  progressLabel: { fontSize: 12, color: SLATE[400] },
   content: { flex: 1, paddingHorizontal: 24 },
   iconWrap: { width: 64, height: 64, borderRadius: 18, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 },
-  stepTitle: { fontSize: 22, fontWeight: '800', color: '#0F172A', textAlign: 'center', marginBottom: 6 },
-  stepDesc: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 28 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 8 },
+  stepTitle: { fontSize: 22, fontWeight: '800', color: SLATE[900], textAlign: 'center', marginBottom: 6 },
+  stepDesc: { fontSize: 14, color: SLATE[500], textAlign: 'center', marginBottom: 28 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: SLATE[500], marginBottom: 8 },
   input: {
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: SLATE[200],
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#0F172A',
-    backgroundColor: '#FFF',
+    color: SLATE[900],
+    backgroundColor: BG.white,
   },
-  inputError: { borderColor: '#EF4444' },
-  errorText: { color: '#EF4444', fontSize: 13, marginTop: 6 },
+  inputError: { borderColor: RED[500] },
+  charRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  errorText: { color: RED[500], fontSize: 13, flex: 1 },
+  charCount: { fontSize: 12, color: SLATE[400], fontWeight: '500' },
+  hints: { gap: 6, marginTop: 12 },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  hintText: { fontSize: 12, color: SLATE[400] },
   reviewCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
     overflow: 'hidden',
   },
   reviewRow: {
@@ -185,10 +238,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
-  reviewLabel: { fontSize: 14, color: '#64748B' },
-  reviewValue: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  reviewLabel: { fontSize: 14, color: SLATE[500] },
+  reviewValue: { fontSize: 14, fontWeight: '700', color: SLATE[900] },
   planBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   planText: { fontSize: 13, fontWeight: '700' },
   submitBtn: {
@@ -207,5 +260,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  submitText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  submitText: { fontSize: 16, fontWeight: '700', color: BG.white },
 });

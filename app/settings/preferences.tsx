@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useColors } from '@/hooks/use-colors';
 import { ScreenContainer } from '@/components/screen-container';
 import { safeGoBack } from '@/lib/utils';
+import { CORAL } from '@/lib/constants/figma-tokens';
 const CURRENCIES = [
   { code: 'NPR', symbol: 'Rs', name: 'Nepalese Rupee' },
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -65,7 +66,7 @@ export default function PreferencesScreen() {
                     <Text className="text-sm font-semibold text-foreground">{c.symbol} {c.name}</Text>
                     <Text className="text-xs text-muted">{c.code}</Text>
                   </View>
-                  {currency === c.code && <Text style={{ fontSize: 16, color: '#E63946' }}>✓</Text>}
+                  {currency === c.code && <Text style={{ fontSize: 16, color: CORAL[500] }}>✓</Text>}
                 </TouchableOpacity>
               ))}
             </View>
@@ -84,7 +85,7 @@ export default function PreferencesScreen() {
                   activeOpacity={0.6}
                 >
                   <Text className="flex-1 text-sm text-foreground">{l.name}</Text>
-                  {language === l.code && <Text style={{ fontSize: 16, color: '#E63946' }}>✓</Text>}
+                  {language === l.code && <Text style={{ fontSize: 16, color: CORAL[500] }}>✓</Text>}
                 </TouchableOpacity>
               ))}
             </View>
@@ -106,7 +107,7 @@ export default function PreferencesScreen() {
                     <Text className="text-sm font-semibold text-foreground">{t.label}</Text>
                     <Text className="text-xs text-muted">{t.desc}</Text>
                   </View>
-                  {theme === t.id && <Text style={{ fontSize: 16, color: '#E63946' }}>✓</Text>}
+                  {theme === t.id && <Text style={{ fontSize: 16, color: CORAL[500] }}>✓</Text>}
                 </TouchableOpacity>
               ))}
             </View>

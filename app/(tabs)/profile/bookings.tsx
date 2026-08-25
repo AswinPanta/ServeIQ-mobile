@@ -3,34 +3,56 @@ import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } fr
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useBookings } from '@/lib/context/booking-context';
+import { useAuth } from '@/lib/context/auth-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
+import { CORAL as CORALTokens, BRAND, SRS, SLATE, NEUTRAL, BG, TEXT, FLAT, UI } from '@/lib/constants/figma-tokens';
 
 type BookingTab = 'upcoming' | 'completed' | 'cancelled';
 
 const TABS: BookingTab[] = ['upcoming', 'completed', 'cancelled'];
 
-const CORAL = '#E63946';
-const NAVY = '#1A3C5E';
+const CORAL = CORALTokens[500];
+const NAVY = BRAND.navyLight;
 
 const STATUS_BADGE = {
   upcoming: { bg: CORAL + '14', text: CORAL },
-  completed: { bg: '#1E844914', text: '#1E8449' },
-  cancelled: { bg: '#C0392B14', text: '#C0392B' },
+  completed: { bg: FLAT.green + '14', text: SRS.green },
+  cancelled: { bg: UI.error + '14', text: SRS.red },
 } as const;
 
 export default function BookingsScreen() {
   const { bookings } = useBookings();
+  const { user } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<BookingTab>('upcoming');
   const [refreshing, setRefreshing] = useState(false);
-
-  const filtered = bookings.filter(b => b.status === activeTab);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 600);
   }, []);
+
+  if (!user) {
+    return (
+      <View style={{ flex: 1, backgroundColor: NEUTRAL[100], alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <IconSymbol name="calendar" size={40} color={SLATE[300]} />
+        <Text style={{ fontSize: 17, fontWeight: '700', color: BRAND.navyLight, marginTop: 16, marginBottom: 8 }}>Login Required</Text>
+        <Text style={{ fontSize: 14, color: SLATE[400], textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+          Please login to view your bookings.
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/login')}
+          style={{ backgroundColor: SRS.teal, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ fontSize: 15, fontWeight: '700', color: BG.white }}>Login / Sign Up</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const filtered = bookings.filter(b => b.status === activeTab);
 
   const renderBooking = ({ item }: { item: typeof bookings[number] }) => (
     <View style={s.card}>
@@ -49,7 +71,7 @@ export default function BookingsScreen() {
             {new Date(item.checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </Text>
         </View>
-        <IconSymbol name="chevron.right" size={14} color="#CBD5E1" />
+        <IconSymbol name="chevron.right" size={14} color={SLATE[300]} />
         <View style={s.dateBlock}>
           <Text style={s.dateLabel}>{t('profile.bookings.checkout')}</Text>
           <Text style={s.dateValue}>
@@ -76,7 +98,7 @@ export default function BookingsScreen() {
     return (
       <View style={s.emptyState}>
         <View style={s.emptyIcon}>
-          <IconSymbol name={activeTab === 'cancelled' ? 'cancel' : 'calendar'} size={32} color="#E2E8F0" />
+          <IconSymbol name={activeTab === 'cancelled' ? 'cancel' : 'calendar'} size={32} color={SLATE[200]} />
         </View>
         <Text style={s.emptyTitle}>{t('profile.bookings.empty', { tab: tabLabel })}</Text>
         <Text style={s.emptyDesc}>{t('profile.bookings.emptyDesc', { tab: tabLabel })}</Text>
@@ -124,7 +146,7 @@ export default function BookingsScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -140,7 +162,7 @@ const s = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: SLATE[100],
     padding: 3,
   },
   tab: {
@@ -149,17 +171,17 @@ const s = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
-  tabActive: { backgroundColor: '#FFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tabText: { fontSize: 13, fontWeight: '600', color: '#94A3B8', fontFamily: FONTS.inter.semiBold },
+  tabActive: { backgroundColor: BG.white, shadowColor: TEXT.black, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  tabText: { fontSize: 13, fontWeight: '600', color: SLATE[400], fontFamily: FONTS.inter.semiBold },
   tabTextActive: { color: CORAL },
   list: { paddingHorizontal: 16, paddingBottom: 120 },
   emptyList: { flexGrow: 1 },
   card: {
     padding: 16,
     borderRadius: 14,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: SLATE[100],
     marginBottom: 12,
     gap: 12,
   },
@@ -169,14 +191,14 @@ const s = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700', fontFamily: FONTS.inter.bold },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dateBlock: { flex: 1 },
-  dateLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '500', fontFamily: FONTS.inter.regular, marginBottom: 2 },
-  dateValue: { fontSize: 13, fontWeight: '600', color: '#475569', fontFamily: FONTS.inter.medium },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  dateLabel: { fontSize: 10, color: SLATE[400], fontWeight: '500', fontFamily: FONTS.inter.regular, marginBottom: 2 },
+  dateValue: { fontSize: 13, fontWeight: '600', color: SLATE[600], fontFamily: FONTS.inter.medium },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: SLATE[100] },
   price: { fontSize: 16, fontWeight: '800', color: CORAL, fontFamily: FONTS.sora },
   detailBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, backgroundColor: CORAL },
-  detailBtnText: { fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: FONTS.inter.bold },
+  detailBtnText: { fontSize: 12, fontWeight: '700', color: BG.white, fontFamily: FONTS.inter.bold },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
-  emptyIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  emptyIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: SLATE[50], alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: NAVY, fontFamily: FONTS.inter.semiBold },
-  emptyDesc: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 20, fontFamily: FONTS.inter.regular },
+  emptyDesc: { fontSize: 14, color: SLATE[400], textAlign: 'center', lineHeight: 20, fontFamily: FONTS.inter.regular },
 });

@@ -68,6 +68,7 @@ export function Toast({
           bottom: insets.bottom + 16,
           left: 16,
           right: 16,
+          zIndex: 9999,
         },
       ]}
     >

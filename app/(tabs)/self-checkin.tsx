@@ -9,6 +9,7 @@ import { useCRM } from '@/lib/context/crm-context';
 import * as ImagePicker from 'expo-image-picker';
 import type { GuestProfile } from '@/types/api';
 import { safeGoBack } from "@/lib/utils";
+import { BG } from '@/lib/constants/figma-tokens';
 
 const STEPS = [
   { key: 'select' as const, label: 'Booking' },
@@ -66,7 +67,7 @@ export default function SelfCheckinScreen() {
         {STEPS.map((step, i) => (
           <React.Fragment key={step.key}>
             <View style={[s.stepDot, { backgroundColor: i <= currentIdx ? SRS.teal : GRAY[200] }]}>
-              <IconSymbol name="check" size={12} color="#FFF" />
+              <IconSymbol name="check" size={12} color={BG.white} />
             </View>
             {i < STEPS.length - 1 && <View style={[s.stepLine, { backgroundColor: i < currentIdx ? SRS.teal : GRAY[200] }]} />}
           </React.Fragment>
@@ -134,9 +135,9 @@ export default function SelfCheckinScreen() {
               <Text style={{ ...TYPOGRAPHY.caption, color: GRAY[400] }}>{'Passport, driver\u2019s license, or national ID'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setConfirmedDetails(!confirmedDetails)} style={[s.confirmRow, { borderColor: confirmedDetails ? SRS.green : GRAY[200], backgroundColor: confirmedDetails ? SRS.green + '06' : '#FFF' }]}>
+            <TouchableOpacity onPress={() => setConfirmedDetails(!confirmedDetails)} style={[s.confirmRow, { borderColor: confirmedDetails ? SRS.green : GRAY[200], backgroundColor: confirmedDetails ? SRS.green + '06' : BG.white }]}>
               <View style={[s.checkbox, { backgroundColor: confirmedDetails ? SRS.green : 'transparent', borderColor: confirmedDetails ? SRS.green : GRAY[300] }]}>
-                {confirmedDetails && <IconSymbol name="check" size={12} color="#FFF" />}
+                {confirmedDetails && <IconSymbol name="check" size={12} color={BG.white} />}
               </View>
               <Text style={{ ...TYPOGRAPHY.body, color: SRS.navy, flex: 1 }}>I confirm the details are correct</Text>
             </TouchableOpacity>
@@ -144,7 +145,7 @@ export default function SelfCheckinScreen() {
             <TouchableOpacity onPress={handleCompleteCheckin} disabled={!idUploaded || !confirmedDetails}
               style={[s.ctaBtn, { backgroundColor: idUploaded && confirmedDetails ? SRS.teal : GRAY[200] }]}
             >
-              <Text style={[s.ctaText, { color: idUploaded && confirmedDetails ? '#FFF' : GRAY[400] }]}>Complete Check-in</Text>
+              <Text style={[s.ctaText, { color: idUploaded && confirmedDetails ? BG.white : GRAY[400] }]}>Complete Check-in</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -156,7 +157,7 @@ export default function SelfCheckinScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: GRAY[50] },
   header: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingHorizontal: SPACING.lg, paddingTop: 60, paddingBottom: SPACING.sm },
-  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center' },
   title: { ...TYPOGRAPHY.h2, color: SRS.navy },
   sub: { ...TYPOGRAPHY.small, color: GRAY[500] },
   stepRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md },
@@ -169,13 +170,13 @@ const s = StyleSheet.create({
   emptyTitle: { ...TYPOGRAPHY.body, fontWeight: '600', color: GRAY[500] },
   emptyDesc: { ...TYPOGRAPHY.caption, color: GRAY[400], textAlign: 'center' },
   browseBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: RADIUS.card, backgroundColor: SRS.teal },
-  browseBtnText: { fontSize: 13, fontWeight: '600', color: '#FFF' },
-  bookingCard: { flexDirection: 'row', gap: SPACING.md, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1.5, marginBottom: SPACING.md },
+  browseBtnText: { fontSize: 13, fontWeight: '600', color: BG.white },
+  bookingCard: { flexDirection: 'row', gap: SPACING.md, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: BG.white, borderWidth: 1.5, marginBottom: SPACING.md },
   bookingImg: { width: 56, height: 56, borderRadius: RADIUS.button },
   bookingHotel: { ...TYPOGRAPHY.body, fontWeight: '700', color: SRS.navy },
   bookingMeta: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 1 },
   timerText: { ...TYPOGRAPHY.caption, color: SRS.orange, marginTop: 2, fontWeight: '600' },
-  detailCard: { padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: '#FFF', borderWidth: 1, borderColor: GRAY[100], gap: SPACING.sm, marginBottom: SPACING.lg },
+  detailCard: { padding: SPACING.lg, borderRadius: RADIUS.card, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[100], gap: SPACING.sm, marginBottom: SPACING.lg },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between' },
   detailLabel: { ...TYPOGRAPHY.body, color: GRAY[500] },
   detailVal: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },

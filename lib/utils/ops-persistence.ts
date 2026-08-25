@@ -10,7 +10,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PREFIX = '@stayeasy_ops_';
+const PREFIX = '@serveiq_ops_';
 
 /** Keys for each persistable ops dataset */
 export const OPS_STORAGE_KEYS = {

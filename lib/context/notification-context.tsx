@@ -1,181 +1,123 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Notifications API not yet available on backend — local-only for now
+import { useAuth } from '@/lib/context/auth-context';
 
-export interface AppNotification {
+export interface Notification {
   id: string;
-  type: 'booking_confirmation' | 'booking_reminder' | 'review_request' | 'promotion' | 'system';
+  icon: string;
+  color: string;
+  bgColor: string;
   title: string;
   message: string;
-  data?: Record<string, unknown>;
-  read: boolean;
+  type: string;
   created_at: string;
+  timestamp: string;
+  read: boolean;
+  property_id?: string;
 }
+
+/** Alias kept for consumers that import by the other name. */
+export type AppNotification = Notification;
 
 interface NotificationContextValue {
-  notifications: AppNotification[];
+  notifications: Notification[];
   unreadCount: number;
-  pushToken: string | null;
+  addNotification: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  deleteNotification: (id: string) => void;
   clearNotification: (id: string) => void;
   refreshNotifications: () => Promise<void>;
-  registerPushToken: (token: string) => Promise<void>;
-  /** CI-008: Schedule a post-stay review request notification (fires after 2 hours) */
-  schedulePostStayReview: (hotelName: string) => void;
+  registerPushToken: (token: string) => void;
 }
 
-const MOCK_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'n1',
-    type: 'booking_confirmation',
-    title: 'Booking Confirmed!',
-    message: 'Your stay at Grand Hotel Kathmandu from Jul 15 - Jul 18 has been confirmed.',
-    read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-  },
-  {
-    id: 'n2',
-    type: 'booking_reminder',
-    title: 'Check-in Tomorrow',
-    message: 'You\'re checking in at Pokhara Lakeside Resort tomorrow at 13:00. Have a great stay!',
-    read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: 'n3',
-    type: 'review_request',
-    title: 'How was your stay?',
-    message: 'You recently stayed at Heritage Boutique Hotel. Share your experience with a review!',
-    read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-  {
-    id: 'n4',
-    type: 'promotion',
-    title: 'Summer Sale - 20% Off',
-    message: 'Book your next stay with 20% off at select properties. Offer ends July 31.',
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-  },
-  {
-    id: 'n5',
-    type: 'booking_confirmation',
-    title: 'Booking Updated',
-    message: 'Your room upgrade request at Grand Hotel Kathmandu has been approved.',
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-  },
-  {
-    id: 'n6',
-    type: 'system',
-    title: 'Profile Updated',
-    message: 'Your profile information has been updated successfully.',
-    read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
-  },
-];
+const NotificationContext = createContext<NotificationContextValue | null>(null);
 
-// CI-008: Post-stay review request notification
-export function createPostStayReviewNotification(hotelName: string): AppNotification {
-  return {
-    id: 'review_' + Date.now().toString(36),
-    type: 'review_request',
-    title: 'How was your stay?',
-    message: `You recently checked out from ${hotelName}. Share your experience with a review!`,
-    read: false,
-    created_at: new Date().toISOString(),
-  };
+function getStorageKey(userId?: string | number): string {
+  return userId != null ? `notifications_${userId}` : 'notifications_guest';
 }
 
-const STORAGE_KEY = 'stayeasy_notifications';
-const PUSH_TOKEN_KEY = 'stayeasy_push_token';
+async function loadNotifications(userId?: string | number): Promise<Notification[]> {
+  try {
+    const data = await AsyncStorage.getItem(getStorageKey(userId));
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.warn('Failed to load notifications:', e);
+    return [];
+  }
+}
 
-const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
+async function saveNotifications(notifications: Notification[], userId?: string | number) {
+  await AsyncStorage.setItem(getStorageKey(userId), JSON.stringify(notifications));
+}
 
-export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [pushToken, setPushToken] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const userId = (user as { id?: string | number } | null)?.id;
 
   useEffect(() => {
-    AsyncStorage.multiGet([STORAGE_KEY, PUSH_TOKEN_KEY]).then(([notifData, tokenData]) => {
-      if (notifData[1]) {
-        setNotifications(JSON.parse(notifData[1]));
-      } else {
-        setNotifications(MOCK_NOTIFICATIONS);
-      }
-      if (tokenData[1]) setPushToken(tokenData[1]);
-      setLoaded(true);
+    let cancelled = false;
+    loadNotifications(userId).then(data => {
+      if (!cancelled) setNotifications(data);
     });
-  }, []);
+    return () => { cancelled = true; };
+  }, [userId]);
 
   useEffect(() => {
-    if (loaded) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-    }
-  }, [notifications, loaded]);
+    saveNotifications(notifications, userId).catch(e => {
+      console.warn('Failed to save notifications:', e);
+    });
+  }, [notifications, userId]);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const addNotification = useCallback(
+    (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+      const now = new Date().toISOString();
+      const newNotification: Notification = {
+        ...n,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: now,
+        created_at: n.created_at || now,
+        type: n.type || 'system',
+        read: false,
+      };
+      setNotifications(prev => [newNotification, ...prev]);
+    },
+    [],
+  );
 
   const markAsRead = useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
   }, []);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   }, []);
 
-  const clearNotification = useCallback((id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const deleteNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  const clearNotification = useCallback((_id?: string) => {
+    setNotifications([]);
   }, []);
 
   const refreshNotifications = useCallback(async () => {
-    // Notifications API not yet available on backend
-    // TODO: wire to backend when /notifications/ endpoint is added
-  }, []);
+    const data = await loadNotifications(userId);
+    setNotifications(data);
+  }, [userId]);
 
-  const registerPushToken = useCallback(async (token: string) => {
-    setPushToken(token);
-    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-    // TODO: wire to backend when /notifications/push-token endpoint is added
-    // On backend: api.post('/notifications/push-token', { token, platform: Platform.OS })
+  const registerPushToken = useCallback((_token: string) => {
+    // Push token registration is handled by the push notification hook
   }, []);
-
-  // CI-008: Schedule post-stay review request
-  const schedulePostStayReview = useCallback((hotelName: string) => {
-    setTimeout(() => {
-      const notif = createPostStayReviewNotification(hotelName);
-      setNotifications(prev => [notif, ...prev]);
-    }, 2 * 60 * 60 * 1000); // 2 hours
-  }, []);
-
-  const value = useMemo(() => ({
-    notifications,
-    unreadCount,
-    pushToken,
-    markAsRead,
-    markAllAsRead,
-    clearNotification,
-    refreshNotifications,
-    registerPushToken,
-    schedulePostStayReview,
-  }), [
-    notifications,
-    unreadCount,
-    pushToken,
-    markAsRead,
-    markAllAsRead,
-    clearNotification,
-    refreshNotifications,
-    registerPushToken,
-    schedulePostStayReview,
-  ]);
 
   return (
-    <NotificationContext.Provider value={value}>
+    <NotificationContext.Provider
+      value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, deleteNotification, clearNotification, refreshNotifications, registerPushToken }}
+    >
       {children}
     </NotificationContext.Provider>
   );

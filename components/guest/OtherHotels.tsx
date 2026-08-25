@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColors } from '@/hooks/use-colors';
+import { CORAL, TEXT } from '@/lib/constants/figma-tokens';
 
 const SIMILAR_PROPERTIES = [
   { id: 'h1', name: 'Mountain View Resort', location: 'Pokhara, Nepal', rating: 4.8, price: 'NPR 8,500', image: '🏔️', reviews: 124 },
@@ -22,7 +23,7 @@ export function OtherHotels({ title: titleProp }: { title?: string } = {}) {
         <View className="flex-row items-center justify-between">
           <Text className="text-2xl font-bold text-foreground">{title}</Text>
           <TouchableOpacity>
-            <Text className="text-sm font-semibold" style={{ color: '#E63946' }}>{t('components.otherHotels.seeAll')}</Text>
+            <Text className="text-sm font-semibold" style={{ color: CORAL[500] }}>{t('components.otherHotels.seeAll')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -33,7 +34,7 @@ export function OtherHotels({ title: titleProp }: { title?: string } = {}) {
             style={{
               width: 200, borderRadius: 20, backgroundColor: colors.surface,
               borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
-              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
+              shadowColor: TEXT.black, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3,
             }}
             activeOpacity={0.85}
           >
@@ -49,7 +50,7 @@ export function OtherHotels({ title: titleProp }: { title?: string } = {}) {
                   <Text className="text-xs font-bold text-foreground">{p.rating}</Text>
                   <Text className="text-xs text-muted">({p.reviews})</Text>
                 </View>
-                <Text className="text-sm font-bold" style={{ color: '#E63946' }}>{p.price}</Text>
+                <Text className="text-sm font-bold" style={{ color: CORAL[500] }}>{p.price}</Text>
               </View>
             </View>
           </TouchableOpacity>

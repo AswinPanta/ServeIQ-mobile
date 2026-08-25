@@ -1,119 +1,53 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Image, StyleSheet, Modal, Platform,
+  View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { SRS, TYPOGRAPHY, GRAY, getAccentColor } from '@/constants/portal-theme';
-import { API_BASE_URL } from '@/constants/api-config';
-import { RoomSetup } from '@/components/host/RoomSetup';
+import { SRS, GRAY } from '@/constants/portal-theme';
 import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
 import { useHost } from '@/lib/context/host-context';
-import { hostApi } from '@/lib/api/host-api';
-import { safeGoBack } from "@/lib/utils";
-import { FadeInView, AnimatedPressable } from '@/components/ui/motion';
+import { useAuth } from '@/lib/context/auth-context';
+import { isApiPropertyId } from '@/lib/context/host-utils';
+import { hostApi, normalizeTime, normalizePhone, ensureRoomType, ensureBedType } from '@/lib/api/host-api';
+import { getStatesForCountry } from '@/lib/mock/country-states';
+import { safeGoBack } from '@/lib/utils';
+import { validateEmail, validatePropertyPhone, validateName, validateTime } from '@/lib/utils/validation';
+import { FadeInView } from '@/components/ui/motion';
+import { reverseGeocode } from '@/hooks/use-location';
+import { BG, PURPLE } from '@/lib/constants/figma-tokens';
+import ListingWizardSteps from '@/components/host/wizard/steps';
+import { DEFAULT_OFFERS, ACCENT, AMENITY_OPTIONS, STEP_ORDER } from '@/components/host/wizard/types';
+import type { WizardStep, PropertyData, LocationData, Offer, WizardCtx, WizardFieldErrors } from '@/components/host/wizard/types';
+import type { CancellationPolicy } from '@/types/api';
+import { styles } from '@/components/host/wizard/styles';
 
-// ─── Types ─────────────────────────────────────────
-type WizardStep = 'type' | 'property' | 'location' | 'photos' | 'rooms' | 'pricing' | 'review';
+// Maps the wizard's display label to the backend CancellationPolicy enum
+// (verified against the live OpenAPI spec at stay-easy-sizw.onrender.com).
+const toCancellationPolicy = (p?: string): CancellationPolicy => {
+  switch ((p || 'Flexible').trim().toLowerCase().replace(/[\s-]+/g, '_')) {
+    case 'flexible': return 'FLEXIBLE';
+    case 'moderate': return 'MODERATE';
+    case 'strict': return 'STRICT';
+    case 'non_refundable': return 'NON_REFUNDABLE';
+    default: return 'CUSTOM';
+  }
+};
 
-type PropertyType = { id: string; label: string; icon: string };
-
-interface PropertyData {
-  type: string; name: string; totalRooms: number; floors: number;
-  yearBuilt: number; description: string; phone: string; email: string;
-}
-
-interface LocationData {
-  country: string; state: string; city: string; zip: string; street: string; mapLink: string;
-}
-
-interface Offer {
-  id: string; label: string; badge: string;
-  badgeColor: string; badgeText: string; desc: string;
-  enabled: boolean; startDate?: string; endDate?: string;
-}
-
-// ─── Constants ─────────────────────────────────────
-const PROPERTY_TYPES: PropertyType[] = [
-  { id: 'hotel', label: 'Hotel', icon: 'hotel' },
-  { id: 'resort', label: 'Resort', icon: 'spa' },
-  { id: 'restaurant', label: 'Restaurant', icon: 'restaurant' },
-  { id: 'hostel', label: 'Hostel', icon: 'business' },
-  { id: 'apartment', label: 'Apartment', icon: 'house.fill' },
-  { id: 'custom', label: 'Add Type', icon: 'add' },
-];
-
-const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Cambodia','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','Estonia','Ethiopia','Fiji','Finland','France','Georgia','Germany','Ghana','Greece','Guatemala','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lithuania','Luxembourg','Madagascar','Malaysia','Maldives','Malta','Mexico','Moldova','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','North Macedonia','Norway','Oman','Pakistan','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan','Tanzania','Thailand','Tunisia','Turkey','UAE','Uganda','Ukraine','United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
-
-const AMENITY_OPTIONS = [
-  { id: 'wifi', name: 'High-speed WiFi', icon: '📶' },
-  { id: 'ac', name: 'Air Conditioning', icon: '❄️' },
-  { id: 'washer', name: 'In-unit Washer/Dryer', icon: '👕' },
-  { id: 'pool', name: 'Private Pool', icon: '🏊' },
-  { id: 'gym', name: 'Gym / Fitness Center', icon: '💪' },
-  { id: 'parking', name: 'Free Parking', icon: '🅿️' },
-  { id: 'kitchen', name: 'Kitchen', icon: '🍳' },
-  { id: 'tv', name: 'Smart TV', icon: '📺' },
-  { id: 'balcony', name: 'Balcony', icon: '🌅' },
-  { id: 'breakfast', name: 'Breakfast Included', icon: '🥐' },
-];
-
-const DEFAULT_OFFERS: Offer[] = [
-  { id: 'early', label: 'Early Bird Discount', badge: '10% OFF', badgeColor: '#dcfce7', badgeText: '#16a34a', desc: '10% off for bookings made 30+ days in advance', enabled: false },
-  { id: 'last', label: 'Last-Minute Deal', badge: '15% OFF', badgeColor: '#fee2e2', badgeText: '#dc2626', desc: '15% off for bookings made within 48 hours', enabled: false },
-  { id: 'long', label: 'Long Stay Discount', badge: '20% OFF', badgeColor: '#dbeafe', badgeText: '#2563eb', desc: '20% off for stays of 7 nights or more', enabled: false },
-  { id: 'free', label: 'Free Cancellation', badge: 'Free', badgeColor: '#f3e8ff', badgeText: '#9333ea', desc: 'Full refund if cancelled 48+ hours before', enabled: false },
-];
-
-const STEP_ORDER: WizardStep[] = ['type', 'property', 'location', 'photos', 'rooms', 'pricing', 'review'];
-const ACCENT = SRS.teal;
-
-// ─── Sub-components ──────────────────────────────────
-
-function CounterInput({ value, onChange, min = 0, max = 99, small = false }: {
-  value: number; onChange: (v: number) => void; min?: number; max?: number; small?: boolean;
-}) {
-  return (
-    <View style={[cs.counter, small && cs.counterSmall]}>
-      <TouchableOpacity onPress={() => onChange(Math.max(min, value - 1))} style={cs.counterBtn}>
-        <Text style={[cs.counterBtnText, small && cs.counterBtnTextSmall]}>−</Text>
-      </TouchableOpacity>
-      <Text style={[cs.counterValue, small && cs.counterValueSmall]}>{value}</Text>
-      <TouchableOpacity onPress={() => onChange(Math.min(max, value + 1))} style={cs.counterBtn}>
-        <Text style={[cs.counterBtnText, small && cs.counterBtnTextSmall]}>+</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function ToggleSwitch({ active, onToggle }: { active: boolean; onToggle: () => void }) {
-  return (
-    <TouchableOpacity onPress={onToggle} style={[cs.toggle, active && cs.toggleActive]} activeOpacity={0.8}>
-      <View style={[cs.toggleKnob, active && cs.toggleKnobActive]} />
-    </TouchableOpacity>
-  );
-}
-
-function StarRating({ rating, onChange }: { rating: number; onChange: (r: number) => void }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-      {[1, 2, 3, 4, 5].map(s => (
-        <TouchableOpacity key={s} onPress={() => onChange(rating === s ? 0 : s)}>
-          <IconSymbol name="star" size={28} color={s <= rating ? '#F39C12' : GRAY[300]} />
-        </TouchableOpacity>
-      ))}
-      <Text style={{ fontSize: 13, color: GRAY[500], marginLeft: 8 }}>
-        {rating > 0 ? `${rating} Star${rating > 1 ? 's' : ''}` : 'Select rating'}
-      </Text>
-    </View>
-  );
-}
-
-// ─── Main Component ─────────────────────────────────
+// Standard room cancellation copy sent to the backend as
+// cancellation_title / cancellation_description (RoomBase schema).
+const CANCELLATION_DESCRIPTIONS: Record<CancellationPolicy, string> = {
+  FLEXIBLE: 'Free cancellation up to 48 hours before check-in.',
+  MODERATE: 'Free cancellation up to 7 days before check-in.',
+  STRICT: 'Free cancellation up to 30 days before check-in.',
+  NON_REFUNDABLE: 'This booking is non-refundable.',
+  CUSTOM: 'Custom cancellation policy — see details at the property.',
+};
 
 export default function ListingWizard() {
   const { addProperty, addRoom } = useHost();
+  const { tokens } = useAuth();
+  const isDemoAccount = !!tokens.accessToken?.startsWith('demo-');
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState<WizardStep>('type');
@@ -133,17 +67,24 @@ export default function ListingWizard() {
   // Step 3: Location
   const [location, setLocation] = useState<LocationData>({
     country: 'Nepal', state: '', city: '', zip: '', street: '', mapLink: '',
+    latitude: null, longitude: null,
   });
   const [countrySearch, setCountrySearch] = useState('');
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [stateSearch, setStateSearch] = useState('');
+  const [showStateDropdown, setShowStateDropdown] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Step 4: Photos & Amenities
   const [photos, setPhotos] = useState<string[]>([]);
+  const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
   const [amenities, setAmenities] = useState<string[]>([]);
   const [starRating, setStarRating] = useState(0);
   const [customAmenity, setCustomAmenity] = useState('');
   const [amenitySearch, setAmenitySearch] = useState('');
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
+  const [logo, setLogo] = useState<string | null>(null);
+  const [showLogoPicker, setShowLogoPicker] = useState(false);
 
   // Step 5: Rooms (floors state from RoomSetup)
   const [floors, setFloors] = useState<any[]>([]);
@@ -154,6 +95,15 @@ export default function ListingWizard() {
   const [checkOutTime, setCheckOutTime] = useState('11:00');
   const [showCustomOffer, setShowCustomOffer] = useState(false);
   const [customOfferData, setCustomOfferData] = useState({ title: '', description: '', badge: 'Custom' });
+
+  // Tracks whether media/amenities sync has failed so Publish can retry it.
+  const photosSyncFailedRef = React.useRef(false);
+
+  // Field-level validation errors for the property step
+  const [fieldErrors, setFieldErrors] = useState<WizardFieldErrors>({});
+  const clearFieldError = (field: keyof WizardFieldErrors) => {
+    if (fieldErrors[field]) setFieldErrors(prev => ({ ...prev, [field]: undefined }));
+  };
 
   // ─── Derived State ────────────────────────────────
   const stepIndex = STEP_ORDER.indexOf(currentStep);
@@ -198,14 +148,92 @@ export default function ListingWizard() {
       id: `custom-${Date.now()}`,
       label: customOfferData.title.trim(),
       badge: customOfferData.badge,
-      badgeColor: '#f3e8ff',
-      badgeText: '#9333ea',
+      badgeColor: PURPLE[100],
+      badgeText: PURPLE[600],
       desc: customOfferData.description || 'Custom offer',
       enabled: true,
     }]);
     setCustomOfferData({ title: '', description: '', badge: 'Custom' });
     setShowCustomOffer(false);
   };
+
+  // Guards against a slow reverse-geocode response for an older pin overwriting
+  // a newer pin's coordinates/address (out-of-order async resolution).
+  const lastPinRef = React.useRef<{ lat: number; lng: number } | null>(null);
+
+  /** Picked from the interactive map → store coordinates + auto-fill the address fields via reverse geocoding. */
+  const handleLocationSelect = useCallback(async (lat: number, lng: number) => {
+    lastPinRef.current = { lat, lng };
+    setLocation(prev => ({ ...prev, latitude: lat, longitude: lng }));
+    try {
+      const geo = await reverseGeocode(lat, lng);
+      // Ignore stale responses from an earlier pin.
+      if (!lastPinRef.current || lastPinRef.current.lat !== lat || lastPinRef.current.lng !== lng) return;
+      setLocation(prev => ({
+        ...prev,
+        street: geo.street || prev.street || '',
+        city: geo.city || prev.city || '',
+        state: geo.state || prev.state || '',
+        country: geo.country || prev.country || 'Nepal',
+        zip: geo.postcode || prev.zip || '',
+      }));
+    } catch {
+      // Coordinates are still saved even if reverse geocoding fails
+    }
+  }, []);
+
+  /** Upload selected photos, then persist photos + amenities to the backend.
+   *  Sequential: requires an existing propertyId. Non-blocking on partial failure. */
+  const syncPhotosAndAmenities = useCallback(async (pid: string, photoUris: string[], amenityNames: string[], coverIndex = 0) => {
+    const uploaded: string[] = [];
+    if (photoUris.length > 0) {
+      try {
+        const ordered = coverIndex >= 0 && coverIndex < photoUris.length
+          ? [photoUris[coverIndex], ...photoUris.filter((_, i) => i !== coverIndex)]
+          : photoUris;
+        const formData = new FormData();
+        ordered.forEach((uri, i) => {
+          formData.append('files', { uri, type: 'image/jpeg', name: `photo_${Date.now()}_${i}.jpg` } as any);
+        });
+        const result = await hostApi.uploadPropertyImages(pid, formData);
+        const urls = Array.isArray(result) ? result : (result?.data ?? []);
+        if (Array.isArray(urls) && urls.length > 0) uploaded.push(...urls);
+      } catch (e) {
+        console.warn('Photo upload failed:', e);
+      }
+    }
+    const payload = {
+      photos: {
+        cover: uploaded[0] || null,
+        gallery: uploaded.slice(1),
+      },
+      amenities: {
+        custom_amenities: amenityNames.map((name: string) => ({ name })),
+      },
+    };
+    try {
+      await hostApi.createPhotosAndAmenities(pid, payload, () => ({} as any));
+      photosSyncFailedRef.current = false;
+    } catch (e) {
+      console.warn('Failed to save photos/amenities:', e);
+      photosSyncFailedRef.current = true;
+    }
+  }, []);
+
+  /** Upload the property owner logo (single image) and return its URL. */
+  const uploadOwnerLogo = useCallback(async (pid: string): Promise<string | null> => {
+    if (!logo) return null;
+    try {
+      const formData = new FormData();
+      formData.append('image', { uri: logo, type: 'image/jpeg', name: 'owner_logo.jpg' } as any);
+      const result = await hostApi.uploadPropertyImage(pid, formData);
+      const url = result?.data || result;
+      return typeof url === 'string' && url.length > 0 ? url : null;
+    } catch (e) {
+      console.warn('Owner logo upload failed:', e);
+      return null;
+    }
+  }, [logo]);
 
   const handleNext = useCallback(async () => {
     const next = getNextStep();
@@ -214,20 +242,41 @@ export default function ListingWizard() {
     // Auto-save current step data before progressing
     if (!propertyId && currentStep !== 'type' && currentStep !== 'property' && currentStep !== 'rooms') {
       // Certain steps need a property ID — we'll save inline below
-    }
+    }    if (currentStep === 'property') {
+      // Comprehensive field validation matching backend Pydantic constraints
+      const errs: WizardFieldErrors = {};
+      const nameErr = validateName(propData.name, { min: 2, max: 255, label: 'Property name' });
+      if (nameErr) errs.name = nameErr;
+      const phoneErr = validatePropertyPhone(propData.phone);
+      if (phoneErr) errs.phone = phoneErr;
+      const emailErr = validateEmail(propData.email);
+      if (emailErr) errs.email = emailErr;
+      if (propData.totalRooms < 0) errs.totalRooms = 'Total rooms cannot be negative.';
+      if (propData.yearBuilt && (propData.yearBuilt < 1800 || propData.yearBuilt > new Date().getFullYear() + 2)) {
+        errs.yearBuilt = 'Year built must be between 1800 and ' + (new Date().getFullYear() + 2) + '.';
+      }
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        return;
+      }
+      setFieldErrors({});
 
-    if (currentStep === 'property') {
       setSaving('saving');
       try {
+        // Backend schema constraints (GeneralPropertyInfo):
+        // - total_rooms: int, ge=1 (must be at least 1)
+        // - year_built: Optional[int], ge=1800, le=2100 (don't send 0)
+        // - phone_number: str, exactly 10 digits
+        // - email: EmailStr (required)
         const payload = {
           name: propData.name || 'My Property',
           type: (propertyType || 'HOTEL').toUpperCase(),
-          total_rooms: propData.totalRooms || 0,
+          total_rooms: Math.max(1, propData.totalRooms || 1),
           number_of_floors: propData.floors || 1,
-          year_built: propData.yearBuilt || 0,
           description: propData.description || '',
-          phone_number: propData.phone || undefined,
+          phone_number: normalizePhone(propData.phone),
           email: propData.email || undefined,
+          year_built: propData.yearBuilt && propData.yearBuilt >= 1800 ? propData.yearBuilt : undefined,
         };
         if (propertyId) {
           await hostApi.updateProperty(propertyId, payload as any, () => ({} as any));
@@ -235,12 +284,54 @@ export default function ListingWizard() {
           const created = await hostApi.createGeneralInfo(payload, () => ({
             id: `prop-${Date.now()}`, ...payload,
           } as any));
-          if (created?.id) setPropertyId(created.id);
+          if (created?.id) {
+            // Verify we got a real backend UUID, not a local fallback
+            const isRealBackend = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(created.id);
+            if (!isRealBackend) {
+              // Backend rejected the request — surface the error and STOP
+              Alert.alert(
+                'Could not save to server',
+                'The property was saved locally but could not be created on the server. This may be because:\n\n' +
+                '• Your session may have expired — try signing out and back in\n' +
+                '• The server may be temporarily unavailable\n\n' +
+                'Please fix the issue and try again.',
+                [{ text: 'OK' }]
+              );
+              setSaving(null);
+              return;  // CRITICAL: do not continue with a fake prop-<timestamp> ID
+            }
+            setPropertyId(created.id);
+          }
         }
-      } catch (e) {
-        console.warn('Failed to save property details:', e);
+      } catch (e: any) {
+        // Backend returned a specific error message — show it to the user
+        const msg = e?.message || 'Failed to save property details.';
+        Alert.alert('Server Error', msg.includes('tenant')
+          ? 'You need a tenant account to create properties. Please contact support.'
+          : msg.includes('422')
+            ? 'Some fields have invalid values. Please check your input and try again.'
+            : msg);
       }
       setSaving(null);
+    }
+
+    if (currentStep === 'location') {
+      // Validate location fields before proceeding (backend Location schema)
+      const errs: WizardFieldErrors = {};
+      if (!location.country.trim() || location.country.trim().length < 2) errs.country = 'Country is required (min 2 characters).';
+      if (!location.state.trim() || location.state.trim().length < 2) errs.state = 'State/Province is required (min 2 characters).';
+      if (!location.city.trim() || location.city.trim().length < 2) errs.city = 'City is required (min 2 characters).';
+      if (!location.zip.trim() || location.zip.trim().length < 2 || location.zip.trim().length > 10) errs.zip = 'ZIP code must be 2-10 characters.';
+      if (!location.street.trim() || location.street.trim().length < 2) errs.street = 'Street address is required (min 2 characters).';
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        return;
+      }
+      if (!propertyId) {
+        Alert.alert('Error', 'Property details must be saved first. Please go back and try again.');
+        return;
+      }
+      setFieldErrors({});
     }
 
     if (currentStep === 'location' && propertyId) {
@@ -252,6 +343,8 @@ export default function ListingWizard() {
           city: location.city || '',
           zip_code: location.zip || '',
           address: location.street || '',
+          latitude: location.latitude ?? undefined,
+          longitude: location.longitude ?? undefined,
         }, () => ({} as any));
       } catch (e) {
         console.warn('Failed to save location:', e);
@@ -261,49 +354,89 @@ export default function ListingWizard() {
 
     if (currentStep === 'photos' && propertyId) {
       setSaving('saving');
-      try {
-        await hostApi.createPhotosAndAmenities(propertyId, {
-          amenities: {
-            custom_amenities: amenities.map(a => ({ name: a })),
-          },
-        }, () => ({} as any));
-      } catch (e) {
-        console.warn('Failed to save photos/amenities:', e);
+      await syncPhotosAndAmenities(propertyId, photos, amenities, coverPhotoIndex);
+      if (photosSyncFailedRef.current) {
+        Alert.alert(
+          "Couldn't sync photos",
+          "We couldn't save your photos to the platform right now. You can continue — they'll be retried when you publish.",
+          [{ text: 'OK' }]
+        );
       }
       setSaving(null);
     }
 
     if (currentStep === 'rooms' && propertyId) {
       setSaving('saving');
+      const roomErrors: string[] = [];
       try {
         const allRooms = floors.flatMap(f => (f.rooms || []));
-        if (allRooms.length === 0) return;
-        // Try bulk create rooms — creates a default room type first if needed
-        const defaultRoomType = await hostApi.createRoomType(propertyId, {
-          room_type_name: (allRooms[0].roomType || allRooms[0].type || 'Standard') + ' Room',
-        }, () => ({ id: `rt-${Date.now()}`, room_type_name: 'Standard' } as any)).catch(() => ({ id: `rt-${Date.now()}` } as any));
-        const defaultBedType = await hostApi.createBedType(propertyId, {
-          bed_name: 'Standard Bed',
-        }, () => ({ id: `bt-${Date.now()}`, bed_name: 'Standard' } as any)).catch(() => ({ id: `bt-${Date.now()}` } as any));
-        const rtId = defaultRoomType?.id || `rt-${Date.now()}`;
-        const btId = defaultBedType?.id || `bt-${Date.now()}`;
+        if (allRooms.length === 0) {
+          setSaving(null);
+          return;
+        }
+        // The backend stores per-room room_type_id / bed_type_id, so create
+        // one room-type and one bed-type record per distinct selection
+        // (including free-text custom names) and assign the right ID to each
+        // room — instead of collapsing everything into a single default.
+        const typeName = (r: any) => (r.roomType || r.type || 'Standard').trim() || 'Standard';
+        const bedName = (r: any) => (r.bedConfig || r.bed || 'Standard').trim() || 'Standard';
+        const distinctTypes = [...new Set(allRooms.map(typeName))];
+        const distinctBeds = [...new Set(allRooms.map(bedName))];
+        const rtIdByType: Record<string, string> = {};
+        for (const name of distinctTypes) {
+          const fallbackId = `rt-${Date.now()}-${name.replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'type'}`;
+          // The backend ships default room types ("Standard Room", "Deluxe
+          // Room", ...) and rejects duplicate names — reuse the default's id
+          // when the name matches instead of 400ing on create.
+          const id = await ensureRoomType(propertyId, `${name} Room`.slice(0, 100));
+          rtIdByType[name] = id || fallbackId;
+        }
+        const btIdByBed: Record<string, string> = {};
+        for (const name of distinctBeds) {
+          const fallbackId = `bt-${Date.now()}-${name.replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'bed'}`;
+          const id = await ensureBedType(propertyId, name.slice(0, 100));
+          btIdByBed[name] = id || fallbackId;
+        }
         // Try bulk create, fall back to individual if batch fails
-        const roomsPayload = allRooms.map(room => ({
-          floor_number: parseInt(room.floor || room.roomNumber) || 1,
-          room_name: room.name || room.roomNumber || `Room ${allRooms.indexOf(room) + 1}`,
-          room_type_id: rtId,
-          bed_type_id: btId,
-          base_rate: Math.max(1, parseFloat(room.price || room.minRate || '1') || 1),
-          max_adults: room.maxAdults || 2,
-          max_children: room.maxChildren || 0,
-          smoking: room.petsAllowed || false,
-          accessible: room.accessible || false,
-        }));
+        const roomsPayload = allRooms.map((room, idx) => {
+          const policy = toCancellationPolicy(room.cancellationPolicy);
+          const customNotes = (room.cancellationNotes || '').trim();
+          const isCustom = policy === 'CUSTOM';
+          return {
+            floor_number: parseInt(room.floor || room.roomNumber) || 1,
+            room_name: room.name || room.roomNumber || `Room ${idx + 1}`,
+            room_type_id: rtIdByType[typeName(room)] || `rt-${Date.now()}`,
+            bed_type_id: btIdByBed[bedName(room)] || `bt-${Date.now()}`,
+            base_rate: Math.max(1, parseFloat(room.price || room.minRate || '1') || 1),
+            max_adults: room.maxAdults || 2,
+            max_children: room.maxChildren || 0,
+            smoking: room.smoking || false,
+            accessible: room.accessible || false,
+            cancellation_policy: policy,
+            cancellation_title: (isCustom ? (customNotes || 'Custom cancellation policy') : `${room.cancellationPolicy || 'Flexible'} cancellation`).slice(0, 255),
+            cancellation_description: (isCustom ? (customNotes || null) : CANCELLATION_DESCRIPTIONS[policy])?.slice(0, 2000) ?? null,
+            // Preserve the exact server-side names (types are created as
+            // "<name> Room" / reused defaults) so a later local→server sync
+            // resolves-or-creates faithfully (ignored by the backend).
+            room_type_name: `${typeName(room)} Room`.slice(0, 100),
+            bed_name: bedName(room).slice(0, 100),
+            _photos: room.photos || [],
+          };
+        });
         try {
           await hostApi.bulkCreateRooms(propertyId, { rooms: roomsPayload }, () => ({} as any));
         } catch {
+          const roomFailures: string[] = [];
           for (const roomData of roomsPayload) {
-            await hostApi.createRoom(propertyId, roomData, () => ({ id: `room-${Date.now()}` } as any)).catch(() => {});
+            try {
+              await hostApi.createRoom(propertyId, roomData, () => ({ id: `room-${Date.now()}` } as any));
+            } catch (e) {
+              roomFailures.push(roomData.room_name || 'Unknown room');
+              console.warn('Failed to create room:', roomData.room_name, e);
+            }
+          }
+          if (roomFailures.length > 0) {
+            roomErrors.push(`rooms (${roomFailures.join(', ')})`);
           }
         }
         // Add rooms to context state so they appear immediately (survives demo mode)
@@ -312,6 +445,9 @@ export default function ListingWizard() {
             id: `room-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             property_id: propertyId,
             room_type_id: rd.room_type_id,
+            bed_type_id: rd.bed_type_id || '',
+            room_type_name: rd.room_type_name || '',
+            bed_name: rd.bed_name || '',
             room_name: rd.room_name,
             floor_number: rd.floor_number,
             max_adults: rd.max_adults,
@@ -322,19 +458,33 @@ export default function ListingWizard() {
             smoking: rd.smoking,
             accessible: rd.accessible,
             amenities: [],
-            photos: [],
+            photos: rd._photos || [],
             blocked_dates: [],
             maintenance_return_date: null,
-            cancellation_policy: 'MODERATE',
-            cancellation_notes: null,
+            cancellation_policy: rd.cancellation_policy || 'MODERATE',
+            cancellation_notes: rd.cancellation_description || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          });
+          }, { skipBackend: true });
         }
       } catch (e) {
         console.warn('Failed to save rooms:', e);
       }
       setSaving(null);
+    }
+
+    if (currentStep === 'pricing') {
+      // Validate check-in/out times before proceeding to review
+      const errs: WizardFieldErrors = {};
+      const checkInErr = validateTime(checkInTime, 'Check-in time');
+      if (checkInErr) errs.checkInTime = checkInErr;
+      const checkOutErr = validateTime(checkOutTime, 'Check-out time');
+      if (checkOutErr) errs.checkOutTime = checkOutErr;
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        return;
+      }
+      setFieldErrors({});
     }
 
     if (currentStep === 'pricing' && propertyId) {
@@ -360,7 +510,7 @@ export default function ListingWizard() {
     }
 
     setCurrentStep(next);
-  }, [currentStep, propertyId, propData, propertyType, location, amenities, photos, starRating, checkInTime, checkOutTime, floors, offers]);
+  }, [currentStep, propertyId, propData, propertyType, location, amenities, photos, starRating, checkInTime, checkOutTime, floors, offers, coverPhotoIndex, syncPhotosAndAmenities]);
 
   const handleBack = useCallback(() => {
     const prev = getPrevStep();
@@ -377,50 +527,99 @@ export default function ListingWizard() {
     setLoading(true);
     setSaving('publishing');
     try {
-      const totalRooms = floors.reduce((s: number, f: any) => s + (f.rooms?.length || 0), 0);
-
-      // If we already have a backend property ID, update it and activate
-      if (propertyId) {
-        await Promise.all([
-          hostApi.createBrandVisual(propertyId, {
-            brand_color: ACCENT,
-          }, () => ({} as any)).catch(() => {}),
-          hostApi.createLocalization(propertyId, {
-            currency: 'NPR',
-            timezone: 'Asia/Kathmandu',
-            language: 'English',
-            check_in_time: checkInTime,
-            check_out_time: checkOutTime,
-          }, () => ({} as any)).catch(() => {}),
-          hostApi.updateProperty(propertyId, {
-            is_active: true,
-            check_in_time_from: checkInTime,
-            check_out_time_to: checkOutTime,
-            cancellation_policy: 'FLEXIBLE',
-          }, () => ({ is_active: true } as any)).catch(() => {}),
-        ]);
+      // Guard: property must have been created on the server during step 2.
+      // Without a real backend UUID, rooms/photos/offers can't be attached.
+      if (!propertyId) {
+        Alert.alert(
+          'Property not saved',
+          'Please go back to the Property Details step and save your property before publishing.',
+          [{ text: 'OK' }]
+        );
+        setSaving(null);
+        setLoading(false);
+        return;
       }
 
-      // Always call addProperty (handles context sync, guest portal registration, fallback)
-      addProperty({
-        id: propertyId || `prop-${Date.now()}`,
+      const totalRooms = floors.reduce((s: number, f: any) => s + (f.rooms?.length || 0), 0);
+
+      const brandLogoUrl = await uploadOwnerLogo(propertyId);
+      const failures: string[] = [];
+      await Promise.all([
+        hostApi.createBrandVisual(propertyId, {
+          brand_color: ACCENT,
+          ...(brandLogoUrl ? { brand_logo_url: brandLogoUrl } : {}),
+        }, () => ({} as any)).catch(() => { failures.push('branding'); }),
+        hostApi.createLocalization(propertyId, {
+          currency: 'NPR',
+          timezone: 'Asia/Kathmandu',
+          language: 'English',
+          check_in_time: normalizeTime(checkInTime),
+          check_out_time: normalizeTime(checkOutTime),
+        }, () => ({} as any)).catch(() => { failures.push('localization'); }),
+        hostApi.updateProperty(propertyId, {
+          name: propData.name || 'My Property',
+          description: propData.description || '',
+          type: (propertyType || 'HOTEL').toUpperCase(),
+          total_rooms: Math.max(1, totalRooms || propData.totalRooms || 1),
+          number_of_floors: floors.length || 1,
+          phone_number: propData.phone || undefined,
+          email: propData.email || undefined,
+          country: location.country,
+          state: location.state || location.city,
+          city: location.city,
+          zip_code: location.zip || '00000',
+          address: location.street || `${location.city || ''}, ${location.country || ''}`,
+          latitude: location.latitude ?? undefined,
+          longitude: location.longitude ?? undefined,
+          check_in_time: normalizeTime(checkInTime),
+          check_out_time: normalizeTime(checkOutTime),
+          currency: 'NPR',
+          timezone: 'Asia/Kathmandu',
+          language: 'English',
+        }, () => ({} as any)).catch(() => { failures.push('property details'); }),
+        // Retry any photos/amenities that failed to sync during the photos step
+        photosSyncFailedRef.current
+          ? syncPhotosAndAmenities(propertyId, photos, amenities, coverPhotoIndex).catch(() => { failures.push('photos'); })
+          : Promise.resolve(),
+      ]);
+      // Activate via the dedicated endpoint
+      try {
+        await hostApi.toggleActivation(propertyId, () => ({} as any));
+      } catch {
+        failures.push('activation');
+      }
+      if (failures.length > 0) {
+        Alert.alert(
+          'Partial Save',
+          `Some parts couldn't be saved to the server: ${failures.join(', ')}. You can retry from the property settings.`,
+        );
+      }
+
+      // Always call addProperty (handles context sync, guest portal registration, fallback).
+      // addProperty creates the property on the server unless it already exists
+      // there (wizard step 2 created it) — it never creates duplicates.
+      const publishedId = propertyId || `prop-${Date.now()}`;
+      const finalProperty = await addProperty({
+        id: publishedId,
         tenant_id: 'demo-host-1',
         name: propData.name || 'My Property',
         type: propertyType.toUpperCase() as any,
         description: propData.description,
+        phone_number: propData.phone || undefined,
+        email: propData.email || undefined,
         country: location.country,
         state: location.state || location.city,
         city: location.city,
         zip_code: location.zip || '00000',
         address: location.street || `${location.city || ''}, ${location.country || ''}`,
-        latitude: 0,
-        longitude: 0,
+        latitude: location.latitude ?? 0,
+        longitude: location.longitude ?? 0,
         check_in_time_from: checkInTime,
         check_in_time_to: '12:00',
         check_out_time_from: '00:00',
         check_out_time_to: checkOutTime,
         number_of_floors: floors.length || 1,
-        total_rooms: totalRooms || propData.totalRooms,
+        total_rooms: Math.max(1, totalRooms || propData.totalRooms || 1),
         year_built: propData.yearBuilt || 2020,
         amenities: amenities,
         is_active: true,
@@ -428,21 +627,61 @@ export default function ListingWizard() {
         timezone: 'Asia/Kathmandu',
         brand_color: ACCENT,
         min_rate_floor: 0,
-        logo_url: null,
+        logo_url: logo || null,
         custom_domain: null,
         cancellation_policy: 'FLEXIBLE',
         photos: photos.map((uri, i) => ({
           id: `ph-${Date.now()}-${i}`,
           photo_url: uri,
-          category: 'exterior',
+          category: i === coverPhotoIndex ? 'cover' : 'exterior',
         })),
+        // Persist enabled offers on the local property so they survive and can
+        // be pushed to the server when the property is synced later.
+        special_offers: offers.filter(o => o.enabled).map(o => {
+          const today = new Date();
+          // Local calendar dates — toISOString() is UTC and would be a day
+          // behind in positive-offset timezones (e.g. Nepal +5:45).
+          const toLocalDate = (d: Date) => {
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
+          };
+          return {
+            id: `so-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            property_id: publishedId,
+            title: o.label,
+            description: o.desc || o.label,
+            discount_percentage: 10,
+            start_date: o.startDate || toLocalDate(today),
+            end_date: o.endDate || toLocalDate(new Date(today.getTime() + 30 * 864e5)),
+            is_active: true,
+            is_custom: false,
+            conditions: null,
+            created_at: today.toISOString(),
+            updated_at: today.toISOString(),
+          };
+        }),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
 
-      Alert.alert('Published!', 'Your property is now live and accepting bookings.', [
-        { text: 'Go to Dashboard', onPress: () => { try { router.replace('/(host)'); } catch { router.push('/(host)'); } } },
-      ]);
+      const syncedToServer = isApiPropertyId(finalProperty.id);
+      const goToDashboard = { text: 'Go to Dashboard', onPress: () => { try { router.replace('/(host)'); } catch { router.push('/(host)'); } } } as const;
+      if (syncedToServer) {
+        Alert.alert('Published!', 'Your property is now live and accepting bookings.', [goToDashboard]);
+      } else if (isDemoAccount) {
+        Alert.alert(
+          'Published on this device',
+          'You are signed in with a demo account, so this property was saved on this device only — staff invites stay local and no email will be sent. Sign in with a registered host account to publish to the server.',
+          [goToDashboard]
+        );
+      } else {
+        Alert.alert(
+          'Published on this device',
+          'We couldn\u2019t reach the server just now, so this property was saved on this device only — staff invites stay local and no email will be sent. You can retry from the property Staff screen.',
+          [goToDashboard]
+        );
+      }
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Failed to publish property.');
     }
@@ -458,23 +697,31 @@ export default function ListingWizard() {
         await hostApi.updateProperty(propertyId, {
           name: propData.name || 'My Property',
           description: propData.description || '',
-          amenities: amenities,
-          check_in_time_from: checkInTime,
-          check_out_time_to: checkOutTime,
           country: location.country,
+          state: location.state || location.city,
           city: location.city,
+          zip_code: location.zip || '00000',
           address: location.street || '',
-        }, () => ({} as any)).catch(() => {});
+          check_in_time: normalizeTime(checkInTime),
+          check_out_time: normalizeTime(checkOutTime),
+          currency: 'NPR',
+          timezone: 'Asia/Kathmandu',
+          language: 'English',
+        } as any, () => ({} as any)).catch(() => {});
         Alert.alert('Saved!', 'Your property draft has been saved to the cloud.');
       } else if (propData.name) {
         // No backend ID yet — create the property first
         const created = await hostApi.createProperty({
           name: propData.name || 'My Property',
           type: (propertyType || 'HOTEL').toUpperCase() as any,
-          total_rooms: propData.totalRooms || 0,
+          total_rooms: Math.max(1, propData.totalRooms || 1),
           description: propData.description || '',
+          // Backend requires phone + email on create — without them the request
+          // 422s and the property silently stays device-only.
+          phone_number: propData.phone || undefined,
+          email: propData.email || undefined,
           amenities,
-        }, () => ({ id: `prop-${Date.now()}` } as any)).catch(() => null);
+        }, () => ({ id: crypto.randomUUID() } as any)).catch(() => null);
         if (created?.id) {
           setPropertyId(created.id);
         }
@@ -502,782 +749,45 @@ export default function ListingWizard() {
 
   const fullAddress = [location.street, location.city, location.state, location.country, location.zip].filter(Boolean).join(', ');
 
+  // State options based on selected country
+  const stateOptions = getStatesForCountry(location.country);
+
   const filteredAmenities = AMENITY_OPTIONS.filter(a =>
     a.name.toLowerCase().includes(amenitySearch.toLowerCase())
   );
 
-  // ─── Render Step Content ─────────────────────────
-  const renderStep = () => {
-    switch (currentStep) {
-      // ──────────── STEP: TYPE ────────────
-      case 'type':
-        return (
-          <View style={styles.typeContainer}>
-            <View style={styles.typeCard}>
-              <Text style={styles.typeTitle}>Select Your Property Type</Text>
-              <Text style={styles.typeSubtitle}>
-                Choose the category that best describes your property
-              </Text>
-              <View style={styles.typeGrid}>
-                {PROPERTY_TYPES.map(pt => {
-                  const selected = propertyType === pt.id;
-                  const isCustom = pt.id === 'custom';
-                  return (
-                    <TouchableOpacity
-                      key={pt.id}
-                      onPress={() => {
-                        setPropertyType(pt.id);
-                        if (pt.id !== 'custom') {
-                          setTimeout(() => setCurrentStep('property'), 200);
-                        }
-                      }}
-                      style={[
-                        styles.typeCardItem,
-                        selected && styles.typeCardSelected,
-                        isCustom && styles.typeCardCustom,
-                      ]}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.typeIconWrap, selected && styles.typeIconSelected]}>
-                        <IconSymbol name={pt.icon as any} size={28} color={selected ? '#FFF' : GRAY[500]} />
-                      </View>
-                      <Text style={[styles.typeLabel, selected && styles.typeLabelSelected]}>
-                        {pt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-        );
-
-      // ──────────── STEP: PROPERTY ────────────
-      case 'property':
-        return (
-          <View style={styles.stepContentWrapper}>
-            <View style={styles.stepCard}>
-              <View style={styles.stepCardHeader}>
-                <Text style={styles.stepCardTitle}>General Information</Text>
-                <Text style={styles.stepCardSubtitle}>Provide the foundational details of your property</Text>
-              </View>
-              <View style={{ gap: 16 }}>
-                <View>
-                  <Text style={styles.formLabel}>Property Name</Text>
-                  <TextInput
-                    value={propData.name}
-                    onChangeText={t => setPropData(p => ({ ...p, name: t }))}
-                    placeholder="e.g. Skyline Towers, Sunset Villas"
-                    placeholderTextColor={GRAY[400]}
-                    style={styles.formInput}
-                  />
-                  <Text style={styles.formHint}>This will be the display name for your dashboard</Text>
-                </View>
-                <View style={styles.formRow3}>
-                  <View>
-                    <Text style={styles.formLabel}>Total Rooms</Text>
-                    <TextInput
-                      value={String(propData.totalRooms || '')}
-                      onChangeText={t => setPropData(p => ({ ...p, totalRooms: parseInt(t) || 0 }))}
-                      placeholder="eg.100"
-                      placeholderTextColor={GRAY[400]}
-                      keyboardType="number-pad"
-                      style={styles.formInput}
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.formLabel}>No of Floors</Text>
-                    <CounterInput value={propData.floors} onChange={v => setPropData(p => ({ ...p, floors: v }))} min={1} max={50} />
-                  </View>
-                  <View>
-                    <Text style={styles.formLabel}>Year Built</Text>
-                    <TextInput
-                      value={String(propData.yearBuilt || '')}
-                      onChangeText={t => setPropData(p => ({ ...p, yearBuilt: parseInt(t) || 0 }))}
-                      placeholder="eg.2018"
-                      placeholderTextColor={GRAY[400]}
-                      keyboardType="number-pad"
-                      style={styles.formInput}
-                    />
-                  </View>
-                </View>
-                <View>
-                  <Text style={styles.formLabel}>Property Description</Text>
-                  <Text style={styles.formHintInline}>Highlight the best features and neighborhood vibes</Text>
-                  <TextInput
-                    value={propData.description}
-                    onChangeText={t => setPropData(p => ({ ...p, description: t.slice(0, 2500) }))}
-                    placeholder="Enter a detailed description of the property..."
-                    placeholderTextColor={GRAY[400]}
-                    multiline
-                    numberOfLines={4}
-                    style={[styles.formInput, { minHeight: 100, textAlignVertical: 'top' }]}
-                  />
-                  <Text style={styles.charCount}>{propData.description.length} / 2500 characters</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.stepCard}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <IconSymbol name="phone" size={16} color={ACCENT} />
-                <Text style={styles.stepCardTitle}>Contact Information</Text>
-              </View>
-              <View style={styles.formRow2}>
-                <View>
-                  <Text style={styles.formLabel}>Phone Number</Text>
-                  <View style={styles.inputWithIcon}>
-                    <IconSymbol name="phone" size={14} color={GRAY[400]} />
-                    <TextInput
-                      value={propData.phone}
-                      onChangeText={t => setPropData(p => ({ ...p, phone: t }))}
-                      placeholder="+1 (555) 000-0000"
-                      placeholderTextColor={GRAY[400]}
-                      keyboardType="phone-pad"
-                      style={[styles.formInput, { borderWidth: 0, paddingLeft: 8 }]}
-                    />
-                  </View>
-                </View>
-                <View>
-                  <Text style={styles.formLabel}>Official Email</Text>
-                  <View style={styles.inputWithIcon}>
-                    <IconSymbol name="email" size={14} color={GRAY[400]} />
-                    <TextInput
-                      value={propData.email}
-                      onChangeText={t => setPropData(p => ({ ...p, email: t }))}
-                      placeholder="contact@property.com"
-                      placeholderTextColor={GRAY[400]}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      style={[styles.formInput, { borderWidth: 0, paddingLeft: 8 }]}
-                    />
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        );
-
-      // ──────────── STEP: LOCATION ────────────
-      case 'location':
-        return (
-          <View style={styles.stepContentWrapper}>
-            <View style={styles.stepCard}>
-              <Text style={styles.stepCardTitle}>Physical Address</Text>
-              <View style={styles.formRow2}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>Country</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowCountryDropdown(!showCountryDropdown)}
-                    style={[styles.formInput, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-                  >
-                    <Text style={{ fontSize: 14, color: location.country ? SRS.navy : GRAY[400] }}>
-                      {location.country || 'Select country'}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: GRAY[400] }}>{showCountryDropdown ? '▲' : '▼'}</Text>
-                  </TouchableOpacity>
-                  {showCountryDropdown && (<>
-                    <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: -2000, zIndex: 99 }} activeOpacity={1} onPress={() => { setShowCountryDropdown(false); setCountrySearch(''); }} />
-                    <View style={styles.countryDropdown}>
-                      <TextInput
-                        value={countrySearch}
-                        onChangeText={setCountrySearch}
-                        placeholder="Search countries..."
-                        placeholderTextColor={GRAY[400]}
-                        style={styles.countrySearchInput}
-                        autoFocus
-                      />
-                      <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
-                        {COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
-                          <TouchableOpacity
-                            key={c}
-                            onPress={() => {
-                              setLocation(p => ({ ...p, country: c }));
-                              setShowCountryDropdown(false);
-                              setCountrySearch('');
-                            }}
-                            style={[styles.countryDropdownItem, location.country === c && styles.countryDropdownItemActive]}
-                          >
-                            <Text style={[styles.countryDropdownText, location.country === c && styles.countryDropdownTextActive]}>
-                              {c}
-                            </Text>
-                            {location.country === c && <Text style={{ color: ACCENT, fontSize: 14 }}>✓</Text>}
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                    </>
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>State/Province</Text>
-                  <TextInput
-                    value={location.state}
-                    onChangeText={t => setLocation(p => ({ ...p, state: t }))}
-                    placeholder="State"
-                    placeholderTextColor={GRAY[400]}
-                    style={styles.formInput}
-                  />
-                </View>
-              </View>
-              <View style={styles.formRow2}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>City</Text>
-                  <TextInput
-                    value={location.city}
-                    onChangeText={t => setLocation(p => ({ ...p, city: t }))}
-                    placeholder="City"
-                    placeholderTextColor={GRAY[400]}
-                    style={styles.formInput}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>ZIP/Postal Code</Text>
-                  <TextInput
-                    value={location.zip}
-                    onChangeText={t => setLocation(p => ({ ...p, zip: t }))}
-                    placeholder="Zip Code"
-                    placeholderTextColor={GRAY[400]}
-                    keyboardType="number-pad"
-                    style={styles.formInput}
-                  />
-                </View>
-              </View>
-              <View>
-                <Text style={styles.formLabel}>Street Address</Text>
-                <TextInput
-                  value={location.street}
-                  onChangeText={t => setLocation(p => ({ ...p, street: t }))}
-                  placeholder="e.g. 123 Property Lane"
-                  placeholderTextColor={GRAY[400]}
-                  style={styles.formInput}
-                />
-              </View>
-              <View style={{ marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: GRAY[200] }}>
-                <Text style={{ ...styles.formLabel, marginBottom: 8, color: SRS.navy }}>Embed a map</Text>
-                <TextInput
-                  value={location.mapLink}
-                  onChangeText={t => setLocation(p => ({ ...p, mapLink: t }))}
-                  placeholder="Paste your Google Maps share link..."
-                  placeholderTextColor={GRAY[400]}
-                  style={styles.formInput}
-                  autoCapitalize="none"
-                />
-                <Text style={styles.formHint}>Go to Google Maps → Share → Copy Link</Text>
-              </View>
-            </View>
-
-            {/* Map Preview */}
-            <View style={styles.mapPanel}>
-              <View style={styles.mapPanelHeader}>
-                <Text style={{ fontWeight: '600', fontSize: 14, color: SRS.navy }}>Map View</Text>
-              </View>
-              <View style={styles.mapPanelContent}>
-                {fullAddress || location.mapLink ? (
-                  <View style={styles.mapPlaceholder}>
-                    <Text style={{ fontSize: 40, marginBottom: 8 }}>📍</Text>
-                    <Text style={{ fontSize: 12, color: GRAY[500], textAlign: 'center' }}>{fullAddress || 'Map link provided'}</Text>
-                    <View style={styles.mapMarker}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>Property Location</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.mapPlaceholder}>
-                    <Text style={{ fontSize: 40 }}>📍</Text>
-                    <Text style={{ fontSize: 13, color: GRAY[500] }}>Enter an address above</Text>
-                    <View style={styles.mapMarker}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#FFF' }}>Property Location</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-        );
-
-      // ──────────── STEP: PHOTOS & AMENITIES ────────────
-      case 'photos':
-        return (
-          <View style={{ gap: 20 }}>
-            <View style={styles.stepCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Text style={styles.stepCardTitle}>Property Photos</Text>
-                <Text style={{ fontSize: 13, color: GRAY[500] }}>{photos.length} / 50 Uploaded</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setShowPhotoPicker(true)}
-                style={styles.photoUploadZone}
-                activeOpacity={0.7}
-              >
-                <IconSymbol name="upload" size={32} color={GRAY[400]} />
-                <Text style={{ fontSize: 14, color: SRS.navy, marginTop: 8 }}>Tap to upload photos</Text>
-                <Text style={{ fontSize: 13, color: ACCENT, marginTop: 4 }}>or browse files from your device</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                  <View style={styles.hintDot} />
-                  <Text style={styles.uploadHint}>High resolution</Text>
-                  <View style={styles.hintDot} />
-                  <Text style={styles.uploadHint}>JPG, PNG, WEBP</Text>
-                  <View style={styles.hintDot} />
-                  <Text style={styles.uploadHint}>Up to 20MB</Text>
-                </View>
-              </TouchableOpacity>
-              {photos.length > 0 && (
-                <View style={styles.photoPreviewGrid}>
-                  {photos.slice(0, 4).map((uri, i) => (
-                    <View key={i} style={styles.photoPreviewItem}>
-                      <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                      <TouchableOpacity
-                        onPress={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))}
-                        style={styles.photoRemoveBtn}
-                      >
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>×</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                  {photos.length > 4 && (
-                    <View style={styles.photoPreviewMore}>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: GRAY[600] }}>+{photos.length - 4}</Text>
-                    </View>
-                  )}
-                  <TouchableOpacity
-                    onPress={() => setShowPhotoPicker(true)}
-                    style={styles.photoPreviewAdd}
-                  >
-                    <IconSymbol name="add" size={20} color={GRAY[400]} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.stepCard}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <IconSymbol name="star" size={18} color={ACCENT} />
-                <Text style={styles.stepCardTitle}>Official Star Rating</Text>
-              </View>
-              <Text style={styles.formHint}>Select the certified commercial rating of this property</Text>
-              <StarRating rating={starRating} onChange={setStarRating} />
-            </View>
-
-            {/* Amenities */}
-            <View style={styles.stepCard}>
-              <Text style={styles.stepCardTitle}>Amenities</Text>
-              <View style={styles.amenitySearchWrap}>
-                <IconSymbol name="search" size={14} color={GRAY[400]} />
-                <TextInput
-                  value={amenitySearch}
-                  onChangeText={setAmenitySearch}
-                  placeholder="Search amenities..."
-                  placeholderTextColor={GRAY[400]}
-                  style={{ flex: 1, fontSize: 13, color: SRS.navy, padding: 0 }}
-                />
-              </View>
-              <ScrollView style={{ maxHeight: 240 }} showsVerticalScrollIndicator={false}>
-                {filteredAmenities.map(a => (
-                  <TouchableOpacity
-                    key={a.id}
-                    onPress={() => toggleAmenity(a.name)}
-                    style={styles.amenityItem}
-                  >
-                    <View style={[styles.amenityCheckbox, amenities.includes(a.name) && styles.amenityCheckboxActive]}>
-                      {amenities.includes(a.name) && <IconSymbol name="check" size={12} color="#FFF" />}
-                    </View>
-                    <Text style={{ fontSize: 14 }}>{a.icon}</Text>
-                    <Text style={{ flex: 1, fontSize: 13, color: SRS.navy }}>{a.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <View style={styles.customAmenitySection}>
-                <Text style={styles.customAmenityTitle}>Add a custom amenity</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TextInput
-                    value={customAmenity}
-                    onChangeText={setCustomAmenity}
-                    placeholder="e.g. Private Helipad, Wine Cellar..."
-                    placeholderTextColor={GRAY[400]}
-                    onSubmitEditing={() => {
-                      const t = customAmenity.trim();
-                      if (t && !amenities.includes(t)) {
-                        setAmenities(p => [...p, t]);
-                        setCustomAmenity('');
-                      }
-                    }}
-                    style={[styles.formInput, { flex: 1 }]}
-                  />
-                  <TouchableOpacity
-                    onPress={() => {
-                      const t = customAmenity.trim();
-                      if (t && !amenities.includes(t)) {
-                        setAmenities(p => [...p, t]);
-                        setCustomAmenity('');
-                      }
-                    }}
-                    style={styles.addAmenityBtn}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFF' }}>+ Add</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.customAmenityHint}>
-                  Press Enter or tap Add to include an amenity not in the list above.
-                </Text>
-              </View>
-            </View>
-          </View>
-        );
-
-      // ──────────── STEP: ROOMS ────────────
-      case 'rooms':
-        return (
-          <View style={{ gap: 20 }}>
-            <View style={{ gap: 4 }}>
-              <Text style={{ ...TYPOGRAPHY.h2, color: SRS.navy }}>Room Setup</Text>
-              <Text style={{ ...TYPOGRAPHY.body, color: GRAY[500] }}>
-                Add each room type guests will be able to book at your property
-              </Text>
-            </View>
-            <RoomSetup rooms={floors} onRoomsChange={setFloors} />
-          </View>
-        );
-
-      // ──────────── STEP: PRICING & OFFERS ────────────
-      case 'pricing':
-        return (
-          <View style={{ gap: 20, maxWidth: 500, alignSelf: 'center' }}>
-            <View style={{ alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, color: GRAY[500], marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Step {stepNum} of {stepTotal}
-              </Text>
-              <Text style={{ ...TYPOGRAPHY.h2, color: SRS.navy }}>Pricing & Offers</Text>
-              <Text style={{ ...TYPOGRAPHY.body, color: GRAY[500] }}>
-                Set your nightly rate and any special offers for guests
-              </Text>
-            </View>
-
-            {/* Offers */}
-            <View style={styles.stepCard}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <IconSymbol name="discount" size={18} color={ACCENT} />
-                <Text style={styles.stepCardTitle}>Special Offers</Text>
-              </View>
-              <Text style={{ ...styles.formHint, marginBottom: 16 }}>
-                Enable pre-set promotions or create custom offers
-              </Text>
-
-              {offers.map(offer => (
-                <View key={offer.id} style={[styles.offerItem, offer.enabled && styles.offerItemEnabled]}>
-                  <View style={styles.offerContent}>
-                    <ToggleSwitch active={offer.enabled} onToggle={() => toggleOffer(offer.id)} />
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '500', color: SRS.navy }}>{offer.label}</Text>
-                        <View style={[styles.offerBadge, { backgroundColor: offer.badgeColor }]}>
-                          <Text style={{ fontSize: 10, fontWeight: '600', color: offer.badgeText }}>{offer.badge}</Text>
-                        </View>
-                      </View>
-                      <Text style={{ fontSize: 12, color: GRAY[500] }}>{offer.desc}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-
-              <TouchableOpacity
-                onPress={() => setShowCustomOffer(true)}
-                style={styles.addCustomOfferBtn}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>+ Add Custom Offer</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Stay Policies */}
-            <View style={styles.stepCard}>
-              <Text style={styles.stepCardTitle}>Stay Policies</Text>
-              <Text style={{ ...styles.formHint, marginBottom: 20 }}>
-                Define check-in/out windows and preferences
-              </Text>
-              <View style={styles.formRow2}>
-                <View>
-                  <Text style={styles.formLabel}>Check-in Time</Text>
-                  <TextInput
-                    value={checkInTime}
-                    onChangeText={setCheckInTime}
-                    placeholder="15:00"
-                    placeholderTextColor={GRAY[400]}
-                    style={styles.formInput}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.formLabel}>Check-out Time</Text>
-                  <TextInput
-                    value={checkOutTime}
-                    onChangeText={setCheckOutTime}
-                    placeholder="11:00"
-                    placeholderTextColor={GRAY[400]}
-                    style={styles.formInput}
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Custom Offer Modal */}
-            {showCustomOffer && (
-              <Modal transparent visible={showCustomOffer} animationType="fade" onRequestClose={() => setShowCustomOffer(false)}>
-                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCustomOffer(false)}>
-                  <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
-                    <View style={styles.modalHeader}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <Text style={{ fontSize: 18 }}>➕</Text>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: SRS.navy }}>Create Custom Offer</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => setShowCustomOffer(false)}>
-                        <IconSymbol name="close" size={18} color={GRAY[500]} />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={{ padding: 24, gap: 16 }}>
-                      <View>
-                        <Text style={styles.formLabel}>Offer Title *</Text>
-                        <TextInput
-                          value={customOfferData.title}
-                          onChangeText={t => setCustomOfferData(p => ({ ...p, title: t }))}
-                          placeholder="e.g. Diwali Festival Special, Summer Sale..."
-                          placeholderTextColor={GRAY[400]}
-                          style={styles.formInput}
-                        />
-                      </View>
-                      <View>
-                        <Text style={styles.formLabel}>Description (optional)</Text>
-                        <TextInput
-                          value={customOfferData.description}
-                          onChangeText={t => setCustomOfferData(p => ({ ...p, description: t }))}
-                          placeholder="Briefly describe the offer..."
-                          placeholderTextColor={GRAY[400]}
-                          multiline
-                          numberOfLines={3}
-                          style={[styles.formInput, { minHeight: 80, textAlignVertical: 'top' }]}
-                        />
-                      </View>
-                    </View>
-                    <View style={styles.modalFooter}>
-                      <TouchableOpacity onPress={() => setShowCustomOffer(false)} style={styles.btnCancel}>
-                        <Text style={{ fontSize: 13, color: SRS.navy, fontWeight: '500' }}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={addCustomOffer} style={styles.btnSaveDates}>
-                        <IconSymbol name="save" size={14} color="#FFF" />
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFF' }}>Save Offer</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </Modal>
-            )}
-          </View>
-        );
-
-      // ──────────── STEP: REVIEW ────────────
-      case 'review':
-        return (
-          <View style={{ gap: 20 }}>
-            <View style={{ marginBottom: 8 }}>
-              <Text style={{ ...TYPOGRAPHY.h2, color: SRS.navy }}>Final Review & Launch</Text>
-              <Text style={{ ...TYPOGRAPHY.body, color: GRAY[500], lineHeight: 21 }}>
-                Please review all property details before making your listing live.
-              </Text>
-            </View>
-
-            {/* Main review content */}
-            <View style={{ flex: 1 }}>
-              {/* Basic Info */}
-              <ReviewCard
-                title="Basic Information"
-                icon="📋"
-                onEdit={() => handleGoToStep(1)}
-              >
-                <View style={styles.reviewGrid2}>
-                  <ReviewField label="PROPERTY NAME" value={propData.name || 'Not set'} />
-                  <ReviewField label="PROPERTY TYPE" value={PROPERTY_TYPES.find(t => t.id === propertyType)?.label || 'Not set'} />
-                </View>
-                {propData.description && (
-                  <ReviewField label="DESCRIPTION" value={propData.description} style={{ marginTop: 12 }} />
-                )}
-                {starRating > 0 && (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={reviewCs.fieldLabel}>STAR RATING</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      {[1, 2, 3, 4, 5].map(s => (
-                        <IconSymbol key={s} name="star" size={16} color={s <= starRating ? '#F39C12' : GRAY[300]} />
-                      ))}
-                      <Text style={{ fontSize: 13, fontWeight: '500', color: SRS.navy, marginLeft: 4 }}>
-                        {starRating} Star{starRating > 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </ReviewCard>
-
-              {/* Location */}
-              <ReviewCard
-                title="Location Details"
-                icon="📍"
-                onEdit={() => handleGoToStep(2)}
-              >
-                <ReviewField label="ADDRESS" value={fullAddress || 'No address set'} />
-                {location.mapLink && (
-                  <ReviewField label="MAP LINK" value={location.mapLink} style={{ marginTop: 8 }} />
-                )}
-              </ReviewCard>
-
-              {/* Media & Amenities */}
-              <ReviewCard
-                title="Media & Amenities"
-                icon="📷"
-                onEdit={() => handleGoToStep(3)}
-              >
-                <Text style={reviewCs.fieldLabel}>PHOTOS ({photos.length} UPLOADED)</Text>
-                {photos.length > 0 && (
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                    {photos.slice(0, 4).map((uri, i) => (
-                      <View key={i} style={styles.reviewPhotoItem}>
-                        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                      </View>
-                    ))}
-                    {photos.length > 4 && (
-                      <View style={[styles.reviewPhotoItem, { backgroundColor: GRAY[100], alignItems: 'center', justifyContent: 'center' }]}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: GRAY[600] }}>+{photos.length - 4}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-                {amenities.length > 0 && (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={reviewCs.fieldLabel}>AMENITIES</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                      {amenities.slice(0, 8).map(a => (
-                        <View key={a} style={styles.reviewAmenityTag}>
-                          <Text style={{ fontSize: 11, color: ACCENT }}>{a}</Text>
-                        </View>
-                      ))}
-                      {amenities.length > 8 && (
-                        <Text style={{ fontSize: 11, color: GRAY[500], alignSelf: 'center' }}>
-                          +{amenities.length - 8} more
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                )}
-              </ReviewCard>
-
-              {/* Offers & Rooms */}
-              <ReviewCard
-                title="Offers & Rooms"
-                icon="🏷️"
-                onEdit={() => handleGoToStep(5)}
-              >
-                {(() => {
-                  const enabled = offers.filter(o => o.enabled);
-                  return enabled.length > 0 ? (
-                    <View style={{ gap: 6 }}>
-                      {enabled.map(o => (
-                        <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <Text style={{ fontSize: 13, color: SRS.navy }}>{o.label}</Text>
-                          <View style={[styles.offerBadge, { backgroundColor: o.badgeColor }]}>
-                            <Text style={{ fontSize: 10, fontWeight: '600', color: o.badgeText }}>{o.badge}</Text>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  ) : <Text style={{ fontSize: 13, color: GRAY[500] }}>No offers enabled</Text>;
-                })()}
-                {floors.length > 0 && (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={reviewCs.fieldLabel}>ROOMS</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                      {floors.map(f => (f.rooms || []).map((r: any) => (
-                        <View key={r.id} style={styles.reviewRoomTag}>
-                          <Text style={{ fontSize: 11, color: SRS.navy }}>
-                            {r.roomNumber || r.name} - {r.roomType || 'Standard'}
-                          </Text>
-                        </View>
-                      )))}
-                    </View>
-                  </View>
-                )}
-              </ReviewCard>
-            </View>
-
-            {/* Sidebar summary */}
-            <View style={styles.reviewSidebar}>
-              <View style={styles.publishCard}>
-                <IconSymbol name="check" size={20} color={SRS.green} />
-                <Text style={{ fontSize: 16, fontWeight: '700', color: SRS.navy, marginTop: 8 }}>Ready to Publish</Text>
-                <Text style={{ fontSize: 13, color: GRAY[500], textAlign: 'center', lineHeight: 20, marginTop: 4 }}>
-                  Your property listing is complete. Once launched, it will be visible on the public portal.
-                </Text>
-                <TouchableOpacity
-                  onPress={handlePublish}
-                  disabled={loading || saving === 'publishing'}
-                  style={[styles.btnLaunch, (loading || saving === 'publishing') && { opacity: 0.6 }]}
-                >
-                  {loading || saving === 'publishing' ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <>
-                      <IconSymbol name="check" size={16} color="#FFF" />
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFF' }}>Launch Property</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleSaveDraft}
-                  style={[styles.btnSaveDraft, saving === 'saving' && { opacity: 0.5 }]}
-                  disabled={saving === 'saving'}
-                >
-                  {saving === 'saving' ? (
-                    <ActivityIndicator size="small" color={ACCENT} />
-                  ) : (
-                    <>
-                      <IconSymbol name="save" size={16} color={ACCENT} />
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT }}>Save as Draft</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Checklist */}
-              <View style={styles.checklistCard}>
-                <Text style={styles.checklistTitle}>ONBOARDING CHECKLIST</Text>
-                {[
-                  { label: 'Core Identity Verified', done: true },
-                  { label: 'High-Res Media Loaded', done: photos.length > 0 },
-                  { label: 'Address & Geo-tagging', done: !!location.street },
-                  { label: 'Regulatory Compliance', done: true },
-                ].map(item => (
-                  <View key={item.label} style={styles.checklistItem}>
-                    <IconSymbol name="check" size={16} color={item.done ? SRS.green : GRAY[300]} />
-                    <Text style={{ fontSize: 13, color: item.done ? SRS.navy : GRAY[400], marginLeft: 8 }}>
-                      {item.label}
-                    </Text>
-                  </View>
-                ))}
-                <View style={{ marginTop: 12 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 12, color: GRAY[500] }}>Profile Strength</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: profileStrength >= 80 ? SRS.green : ACCENT }}>
-                      {profileStrength}%
-                    </Text>
-                  </View>
-                  <View style={styles.strengthBar}>
-                    <View style={[styles.strengthFill, {
-                      width: `${profileStrength}%`,
-                      backgroundColor: profileStrength >= 80 ? SRS.green : ACCENT,
-                    }]} />
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        );
-
-      default:
-        return null;
-    }
+  // ─── Step content context ─────────────────────────
+  const ctx: WizardCtx = {
+    currentStep, setCurrentStep,
+    loading, saving,
+    propertyType, setPropertyType,
+    propData, setPropData,
+    location, setLocation,
+    countrySearch, setCountrySearch,
+    showCountryDropdown, setShowCountryDropdown,
+    stateSearch, setStateSearch,
+    showStateDropdown, setShowStateDropdown,
+    stateOptions,
+    showMapPicker, setShowMapPicker,
+    handleLocationSelect, fullAddress,
+    photos, setPhotos, coverPhotoIndex, setCoverPhotoIndex,
+    logo, setLogo, showLogoPicker, setShowLogoPicker,
+    starRating, setStarRating,
+    amenities, setAmenities,
+    customAmenity, setCustomAmenity,
+    amenitySearch, setAmenitySearch,
+    setShowPhotoPicker, filteredAmenities,
+    floors, setFloors,
+    offers, toggleOffer,
+    checkInTime, setCheckInTime,
+    checkOutTime, setCheckOutTime,
+    showCustomOffer, setShowCustomOffer,
+    customOfferData, setCustomOfferData,
+    addCustomOffer,
+    handleGoToStep, handlePublish, handleSaveDraft,
+    stepNum, stepTotal, profileStrength,
+    toggleAmenity,
+    fieldErrors, setFieldErrors, clearFieldError,
   };
 
   // ─── Navigation ──────────────────────────────────
@@ -1322,11 +832,11 @@ export default function ListingWizard() {
                 disabled={isSaving}
               >
                 {isSaving ? (
-                  <ActivityIndicator color="#FFF" />
+                  <ActivityIndicator color={BG.white} />
                 ) : (
                   <>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFF', marginRight: 4 }}>{nextLabel}</Text>
-                    <IconSymbol name="chevron.right" size={16} color="#FFF" />
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: BG.white, marginRight: 4 }}>{nextLabel}</Text>
+                    <IconSymbol name="chevron.right" size={16} color={BG.white} />
                   </>
                 )}
               </TouchableOpacity>
@@ -1336,9 +846,12 @@ export default function ListingWizard() {
       </View>
     );
   };
-
   return (
-    <View style={styles.portalPage}>
+    <KeyboardAvoidingView
+      style={styles.portalPage}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -1348,7 +861,7 @@ export default function ListingWizard() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <IconSymbol name="hotel" size={22} color={SRS.navy} />
             <Text style={styles.headerBrand}>
-              Stay<Text style={{ color: ACCENT }}>Easy</Text>
+              Serve<Text style={{ color: ACCENT }}>IQ</Text>
             </Text>
           </View>
         </View>
@@ -1368,13 +881,13 @@ export default function ListingWizard() {
             <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
           <View style={styles.progressSteps}>
-            {['Property Details', 'Room Setup', 'Pricing & Offers'].map((label, idx) => {
+            {(['Property', 'Location', 'Photos', 'Rooms', 'Pricing', 'Review'] as const).map((label, idx) => {
               const stepNumVal = idx + 1;
               const isCompleted = stepNum > stepNumVal;
               const isCurrent = stepNum === stepNumVal;
               const isUpcoming = stepNum < stepNumVal;
               return (
-                <View key={label} style={styles.progressStep}>
+                <View key={label} style={[styles.progressStep, { flex: 1 }]}>
                   <View style={[
                     styles.progressStepCircle,
                     isCompleted && styles.progressStepCompleted,
@@ -1383,13 +896,14 @@ export default function ListingWizard() {
                   ]}>
                     <Text style={[
                       styles.progressStepNum,
-                      (isCompleted || isCurrent) && { color: '#FFF' },
+                      (isCompleted || isCurrent) && { color: BG.white },
                     ]}>
                       {isCompleted ? '✓' : stepNumVal}
                     </Text>
                   </View>
                   <Text style={[
                     styles.progressStepLabel,
+                    { fontSize: 9 },
                     isCurrent && { color: SRS.navy, fontWeight: '600' },
                     isUpcoming && { color: GRAY[400] },
                   ]}>{label}</Text>
@@ -1406,11 +920,14 @@ export default function ListingWizard() {
         contentContainerStyle={[
           styles.portalMainContent,
           currentStep === 'review' && { gap: 20 },
+          currentStep !== 'type' && currentStep !== 'review' && { paddingBottom: 140 },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
       >
         <FadeInView key={currentStep} portal="host" delay={40} duration={280}>
-          {renderStep()}
+          <ListingWizardSteps ctx={ctx} />
         </FadeInView>
       </ScrollView>
 
@@ -1447,834 +964,24 @@ export default function ListingWizard() {
       <ImagePickerOverlay
         visible={showPhotoPicker}
         onClose={() => setShowPhotoPicker(false)}
-        onImagePicked={(uri) => setPhotos(prev => [...prev, uri])}
+        multiple
+        selectionLimit={Math.max(1, 50 - photos.length)}
+        onImagesPicked={(uris) => {
+          setPhotos(prev => {
+            const next = [...prev, ...uris];
+            if (prev.length === 0) setCoverPhotoIndex(0);
+            return next;
+          });
+        }}
       />
-    </View>
+
+      <ImagePickerOverlay
+        visible={showLogoPicker}
+        onClose={() => setShowLogoPicker(false)}
+        onImagePicked={(uri) => {
+          setLogo(uri);
+        }}
+      />
+    </KeyboardAvoidingView>
   );
 }
-
-// ─── Review Sub-components ──────────────────────────
-
-function ReviewCard({ title, icon, onEdit, children }: {
-  title: string; icon?: string; onEdit?: () => void; children: React.ReactNode;
-}) {
-  return (
-    <View style={reviewCs.card}>
-      <View style={reviewCs.cardHeader}>
-        <Text style={reviewCs.cardTitle}>{icon && <Text>{icon} </Text>}{title}</Text>
-        {onEdit && (
-          <TouchableOpacity onPress={onEdit} style={reviewCs.editBtn}>
-            <IconSymbol name="edit" size={12} color={ACCENT} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: ACCENT, marginLeft: 4 }}>Edit</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function ReviewField({ label, value, style }: { label: string; value: string; style?: any }) {
-  return (
-    <View style={[{ marginBottom: 8 }, style]}>
-      <Text style={reviewCs.fieldLabel}>{label}</Text>
-      <Text style={reviewCs.fieldValue} numberOfLines={2}>{value || '—'}</Text>
-    </View>
-  );
-}
-
-// ─── Sub-component Styles ──────────────────────────
-const reviewCs = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    padding: 20,
-    marginBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: SRS.navy,
-  },
-  editBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  fieldLabel: {
-    fontSize: 11,
-    color: GRAY[500],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  fieldValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: SRS.navy,
-  },
-});
-
-// ─── Counter Styles ────────────────────────────────
-const cs = StyleSheet.create({
-  counter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  counterSmall: { borderRadius: 6 },
-  counterBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: GRAY[100],
-  },
-  counterBtnText: { fontSize: 16, color: SRS.navy, fontWeight: '500' },
-  counterBtnTextSmall: { fontSize: 14 },
-  counterValue: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '500',
-    color: SRS.navy,
-    minWidth: 40,
-  },
-  counterValueSmall: { minWidth: 30 },
-  toggle: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: GRAY[300],
-    justifyContent: 'center',
-    padding: 2,
-  },
-  toggleActive: { backgroundColor: ACCENT },
-  toggleKnob: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#FFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  toggleKnobActive: { alignSelf: 'flex-end' },
-});
-
-// ─── Main Styles ───────────────────────────────────
-const styles = StyleSheet.create({
-  portalPage: {
-    flex: 1,
-    backgroundColor: GRAY[50],
-  },
-  portalMain: {
-    flex: 1,
-  },
-  portalMainContent: {
-    padding: 24,
-    paddingBottom: 120,
-    maxWidth: 900,
-    width: '100%',
-    alignSelf: 'center',
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 12,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY[100],
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerBackBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: GRAY[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBrand: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: SRS.navy,
-    fontFamily: 'PlayfairDisplay',
-  },
-  headerStepText: {
-    fontSize: 13,
-    color: GRAY[500],
-    fontWeight: '500',
-  },
-
-  // Progress Bar
-  progressWrapper: {
-    backgroundColor: '#FFF',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY[100],
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: SRS.navy,
-  },
-  progressPercent: {
-    fontSize: 12,
-    color: GRAY[500],
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: GRAY[200],
-    marginBottom: 12,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: ACCENT,
-  },
-  progressSteps: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progressStep: {
-    alignItems: 'center',
-    gap: 4,
-    flex: 1,
-  },
-  progressStepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressStepCompleted: {
-    backgroundColor: SRS.green,
-  },
-  progressStepCurrent: {
-    backgroundColor: ACCENT,
-  },
-  progressStepUpcoming: {
-    backgroundColor: GRAY[200],
-  },
-  progressStepNum: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: GRAY[600],
-  },
-  progressStepLabel: {
-    fontSize: 10,
-    color: GRAY[500],
-    textAlign: 'center',
-  },
-
-  // Step Content
-  stepContentWrapper: {
-    gap: 20,
-  },
-
-  // Type Selector (centered card)
-  typeContainer: {
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  typeCard: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-  },
-  typeTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: SRS.navy,
-    marginBottom: 8,
-  },
-  typeSubtitle: {
-    fontSize: 14,
-    color: GRAY[500],
-    textAlign: 'center',
-    marginBottom: 28,
-    lineHeight: 20,
-  },
-  typeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-    maxWidth: 500,
-  },
-  typeCardItem: {
-    width: 140,
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 24,
-    paddingHorizontal: 12,
-    borderWidth: 2,
-    borderColor: GRAY[200],
-    borderRadius: 12,
-    backgroundColor: '#FFF',
-  },
-  typeCardSelected: {
-    borderColor: ACCENT,
-    backgroundColor: getAccentColor(0.05),
-  },
-  typeCardCustom: {
-    borderStyle: 'dashed',
-    borderColor: GRAY[300],
-  },
-  typeIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: GRAY[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  typeIconSelected: {
-    backgroundColor: ACCENT,
-  },
-  typeIcon: {
-    fontSize: 24,
-  },
-  typeLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: SRS.navy,
-  },
-  typeLabelSelected: {
-    color: ACCENT,
-    fontWeight: '600',
-  },
-
-  // Step Cards
-  stepCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    padding: 24,
-  },
-  stepCardHeader: {
-    marginBottom: 16,
-  },
-  stepCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: SRS.navy,
-    marginBottom: 4,
-  },
-  stepCardSubtitle: {
-    fontSize: 13,
-    color: GRAY[500],
-  },
-
-  // Form Elements
-  formLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: SRS.navy,
-    marginBottom: 6,
-  },
-  formInput: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: SRS.navy,
-  },
-  formHint: {
-    fontSize: 12,
-    color: GRAY[500],
-    marginTop: 4,
-  },
-  formHintInline: {
-    fontSize: 12,
-    color: GRAY[500],
-    marginBottom: 6,
-  },
-  formRow2: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  formRow3: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  charCount: {
-    fontSize: 12,
-    color: GRAY[500],
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    borderRadius: 8,
-    paddingHorizontal: 12,
-  },
-
-  // Select / Chips
-  selectWrap: {
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    borderRadius: 8,
-    padding: 8,
-    backgroundColor: '#FFF',
-    maxHeight: 120,
-  },
-  countryChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: GRAY[100],
-    borderWidth: 1,
-    borderColor: GRAY[200],
-  },
-  countryDropdown: {
-    position: 'absolute',
-    top: 38,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  countrySearchInput: {
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY[200],
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: SRS.navy,
-  },
-  countryDropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY[100],
-  },
-  countryDropdownItemActive: {
-    backgroundColor: getAccentColor(0.06),
-  },
-  countryDropdownText: {
-    fontSize: 14,
-    color: SRS.navy,
-  },
-  countryDropdownTextActive: {
-    fontWeight: '600',
-    color: ACCENT,
-  },
-
-  // Map Panel
-  mapPanel: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    overflow: 'hidden',
-  },
-  mapPanelHeader: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY[200],
-  },
-  mapPanelContent: {
-    height: 250,
-    backgroundColor: '#e8f4e8',
-  },
-  mapPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  mapMarker: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -60 }, { translateY: -12 }],
-    backgroundColor: ACCENT,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-
-  // Photo Upload
-  photoUploadZone: {
-    borderWidth: 2,
-    borderColor: GRAY[300],
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    backgroundColor: getAccentColor(0.03),
-  },
-  hintDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: GRAY[400],
-  },
-  uploadHint: {
-    fontSize: 12,
-    color: GRAY[500],
-  },
-  photoPreviewGrid: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 16,
-  },
-  photoPreviewItem: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: GRAY[100],
-  },
-  photoRemoveBtn: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(192,57,43,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoPreviewMore: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: GRAY[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoPreviewAdd: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: GRAY[300],
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Amenities
-  amenitySearchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-    backgroundColor: '#FFF',
-  },
-  amenityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY[100],
-  },
-  amenityCheckbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: GRAY[300],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  amenityCheckboxActive: {
-    backgroundColor: ACCENT,
-    borderColor: ACCENT,
-  },
-  customAmenitySection: {
-    borderTopWidth: 1,
-    borderTopColor: GRAY[200],
-    paddingTop: 12,
-    marginTop: 8,
-  },
-  customAmenityTitle: {
-    fontSize: 12,
-    color: GRAY[500],
-    marginBottom: 8,
-  },
-  addAmenityBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: ACCENT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  customAmenityHint: {
-    fontSize: 11,
-    color: GRAY[400],
-    marginTop: 6,
-  },
-
-  // Offers
-  offerItem: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    marginBottom: 8,
-    backgroundColor: '#FFF',
-  },
-  offerItemEnabled: {
-    backgroundColor: getAccentColor(0.05),
-  },
-  offerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  offerBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  addCustomOfferBtn: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: ACCENT + '40',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-  },
-
-  // Navigation
-  navContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 16,
-    backgroundColor: '#FFF',
-    borderTopWidth: 1,
-    borderTopColor: GRAY[100],
-  },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  btnBack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: GRAY[100],
-  },
-  btnNext: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: ACCENT,
-  },
-  btnSaveDraftInline: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: ACCENT + '40',
-  },
-
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: GRAY[200],
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: GRAY[200],
-  },
-  btnCancel: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: GRAY[200],
-  },
-  btnSaveDates: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: ACCENT,
-  },
-
-  // Review Sidebar
-  reviewSidebar: {
-    gap: 16,
-  },
-  reviewGrid2: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  reviewPhotoItem: {
-    width: 64,
-    height: 48,
-    borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: GRAY[100],
-  },
-  reviewAmenityTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: getAccentColor(0.1),
-  },
-  reviewRoomTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: GRAY[100],
-  },
-
-  // Publish Card
-  publishCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    padding: 24,
-    alignItems: 'center',
-    gap: 4,
-  },
-  btnLaunch: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: ACCENT,
-    justifyContent: 'center',
-    marginTop: 12,
-  },
-  btnSaveDraft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: ACCENT + '40',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-
-  // Checklist
-  checklistCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: GRAY[200],
-    padding: 20,
-  },
-  checklistTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: GRAY[500],
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  checklistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  strengthBar: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: GRAY[200],
-    overflow: 'hidden',
-  },
-  strengthFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-});

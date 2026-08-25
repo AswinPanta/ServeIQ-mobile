@@ -2,11 +2,11 @@
 // Mocks Reanimated 4 (v4 deprecated setUpTests() in favour of the
 // official mock module path), React Native Gesture Handler 2.x,
 // Expo Haptics, and AsyncStorage. Also extends @testing-library/react-native
-// matchers.
-import '@testing-library/react-native/extend-expect';
+// matchers (extend-expect was removed in @testing-library/react-native v13).
 
 // RNGH 2 ships an explicit jestSetup we should call BEFORE mocking.
 import 'react-native-gesture-handler/jestSetup';
+
 
 // Reanimated 4 mock — shared values become plain {value}, animations
 // resolve immediately, worklets become no-op JS.
@@ -14,10 +14,9 @@ jest.mock('react-native-reanimated', () =>
   require('react-native-reanimated/mock'),
 );
 
-// The new worklets package still has a few types / helpers that the
-// reanimated mock re-exports, but if any imports slip through, fall back
-// to the same height.
-jest.mock('react-native-worklets', () => ({}));
+// NOTE: react-native-worklets must NOT be stubbed here — the reanimated mock
+// imports createSerializable from it. The jest resolver
+// (react-native-worklets/jest/resolver.js, see jest.config.js) handles it.
 
 // Expo Haptics has no native module under Jest — return no-op counters.
 jest.mock('expo-haptics', () => ({

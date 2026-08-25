@@ -26,6 +26,9 @@ export {
   TYPOGRAPHY,
   FONTS,
   PORTAL_ACCENTS,
+  STATUS_COLORS,
+  SRS,
+  FIGMA_COLORS,
 } from '@/constants/portal-theme';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -37,6 +40,8 @@ export const BRAND = {
   navy: '#002645',
   /** Lighter navy — secondary headings, text on light bg */
   navyLight: '#1A3C5E',
+  /** Darker navy — footer, deep surfaces */
+  navyDark: '#16233A',
   /** Primary teal — CTAs, links, highlights, status badges */
   teal: '#006687',
   /** Darker teal — hover states, active elements */
@@ -66,6 +71,8 @@ export const TEXT = {
   label: '#A7A4A4',
   /** Black text */
   black: '#000000',
+  /** Ink — near-black brown used on warm surfaces */
+  ink: '#1C1B19',
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════
@@ -152,6 +159,7 @@ export const STATUS = {
 
 export const SOCIAL = {
   google: '#4285F4',
+  googleRed: '#EA4335',
   facebook: '#1877F2',
   apple: '#000000',
   phone: '#000000',
@@ -214,4 +222,169 @@ export const BLUE_TINT = {
   light: '#DBEAFE',
   medium: '#D9E3F4',
   pale: '#E8F4FD',
+} as const;
+
+// ═══════════════════════════════════════════════════════════════════
+// COLOR RAMPS (Tailwind-aligned — used across app screens)
+// ═══════════════════════════════════════════════════════════════════
+
+export const RED = {
+  50: '#FEF2F2',
+  100: '#FEE2E2',
+  200: '#FECACA',
+  300: '#FCA5A5',
+  500: '#EF4444',
+  600: '#DC2626',
+  700: '#B91C1C',
+  800: '#991B1B',
+} as const;
+
+export const ORANGE = {
+  400: '#F39C12',
+  500: '#F97316',
+} as const;
+
+export const AMBER = {
+  50: '#FFFBEB',
+  100: '#FEF3C7',
+  200: '#FDE68A',
+  500: '#F59E0B',
+  600: '#D97706',
+  700: '#B45309',
+  800: '#92400E',
+} as const;
+
+export const YELLOW = {
+  600: '#CA8A04',
+} as const;
+
+export const GREEN = {
+  50: '#F0FDF4',
+  100: '#DCFCE7',
+  200: '#BBF7D0',
+  300: '#86EFAC',
+  500: '#22C55E',
+  pale: '#F0FFF4',
+  tint: '#EBF6EF',
+  mint: '#C6F6D5',
+  bright: '#27AE60',
+} as const;
+
+export const EMERALD = {
+  50: '#ECFDF5',
+  100: '#D1FAE5',
+  200: '#BBF7D0',
+  300: '#86EFAC',
+  500: '#10B981',
+  600: '#059669',
+  800: '#065F46',
+} as const;
+
+export const TEAL = {
+  600: '#0D9488',
+} as const;
+
+export const CYAN = {
+  50: '#F0F9FF',
+  100: '#CFFAFE',
+  500: '#06B6D4',
+  600: '#0891B2',
+} as const;
+
+export const BLUE = {
+  50: '#EFF6FF',
+  100: '#DBEAFE',
+  300: '#93C5FD',
+  500: '#3B82F6',
+  600: '#2563EB',
+  700: '#1D4ED8',
+  tint: '#EBF5FB',
+  ios: '#007AFF',
+} as const;
+
+export const INDIGO = {
+  50: '#EEF2FF',
+  100: '#E0E7FF',
+  200: '#C7D2FE',
+  500: '#6366F1',
+} as const;
+
+export const PURPLE = {
+  50: '#F5F3FF',
+  100: '#F3E8FF',
+  500: '#8B5CF6',
+  600: '#9333EA',
+  700: '#7C3AED',
+} as const;
+
+export const PINK = {
+  50: '#FDF2F8',
+  500: '#EC4899',
+  600: '#DB2777',
+} as const;
+
+export const CORAL = {
+  300: '#FF6B6B',
+  400: '#E94560',
+  500: '#E63946',
+  600: '#D4111E',
+} as const;
+
+export const NEUTRAL = {
+  50: '#FAFAFA',
+  100: '#F8F9FB',
+  200: '#F8F8F8',
+  300: '#F5F5F5',
+  400: '#F0F2F5',
+  500: '#E8E8E8',
+  snow: '#FFFAFA',
+} as const;
+
+export const CLOUD = {
+  frost: '#E8EEF4',
+  mist: '#E6EDF3',
+  haze: '#D1D9E6',
+  vapor: '#C9D6E0',
+  cloud: '#C8D0DB',
+  fog: '#C0C8D4',
+  silver: '#B0B8C4',
+  steel: '#8896A6',
+  slateBlue: '#8895A7',
+} as const;
+
+export const WARM = {
+  ivory: '#FAF6EE',
+  cream: '#EFE6D2',
+  sand: '#C9C5BA',
+  taupe: '#C9C2B4',
+  peach: '#FFB088',
+  apricot: '#FFD58A',
+  gold: '#E8B84B',
+  bronze: '#B8860B',
+  bronzeLight: '#B8862E',
+  terracotta: '#C45B3E',
+} as const;
+
+export const KDS = {
+  bg: '#0D1117',
+  card: '#161B22',
+  border: '#30363D',
+  muted: '#8B949E',
+  accent: '#1F6FEB',
+  success: '#238636',
+} as const;
+
+export const FLAT = {
+  blue: '#2980B9',
+  green: '#1E8449',
+  gold: '#FFD700',
+} as const;
+
+export const PAYMENT = {
+  stripe: '#635BFF',
+  stripeDark: '#0C2451',
+  razorpay: '#5C2D91',
+  bookingBlue: '#0071C2',
+  success: '#00875A',
+  successLight: '#F0F7FF',
 } as const;

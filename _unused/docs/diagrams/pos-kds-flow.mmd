@@ -1,0 +1,37 @@
+flowchart TD
+    subgraph POS["Waiter POS Interface"]
+        W1([Waiter Opens Table]) --> W2["Select Table from<br/>Floor Plan"]
+        W2 --> W3["Browse Menu<br/>Categories + Items"]
+        W3 --> W4["Add Items + Modifiers<br/>Size, Toppings, Notes"]
+        W4 --> W5["Review Cart<br/>Items, Quantities, Total"]
+        W5 --> W6["Submit Order"]
+    end
+
+    subgraph KDS["Kitchen Display System"]
+        K1["Receive Order Ticket<br/>WebSocket Push"] --> K2["Display: Table #<br/>Items + Timestamp"]
+        K2 --> K3["Kitchen Prepares<br/>Individual Items"]
+        K3 --> K4["Mark Item: In Progress"]
+        K4 --> K5["Mark Item: Ready"]
+        K5 --> K6["Mark Item: Served"]
+    end
+
+    subgraph BILLING["Bill & Payment"]
+        B1["Close Bill"] --> B2["Itemized Total<br/>+ Discounts + Tax"]
+        B2 --> B3{"Split Bill?"}
+        B3 -->|"Yes"| B4["Split by Item<br/>Percentage / Equal"]
+        B3 -->|"No"| B5["Full Bill"]
+        B4 --> B6["Select Payment Method<br/>Cash / Card / UPI / Room"]
+        B5 --> B6
+        B6 --> B7["Process Payment"]
+        B7 --> B8["Generate Receipt<br/>Print or Email"]
+        B8 --> B9["Table Status: Available"]
+    end
+
+    W6 -->|"WebSocket"| K1
+    K6 -->|"Item Served"| W1
+    W6 --> B1
+
+    style W1 fill:#0D9488,color:#fff,stroke:#0D9488
+    style K1 fill:#D35400,color:#fff,stroke:#D35400
+    style B1 fill:#2E86AB,color:#fff,stroke:#2E86AB
+    style B9 fill:#1E8449,color:#fff,stroke:#1E8449

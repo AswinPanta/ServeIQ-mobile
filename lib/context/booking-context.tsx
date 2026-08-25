@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from './auth-context'
 import { bookingApi } from '@/lib/api/booking-api'
-import type { BookingListItem } from '@/types/api'
+import type { BookingListItem, BookingReservationResponse } from '@/types/api'
 
 export interface FolioCharge {
   id: string
@@ -14,7 +14,8 @@ export interface FolioCharge {
 
 export interface Booking {
   id: string
-  hotelId: number
+  refNumber?: string
+  hotelId: string
   hotelName: string
   hotelCity: string
   hotelCountry: string
@@ -37,8 +38,8 @@ export interface Booking {
 
 interface BookingContextValue {
   bookings: Booking[]
-  addBooking: (booking: Omit<Booking, 'id' | 'status' | 'createdAt'>) => void
-  cancelBooking: (id: string) => { refundAmount: number; policy: string }
+  addBooking: (booking: Omit<Booking, 'id' | 'status' | 'createdAt'> & { id?: string }) => void
+  cancelBooking: (id: string) => Promise<{ refundAmount: number; policy: string }>
   updateBooking: (id: string, updates: Partial<Pick<Booking, 'checkIn' | 'checkOut' | 'roomTypeName' | 'totalPrice' | 'status'>>) => void
   addFolioCharge: (bookingId: string, charge: Omit<FolioCharge, 'id' | 'postedAt'>) => void
 }
@@ -70,8 +71,9 @@ function mapBookingStatus(status?: string): Booking['status'] {
 function mapBackendBooking(item: BookingListItem): Booking {
   return {
     id: item.id || item.booking_number || item.ref_number,
-    hotelId: 0,
-    hotelName: item.property_name || 'StayEasy Property',
+    refNumber: item.ref_number || item.booking_number || item.id,
+    hotelId: item.property_id || '',
+    hotelName: item.property_name || 'ServeIQ Property',
     hotelCity: '',
     hotelCountry: '',
     hotelImage: item.property_photo || '',
@@ -85,56 +87,93 @@ function mapBackendBooking(item: BookingListItem): Booking {
   }
 }
 
+/** Maps the full booking detail response from GET /bookings/{ref_number} into the local Booking shape. */
+export function mapReservationToBooking(res: BookingReservationResponse): Booking {
+  let discountApplied: Booking['discountApplied']
+  if (res.coupon_code && res.coupon_discount > 0) {
+    discountApplied = { code: res.coupon_code, type: 'fixed', amount: res.coupon_discount }
+  } else if (res.special_offer_discount > 0) {
+    discountApplied = { code: 'Special offer', type: 'percentage', amount: res.special_offer_discount }
+  }
+  return {
+    id: res.ref_number || res.booking_id,
+    refNumber: res.ref_number,
+    hotelId: res.property?.id || '',
+    hotelName: res.property?.name || 'ServeIQ Property',
+    hotelCity: res.property?.city || '',
+    hotelCountry: res.property?.country || '',
+    hotelImage: res.property?.photo || '',
+    checkIn: res.check_in,
+    checkOut: res.check_out,
+    roomTypeName: (res.rooms || []).map(r => r.room_name).join(', ') || 'Room',
+    guests: (res.number_of_adults ?? 1) + (res.number_of_children ?? 0),
+    totalPrice: res.total_amount,
+    discountApplied,
+    status: mapBookingStatus(res.status),
+    createdAt: res.created_at || '',
+  }
+}
+
 export function BookingProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [bookings, setBookings] = useState<Booking[]>([])
 
   useEffect(() => {
+    let cancelled = false
     const load = async () => {
       try {
-        const key = getStorageKey(user?.id)
+        // Don't load any bookings when not authenticated
+        if (!user) {
+          if (!cancelled) setBookings([])
+          return
+        }
+        const key = getStorageKey(user.id)
         const data = await AsyncStorage.getItem(key)
         let local: Booking[] = []
         if (data) {
           local = autoCompletePastBookings(JSON.parse(data))
         }
-        // Merge in bookings from the backend when signed in
-        if (user) {
-          try {
-            const remote = await bookingApi.getMyBookings(
-              () => ({ items: [], total: 0, page: 1, limit: 20, total_pages: 0 }),
-              1,
-              50,
-            )
-            const remoteBookings = (remote.items || []).map(mapBackendBooking)
-            const remoteIds = new Set(remoteBookings.map(b => b.id))
-            const localOnly = local.filter(b => !remoteIds.has(b.id))
-            setBookings(autoCompletePastBookings([...remoteBookings, ...localOnly]))
-            return
-          } catch {
-            // fall through to local-only
-          }
+        // Merge in bookings from the backend
+        try {
+          const remote = await bookingApi.getMyBookings(
+            () => ({ items: [], total: 0, page: 1, limit: 20, total_pages: 0 }),
+            1,
+            50,
+          )
+          if (cancelled) return
+          const remoteBookings = (remote.items || []).map(mapBackendBooking)
+          const remoteIds = new Set(remoteBookings.map(b => b.id))
+          const localOnly = local.filter(b => !remoteIds.has(b.id))
+          setBookings(autoCompletePastBookings([...remoteBookings, ...localOnly]))
+          return
+        } catch {
+          // fall through to local-only
         }
-        setBookings(local)
-      } catch {}
+        if (!cancelled) setBookings(local)
+      } catch (e) {
+        console.warn('Failed to load bookings:', e)
+      }
     }
     load()
+    return () => { cancelled = true }
   }, [user?.id])
 
   useEffect(() => {
     const save = async () => {
       try {
         await AsyncStorage.setItem(getStorageKey(user?.id), JSON.stringify(bookings))
-      } catch {}
+      } catch (e) {
+        console.warn('Failed to save bookings:', e)
+      }
     }
     save()
   }, [bookings, user?.id])
 
   const addBooking = useCallback(
-    (data: Omit<Booking, 'id' | 'status' | 'createdAt'>) => {
+    (data: Omit<Booking, 'id' | 'status' | 'createdAt'> & { id?: string }) => {
       const newBooking: Booking = {
         ...data,
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        id: data.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         status: 'upcoming',
         createdAt: new Date().toISOString(),
       }
@@ -160,18 +199,21 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   }
 
   const cancelBooking = useCallback(
-    (id: string) => {
-      let result = { refundAmount: 0, policy: 'No refund' }
+    async (id: string) => {
+      const target = bookings.find(b => b.id === id)
+      const result = target ? calculateRefund(target) : { refundAmount: 0, policy: 'No refund' }
       setBookings(prev =>
         prev.map(b => {
           if (b.id !== id) return b
-          result = calculateRefund(b)
           return { ...b, status: 'cancelled' as const, refundAmount: result.refundAmount }
         })
       )
+      if (target?.refNumber) {
+        try { await bookingApi.cancelBooking(target.refNumber) } catch {}
+      }
       return result
     },
-    []
+    [bookings]
   )
 
   const updateBooking = useCallback(

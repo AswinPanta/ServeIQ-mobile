@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import { cn } from '@/lib/utils';
+import { BG } from '@/lib/constants/figma-tokens';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'accent';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -82,7 +83,7 @@ export function Button({
       )}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? colors.foreground : '#fff'} />
+        <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? colors.foreground : BG.white} />
       ) : (
         <>
           {icon && iconPosition === 'left' && <View className="mr-1.5">{icon}</View>}

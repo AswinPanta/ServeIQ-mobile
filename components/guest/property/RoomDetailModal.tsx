@@ -3,8 +3,9 @@ import { View, Text, Image, TouchableOpacity, Modal, StyleSheet } from 'react-na
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
 import type { Hotel } from '@/types/api';
+import { SRS, SLATE, BG, BRAND } from '@/lib/constants/figma-tokens';
 
-const ACCENT = '#2E86AB';
+const ACCENT = SRS.teal;
 
 interface RoomDetailModalProps {
   visible: boolean;
@@ -26,7 +27,7 @@ export function RoomDetailModal({ visible, room, hotelName, onClose }: RoomDetai
             <View style={s.header}>
               <Text style={s.name}>{room.name}</Text>
               <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-                <IconSymbol name="close" size={18} color="#64748B" />
+                <IconSymbol name="close" size={18} color={SLATE[500]} />
               </TouchableOpacity>
             </View>
             <Text style={s.meta}>{room.bed} · Up to {room.occupancy} guests</Text>
@@ -58,32 +59,32 @@ export function RoomDetailModal({ visible, room, hotelName, onClose }: RoomDetai
 const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   container: {
-    backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: BG.white, borderTopLeftRadius: 20, borderTopRightRadius: 20,
     maxHeight: '85%',
   },
   handle: {
-    width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0',
+    width: 40, height: 4, borderRadius: 2, backgroundColor: SLATE[200],
     alignSelf: 'center', marginTop: 10, marginBottom: 4,
   },
   image: { width: '100%', height: 200 },
   body: { padding: 16, gap: 8 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { fontSize: 18, fontWeight: '700', color: '#1A3C5E', fontFamily: FONTS.playfairDisplay.bold, flex: 1 },
-  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  meta: { fontSize: 12, color: '#94A3B8' },
+  name: { fontSize: 18, fontWeight: '700', color: BRAND.navyLight, fontFamily: FONTS.playfairDisplay.bold, flex: 1 },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: SLATE[100], alignItems: 'center', justifyContent: 'center' },
+  meta: { fontSize: 12, color: SLATE[400] },
   price: { fontSize: 16, fontWeight: '700', color: ACCENT, fontFamily: FONTS.inter.bold },
-  perNight: { fontSize: 12, fontWeight: '400', color: '#94A3B8' },
-  desc: { fontSize: 13, color: '#64748B', lineHeight: 20, marginTop: 4 },
+  perNight: { fontSize: 12, fontWeight: '400', color: SLATE[400] },
+  desc: { fontSize: 13, color: SLATE[500], lineHeight: 20, marginTop: 4 },
   amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   amenityTag: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
     backgroundColor: 'rgba(46,134,171,0.08)',
   },
-  amenityText: { fontSize: 11, fontWeight: '500', color: '#1A3C5E' },
+  amenityText: { fontSize: 11, fontWeight: '500', color: BRAND.navyLight },
   selectBtn: {
     margin: 16, marginTop: 8, paddingVertical: 15, borderRadius: 12,
-    backgroundColor: '#1A3C5E', alignItems: 'center',
-    shadowColor: '#1A3C5E', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
+    backgroundColor: BRAND.navyLight, alignItems: 'center',
+    shadowColor: BRAND.navyLight, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
   },
-  selectBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF', fontFamily: FONTS.inter.semiBold },
+  selectBtnText: { fontSize: 14, fontWeight: '700', color: BG.white, fontFamily: FONTS.inter.semiBold },
 });

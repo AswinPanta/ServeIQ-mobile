@@ -4,8 +4,11 @@ import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { AdminCard } from '@/components/superadmin/AdminCard';
+import { PURPLE, BLUE, SLATE, RED, BG, STATUS, AMBER, NEUTRAL, EMERALD } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 
 export default function SettingsScreen() {
   const { settings, updateSettings } = useSuperAdmin();
@@ -33,7 +36,7 @@ export default function SettingsScreen() {
     try {
       updateSettings(local);
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-      await AsyncStorage.setItem('stayeasy_superadmin_settings', JSON.stringify(local));
+      await AsyncStorage.setItem('serveiq_superadmin_settings', JSON.stringify(local));
       setHasChanges(false);
       Alert.alert('Settings Saved', 'Platform settings have been updated successfully.');
     } catch (e) {
@@ -60,12 +63,12 @@ export default function SettingsScreen() {
       <TouchableOpacity onPress={() => toggleSection('general')} activeOpacity={0.8}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
-            <View style={[styles.sectionIcon, { backgroundColor: '#3B82F612' }]}>
-              <IconSymbol name="settings" size={18} color="#3B82F6" />
+            <View style={[styles.sectionIcon, { backgroundColor: BLUE[500] + '12' }]}>
+              <IconSymbol name="settings" size={18} color={BLUE[500]} />
             </View>
             <Text style={styles.sectionTitle}>General</Text>
           </View>
-          <IconSymbol name={expandedSections.general ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+          <IconSymbol name={expandedSections.general ? 'chevron.up' : 'chevron.down'} size={16} color={SLATE[400]} />
         </View>
       </TouchableOpacity>
       {expandedSections.general && (
@@ -76,7 +79,7 @@ export default function SettingsScreen() {
             onChangeText={v => update('platformName', v)}
             style={styles.input}
             placeholder="Platform name"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={SLATE[400]}
           />
           <Text style={styles.inputLabel}>Support Email</Text>
           <TextInput
@@ -84,7 +87,7 @@ export default function SettingsScreen() {
             onChangeText={v => update('supportEmail', v)}
             style={styles.input}
             placeholder="Support email"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={SLATE[400]}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -94,13 +97,13 @@ export default function SettingsScreen() {
             onChangeText={v => update('defaultCurrency', v)}
             style={[styles.input, { width: 100 }]}
             placeholder="NPR"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={SLATE[400]}
           />
 
           {/* Danger Zone */}
           <View style={styles.dangerZone}>
             <View style={styles.dangerHeader}>
-              <IconSymbol name="warning" size={16} color="#EF4444" />
+              <IconSymbol name="warning" size={16} color={RED[500]} />
               <Text style={styles.dangerTitle}>Danger Zone</Text>
             </View>
             <Text style={styles.dangerDesc}>Permanently delete your account and all associated data. This action cannot be undone.</Text>
@@ -145,7 +148,7 @@ export default function SettingsScreen() {
                 );
               }}
             >
-              <IconSymbol name="cancel" size={16} color="#FFF" />
+              <IconSymbol name="cancel" size={16} color={BG.white} />
               <Text style={styles.deleteBtnText}>Delete Account Permanently</Text>
             </TouchableOpacity>
           </View>
@@ -156,12 +159,12 @@ export default function SettingsScreen() {
       <TouchableOpacity onPress={() => toggleSection('security')} activeOpacity={0.8}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
-            <View style={[styles.sectionIcon, { backgroundColor: '#10B98112' }]}>
-              <IconSymbol name="lock" size={18} color="#10B981" />
+            <View style={[styles.sectionIcon, { backgroundColor: EMERALD[500] + '12' }]}>
+              <IconSymbol name="lock" size={18} color={STATUS.activeGreen} />
             </View>
             <Text style={styles.sectionTitle}>Security</Text>
           </View>
-          <IconSymbol name={expandedSections.security ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+          <IconSymbol name={expandedSections.security ? 'chevron.up' : 'chevron.down'} size={16} color={SLATE[400]} />
         </View>
       </TouchableOpacity>
       {expandedSections.security && (
@@ -174,8 +177,8 @@ export default function SettingsScreen() {
             <Switch
               value={local.mfaEnabled}
               onValueChange={v => update('mfaEnabled', v)}
-              trackColor={{ false: '#E2E8F0', true: ACCENT + '50' }}
-              thumbColor={local.mfaEnabled ? ACCENT : '#94A3B8'}
+              trackColor={{ false: SLATE[200], true: ACCENT + '50' }}
+              thumbColor={local.mfaEnabled ? ACCENT : SLATE[400]}
             />
           </View>
           <View style={styles.switchRow}>
@@ -200,12 +203,12 @@ export default function SettingsScreen() {
       <TouchableOpacity onPress={() => toggleSection('notifications')} activeOpacity={0.8}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
-            <View style={[styles.sectionIcon, { backgroundColor: '#F59E0B12' }]}>
-              <IconSymbol name="notifications" size={18} color="#F59E0B" />
+            <View style={[styles.sectionIcon, { backgroundColor: AMBER[500] + '12' }]}>
+              <IconSymbol name="notifications" size={18} color={AMBER[500]} />
             </View>
             <Text style={styles.sectionTitle}>Notifications</Text>
           </View>
-          <IconSymbol name={expandedSections.notifications ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+          <IconSymbol name={expandedSections.notifications ? 'chevron.up' : 'chevron.down'} size={16} color={SLATE[400]} />
         </View>
       </TouchableOpacity>
       {expandedSections.notifications && (
@@ -216,7 +219,7 @@ export default function SettingsScreen() {
             onChangeText={v => update('webhookUrl', v)}
             style={styles.input}
             placeholder="https://hooks.example.com/events"
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={SLATE[400]}
             autoCapitalize="none"
           />
           <TouchableOpacity style={styles.configBtn} activeOpacity={0.7}>
@@ -230,12 +233,12 @@ export default function SettingsScreen() {
       <TouchableOpacity onPress={() => toggleSection('maintenance')} activeOpacity={0.8}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
-            <View style={[styles.sectionIcon, { backgroundColor: '#EF444412' }]}>
-              <IconSymbol name="warning" size={18} color="#EF4444" />
+            <View style={[styles.sectionIcon, { backgroundColor: RED[500] + '12' }]}>
+              <IconSymbol name="warning" size={18} color={RED[500]} />
             </View>
             <Text style={styles.sectionTitle}>Maintenance</Text>
           </View>
-          <IconSymbol name={expandedSections.maintenance ? 'chevron.up' : 'chevron.down'} size={16} color="#94A3B8" />
+          <IconSymbol name={expandedSections.maintenance ? 'chevron.up' : 'chevron.down'} size={16} color={SLATE[400]} />
         </View>
       </TouchableOpacity>
       {expandedSections.maintenance && (
@@ -248,8 +251,8 @@ export default function SettingsScreen() {
             <Switch
               value={local.maintenanceMode}
               onValueChange={v => update('maintenanceMode', v)}
-              trackColor={{ false: '#E2E8F0', true: '#EF444450' }}
-              thumbColor={local.maintenanceMode ? '#EF4444' : '#94A3B8'}
+              trackColor={{ false: SLATE[200], true: RED[500] + '50' }}
+              thumbColor={local.maintenanceMode ? RED[500] : SLATE[400]}
             />
           </View>
           {local.maintenanceMode && (
@@ -260,7 +263,7 @@ export default function SettingsScreen() {
                 onChangeText={v => update('maintenanceMessage', v)}
                 style={styles.input}
                 placeholder="Maintenance message"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={SLATE[400]}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -273,7 +276,7 @@ export default function SettingsScreen() {
       {/* Save Button */}
       {hasChanges && (
         <TouchableOpacity onPress={handleSave} style={styles.saveBtn} activeOpacity={0.7}>
-          <IconSymbol name="check" size={18} color="#FFF" />
+          <IconSymbol name="check" size={18} color={BG.white} />
           <Text style={styles.saveText}>Save Changes</Text>
         </TouchableOpacity>
       )}
@@ -282,11 +285,11 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   scroll: { padding: 20, paddingTop: 8, gap: 6, paddingBottom: 100 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -296,19 +299,19 @@ const styles = StyleSheet.create({
   },
   sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   sectionIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: SLATE[900] },
   card: { marginBottom: 8 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 6, marginTop: 4 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: SLATE[500], marginBottom: 6, marginTop: 4 },
   input: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: SLATE[200],
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#0F172A',
+    color: SLATE[900],
     marginBottom: 12,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: NEUTRAL[50],
   },
   switchRow: {
     flexDirection: 'row',
@@ -316,25 +319,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
-  switchLabel: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
-  switchDesc: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  switchLabel: { fontSize: 14, fontWeight: '600', color: SLATE[900] },
+  switchDesc: { fontSize: 12, color: SLATE[400], marginTop: 2 },
   timeoutRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   timeoutInput: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: SLATE[200],
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F172A',
+    color: SLATE[900],
     width: 50,
     textAlign: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: NEUTRAL[50],
   },
-  timeoutUnit: { fontSize: 13, color: '#64748B' },
+  timeoutUnit: { fontSize: 13, color: SLATE[500] },
   configBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -363,14 +366,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  saveText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  saveText: { fontSize: 16, fontWeight: '700', color: BG.white },
   dangerZone: {
     marginTop: 16,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#FEF2F2',
+    backgroundColor: RED[50],
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: RED[200],
   },
   dangerHeader: {
     flexDirection: 'row',
@@ -381,11 +384,11 @@ const styles = StyleSheet.create({
   dangerTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#EF4444',
+    color: RED[500],
   },
   dangerDesc: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: SLATE[400],
     lineHeight: 18,
     marginBottom: 14,
   },
@@ -396,8 +399,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#EF4444',
-    shadowColor: '#EF4444',
+    backgroundColor: RED[500],
+    shadowColor: RED[500],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -406,6 +409,6 @@ const styles = StyleSheet.create({
   deleteBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFF',
+    color: BG.white,
   },
 });

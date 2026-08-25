@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from "@/lib/utils";
+import { PURPLE, RED, SLATE, STATUS, BG } from '@/lib/constants/figma-tokens';
+;
+;
 
-const ACCENT = '#7C3AED';
+const ACCENT = PURPLE[700];
 
 const MOCK_ADMINS = [
   { id: 'adm-1', tenant: 'Himalayan Heights Hotels', adminName: 'Rajesh Hamal', email: 'rajesh@himalayanhotels.com', plan: 'Enterprise', status: 'Active', lastActive: '2 min ago' },
@@ -55,28 +58,28 @@ export default function ImpersonateScreen() {
         </View>
 
         <View style={s.warningBanner}>
-          <IconSymbol name="warning" size={16} color="#EF4444" />
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>Audited Action</Text>
-          <Text style={{ fontSize: 13, color: '#64748B' }}>All impersonation sessions are logged with timestamp, reason, and actions taken.</Text>
+          <IconSymbol name="warning" size={16} color={RED[500]} />
+          <Text style={{ fontSize: 14, fontWeight: '700', color: RED[500] }}>Audited Action</Text>
+          <Text style={{ fontSize: 13, color: SLATE[500] }}>All impersonation sessions are logged with timestamp, reason, and actions taken.</Text>
         </View>
 
         <View style={s.field}>
           <Text style={s.fieldLabel}>REASON FOR IMPERSONATION *</Text>
           <TextInput value={reason} onChangeText={setReason}
             placeholder="e.g., Investigating payment issue reported by admin"
-            placeholderTextColor="#94A3B8" multiline numberOfLines={3} textAlignVertical="top"
+            placeholderTextColor={SLATE[400]} multiline numberOfLines={3} textAlignVertical="top"
             style={s.textarea} />
         </View>
 
         <View style={s.searchBox}>
-          <IconSymbol name="search" size={16} color="#94A3B8" />
-          <TextInput placeholder="Search by tenant, admin name, or email..." placeholderTextColor="#94A3B8"
+          <IconSymbol name="search" size={16} color={SLATE[400]} />
+          <TextInput placeholder="Search by tenant, admin name, or email..." placeholderTextColor={SLATE[400]}
             value={search} onChangeText={setSearch} style={s.searchInput} />
         </View>
 
         {filtered.map(admin => (
           <TouchableOpacity key={admin.id} onPress={() => handleImpersonate(admin)}
-            style={[s.adminCard, { borderLeftColor: admin.status === 'Active' ? '#10B981' : '#EF4444' }]}>
+            style={[s.adminCard, { borderLeftColor: admin.status === 'Active' ? STATUS.activeGreen : RED[500] }]}>
             <View style={{ flex: 1 }}>
               <Text style={s.adminTenant}>{admin.tenant}</Text>
               <Text style={s.adminName}>{admin.adminName} · {admin.email}</Text>
@@ -84,7 +87,7 @@ export default function ImpersonateScreen() {
                 <View style={[s.badge, { backgroundColor: ACCENT + '12' }]}>
                   <Text style={[s.badgeText, { color: ACCENT }]}>{admin.plan}</Text>
                 </View>
-                <Text style={{ fontSize: 12, color: '#64748B' }}>Active {admin.lastActive}</Text>
+                <Text style={{ fontSize: 12, color: SLATE[500] }}>Active {admin.lastActive}</Text>
               </View>
             </View>
             <View style={[s.impersonateBadge, { backgroundColor: ACCENT + '12' }]}>
@@ -95,8 +98,8 @@ export default function ImpersonateScreen() {
 
         {filtered.length === 0 && (
           <View style={{ padding: 40, alignItems: 'center', gap: 8 }}>
-            <IconSymbol name="search" size={24} color="#CBD5E1" />
-            <Text style={{ fontSize: 14, color: '#64748B' }}>No admins found</Text>
+            <IconSymbol name="search" size={24} color={SLATE[300]} />
+            <Text style={{ fontSize: 14, color: SLATE[500] }}>No admins found</Text>
           </View>
         )}
 
@@ -106,11 +109,11 @@ export default function ImpersonateScreen() {
             <View key={i} style={s.recentCard}>
               <View style={s.recentHead}>
                 <Text style={s.recentAdmin}>{imp.admin}</Text>
-                <Text style={{ fontSize: 12, color: '#64748B' }}>{imp.duration}</Text>
+                <Text style={{ fontSize: 12, color: SLATE[500] }}>{imp.duration}</Text>
               </View>
-              <Text style={{ fontSize: 13, color: '#64748B' }}>{imp.tenant}</Text>
-              <Text style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>Reason: {imp.reason}</Text>
-              <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 3 }}>{imp.time}</Text>
+              <Text style={{ fontSize: 13, color: SLATE[500] }}>{imp.tenant}</Text>
+              <Text style={{ fontSize: 12, color: SLATE[500], marginTop: 3 }}>Reason: {imp.reason}</Text>
+              <Text style={{ fontSize: 11, color: SLATE[400], marginTop: 3 }}>{imp.time}</Text>
             </View>
           ))}
         </View>
@@ -120,27 +123,27 @@ export default function ImpersonateScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: SLATE[50] },
   scroll: { padding: 20, paddingTop: 8, gap: 14 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: ACCENT + '12', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: '#0F172A', flex: 1 },
-  warningBanner: { padding: 14, borderRadius: 16, backgroundColor: '#EF444408', borderWidth: 1, borderColor: '#EF444418', gap: 4 },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: SLATE[900], flex: 1 },
+  warningBanner: { padding: 14, borderRadius: 16, backgroundColor: RED[500] + '08', borderWidth: 1, borderColor: RED[500] + '18', gap: 4 },
   field: { gap: 8 },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 },
-  textarea: { fontSize: 14, color: '#0F172A', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', minHeight: 80, textAlignVertical: 'top' },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF', borderRadius: 14, paddingHorizontal: 14, height: 44, borderWidth: 1, borderColor: '#E2E8F0' },
-  searchInput: { flex: 1, fontSize: 15, color: '#0F172A', padding: 0 },
-  adminCard: { padding: 14, borderRadius: 14, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9', borderLeftWidth: 4, flexDirection: 'row', alignItems: 'center' },
-  adminTenant: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  adminName: { fontSize: 13, color: '#64748B', marginTop: 1 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: SLATE[500], letterSpacing: 0.5 },
+  textarea: { fontSize: 14, color: SLATE[900], paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[200], minHeight: 80, textAlignVertical: 'top' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: BG.white, borderRadius: 14, paddingHorizontal: 14, height: 44, borderWidth: 1, borderColor: SLATE[200] },
+  searchInput: { flex: 1, fontSize: 15, color: SLATE[900], padding: 0 },
+  adminCard: { padding: 14, borderRadius: 14, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100], borderLeftWidth: 4, flexDirection: 'row', alignItems: 'center' },
+  adminTenant: { fontSize: 15, fontWeight: '700', color: SLATE[900] },
+  adminName: { fontSize: 13, color: SLATE[500], marginTop: 1 },
   badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
   impersonateBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   impersonateText: { fontSize: 12, fontWeight: '700' },
   recentSection: { gap: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  recentCard: { padding: 14, borderRadius: 14, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#F1F5F9' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: SLATE[900] },
+  recentCard: { padding: 14, borderRadius: 14, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100] },
   recentHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
-  recentAdmin: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  recentAdmin: { fontSize: 14, fontWeight: '700', color: SLATE[900] },
 });

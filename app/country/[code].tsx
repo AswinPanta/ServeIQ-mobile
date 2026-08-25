@@ -7,27 +7,30 @@ import { getCountry, type WorldCountry, type City } from "@/lib/mock/world-count
 import { hotels } from "@/lib/mock/hotels";
 import { safeGoBack } from '@/lib/utils';
 import type { TFunction } from 'i18next';
+import { BG, TEXT, BRAND, WARM, GRAY } from '@/lib/constants/figma-tokens';
+;
+;
 
 function HotelCard({ hotel, t }: { hotel: (typeof hotels)[number]; t: TFunction }) {
   const router = useRouter();
   return (
-    <View style={{ borderRadius: 16, overflow: "hidden", backgroundColor: "#FFFFFF", marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 }}>
+    <View style={{ borderRadius: 16, overflow: "hidden", backgroundColor: BG.white, marginBottom: 16, shadowColor: TEXT.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 }}>
       <Image source={{ uri: hotel.imageUrl }} style={{ width: "100%", height: 180 }} resizeMode="cover" />
       <View style={{ padding: 16 }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#16233A", flex: 1 }} numberOfLines={1}>{hotel.name}</Text>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: BRAND.navyDark, flex: 1 }} numberOfLines={1}>{hotel.name}</Text>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ color: "#E8B84B", fontSize: 14 }}>★</Text>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#16233A", marginLeft: 2 }}>{hotel.rating}</Text>
+            <Text style={{ color: WARM.gold, fontSize: 14 }}>★</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: BRAND.navyDark, marginLeft: 2 }}>{hotel.rating}</Text>
           </View>
         </View>
-        <Text style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>{hotel.location}</Text>
-        <Text style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>{t('country.hotelInfo', { reviews: hotel.reviews, bedrooms: hotel.bedrooms, bathrooms: hotel.bathrooms })}</Text>
+        <Text style={{ fontSize: 12, color: GRAY[600], marginBottom: 4 }}>{hotel.location}</Text>
+        <Text style={{ fontSize: 12, color: GRAY[600], marginBottom: 8 }}>{t('country.hotelInfo', { reviews: hotel.reviews, bedrooms: hotel.bedrooms, bathrooms: hotel.bathrooms })}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#16233A" }}>${hotel.price}<Text style={{ fontSize: 12, fontWeight: "400", color: "#666" }}>{t('country.perNight')}</Text></Text>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: BRAND.navyDark }}>${hotel.price}<Text style={{ fontSize: 12, fontWeight: "400", color: GRAY[600] }}>{t('country.perNight')}</Text></Text>
           {hotel.isSuperhost && (
-            <View style={{ backgroundColor: "#16233A", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-              <Text style={{ color: "#FFD58A", fontSize: 11, fontWeight: "600" }}>{t('country.superhost')}</Text>
+            <View style={{ backgroundColor: BRAND.navyDark, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ color: WARM.apricot, fontSize: 11, fontWeight: "600" }}>{t('country.superhost')}</Text>
             </View>
           )}
         </View>
@@ -54,18 +57,18 @@ export default function CountryPage() {
 
   if (!country) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#FAF6EE", alignItems: "center", justifyContent: "center" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: WARM.ivory, alignItems: "center", justifyContent: "center" }}>
         <Text style={{ fontSize: 40, marginBottom: 12 }}>🌍</Text>
-        <Text style={{ fontSize: 18, fontWeight: "600", color: "#16233A", marginBottom: 16 }}>{t('country.notFound')}</Text>
-        <TouchableOpacity onPress={() => safeGoBack()} style={{ backgroundColor: "#16233A", paddingHorizontal: 24, paddingVertical: 14, borderRadius: 999 }}>
-          <Text style={{ color: "#FFFFFF", fontWeight: "600" }}>{t('country.backToHome')}</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600", color: BRAND.navyDark, marginBottom: 16 }}>{t('country.notFound')}</Text>
+        <TouchableOpacity onPress={() => safeGoBack()} style={{ backgroundColor: BRAND.navyDark, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 999 }}>
+          <Text style={{ color: BG.white, fontWeight: "600" }}>{t('country.backToHome')}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#FAF6EE" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: WARM.ivory }}>
       <ScrollView>
         {/* HERO */}
         <View style={{ height: 380, overflow: "hidden" }}>
@@ -81,7 +84,7 @@ export default function CountryPage() {
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                 <Text style={{ fontSize: 40, marginRight: 8 }}>{country.flag}</Text>
                 <View>
-                  <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "700" }}>
+                  <Text style={{ color: BG.white, fontSize: 28, fontWeight: "700" }}>
                     {selectedCity ? selectedCity.name : country.name}
                   </Text>
                   {selectedCity && (
@@ -98,7 +101,7 @@ export default function CountryPage() {
 
         <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
           {/* CITY FILTER */}
-          <Text style={{ fontSize: 15, fontWeight: "600", color: "#16233A", marginBottom: 12 }}>
+          <Text style={{ fontSize: 15, fontWeight: "600", color: BRAND.navyDark, marginBottom: 12 }}>
             {t('country.popularCities', { name: country.name })}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
@@ -106,10 +109,10 @@ export default function CountryPage() {
               onPress={() => setActiveCity(null)}
               style={{
                 paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, marginRight: 8,
-                backgroundColor: !activeCity ? "#16233A" : "#FFFFFF",
+                backgroundColor: !activeCity ? BRAND.navyDark : BG.white,
               }}
             >
-              <Text style={{ color: !activeCity ? "#FFFFFF" : "#16233A", fontSize: 13, fontWeight: "500" }}>
+              <Text style={{ color: !activeCity ? BG.white : BRAND.navyDark, fontSize: 13, fontWeight: "500" }}>
                 {t('country.allOf', { name: country.name })}
               </Text>
             </TouchableOpacity>
@@ -119,10 +122,10 @@ export default function CountryPage() {
                 onPress={() => setActiveCity(city.name === activeCity ? null : city.name)}
                 style={{
                   paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, marginRight: 8,
-                  backgroundColor: activeCity === city.name ? "#16233A" : "#FFFFFF",
+                  backgroundColor: activeCity === city.name ? BRAND.navyDark : BG.white,
                 }}
               >
-                <Text style={{ color: activeCity === city.name ? "#FFFFFF" : "#16233A", fontSize: 13, fontWeight: "500" }}>
+                <Text style={{ color: activeCity === city.name ? BG.white : BRAND.navyDark, fontSize: 13, fontWeight: "500" }}>
                   {city.name}
                 </Text>
               </TouchableOpacity>
@@ -131,27 +134,27 @@ export default function CountryPage() {
 
           {/* SELECTED CITY DETAILS */}
           {selectedCity && (
-            <View style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 20, marginBottom: 24 }}>
-              <Text style={{ fontSize: 18, fontWeight: "700", color: "#16233A", marginBottom: 8 }}>
+            <View style={{ backgroundColor: BG.white, borderRadius: 16, padding: 20, marginBottom: 24 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: BRAND.navyDark, marginBottom: 8 }}>
                 {t('country.about', { name: selectedCity.name })}
               </Text>
-              <Text style={{ color: "#666", fontSize: 13, lineHeight: 20, marginBottom: 12 }}>
+              <Text style={{ color: GRAY[600], fontSize: 13, lineHeight: 20, marginBottom: 12 }}>
                 {selectedCity.description}
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {selectedCity.bestFor.map((b) => (
                   <View key={b} style={{ backgroundColor: "rgba(22,35,58,0.08)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
-                    <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "500" }}>{b}</Text>
+                    <Text style={{ color: BRAND.navyDark, fontSize: 11, fontWeight: "500" }}>{b}</Text>
                   </View>
                 ))}
               </View>
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#16233A", marginBottom: 8 }}>{t('country.topAttractions')}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "600", color: BRAND.navyDark, marginBottom: 8 }}>{t('country.topAttractions')}</Text>
               {selectedCity.attractions.map((attr, i) => (
                 <View key={attr} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                   <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(22,35,58,0.08)", alignItems: "center", justifyContent: "center", marginRight: 8 }}>
-                    <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "700" }}>{i + 1}</Text>
+                    <Text style={{ color: BRAND.navyDark, fontSize: 11, fontWeight: "700" }}>{i + 1}</Text>
                   </View>
-                  <Text style={{ color: "#16233A", fontSize: 13 }}>{attr}</Text>
+                  <Text style={{ color: BRAND.navyDark, fontSize: 13 }}>{attr}</Text>
                 </View>
               ))}
             </View>
@@ -166,9 +169,9 @@ export default function CountryPage() {
                 { label: t('country.mustTry'), value: country.cuisine[0] },
                 { label: t('country.bestTime'), value: country.bestTime },
               ].map((item) => (
-                <View key={item.label} style={{ width: "47%", backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, marginBottom: 4 }}>
-                  <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "600", letterSpacing: 0.5, marginBottom: 4 }}>{item.label}</Text>
-                  <Text style={{ color: "#16233A", fontSize: 13, fontWeight: "500" }}>{item.value}</Text>
+                <View key={item.label} style={{ width: "47%", backgroundColor: BG.white, borderRadius: 16, padding: 16, marginBottom: 4 }}>
+                  <Text style={{ color: BRAND.navyDark, fontSize: 11, fontWeight: "600", letterSpacing: 0.5, marginBottom: 4 }}>{item.label}</Text>
+                  <Text style={{ color: BRAND.navyDark, fontSize: 13, fontWeight: "500" }}>{item.value}</Text>
                 </View>
               ))}
             </View>
@@ -177,32 +180,32 @@ export default function CountryPage() {
           {/* TOP ATTRACTIONS + CUISINE */}
           {!selectedCity && (
             <View style={{ flexDirection: "row", gap: 12, marginBottom: 24 }}>
-              <View style={{ flex: 1, backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16 }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#16233A", marginBottom: 12 }}>{t('country.topAttractions')}</Text>
+              <View style={{ flex: 1, backgroundColor: BG.white, borderRadius: 16, padding: 16 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: BRAND.navyDark, marginBottom: 12 }}>{t('country.topAttractions')}</Text>
                 {country.topAttractions.map((a, i) => (
                   <View key={a} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                     <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(22,35,58,0.08)", alignItems: "center", justifyContent: "center", marginRight: 8 }}>
-                      <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "700" }}>{i + 1}</Text>
+                      <Text style={{ color: BRAND.navyDark, fontSize: 11, fontWeight: "700" }}>{i + 1}</Text>
                     </View>
-                    <Text style={{ color: "#16233A", fontSize: 12, flex: 1 }}>{a}</Text>
+                    <Text style={{ color: BRAND.navyDark, fontSize: 12, flex: 1 }}>{a}</Text>
                   </View>
                 ))}
               </View>
-              <View style={{ flex: 1, backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16 }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: "#16233A", marginBottom: 12 }}>{t('country.localCuisine')}</Text>
+              <View style={{ flex: 1, backgroundColor: BG.white, borderRadius: 16, padding: 16 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: BRAND.navyDark, marginBottom: 12 }}>{t('country.localCuisine')}</Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                   {country.cuisine.map((dish) => (
-                    <View key={dish} style={{ backgroundColor: "#FAF6EE", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                      <Text style={{ color: "#16233A", fontSize: 11, fontWeight: "500" }}>{dish}</Text>
+                    <View key={dish} style={{ backgroundColor: WARM.ivory, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: BRAND.navyDark, fontSize: 11, fontWeight: "500" }}>{dish}</Text>
                     </View>
                   ))}
                 </View>
-                <View style={{ marginTop: 16, borderTopWidth: 1, borderTopColor: "#eee", paddingTop: 12 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#16233A", marginBottom: 8 }}>{t('country.exploreCities')}</Text>
+                <View style={{ marginTop: 16, borderTopWidth: 1, borderTopColor: GRAY[100], paddingTop: 12 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: BRAND.navyDark, marginBottom: 8 }}>{t('country.exploreCities')}</Text>
                   {country.cities.slice(0, 4).map((city) => (
                     <TouchableOpacity key={city.name} onPress={() => setActiveCity(city.name)} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14 }}>
-                      <Text style={{ color: "#16233A", fontSize: 12 }}>{city.name}</Text>
-                      <Text style={{ color: "#666", fontSize: 12 }}>→</Text>
+                      <Text style={{ color: BRAND.navyDark, fontSize: 12 }}>{city.name}</Text>
+                      <Text style={{ color: GRAY[600], fontSize: 12 }}>→</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -211,7 +214,7 @@ export default function CountryPage() {
           )}
 
           {/* HOTELS */}
-          <Text style={{ fontSize: 20, fontWeight: "700", color: "#16233A", marginBottom: 16 }}>
+          <Text style={{ fontSize: 20, fontWeight: "700", color: BRAND.navyDark, marginBottom: 16 }}>
             {t('country.stays', { name: selectedCity ? selectedCity.name : country.name })}
           </Text>
           {displayHotels.map((h) => (

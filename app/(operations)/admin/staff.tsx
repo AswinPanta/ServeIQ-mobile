@@ -8,16 +8,19 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS } from '@/constants/portal-theme';
 import type { StaffRole, StaffMember } from '@/types/api';
 import { safeGoBack } from "@/lib/utils";
+import { TEAL, PURPLE, BLUE, STATUS, AMBER, ORANGE, RED, GRAY, BG, EMERALD, SLATE } from '@/lib/constants/figma-tokens';
+import { setStaffMustChange } from '@/lib/context/host-utils';
+import { validateEmail, validatePhone, validateRequired, validateNumber, validateDate, parseBackendError } from '@/lib/utils/validation';
 
-const ACCENT = '#0D9488';
+const ACCENT = TEAL[600];
 
 const ROLE_COLORS: Record<StaffRole, string> = {
-  manager: '#8B5CF6',
-  front_desk: '#3B82F6',
-  housekeeping: '#10B981',
-  waiter: '#F59E0B',
-  kitchen: '#F97316',
-  maintenance: '#EF4444',
+  manager: PURPLE[500],
+  front_desk: BLUE[500],
+  housekeeping: STATUS.activeGreen,
+  waiter: AMBER[500],
+  kitchen: ORANGE[500],
+  maintenance: RED[500],
 };
 
 const ROLE_LABELS: Record<StaffRole, string> = {
@@ -31,13 +34,13 @@ const ROLE_LABELS: Record<StaffRole, string> = {
 
 const DEPARTMENTS = ['Front Office', 'Housekeeping', 'Food & Beverage', 'Maintenance', 'Management', 'Security'];
 
-function generateTempPassword(): string {
-  const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+interface FieldErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  salary?: string;
+  joiningDate?: string;
 }
 
 export default function StaffManagementScreen() {
@@ -52,7 +55,10 @@ export default function StaffManagementScreen() {
   const [role, setRole] = useState<StaffRole>('front_desk');
   const [department, setDepartment] = useState('Front Office');
   const [position, setPosition] = useState('');
+  const [salary, setSalary] = useState('');
+  const [joiningDate, setJoiningDate] = useState(new Date().toISOString().slice(0, 10));
   const [showDeptPicker, setShowDeptPicker] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const [emailModalStaff, setEmailModalStaff] = useState<{
     first_name: string;
@@ -61,7 +67,6 @@ export default function StaffManagementScreen() {
     role: StaffRole;
     department: string;
     position: string;
-    temporaryPassword: string;
   } | null>(null);
 
   const filteredStaff = staff.filter(s => s.property_id === activePropertyId);
@@ -74,21 +79,46 @@ export default function StaffManagementScreen() {
     setRole('front_desk');
     setDepartment('Front Office');
     setPosition('');
+    setSalary('');
+    setJoiningDate(new Date().toISOString().slice(0, 10));
+    setFieldErrors({});
   };
 
-  const handleCreateStaff = () => {
-    if (!firstName.trim() || !email.trim()) {
-      Alert.alert('Validation Error', 'First name and email are required.');
-      return;
-    }
+  const validate = (): boolean => {
+    const errs: FieldErrors = {};
 
-    const tempPassword = generateTempPassword();
+    const fnErr = validateRequired(firstName, 'First name');
+    if (fnErr) errs.firstName = fnErr;
+
+    const emailErr = validateEmail(email);
+    if (emailErr) errs.email = emailErr;
+
+    const phoneErr = validatePhone(phone);
+    if (phoneErr) errs.phone = phoneErr;
+
+    const salaryErr = validateNumber(salary, { min: 0, max: 10_000_000, label: 'Salary', required: true });
+    if (salaryErr) errs.salary = salaryErr;
+
+    const dateErr = validateDate(joiningDate, { label: 'Joining date', required: true, notPast: false });
+    if (dateErr) errs.joiningDate = dateErr;
+
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleCreateStaff = async () => {
+    if (!validate()) return;
+
+    const fullName = lastName.trim()
+      ? `${firstName.trim()} ${lastName.trim()}`
+      : firstName.trim();
+
     const now = new Date().toISOString();
 
     const newStaff: StaffMember = {
       id: `st-${Date.now()}`,
       tenant_id: 'demo-host-1',
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       first_name: firstName.trim(),
       last_name: lastName.trim(),
       phone: phone.trim() || '',
@@ -100,16 +130,23 @@ export default function StaffManagementScreen() {
       updated_at: now,
     };
 
-    addStaff(newStaff);
+    const created = await addStaff(newStaff);
+    if (!created) {
+      Alert.alert('Error', 'Failed to create staff member. Check your connection and try again.');
+      return;
+    }
+
+    // The backend emails the staff member a temporary password. Track them as
+    // needing a forced password change on their first sign-in.
+    setStaffMustChange(newStaff.email);
 
     setEmailModalStaff({
       first_name: firstName.trim(),
       last_name: lastName.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       role,
       department,
       position: position.trim() || ROLE_LABELS[role],
-      temporaryPassword: tempPassword,
     });
 
     resetForm();
@@ -118,6 +155,12 @@ export default function StaffManagementScreen() {
 
   const handleToggleActive = (id: string, current: boolean) => {
     updateStaff(id, { is_active: !current });
+  };
+
+  const clearFieldError = (field: keyof FieldErrors) => {
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: undefined }));
+    }
   };
 
   return (
@@ -133,7 +176,7 @@ export default function StaffManagementScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[TYPOGRAPHY.h2, { color: SRS.navy }]}>Staff Management</Text>
-          <Text style={[TYPOGRAPHY.small, { color: '#6B7280', marginTop: 2 }]}>
+          <Text style={[TYPOGRAPHY.small, { color: GRAY[500], marginTop: 2 }]}>
             {filteredStaff.length} staff members
           </Text>
         </View>
@@ -165,11 +208,12 @@ export default function StaffManagementScreen() {
                 <Text style={styles.label}>First Name *</Text>
                 <TextInput
                   value={firstName}
-                  onChangeText={setFirstName}
+                  onChangeText={(t) => { setFirstName(t); clearFieldError('firstName'); }}
                   placeholder="John"
-                  placeholderTextColor="#9CA3AF"
-                  style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
+                  placeholderTextColor={GRAY[400]}
+                  style={[styles.input, fieldErrors.firstName && styles.inputError, { borderColor: colors.border, color: colors.foreground }]}
                 />
+                {fieldErrors.firstName ? <Text style={styles.fieldError}>{fieldErrors.firstName}</Text> : null}
               </View>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={styles.label}>Last Name</Text>
@@ -177,7 +221,7 @@ export default function StaffManagementScreen() {
                   value={lastName}
                   onChangeText={setLastName}
                   placeholder="Doe"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={GRAY[400]}
                   style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
                 />
               </View>
@@ -188,13 +232,14 @@ export default function StaffManagementScreen() {
               <Text style={styles.label}>Email *</Text>
               <TextInput
                 value={email}
-                onChangeText={setEmail}
-                placeholder="staff@stayeasy.com"
-                placeholderTextColor="#9CA3AF"
+                onChangeText={(t) => { setEmail(t); clearFieldError('email'); }}
+                placeholder="staff@serveiq.com"
+                placeholderTextColor={GRAY[400]}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, fieldErrors.email && styles.inputError, { borderColor: colors.border, color: colors.foreground }]}
               />
+              {fieldErrors.email ? <Text style={styles.fieldError}>{fieldErrors.email}</Text> : null}
             </View>
 
             {/* Phone */}
@@ -202,17 +247,18 @@ export default function StaffManagementScreen() {
               <Text style={styles.label}>Phone</Text>
               <TextInput
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(t) => { setPhone(t); clearFieldError('phone'); }}
                 placeholder="+977-9841234567"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={GRAY[400]}
                 keyboardType="phone-pad"
-                style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, fieldErrors.phone && styles.inputError, { borderColor: colors.border, color: colors.foreground }]}
               />
+              {fieldErrors.phone ? <Text style={styles.fieldError}>{fieldErrors.phone}</Text> : null}
             </View>
 
             {/* Role */}
             <View style={{ gap: 6 }}>
-              <Text style={styles.label}>Role</Text>
+              <Text style={styles.label}>Role *</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {(Object.keys(ROLE_LABELS) as StaffRole[]).map(r => (
                   <TouchableOpacity
@@ -225,7 +271,7 @@ export default function StaffManagementScreen() {
                       },
                     ]}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: role === r ? '#FFF' : colors.foreground }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: role === r ? BG.white : colors.foreground }}>
                       {ROLE_LABELS[r]}
                     </Text>
                   </TouchableOpacity>
@@ -241,7 +287,7 @@ export default function StaffManagementScreen() {
                 style={[styles.input, { borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
               >
                 <Text style={{ fontSize: 13, color: colors.foreground }}>{department}</Text>
-                <IconSymbol name="chevron.down" size={16} color="#9CA3AF" />
+                <IconSymbol name="chevron.down" size={16} color={GRAY[400]} />
               </TouchableOpacity>
               {showDeptPicker && (
                 <View style={[styles.dropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -270,9 +316,36 @@ export default function StaffManagementScreen() {
                 value={position}
                 onChangeText={setPosition}
                 placeholder={ROLE_LABELS[role]}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={GRAY[400]}
                 style={[styles.input, { borderColor: colors.border, color: colors.foreground }]}
               />
+            </View>
+
+            {/* Monthly Salary (required by backend) */}
+            <View style={{ gap: 4 }}>
+              <Text style={styles.label}>Monthly Salary (NPR) *</Text>
+              <TextInput
+                value={salary}
+                onChangeText={(t) => { setSalary(t); clearFieldError('salary'); }}
+                placeholder="e.g. 25000"
+                placeholderTextColor={GRAY[400]}
+                keyboardType="numeric"
+                style={[styles.input, fieldErrors.salary && styles.inputError, { borderColor: colors.border, color: colors.foreground }]}
+              />
+              {fieldErrors.salary ? <Text style={styles.fieldError}>{fieldErrors.salary}</Text> : null}
+            </View>
+
+            {/* Joining Date (required by backend) */}
+            <View style={{ gap: 4 }}>
+              <Text style={styles.label}>Joining Date *</Text>
+              <TextInput
+                value={joiningDate}
+                onChangeText={(t) => { setJoiningDate(t); clearFieldError('joiningDate'); }}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={GRAY[400]}
+                style={[styles.input, fieldErrors.joiningDate && styles.inputError, { borderColor: colors.border, color: colors.foreground }]}
+              />
+              {fieldErrors.joiningDate ? <Text style={styles.fieldError}>{fieldErrors.joiningDate}</Text> : null}
             </View>
           </View>
 
@@ -288,8 +361,8 @@ export default function StaffManagementScreen() {
               onPress={handleCreateStaff}
               style={[styles.createBtn, { backgroundColor: ACCENT }]}
             >
-              <IconSymbol name="check" size={16} color="#FFF" />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFF' }}>Create & Send Email</Text>
+              <IconSymbol name="check" size={16} color={BG.white} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: BG.white }}>Create & Send Email</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -299,11 +372,11 @@ export default function StaffManagementScreen() {
       <View style={{ marginTop: showForm ? SPACING.lg : 0 }}>
         {filteredStaff.length === 0 && !showForm ? (
           <View style={styles.emptyState}>
-            <IconSymbol name="person.fill" size={48} color="#D1D5DB" />
-            <Text style={[TYPOGRAPHY.body, { color: '#9CA3AF', marginTop: SPACING.md }]}>
+            <IconSymbol name="person.fill" size={48} color={GRAY[300]} />
+            <Text style={[TYPOGRAPHY.body, { color: GRAY[400], marginTop: SPACING.md }]}>
               No staff members yet
             </Text>
-            <Text style={[TYPOGRAPHY.small, { color: '#D1D5DB', marginTop: 4 }]}>
+            <Text style={[TYPOGRAPHY.small, { color: GRAY[300], marginTop: 4 }]}>
               Add your first staff member to get started
             </Text>
           </View>
@@ -326,10 +399,10 @@ export default function StaffManagementScreen() {
                     </Text>
                     <View style={{
                       width: 8, height: 8, borderRadius: 4,
-                      backgroundColor: s.is_active ? '#10B981' : '#EF4444',
+                      backgroundColor: s.is_active ? STATUS.activeGreen : RED[500],
                     }} />
                   </View>
-                  <Text style={[TYPOGRAPHY.small, { color: '#6B7280', marginTop: 2 }]}>
+                  <Text style={[TYPOGRAPHY.small, { color: GRAY[500], marginTop: 2 }]}>
                     {s.email}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
@@ -338,16 +411,16 @@ export default function StaffManagementScreen() {
                         {ROLE_LABELS[s.role]}
                       </Text>
                     </View>
-                    <Text style={[TYPOGRAPHY.caption, { color: '#9CA3AF' }]}>
+                    <Text style={[TYPOGRAPHY.caption, { color: GRAY[400] }]}>
                       {s.is_active ? 'Active' : 'Inactive'}
                     </Text>
                   </View>
                 </View>
                 <TouchableOpacity
                   onPress={() => handleToggleActive(s.id, s.is_active)}
-                  style={[styles.toggleBtn, { backgroundColor: s.is_active ? '#FEE2E2' : '#D1FAE5' }]}
+                  style={[styles.toggleBtn, { backgroundColor: s.is_active ? RED[100] : EMERALD[100] }]}
                 >
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: s.is_active ? '#EF4444' : '#10B981' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: s.is_active ? RED[500] : STATUS.activeGreen }}>
                     {s.is_active ? 'Deactivate' : 'Activate'}
                   </Text>
                 </TouchableOpacity>
@@ -380,7 +453,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: RADIUS.card,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: SLATE[100],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -408,13 +481,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: GRAY[500],
   },
   input: {
     padding: 12,
     borderRadius: RADIUS.button,
     borderWidth: 1,
     fontSize: 13,
+  },
+  inputError: {
+    borderColor: RED[500],
+  },
+  fieldError: {
+    fontSize: 11,
+    color: RED[500],
+    marginTop: 2,
   },
   roleChip: {
     paddingHorizontal: 14,
@@ -432,7 +513,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
   cancelBtn: {
     flex: 1,

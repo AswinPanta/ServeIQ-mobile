@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet, Modal } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { HK_COLORS as C } from '@/lib/constants/housekeeping-theme';
+import { BG, TEXT } from '@/lib/constants/figma-tokens';
 
 const ISSUE_CATEGORIES = ['Plumbing', 'Electrical', 'HVAC', 'Furniture', 'Walls & Paint', 'Appliances', 'Other'] as const;
 const PRIORITY_LEVELS = ['Low', 'Medium', 'High'] as const;
@@ -107,12 +108,12 @@ export function MaintenanceModal({ visible, onClose, roomId }: MaintenanceModalP
                   onPress={() => setPriority(level)}
                 >
                   {level === 'High' && priority === level && (
-                    <IconSymbol name="warning" size={12} color="#FFF" />
+                    <IconSymbol name="warning" size={12} color={BG.white} />
                   )}
                   <Text style={[
                     s.priorityBtnText,
                     priority === level && s.priorityBtnTextActive,
-                    level === 'High' && priority === level && { color: '#FFF' },
+                    level === 'High' && priority === level && { color: BG.white },
                   ]}>
                     {level}
                   </Text>
@@ -145,7 +146,7 @@ export function MaintenanceModal({ visible, onClose, roomId }: MaintenanceModalP
             disabled={!category}
             activeOpacity={0.85}
           >
-            <IconSymbol name="paperplane.fill" size={14} color="#FFF" />
+            <IconSymbol name="paperplane.fill" size={14} color={BG.white} />
             <Text style={s.submitBtnText}>SUBMIT REPORT</Text>
           </TouchableOpacity>
         </View>
@@ -323,7 +324,7 @@ const s = StyleSheet.create({
     letterSpacing: 0.24,
   },
   priorityBtnTextActive: {
-    color: '#FFF',
+    color: BG.white,
   },
   // Textarea - matches Figma: bg #FFFFFF, border 1px solid #C3C6CF, border-radius 4px, min-height 100px
   textarea: {
@@ -356,7 +357,7 @@ const s = StyleSheet.create({
     height: 48,
     backgroundColor: C.navy,
     borderRadius: 4,
-    shadowColor: '#000',
+    shadowColor: TEXT.black,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 15,
@@ -369,7 +370,7 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 14,
     fontWeight: '400',
-    color: '#FFF',
+    color: BG.white,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },

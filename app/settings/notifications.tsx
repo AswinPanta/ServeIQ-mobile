@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import { useColors } from '@/hooks/use-colors';
 import { ScreenContainer } from '@/components/screen-container';
 import { safeGoBack } from '@/lib/utils';
-const ACCENT = '#E63946';
+import { CORAL, BG } from '@/lib/constants/figma-tokens';
+const ACCENT = CORAL[500];
 
 const TOGGLES = [
   { key: 'bookingConfirmations', label: 'Booking Confirmations', desc: 'Get notified when a booking is confirmed or cancelled' },
@@ -71,7 +72,7 @@ export default function NotificationsScreen() {
                   value={settings[item.key]}
                   onValueChange={() => toggle(item.key)}
                   trackColor={{ false: colors.border, true: ACCENT + '60' }}
-                  thumbColor={settings[item.key] ? ACCENT : '#f4f3f4'}
+                  thumbColor={settings[item.key] ? ACCENT : BG.card}
                 />
               </View>
             ))}
@@ -98,7 +99,7 @@ export default function NotificationsScreen() {
                   value={settings[item.key]}
                   onValueChange={() => toggle(item.key)}
                   trackColor={{ false: colors.border, true: ACCENT + '60' }}
-                  thumbColor={settings[item.key] ? ACCENT : '#f4f3f4'}
+                  thumbColor={settings[item.key] ? ACCENT : BG.card}
                 />
               </View>
             ))}

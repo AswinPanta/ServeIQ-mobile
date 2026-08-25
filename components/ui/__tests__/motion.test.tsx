@@ -79,7 +79,8 @@ describe('KpiCounter', () => {
     );
     expect(queryByText('1,234')).toBeNull();
     act(() => {
-      jest.advanceTimersByTime(8);
+      // Display updates on a 32ms interval — advance past one full tick.
+      jest.advanceTimersByTime(40);
     });
     // With reanimated mock, withTiming sets value synchronously after the
     // first microtask; the 32ms-poller picks it up on the next tick.
@@ -91,7 +92,8 @@ describe('KpiCounter', () => {
       <KpiCounter value={24500} prefix="NPR " duration={200} />,
     );
     act(() => {
-      jest.advanceTimersByTime(8);
+      // Display updates on a 32ms interval — advance past one full tick.
+      jest.advanceTimersByTime(40);
     });
     expect(getByText('NPR 24,500')).toBeTruthy();
   });

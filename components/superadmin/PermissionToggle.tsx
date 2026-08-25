@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Switch, StyleSheet } from 'react-native';
+import { PURPLE, SLATE } from '@/lib/constants/figma-tokens';
 
 interface PermissionToggleProps {
   label: string;
@@ -9,7 +10,7 @@ interface PermissionToggleProps {
   accentColor?: string;
 }
 
-export function PermissionToggle({ label, description, value, onValueChange, accentColor = '#7C3AED' }: PermissionToggleProps) {
+export function PermissionToggle({ label, description, value, onValueChange, accentColor = PURPLE[700] }: PermissionToggleProps) {
   return (
     <View style={[styles.row, !description && styles.rowCompact]}>
       <View style={styles.info}>
@@ -19,8 +20,8 @@ export function PermissionToggle({ label, description, value, onValueChange, acc
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: '#E2E8F0', true: accentColor + '50' }}
-        thumbColor={value ? accentColor : '#94A3B8'}
+        trackColor={{ false: SLATE[200], true: accentColor + '50' }}
+        thumbColor={value ? accentColor : SLATE[400]}
       />
     </View>
   );
@@ -33,10 +34,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: SLATE[100],
   },
   rowCompact: { paddingVertical: 10, borderBottomWidth: 0 },
   info: { flex: 1, marginRight: 12 },
-  label: { fontSize: 14, fontWeight: '600', color: '#0F172A' },
-  description: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  label: { fontSize: 14, fontWeight: '600', color: SLATE[900] },
+  description: { fontSize: 12, color: SLATE[400], marginTop: 2 },
 });

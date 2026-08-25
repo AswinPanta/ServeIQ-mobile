@@ -4,6 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, SPACING, RADIUS, GRAY, TYPOGRAPHY } from '@/constants/portal-theme';
 import { useNetworkStatus } from '@/hooks/use-network-status';
 import { useHousekeepingStore } from '@/stores/useHousekeepingStore';
+import { BG } from '@/lib/constants/figma-tokens';
 
 interface SyncIndicatorProps {
   compact?: boolean;
@@ -47,11 +48,11 @@ export function SyncIndicator({ compact = false }: SyncIndicatorProps) {
     <View style={[styles.container, isOffline && styles.offlineContainer]}>
       <View style={styles.indicator}>
         {isOffline ? (
-          <IconSymbol name="warning" size={16} color="#FFF" />
+          <IconSymbol name="warning" size={16} color={BG.white} />
         ) : isSyncing ? (
-          <ActivityIndicator size={16} color="#FFF" />
+          <ActivityIndicator size={16} color={BG.white} />
         ) : (
-          <IconSymbol name="check" size={16} color="#FFF" />
+          <IconSymbol name="check" size={16} color={BG.white} />
         )}
         <View style={styles.textContainer}>
           <Text style={styles.statusText}>
@@ -103,7 +104,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: TYPOGRAPHY.small.fontSize,
     fontWeight: '600',
-    color: '#FFF',
+    color: BG.white,
   },
   statusSubtext: {
     fontSize: TYPOGRAPHY.caption.fontSize,
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFF',
+    backgroundColor: BG.white,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderRadius: RADIUS.button,

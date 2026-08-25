@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
 import { FONTS, RADIUS } from '@/constants/portal-theme';
+import { BG, GRAY, BRAND, SLATE } from '@/lib/constants/figma-tokens';
 
 interface TabItem {
   key: string;
@@ -53,9 +54,9 @@ export function FigmaBottomNav({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BG.white,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: GRAY[200],
     paddingBottom: 20,
     paddingTop: 8,
   },
@@ -81,11 +82,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   labelActive: {
-    color: '#1A3C5E',
+    color: BRAND.navyLight,
     fontFamily: FONTS.inter.semiBold,
   },
   labelInactive: {
-    color: '#94A3B8',
+    color: SLATE[400],
     fontFamily: FONTS.inter.medium,
   },
 });

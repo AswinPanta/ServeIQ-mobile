@@ -6,10 +6,13 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  StyleSheet,
+  Pressable,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useColors } from '@/hooks/use-colors';
-import { cn } from '@/lib/utils';
 import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 
 interface SearchModalProps {
@@ -20,20 +23,28 @@ interface SearchModalProps {
 export function SearchModal({ visible, onClose }: SearchModalProps) {
   const colors = useColors();
 
-  const [searchMode, setSearchMode] = useState<'stays' | 'experiences'>('stays');
   const [location, setLocation] = useState('');
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
-  const [infants, setInfants] = useState(0);
 
   const totalGuests = adults + children;
 
+  // Backend wants "YYYY-MM-DD". Date#toISOString() is UTC, so slicing it
+  // shifts the date BACKWARD in positive-offset timezones (Nepal +5:45) and
+  // the backend rejects it as "in the past" — format from local components.
+  const toLocalDate = (d: Date | null): string => {
+    if (!d) return '';
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  };
+
   const handleSearch = () => {
-    const checkInStr = checkIn?.toISOString().split('T')[0] || '';
-    const checkOutStr = checkOut?.toISOString().split('T')[0] || '';
+    const checkInStr = toLocalDate(checkIn);
+    const checkOutStr = toLocalDate(checkOut);
     onClose();
     router.push({
       pathname: '/guest-search-results',
@@ -42,6 +53,8 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
         checkIn: checkInStr,
         checkOut: checkOutStr,
         guests: String(totalGuests),
+        adults: String(adults),
+        children: String(children),
       },
     });
   };
@@ -54,115 +67,91 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
   return (
     <>
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <View className="flex-1 bg-black/50">
-          <View className="flex-1 mt-auto bg-background rounded-t-3xl max-h-[90%]">
-            <View className="flex-row items-center justify-between px-6 py-4 border-b border-border">
-              <Text className="text-xl font-bold text-foreground">Search</Text>
-              <TouchableOpacity onPress={onClose} className="w-8 h-8 items-center justify-center">
-                <Text className="text-2xl text-foreground">✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
-              {/* Stays / Experiences Toggle */}
-              <View className="flex-row bg-surface rounded-full p-1 mb-6 border border-border">
-                {(['stays', 'experiences'] as const).map((mode) => (
-                  <TouchableOpacity
-                    key={mode}
-                    onPress={() => setSearchMode(mode)}
-                    className={cn(
-                      'flex-1 py-2.5 rounded-full items-center',
-                      searchMode === mode ? 'bg-foreground' : ''
-                    )}
-                  >
-                    <Text
-                      className={cn(
-                        'text-sm font-semibold',
-                        searchMode === mode ? 'text-background' : 'text-muted'
-                      )}
-                    >
-                      {mode === 'stays' ? '🏠 Stays' : '🎉 Experiences'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Location */}
-              <View className="mb-4">
-                <Text className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Destination</Text>
-                <TextInput
-                  value={location}
-                  onChangeText={setLocation}
-                  placeholder={searchMode === 'stays' ? 'Where are you going?' : 'Find experiences...'}
-                  placeholderTextColor={colors.muted}
-                  className="px-4 py-3.5 rounded-xl border border-border bg-surface text-foreground text-base"
-                />
-              </View>
-
-              {/* Date Range */}
-              <View className="mb-4">
-                <Text className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Dates</Text>
-                <TouchableOpacity
-                  onPress={() => setShowDatePicker(true)}
-                  className="flex-row items-center justify-between px-4 py-3.5 rounded-xl border border-border bg-surface"
-                >
-                  <View className="flex-row items-center gap-3">
-                    <Text className="text-lg">📅</Text>
-                    <Text className="text-sm text-foreground">
-                      {checkIn && checkOut
-                        ? `${formatDate(checkIn)} — ${formatDate(checkOut)}`
-                        : 'Add dates'}
-                    </Text>
-                  </View>
-                  <Text className="text-xs text-muted">
-                    {checkIn && checkOut
-                      ? `${Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))} nights`
-                      : ''}
-                  </Text>
+        <View style={s.backdrop}>
+          <Pressable style={s.backdropPress} onPress={onClose} />
+          <SafeAreaView edges={['bottom']} style={s.safeArea}>
+            <View style={s.sheet}>
+              <View style={s.sheetHeader}>
+                <Text style={s.sheetTitle}>Search</Text>
+                <TouchableOpacity onPress={onClose} style={s.closeBtn}>
+                  <Text style={s.closeBtnText}>✕</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Guests */}
-              <View className="mb-6">
-                <Text className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Guests</Text>
-
-                <View className="bg-surface rounded-xl border border-border p-4 gap-4">
-                  <StepperRow label="Adults" value={adults} min={1} max={10} onChange={setAdults} />
-                  <View className="h-px bg-border" />
-                  <StepperRow label="Children" value={children} min={0} max={6} onChange={setChildren} />
-                  <View className="h-px bg-border" />
-                  <StepperRow label="Infants" value={infants} min={0} max={4} onChange={setInfants} />
+              <ScrollView style={s.sheetScroll} showsVerticalScrollIndicator={false}>
+                {/* Location */}
+                <View style={s.field}>
+                  <Text style={s.fieldLabel}>Destination</Text>
+                  <TextInput
+                    value={location}
+                    onChangeText={setLocation}
+                    placeholder="Where are you going?"
+                    placeholderTextColor={colors.muted}
+                    style={s.textInput}
+                  />
                 </View>
 
-                <Text className="text-xs text-muted mt-2 ml-1">
-                  {totalGuests} guest{totalGuests !== 1 ? 's' : ''}
-                  {infants > 0 ? `, ${infants} infant${infants !== 1 ? 's' : ''}` : ''}
-                </Text>
-              </View>
-            </ScrollView>
+                {/* Date Range */}
+                <View style={s.field}>
+                  <Text style={s.fieldLabel}>Dates</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowDatePicker(true)}
+                    style={s.dateRow}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ fontSize: 18 }}>📅</Text>
+                      <Text style={s.dateText}>
+                        {checkIn && checkOut
+                          ? `${formatDate(checkIn)} — ${formatDate(checkOut)}`
+                          : 'Add dates'}
+                      </Text>
+                    </View>
+                    <Text style={s.nightsText}>
+                      {checkIn && checkOut
+                        ? `${Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))} nights`
+                        : ''}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-            {/* Bottom Bar */}
-            <View className="px-6 py-4 border-t border-border gap-3">
-              <View className="flex-row items-center justify-between">
-                <TouchableOpacity onPress={() => {
-                  setLocation('');
-                  setCheckIn(null);
-                  setCheckOut(null);
-                  setAdults(2);
-                  setChildren(0);
-                  setInfants(0);
-                }}>
-                  <Text className="text-sm font-semibold text-muted">Clear all</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleSearch}
-                  className="px-8 py-3 rounded-xl bg-foreground"
-                >
-                  <Text className="text-base font-bold text-background">Search</Text>
-                </TouchableOpacity>
+                {/* Guests */}
+                <View style={{ marginBottom: 24 }}>
+                  <Text style={s.fieldLabel}>Guests</Text>
+
+                  <View style={s.guestsCard}>
+                    <StepperRow label="Adults" value={adults} min={1} max={10} onChange={setAdults} />
+                    <View style={{ height: 1, backgroundColor: '#E5E7EB' }} />
+                    <StepperRow label="Children" value={children} min={0} max={6} onChange={setChildren} />
+                  </View>
+
+                  <Text style={s.guestCount}>
+                    {totalGuests} guest{totalGuests !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+              </ScrollView>
+
+              {/* Bottom Bar */}
+              <View style={s.bottomBar}>
+                <View style={s.bottomRow}>
+                  <TouchableOpacity onPress={() => {
+                    setLocation('');
+                    setCheckIn(null);
+                    setCheckOut(null);
+                    setAdults(2);
+                    setChildren(0);
+                  }}>
+                    <Text style={s.clearBtn}>Clear all</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleSearch}
+                    style={s.searchBtn}
+                  >
+                    <Text style={s.searchBtnText}>Search</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
+          </SafeAreaView>
         </View>
       </Modal>
 
@@ -194,27 +183,159 @@ function StepperRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <View className="flex-row items-center justify-between">
-      <Text className="text-sm font-medium text-foreground">{label}</Text>
-      <View className="flex-row items-center gap-3">
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Text style={{ fontSize: 14, fontWeight: '500', color: '#111827' }}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <TouchableOpacity
           onPress={() => onChange(Math.max(min, value - 1))}
           disabled={value <= min}
-          className="w-8 h-8 rounded-full items-center justify-center border border-border"
-          style={{ opacity: value <= min ? 0.3 : 1 }}
+          style={[{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }, value <= min && { opacity: 0.3 }]}
         >
-          <Text className="text-lg font-bold text-foreground">−</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>−</Text>
         </TouchableOpacity>
-        <Text className="w-6 text-center font-bold text-foreground text-base">{value}</Text>
+        <Text style={{ width: 24, textAlign: 'center', fontWeight: '700', color: '#111827', fontSize: 16 }}>{value}</Text>
         <TouchableOpacity
           onPress={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
-          className="w-8 h-8 rounded-full items-center justify-center border border-border"
-          style={{ opacity: value >= max ? 0.3 : 1 }}
+          style={[{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB' }, value >= max && { opacity: 0.3 }]}
         >
-          <Text className="text-lg font-bold text-foreground">+</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>+</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  backdropPress: {
+    flex: 1,
+  },
+  safeArea: {
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnText: {
+    fontSize: 22,
+    color: '#111827',
+  },
+  sheetScroll: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  field: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  textInput: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    color: '#111827',
+    fontSize: 16,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#111827',
+  },
+  nightsText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  guestsCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 16,
+    gap: 16,
+  },
+  guestCount: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
+    marginLeft: 4,
+  },
+  bottomBar: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  clearBtn: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  searchBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#111827',
+  },
+  searchBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});

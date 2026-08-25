@@ -1,4 +1,5 @@
 import type { AdminRoom } from '@/types/api';
+import { STATUS, BLUE, AMBER, PURPLE, RED, CYAN, SLATE } from '@/lib/constants/figma-tokens';
 
 export interface CapacityResult {
   valid: boolean;
@@ -51,13 +52,13 @@ export function getRoomCapacitySummary(room: AdminRoom): string {
 
 export function getRoomStatusColor(status: string): string {
   const map: Record<string, string> = {
-    AVAILABLE: '#10B981',
-    OCCUPIED: '#3B82F6',
-    DIRTY: '#F59E0B',
-    CLEANING: '#8B5CF6',
-    MAINTENANCE: '#EF4444',
-    INSPECTED: '#06B6D4',
-    BLOCKED: '#64748B',
+    AVAILABLE: STATUS.activeGreen,
+    OCCUPIED: BLUE[500],
+    DIRTY: AMBER[500],
+    CLEANING: PURPLE[500],
+    MAINTENANCE: RED[500],
+    INSPECTED: CYAN[500],
+    BLOCKED: SLATE[500],
   };
-  return map[status] || '#CBD5E1';
+  return map[status] || SLATE[300];
 }

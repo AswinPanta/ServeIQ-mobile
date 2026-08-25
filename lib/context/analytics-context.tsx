@@ -12,6 +12,7 @@
 
 import React, { createContext, useContext, useMemo, useCallback } from 'react';
 import { useBookings } from './booking-context';
+import { CORAL, SRS, STATUS_COLORS, GRAY, AMBER, TEAL, BLUE, STATUS, PURPLE } from '@/lib/constants/figma-tokens';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -179,30 +180,30 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
   // ─── KPI Cards ─────────────────────────────────────────────────────────────
 
   const guestKPIs: KPI[] = [
-    { label: 'Total Bookings', value: String(totalBookingCount), change: `+${upcomingCount} upcoming`, positive: upcomingCount > 0, color: '#E63946', icon: '📅' },
-    { label: 'Total Spent', value: `NPR ${totalRevenueFromBookings.toLocaleString()}`, change: `NPR ${monthRevenue.toLocaleString()} this month`, positive: true, color: '#2E86AB', icon: '💰' },
-    { label: 'Avg/Booking', value: `NPR ${totalBookingCount > 0 ? Math.round(totalRevenueFromBookings / totalBookingCount).toLocaleString() : '0'}`, change: `${totalBookingCount} total bookings`, positive: true, color: '#FFD700', icon: '⭐' },
+    { label: 'Total Bookings', value: String(totalBookingCount), change: `+${upcomingCount} upcoming`, positive: upcomingCount > 0, color: CORAL[500], icon: '📅' },
+    { label: 'Total Spent', value: `NPR ${totalRevenueFromBookings.toLocaleString()}`, change: `NPR ${monthRevenue.toLocaleString()} this month`, positive: true, color: SRS.teal, icon: '💰' },
+    { label: 'Avg/Booking', value: `NPR ${totalBookingCount > 0 ? Math.round(totalRevenueFromBookings / totalBookingCount).toLocaleString() : '0'}`, change: `${totalBookingCount} total bookings`, positive: true, color: STATUS_COLORS.gold, icon: '⭐' },
   ];
 
   // Host KPIs (always fallback at root level — host data not available)
   const hostKPIs: KPI[] = [
-    { label: 'Occupancy Rate', value: '—', change: 'Sign in as host', positive: false, color: '#6B7280', icon: '📊' },
-    { label: 'ADR', value: '—', change: 'Sign in as host', positive: false, color: '#6B7280', icon: '💰' },
-    { label: 'RevPAR', value: '—', change: 'Sign in as host', positive: false, color: '#6B7280', icon: '📈' },
-    { label: 'Monthly Revenue', value: `NPR ${monthRevenue.toLocaleString()}`, change: `${completedCount} completed bookings`, positive: monthRevenue > 0, color: '#F59E0B', icon: '💵' },
+    { label: 'Occupancy Rate', value: '—', change: 'Sign in as host', positive: false, color: GRAY[500], icon: '📊' },
+    { label: 'ADR', value: '—', change: 'Sign in as host', positive: false, color: GRAY[500], icon: '💰' },
+    { label: 'RevPAR', value: '—', change: 'Sign in as host', positive: false, color: GRAY[500], icon: '📈' },
+    { label: 'Monthly Revenue', value: `NPR ${monthRevenue.toLocaleString()}`, change: `${completedCount} completed bookings`, positive: monthRevenue > 0, color: AMBER[500], icon: '💵' },
   ];
 
   const operationsKPIs: KPI[] = [
-    { label: 'Occupancy', value: '0/0', change: 'N/A', positive: false, color: '#0D9488', icon: '🏨' },
-    { label: 'In House', value: '0', change: 'N/A', positive: false, color: '#3B82F6', icon: '👤' },
-    { label: 'POS Revenue', value: '₹0', change: 'N/A', positive: false, color: '#10B981', icon: '🍽️' },
+    { label: 'Occupancy', value: '0/0', change: 'N/A', positive: false, color: TEAL[600], icon: '🏨' },
+    { label: 'In House', value: '0', change: 'N/A', positive: false, color: BLUE[500], icon: '👤' },
+    { label: 'POS Revenue', value: '₹0', change: 'N/A', positive: false, color: STATUS.activeGreen, icon: '🍽️' },
   ];
 
   const superAdminKPIs: KPI[] = [
-    { label: 'Total Properties', value: String(totalPropertyCount), change: `+${properties.filter(p => p.is_active).length} active`, positive: true, color: '#7C3AED', icon: '🏢' },
-    { label: 'Total Bookings', value: String(totalBookingCount), change: `${cancelledCount} cancelled (${totalBookingCount > 0 ? Math.round(cancelledCount / totalBookingCount * 100) : 0}% rate)`, positive: cancelledCount / Math.max(totalBookingCount, 1) < 0.3, color: '#3B82F6', icon: '📋' },
-    { label: 'Total Revenue', value: `NPR ${totalRevenueFromBookings.toLocaleString()}`, change: revenueChange > '0' ? `+${revenueChange}% MoM` : `${revenueChange}% MoM`, positive: parseFloat(revenueChange) >= 0, color: '#10B981', icon: '💰' },
-    { label: 'Rooms Managed', value: String(allRooms.length), change: `${maintenanceCount} in maintenance`, positive: maintenanceCount / Math.max(allRooms.length, 1) < 0.1, color: '#F59E0B', icon: '🛏️' },
+    { label: 'Total Properties', value: String(totalPropertyCount), change: `+${properties.filter(p => p.is_active).length} active`, positive: true, color: PURPLE[700], icon: '🏢' },
+    { label: 'Total Bookings', value: String(totalBookingCount), change: `${cancelledCount} cancelled (${totalBookingCount > 0 ? Math.round(cancelledCount / totalBookingCount * 100) : 0}% rate)`, positive: cancelledCount / Math.max(totalBookingCount, 1) < 0.3, color: BLUE[500], icon: '📋' },
+    { label: 'Total Revenue', value: `NPR ${totalRevenueFromBookings.toLocaleString()}`, change: revenueChange > '0' ? `+${revenueChange}% MoM` : `${revenueChange}% MoM`, positive: parseFloat(revenueChange) >= 0, color: STATUS.activeGreen, icon: '💰' },
+    { label: 'Rooms Managed', value: String(allRooms.length), change: `${maintenanceCount} in maintenance`, positive: maintenanceCount / Math.max(allRooms.length, 1) < 0.1, color: AMBER[500], icon: '🛏️' },
   ];
 
   // ─── Reports ───────────────────────────────────────────────────────────────

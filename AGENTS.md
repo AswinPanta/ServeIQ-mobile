@@ -1,13 +1,13 @@
-# StayEasy — Architecture
+# ServeIQ — Architecture
 
 ## Backend
 - **FastAPI (Python)** deployed on Render at `https://stay-easy-sizw.onrender.com`
 - Source repo: `github.com/anilghatan6/Stay-Easy` (19 commits, main branch)
-  - **NOT** `Thadaw/StayEasy` — Thadaw's repo has `/pms/` prefix in routes, which differs from the deployed API
+  - **NOT** `Thadaw/ServeIQ` — Thadaw's repo has `/pms/` prefix in routes, which differs from the deployed API
   - **NOT** `Anilbk777/Booking_system` — old reference
 - Swagger docs at `https://stay-easy-sizw.onrender.com/docs`
 - OpenAPI spec at `https://stay-easy-sizw.onrender.com/api/v1/openapi.json`
-- `Samip-khatri/StayEasy-Booking` is a separate Vite+React frontend (not backend) — irrelevant
+- `Samip-khatri/ServeIQ-Booking` is a separate Vite+React frontend (not backend) — irrelevant
 - `anilghatane6` (with 'e') → 404; correct handle is `anilghatan6` (no 'e')
 - All routes use `root_path="/api/v1"` + router-level `/properties`, `/auth`, `/bookings`, `/tenants`, `/search` prefixes (no `/pms`)
 
@@ -81,7 +81,7 @@ app/
 ### 2026-07-09 — Backend Connection: Host Portal API + Auth Verification
 
 **Backend Analysis**
-- Deployed at `https://stayeasy-1-35ba.onrender.com` (FastAPI, source: `github.com/Anilbk777/Booking_system`)
+- Deployed at `https://ServeIQ-1-35ba.onrender.com` (FastAPI, source: `github.com/Anilbk777/Booking_system`)
 - Working endpoints: Auth (guest+user OTP flow), PMS Properties/Rooms CRUD, Tenants CRUD, Discount Codes CRUD, Special Offers CRUD, Image Upload
 - Missing: No operations-specific endpoints (check-in/out, housekeeping, POS, KDS, analytics) — those have DB models but no API routers
 - Auth routes live under `/api/v1/` prefix (FastAPI `root_path`)
@@ -143,7 +143,7 @@ app/
 - Staff is fetched per `activePropertyId` like rooms/discounts/offers; `mapApiStaff` converts the backend `full_name`/`job_role`/`status` into the existing `StaffMember` shape so all host/ops staff screens keep working unchanged
 - `searchNearbyApi` deliberately uses its own mapper because the nearby endpoint's response shape (flat array + `distance_km`/`lowest_rate`) differs from `/search`
 - Booking list already had `BookingListItem` with `created_at`/`special_offer_discount`/`coupon_code`/`coupon_discount`/`property_photo`/`property_name` — booking-context sync (previous session) already consumes these, no further change needed
-- Demo accounts (`guest@stayeasy.com`, `host@stayeasy.com`) are local-only mock credentials — the live backend rejected them during verification
+- Demo accounts (`guest@ServeIQ.com`, `host@ServeIQ.com`) are local-only mock credentials — the live backend rejected them during verification
 
 ---
 
@@ -165,7 +165,7 @@ app/
 ### 2026-07-09 — Backend Connection: Host Portal API + Auth Verification
 
 **Backend Analysis**
-- Deployed at `https://stay-easy-sizw.onrender.com` (FastAPI, source: `github.com/Thadaw/StayEasy`)
+- Deployed at `https://stay-easy-sizw.onrender.com` (FastAPI, source: `github.com/Thadaw/ServeIQ`)
 - Source repo routers: `guest_router`, `user_router`, `property_router`, `room_router`, `tenant_router`, `offer_router`, `image_router`, `discount_code_router`
 - Working endpoints: Auth (guest+user OTP flow), PMS Properties/Rooms CRUD, Tenants CRUD, Discount Codes CRUD, Special Offers CRUD, Image Upload, Bookings CRUD, Search
 - Missing: No operations-specific endpoints (check-in/out, housekeeping, POS, KDS, analytics) — those have DB models but no API routers
@@ -183,7 +183,7 @@ app/
 - `/bookings/*` — create, my-bookings, get-by-ref, confirm, apply-discount, payment-intent
 - `/search` — search hotels
 
-**Key finding: Live backend uses `/properties/...` (no `/pms` prefix)** — what's in the Thadaw/StayEasy GitHub source differs from deployment. The `api-config.ts` paths are correct (no `/pms`). `operations-api.ts` uses `/pms/...` but those endpoints don't exist on backend anyway (pure mock fallback).
+**Key finding: Live backend uses `/properties/...` (no `/pms` prefix)** — what's in the Thadaw/ServeIQ GitHub source differs from deployment. The `api-config.ts` paths are correct (no `/pms`). `operations-api.ts` uses `/pms/...` but those endpoints don't exist on backend anyway (pure mock fallback).
 
 **Done**
 - Verified all 8 backend routers against live OpenAPI spec
@@ -194,7 +194,7 @@ app/
 - Confirmed `booking-flow.tsx` uses correct endpoints: create, payment-intent, confirm, apply-discount
 - Confirmed `host-api.ts` paths via `API_ENDPOINTS.PROPERTIES.*` are correct
 - Confirmed `lib/api.ts` search, available-rooms, property-detail, and tenant functions all use correct paths
-- `Samip-khatri/StayEasy-Booking` is a Vite+React frontend (not API) — irrelevant
+- `Samip-khatri/ServeIQ-Booking` is a Vite+React frontend (not API) — irrelevant
 - `anilghatane6` GitHub account is 404 — no repos found under that handle
 - Express/tRPC server (`server/`) — unused, switched to FastAPI
 - tRPC client (`lib/trpc.ts`) — unused
@@ -255,7 +255,7 @@ app/
 
 - **Phase 5 — Guest Portal Components**:
   - `components/guest/Testimonials.tsx` — horizontal scrollable testimonial cards with ratings, avatars
-  - `components/guest/WhyStayEasy.tsx` — feature cards (Secure Booking, 24/7 Support, Best Price Guarantee, Curated Properties)
+  - `components/guest/WhyServeIQ.tsx` — feature cards (Secure Booking, 24/7 Support, Best Price Guarantee, Curated Properties)
   - `components/guest/OtherHotels.tsx` — horizontal scrollable property cards with rating, price, image icons
 
 - `npx tsc --noEmit` — zero errors
@@ -306,7 +306,7 @@ app/
 **Done**
 - Created `lib/mock/world-countries.ts` — 20 countries with 100+ cities, attractions, cuisine, and travel information, matching the GitHub reference app dataset
 - Created `lib/mock/hotels.ts` — 10 premium hotels (Nepal, Maldives, Switzerland, Greece, Indonesia, Japan, Italy, France) with ratings, pricing, amenities
-- Created `app/(host)/landing.tsx` — HostLandingPage marketing screen: hero with CTA, "Why host here" section, "Why choose StayEasy" panel, 3-step process, expandable FAQ, CTA banner
+- Created `app/(host)/landing.tsx` — HostLandingPage marketing screen: hero with CTA, "Why host here" section, "Why choose ServeIQ" panel, 3-step process, expandable FAQ, CTA banner
 - Created `app/country/[code].tsx` — CountryPage: hero image with gradient overlay, city filter chips, country info cards (capital/top attraction/cuisine/best time), top attractions list, cuisine tags, city explorer, hotel listings
 - Created `app/(superadmin)/commerce/tenant-setup.tsx` — TenantSetup: simple brand name form with Continue action
 - Registered `landing` in Host stack layout
@@ -369,7 +369,7 @@ app/
 **Backend Source Resolution**
 - `github.com/anilghatan6/Stay-Easy` (19 commits) is the **actual source repo** for the live backend at `https://stay-easy-sizw.onrender.com`
 - Its `main.py` uses `root_path="/api/v1"` and routers with correct prefixes:
-  - `properties_routers.py`: `prefix="/properties"` (no `/pms` — unlike Thadaw/StayEasy fork)
+  - `properties_routers.py`: `prefix="/properties"` (no `/pms` — unlike Thadaw/ServeIQ fork)
   - `login_router.py`: `prefix="/auth"` → `/auth/login`
   - `room_routers.py`: `prefix="/properties/{property_id}/rooms"`
   - `discount_code_router.py`: `prefix="/properties/{property_id}/discount-codes"`
@@ -378,7 +378,7 @@ app/
   - `tenants_routers.py`: `prefix="/tenants"`
   - `image_routers.py`: `prefix="/properties"`
   - `search_router.py`: `prefix="/search"`
-- `Thadaw/StayEasy` (11 commits, `/pms` prefix) is an older/different fork — does NOT match deployment
+- `Thadaw/ServeIQ` (11 commits, `/pms` prefix) is an older/different fork — does NOT match deployment
 
 **Cross-Reference Results (every frontend path vs live backend vs source repo)**
 - `constants/api-config.ts`: All 40+ paths verified correct — no changes needed

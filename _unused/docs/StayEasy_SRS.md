@@ -1,6 +1,6 @@
 --- Page 1 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
-STAYEASY
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ
 Hotel & Restaurant Management SaaS
 SOFTWARE REQUIREMENTS SPECIFICATION
 (SRS Document)
@@ -13,16 +13,16 @@ Scope Full-stack SaaS — SuperAdmin / Admin / Staff / Guest Portals
 Stack React (Next.js) · Node.js (Express) · PostgreSQL · Redis · AWS
 Confidential | June 2026 | Page 1 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 2 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 1. Introduction
 1.1 Purpose
 This Software Requirements Specification (SRS) defines the complete functional and non-functional
-requirements for StayEasy — a multi-tenant SaaS platform designed to serve as an end-to-end Hotel
+requirements for ServeIQ — a multi-tenant SaaS platform designed to serve as an end-to-end Hotel
 and Restaurant Management System with an integrated booking portal.
 This document is intended for developers, UI/UX designers, QA engineers, DevOps engineers, and
 stakeholders involved in building, testing, and maintaining the platform.
 1.2 Product Overview
-StayEasy enables hospitality businesses — hotels, resorts, restaurants, and mixed-use properties — to
+ServeIQ enables hospitality businesses — hotels, resorts, restaurants, and mixed-use properties — to
 manage their entire operations from a single, cloud-based dashboard. The platform supports a tiered
 user hierarchy: SuperAdmin controls the overall SaaS instance; Admins (property owners/companies)
 manage their individual properties; Staff handle day-to-day operations; and Guests make reservations
@@ -40,12 +40,12 @@ through the public-facing booking portal.
 • Payment gateway integration (Stripe, Razorpay, and others)
 Confidential | June 2026 | Page 2 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 3 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 1.4 Definitions & Acronyms
 Term Definition Context
 SaaS Software as a Service — cloud-hosted, Platform model
 subscription-based software
-SuperAdmin Platform-level administrator with global access StayEasy ops team
+SuperAdmin Platform-level administrator with global access ServeIQ ops team
 Admin Company/property owner registered on the Customer of SaaS
 platform
 Staff Employees added by Admin — receptionists, Property operations
@@ -74,9 +74,9 @@ follow REST conventions with JSON payloads. Data flow diagrams are described tex
 and visually referenced in the attached DFD supplement.
 Confidential | June 2026 | Page 3 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 4 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 2. Stakeholders & User Roles
-StayEasy operates on a four-tier role hierarchy. Each role has a distinct set of permissions, UI surfaces,
+ServeIQ operates on a four-tier role hierarchy. Each role has a distinct set of permissions, UI surfaces,
 and data access scopes as described below.
 2.1 Role Hierarchy
 Role Description & Responsibilities
@@ -102,7 +102,7 @@ reservations, and processes payments through the public-facing
 portal.
 Confidential | June 2026 | Page 4 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 5 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 2.2 Permission Matrix
 The table below maps key platform actions to the roles permitted to execute them. A tick indicates full
 access; "Limited" means scoped to own property/data.
@@ -125,10 +125,10 @@ Platform billing & subscriptions SuperAdmin only No
 Feature flag management SuperAdmin only No
 Confidential | June 2026 | Page 5 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 6 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 3. System Architecture
 3.1 Architecture Overview
-StayEasy is built as a cloud-native, multi-tenant SaaS using a modular monolith backend that can
+ServeIQ is built as a cloud-native, multi-tenant SaaS using a modular monolith backend that can
 evolve into microservices. The architecture separates concerns across presentation, application, and
 data layers, with tenant isolation enforced at the database row level (schema-per-tenant for large
 enterprise clients is supported via configuration).
@@ -165,7 +165,7 @@ Background Jobs BullMQ (Redis-based queues) Email, reports, reminders, channel
 sync
 Confidential | June 2026 | Page 6 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 7 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Layer Technology Rationale
 Deployment AWS (ECS Fargate + RDS + Managed, auto-scaling
 ElastiCache) infrastructure
@@ -194,12 +194,12 @@ the JWT.
 3. Row-Level Security (RLS) policies in PostgreSQL enforce that queries never leak cross-tenant
 data even if application logic fails.
 4. File storage is organized under tenant-namespaced S3 prefixes:
-s3://stayeasy-media/{tenant_id}/...
+s3://ServeIQ-media/{tenant_id}/...
 5. Redis keys are prefixed with tenant_id to prevent cache collisions.
 6. SuperAdmin bypasses tenant isolation with explicit super-scope JWT claims.
 Confidential | June 2026 | Page 7 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 8 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4. Functional Requirements
 4.1 SuperAdmin Module
 Req. ID Requirement
@@ -229,7 +229,7 @@ SA-012 Manage and update subscription pricing plans and feature
 entitlements.
 Confidential | June 2026 | Page 8 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 9 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4.2 Admin / Property Owner Module
 4.2.1 Onboarding & Property Setup
 Req. ID Requirement
@@ -249,12 +249,12 @@ language settings.
 AD-007 Admin can set check-in / check-out default times and grace period
 policies.
 AD-008 Admin can connect a custom domain or use
-property-name.stayeasy.com subdomain for the booking portal.
+property-name.ServeIQ.com subdomain for the booking portal.
 AD-009 Admin can configure a brand color and upload a logo for the property
 booking portal.
 Confidential | June 2026 | Page 9 of 44 Pravidhi Digital Innovations Nepal Pvt Ltd
 --- Page 10 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4.2.2 Room & Inventory Management
 Req. ID Requirement
 RM-001 Admin can create room types (e.g., Standard, Deluxe, Suite) with:
@@ -280,7 +280,7 @@ use) removing them from available inventory.
 Confidential | June 2026 | Page 10 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 11 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4.2.3 Pricing & Revenue Management
 Req. ID Requirement
 PR-001 Admin can set a base nightly rate per room type and rate plan.
@@ -323,7 +323,7 @@ periods.
 Confidential | June 2026 | Page 11 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 12 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Req. ID Requirement
 ST-007 Admin can create and assign tasks to staff with due dates and
 priority levels.
@@ -355,7 +355,7 @@ groups.
 Confidential | June 2026 | Page 12 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 13 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4.3.2 Booking Lifecycle
 Req. ID Requirement
 BK-009 Guest can create an account or book as a guest (email required for
@@ -385,7 +385,7 @@ accumulates charges through the stay.
 Confidential | June 2026 | Page 13 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 14 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4.3.3 Check-in & Check-out
 Req. ID Requirement
 CI-001 Front Desk can look up bookings by: booking reference, guest name,
@@ -407,7 +407,7 @@ after check-out.
 Confidential | June 2026 | Page 14 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 15 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4.4 Restaurant & POS Module
 4.4.1 Table & Section Management
 Req. ID Requirement
@@ -446,7 +446,7 @@ Served.
 Confidential | June 2026 | Page 15 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 16 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Req. ID Requirement
 PO-004 Waiter receives in-app notification when items are marked Ready for
 pickup.
@@ -484,7 +484,7 @@ displayed on the property booking page.
 Confidential | June 2026 | Page 16 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 17 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 4.6 Analytics & Reporting
 Req. ID Requirement
 AN-001 Admin dashboard shows real-time KPIs: Occupancy Rate, ARR,
@@ -510,7 +510,7 @@ AN-010 All reports can be exported as CSV, PDF, or Excel.
 Confidential | June 2026 | Page 17 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 18 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 5. Non-Functional Requirements
 5.1 Performance
 Metric Target
@@ -535,7 +535,7 @@ cookies.
 • Rate limiting: 100 requests/minute per IP on public API; 1000/minute on authenticated API.
 • OWASP Top 10 mitigations: SQL injection prevented via parameterized queries (Prisma), XSS
 via CSP headers and output encoding, CSRF via SameSite cookies + CSRF tokens.
-• PCI-DSS compliance: no card data stored on StayEasy servers; all card data handled by
+• PCI-DSS compliance: no card data stored on ServeIQ servers; all card data handled by
 Stripe/Razorpay.
 • Multi-Factor Authentication (MFA) mandatory for SuperAdmin; optional but encouraged for
 Admin and Manager roles.
@@ -548,7 +548,7 @@ tiers.
 Confidential | June 2026 | Page 18 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 19 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 • Database: Multi-AZ PostgreSQL with automated failover; RTO < 2 minutes, RPO < 1 minute.
 • Automated database backups: daily full backup, point-in-time recovery for last 30 days.
 • Application deployments via blue-green strategy to achieve zero-downtime deployments.
@@ -579,14 +579,14 @@ coverage for API routes.
 Confidential | June 2026 | Page 19 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 20 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 6. Data Flow Diagrams (DFD)
 This section describes data flows using Yourdon-DeMarco notation. Context, Level-0, and Level-1
 DFDs are documented for the three primary flows. Visual DFD diagrams accompany this document as
 a separate supplement file.
 6.1 Context Diagram (Level 0) — System Boundary
-External entities and their interactions with the StayEasy system:
-External Entity Data Flow To/From StayEasy
+External entities and their interactions with the ServeIQ system:
+External Entity Data Flow To/From ServeIQ
 Guest (End User) TO: Search query, booking request, payment, cancellation request |
 FROM: Availability results, booking confirmation, invoice, review
 prompt
@@ -618,7 +618,7 @@ Confirmed in Booking Store.
 Confidential | June 2026 | Page 20 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 21 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 10. Process 1.4 Notification Dispatcher reads confirmed booking from Booking Store → sends
 email/SMS to Guest (confirmation) → sends push notification to Admin/Manager (new booking
 alert).
@@ -653,7 +653,7 @@ updates Order to Paid; sets table back to Available in Table Store.
 Confidential | June 2026 | Page 21 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 22 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 6.5 Data Stores Summary
 Data Store Primary Entities Technology
 User Store users, roles, permissions, sessions, PostgreSQL
@@ -686,7 +686,7 @@ Analytics Store booking_events, revenue_events PostgreSQL (partitioned)
 Confidential | June 2026 | Page 22 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 23 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 7. Database Schema Design
 All tables include: id (UUID, PK), tenant_id (UUID, FK to tenants), created_at (TIMESTAMPTZ),
 updated_at (TIMESTAMPTZ), and deleted_at (TIMESTAMPTZ, soft-delete). Only key domain-specific
@@ -728,7 +728,7 @@ is_available, prep_time_mins, photos[]
 Confidential | June 2026 | Page 23 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 24 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Table Key Columns Notes
 orders property_id, table_id, waiter_id, status, total, Restaurant order
 payment_method, paid_at header
@@ -745,10 +745,10 @@ old_value, new_value, ip_address
 Confidential | June 2026 | Page 24 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 25 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 8. API Design
 8.1 General Conventions
-• Base URL: https://api.stayeasy.com/api/v1/
+• Base URL: https://api.ServeIQ.com/api/v1/
 • Authentication: Bearer {JWT_access_token} in Authorization header
 • All responses: { success: boolean, data: object|array, meta?: { total, page, limit }, error?: { code,
 message } }
@@ -783,7 +783,7 @@ POST Admin Set seasonal price override
 Confidential | June 2026 | Page 25 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 26 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Method + Endpoint Auth Role Description
 POST Admin Create discount code
 /properties/:id/discount-codes
@@ -826,11 +826,11 @@ GET /superadmin/analytics SuperAdmin Platform-wide metrics
 Confidential | June 2026 | Page 26 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 27 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Confidential | June 2026 | Page 27 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 28 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 9. UI/UX Design Specifications
 9.1 Design System
 Element Specification
@@ -868,7 +868,7 @@ grid. Clock-in/out widget. Print-ready folio view.
 Confidential | June 2026 | Page 28 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 29 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Surface Primary Users Key Design Considerations
 POS Interface (Tablet) Waiter/Cashier Full touchscreen. Large tap targets (min 48px).
 Category tabs + item grid. Quick add to cart. Number
@@ -910,12 +910,12 @@ Journey 3: Waiter Takes an Order
 Confidential | June 2026 | Page 29 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 30 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 44. Table cleared → status auto-resets to Available
 Confidential | June 2026 | Page 30 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 31 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 10. Frontend Architecture
 10.1 Application Structure
 The frontend is a Next.js 14 monorepo with App Router, organized into three sub-applications sharing a
@@ -954,7 +954,7 @@ click. Bulk edit via date range selection.
 Confidential | June 2026 | Page 31 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 32 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Module Components & Behavior
 POS Interface Split-screen: left = menu grid with search; right = running order with
 quantity controls. Sticky total bar. Keyboard shortcuts for common
@@ -983,7 +983,7 @@ size issues.
 Confidential | June 2026 | Page 32 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 33 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 11. Backend Architecture
 11.1 Project Structure
 The Express.js API is organized as a modular monolith with clear domain boundaries:
@@ -1024,7 +1024,7 @@ Listens to gateway webhooks for async confirmations.
 Confidential | June 2026 | Page 33 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 34 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Service Responsibilities
 FolioService Manages in-stay charges. Accepts charge postings from any staff,
 calculates running totals, finalizes folio on checkout, generates
@@ -1058,12 +1058,12 @@ expired-softlock-release, loyalty-recalculation
 Confidential | June 2026 | Page 34 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 35 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 12. Integrations & Notifications
 12.1 Payment Gateway Integration
 Gateway Use Case & Configuration
 Stripe Primary gateway for international properties. Admin connects own
-Stripe account via OAuth (Stripe Connect). StayEasy takes platform
+Stripe account via OAuth (Stripe Connect). ServeIQ takes platform
 fee via application_fee_amount on each charge. Supports: cards,
 Apple/Google Pay, PaymentIntents API, webhooks for async
 confirmation, Refunds API.
@@ -1093,7 +1093,7 @@ Platform alert All Admins Email + In-app announcement banner
 Confidential | June 2026 | Page 35 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 36 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 • Guests can add booking to Google Calendar or iCal via .ics file download from confirmation
 page and email.
 • Admin can export booking calendar as .ics feed (subscribed URL) for integration with
@@ -1104,7 +1104,7 @@ guest account.
 Confidential | June 2026 | Page 36 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 37 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 13. Subscription Plans & Limits
 Feature Free Trial (14 Basic Professional Enterprise
 days)
@@ -1125,7 +1125,7 @@ Price/month Free $49 $149 Custom
 Confidential | June 2026 | Page 37 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 38 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 14. Implementation Roadmap
 14.1 Phase 1 — Foundation (Weeks 1–2)
 • Project scaffold: Next.js monorepo, Express API, PostgreSQL + Prisma, Redis, Docker
@@ -1159,7 +1159,7 @@ Compose local dev
 Confidential | June 2026 | Page 38 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 39 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 14.5 Phase 5 — SuperAdmin, Polish & Launch (Weeks 7–10)
 • SuperAdmin portal: tenant management, platform analytics, subscription billing, feature flags
 • Subscription enforcement: plan limits for rooms, staff, bookings, features
@@ -1172,7 +1172,7 @@ StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
 Confidential | June 2026 | Page 39 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 40 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 15. Testing Strategy
 Test Type Scope & Tools Coverage Target
 Unit Tests Service layer business logic (e.g., PricingService, ≥ 80% line coverage
@@ -1197,7 +1197,7 @@ branch are blocked if any test suite fails or if code coverage drops below the d
 Confidential | June 2026 | Page 40 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 41 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 16. Deployment & DevOps
 16.1 Infrastructure Overview
 Component AWS Service & Configuration
@@ -1234,7 +1234,7 @@ checks confirm before shifting traffic.
 Confidential | June 2026 | Page 41 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 42 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 17. Risks & Mitigations
 Risk Impact Mitigation Strategy
 Double booking (race Critical — destroys Redis soft-lock with atomic SET NX;
@@ -1265,7 +1265,7 @@ call for Professional+ signups.
 Confidential | June 2026 | Page 42 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 43 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 18. Appendices
 Appendix A: Booking Status State Machine
 Bookings transition through the following states:
@@ -1301,7 +1301,7 @@ FORBIDDEN 403 Authenticated but insufficient role for this action
 Confidential | June 2026 | Page 43 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd
 --- Page 44 ---
-StayEasy — Hotel & Restaurant Management SaaS SRS v1.0.0
+ServeIQ — Hotel & Restaurant Management SaaS SRS v1.0.0
 Error Code HTTP Status Meaning
 NOT_FOUND 404 Requested resource does not exist or belongs to
 another tenant
@@ -1315,6 +1315,6 @@ PAYMENT_FAILED 422 Payment gateway declined the transaction
 RATE_LIMITED 429 Too many requests; retry after specified seconds
 INTERNAL_ERROR 500 Unexpected server error; check Sentry for details
 — End of Document —
-StayEasy SRS v1.0.0 | June 2026 | Confidential
+ServeIQ SRS v1.0.0 | June 2026 | Confidential
 Confidential | June 2026 | Page 44 of 44 Pravidhi Digital Innovations Nepal Pvt
 Ltd

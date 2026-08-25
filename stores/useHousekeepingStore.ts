@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { addToSyncQueue, processSyncQueue, getSyncQueueCount } from '@/lib/utils/offline-sync';
 import { persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
+import { hostApi } from '@/lib/api/host-api';
 
 export type HKTaskStatus = 'Dirty' | 'In Progress' | 'Cleaned' | 'Inspected';
 export type HKPriority = 'High' | 'Normal' | 'Low';
@@ -155,28 +156,37 @@ export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
   },
 
   createTask: (data) => {
-    set((state) => {
-      const newTask: HKTask = {
-        id: `hk-${++taskIdCounter}`,
-        room: data.room,
-        floor: data.floor,
-        status: data.status,
+    const newTask: HKTask = {
+      id: `hk-${++taskIdCounter}`,
+      room: data.room,
+      floor: data.floor,
+      status: data.status,
+      priority: data.priority,
+      cleaner: data.cleaner,
+      lastCleaned: data.lastCleaned,
+      taskType: data.taskType || 'turnover',
+      property_id: data.property_id,
+      synced: false,
+    };
+
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (data.property_id && UUID_RE.test(data.property_id)) {
+      hostApi.createTask(data.property_id, {
+        room_name: data.room,
+        task_type: data.taskType || 'turnover',
         priority: data.priority,
-        cleaner: data.cleaner,
-        lastCleaned: data.lastCleaned,
-        taskType: data.taskType || 'turnover',
-        property_id: data.property_id,
-        synced: false,
-      };
+        notes: `Floor ${data.floor} — ${data.cleaner}`,
+      }, () => {});
+    }
 
-      addToSyncQueue({
-        type: 'UPDATE_STATUS',
-        payload: { taskId: newTask.id, room: data.room, status: data.status },
-      });
+    addToSyncQueue({
+      type: 'UPDATE_STATUS',
+      payload: { taskId: newTask.id, room: data.room, status: data.status },
+    });
 
+    set((state) => {
       const next = [newTask, ...state.tasks];
       persistOpsState(OPS_STORAGE_KEYS.hkTasks, next);
-
       return { tasks: next, syncPendingCount: state.syncPendingCount + 1 };
     });
   },

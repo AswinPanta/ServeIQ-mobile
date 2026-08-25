@@ -4,6 +4,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ComponentProps } from "react";
 import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
+import { BRAND, SRS, GRAY } from '@/lib/constants/figma-tokens';
 
 export type IconSymbolName = keyof typeof MAPPING;
 
@@ -267,8 +268,8 @@ function resolveSize(size?: IconSize): number {
  *
  * Usage:
  * ```tsx
- * <Icon name="hotel" size="md" color="#1A3C5E" />
- * <Icon name="room.available" size={32} color="#1E8449" />
+ * <Icon name="hotel" size="md" color={BRAND.navyLight} />
+ * <Icon name="room.available" size={32} color={SRS.green} />
  * ```
  */
 export function IconSymbol({
@@ -285,5 +286,5 @@ export function IconSymbol({
 }) {
   const resolvedSize = resolveSize(size);
   const materialName = MAPPING[name];
-  return <MaterialIcons color={color || "#6B7280"} size={resolvedSize} name={materialName} style={style} />;
+  return <MaterialIcons color={color || GRAY[500]} size={resolvedSize} name={materialName} style={style} />;
 }

@@ -1,0 +1,49 @@
+flowchart TD
+    subgraph CHECKIN["Check-In Process"]
+        C1([Front Desk]) --> C2["Search Booking<br/>Ref / Name / Phone"]
+        C2 --> C3["Verify Guest Identity"]
+        C3 --> C4["Auto-Suggest Room<br/>Based on Booked Type"]
+        C4 --> C5{"Room Available?"}
+        C5 -->|"Yes"| C6["Assign Room Unit"]
+        C5 -->|"No"| C7["Override with<br/>Alternative Room"]
+        C6 --> C8["Update Room Status<br/>Available -> Occupied"]
+        C7 --> C8
+        C8 --> C9["Activate Guest Folio"]
+        C9 --> C10([Check-In Complete])
+    end
+
+    subgraph STAY["During Stay"]
+        S1["Guest Uses Services"] --> S2["Staff Posts Charges<br/>Minibar, Room Service, Laundry"]
+        S2 --> S3["Charges Added to Folio"]
+        S3 --> S4["Running Total Updated"]
+    end
+
+    subgraph CHECKOUT["Check-Out Process"]
+        O1([Front Desk]) --> O2["Display Final Folio<br/>All Charges + Taxes"]
+        O2 --> O3["Process Remaining Payment<br/>POS Terminal / Gateway"]
+        O3 --> O4["Generate Receipt"]
+        O4 --> O5["Finalize Folio<br/>Status: Settled"]
+        O5 --> O6["Update Room Status<br/>Occupied -> Dirty"]
+        O6 --> O7["Notify Housekeeping<br/>Push Notification"]
+        O7 --> O8([Check-Out Complete])
+    end
+
+    subgraph HOUSEKEEPING["Housekeeping Flow"]
+        H1["Receive Task<br/>Dirty Room Alert"] --> H2["Clean Room"]
+        H2 --> H3["Mark as Cleaned"]
+        H3 --> H4["Inspector Verifies"]
+        H4 --> H5["Mark as Inspected"]
+        H5 --> H6["Room Status: Available"]
+        H6 --> H7([Ready for Next Guest])
+    end
+
+    C10 --> S1
+    S4 --> O1
+    O8 --> H1
+
+    style C1 fill:#2E86AB,color:#fff,stroke:#2E86AB
+    style O1 fill:#2E86AB,color:#fff,stroke:#2E86AB
+    style H1 fill:#0D9488,color:#fff,stroke:#0D9488
+    style C10 fill:#1E8449,color:#fff,stroke:#1E8449
+    style O8 fill:#D35400,color:#fff,stroke:#D35400
+    style H7 fill:#1E8449,color:#fff,stroke:#1E8449

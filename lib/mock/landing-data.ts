@@ -1,10 +1,49 @@
 export const PROPERTY_TYPES = [
-  { type: 'Hotels', subtitle: 'Comfort & convenience', imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop&auto=format' },
-  { type: 'Apartments', subtitle: 'Private spaces, just like home', imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop&auto=format' },
-  { type: 'Villa', subtitle: 'Luxury and comfort', imageUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop&auto=format' },
-  { type: 'Resort', subtitle: 'Relax & unwind', imageUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&h=300&fit=crop&auto=format' },
-  { type: 'Others', subtitle: 'Unique & one-of-a-kind', imageUrl: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400&h=300&fit=crop&auto=format' },
+  { key: 'hotels', type: 'Hotels', subtitle: 'Comfort & convenience', imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop&auto=format' },
+  { key: 'apartments', type: 'Apartments', subtitle: 'Private spaces, just like home', imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=300&fit=crop&auto=format' },
+  { key: 'villa', type: 'Villa', subtitle: 'Luxury and comfort', imageUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop&auto=format' },
+  { key: 'resort', type: 'Resort', subtitle: 'Relax & unwind', imageUrl: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&h=300&fit=crop&auto=format' },
+  { key: 'others', type: 'Others', subtitle: 'Unique & one-of-a-kind', imageUrl: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400&h=300&fit=crop&auto=format' },
 ];
+
+export const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  hotels: 'Hotels',
+  apartments: 'Apartments',
+  villa: 'Villa',
+  resort: 'Resort',
+  others: 'Others',
+};
+
+const BACKEND_TYPE_TO_KEY: Record<string, string> = {
+  HOTEL: 'hotels',
+  RESORT: 'resort',
+  VILLA: 'villa',
+  APARTMENT: 'apartments',
+  HOSTEL: 'others',
+  GUESTHOUSE: 'others',
+  GUEST_HOUSE: 'others',
+  RESTURANT: 'others',
+  BOUTIQUE: 'others',
+  COTTAGE: 'others',
+  OTHER: 'others',
+};
+
+/** Maps any property-type spelling (backend enum, display label, lowercase key)
+ * to a canonical lowercase key — 'hotels' | 'apartments' | 'villa' | 'resort' | 'others'. */
+export function normalizePropertyType(type?: string | null): string {
+  if (!type) return 'others';
+  const raw = type.trim();
+  if (!raw) return 'others';
+  const lower = raw.toLowerCase();
+  if (PROPERTY_TYPE_LABELS[lower]) return lower;
+  const fromBackend = BACKEND_TYPE_TO_KEY[raw.toUpperCase()];
+  if (fromBackend) return fromBackend;
+  if (lower.startsWith('hotel')) return 'hotels';
+  if (lower.startsWith('apartment')) return 'apartments';
+  if (lower.startsWith('resort')) return 'resort';
+  if (lower.startsWith('villa')) return 'villa';
+  return 'others';
+}
 
 export const HERO_HOTELS = [
   { id: 1, location: 'Santorini, Greece', tagline: 'Sea view villas', price: 198, rating: 4.8, image: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?w=400&h=300&fit=crop&auto=format' },
@@ -56,10 +95,10 @@ export const TRUST_BADGES = [
 ];
 
 export const TESTIMONIALS = [
-  { id: 1, name: 'Jenny Wilson', role: 'Travel enthusiast', quote: 'StayEasy made our trip so simple! The booking process was quick, easy, and stress-free.' },
+  { id: 1, name: 'Jenny Wilson', role: 'Travel enthusiast', quote: 'ServeIQ made our trip so simple! The booking process was quick, easy, and stress-free.' },
   { id: 2, name: 'Lola Alexander', role: 'Frequent traveler', quote: 'From booking to check out, everything was seamless and stress-free. Absolutely loved it!' },
   { id: 3, name: 'Robert Fox', role: 'Digital nomad', quote: 'Amazing customer service and great hotel options. Highly recommended!' },
-  { id: 4, name: 'Sarah Chen', role: 'Adventure seeker', quote: "Found the perfect hidden gem thanks to StayEasy. Will definitely book again!" },
+  { id: 4, name: 'Sarah Chen', role: 'Adventure seeker', quote: "Found the perfect hidden gem thanks to ServeIQ. Will definitely book again!" },
   { id: 5, name: 'Michael Brown', role: 'Family traveler', quote: "The best travel experience we've had. Everything was organized perfectly." },
   { id: 6, name: 'Emma Davis', role: 'Solo traveler', quote: 'Quick bookings, great prices, and wonderful customer support. 10/10!' },
 ];

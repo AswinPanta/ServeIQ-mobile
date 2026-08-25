@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { SyncIndicator } from '@/components/operations/SyncIndicator';
 import { safeGoBack } from '@/lib/utils';
 import { HK_COLORS as C, HK_STATUS_TEXT as STATUS_TEXT, HK_STATUS_BG as STATUS_BG } from '@/lib/constants/housekeeping-theme';
+import { BG, TEXT } from '@/lib/constants/figma-tokens';
 
 export default function RoomDetailScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
@@ -172,7 +173,7 @@ export default function RoomDetailScreen() {
                 <React.Fragment key={status}>
                   {i > 0 && <View style={[s.flowLine, { backgroundColor: isPast ? flowColor : C.border }]} />}
                   <View style={[s.flowDot, { backgroundColor: isCurrent ? flowColor : isPast ? flowBg : C.inactive }]}>
-                    {isPast && <Ionicons name="checkmark" size={10} color={isCurrent ? '#FFF' : flowColor} />}
+                    {isPast && <Ionicons name="checkmark" size={10} color={isCurrent ? BG.white : flowColor} />}
                   </View>
                 </React.Fragment>
               );
@@ -202,7 +203,7 @@ export default function RoomDetailScreen() {
                   style={[s.checkItem, { backgroundColor: done ? C.badgeGreen + '40' : 'transparent' }]}
                 >
                   <View style={[s.checkbox, { borderColor: done ? C.cleaned : C.border, backgroundColor: done ? C.cleaned : 'transparent' }]}>
-                    {done && <Ionicons name="checkmark" size={10} color="#FFF" />}
+                    {done && <Ionicons name="checkmark" size={10} color={BG.white} />}
                   </View>
                   <Text style={[s.checkLabel, { color: done ? C.textMuted : C.textPrimary, textDecorationLine: done ? 'line-through' : 'none' }]}>
                     {item}
@@ -225,7 +226,7 @@ export default function RoomDetailScreen() {
               style={[s.input, { flex: 1 }]}
             />
             <TouchableOpacity onPress={handleAssign} style={s.assignBtn}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFF' }}>Assign</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: BG.white }}>Assign</Text>
             </TouchableOpacity>
           </View>
           {task.cleaner !== 'Unassigned' && (
@@ -254,7 +255,7 @@ export default function RoomDetailScreen() {
         {/* CTA */}
         {actionLabel && nextStatus && (
           <TouchableOpacity onPress={handleAdvance} style={s.ctaBtn} activeOpacity={0.85}>
-            <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+            <Ionicons name="checkmark-circle" size={16} color={BG.white} />
             <Text style={s.ctaText}>{actionLabel} → {nextStatus}</Text>
           </TouchableOpacity>
         )}
@@ -274,7 +275,7 @@ const s = StyleSheet.create({
   headerBadgeText: { fontSize: 12, fontWeight: '600' },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 16 },
-  card: { backgroundColor: C.cardBg, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  card: { backgroundColor: C.cardBg, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: C.border, shadowColor: TEXT.black, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: C.textHeading, flex: 1 },
   flowRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
@@ -287,7 +288,7 @@ const s = StyleSheet.create({
   input: { backgroundColor: C.white, borderWidth: 1, borderColor: C.border, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: C.textPrimary },
   assignBtn: { backgroundColor: C.teal, paddingHorizontal: 14, borderRadius: 4, alignItems: 'center', justifyContent: 'center' },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 4, backgroundColor: C.teal + '10' },
-  ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 4, backgroundColor: C.navy, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 15, elevation: 6 },
-  ctaText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  ctaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 4, backgroundColor: C.navy, shadowColor: TEXT.black, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 15, elevation: 6 },
+  ctaText: { fontSize: 15, fontWeight: '700', color: BG.white },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.pageBg, paddingHorizontal: 32 },
 });
