@@ -6,8 +6,15 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
-import type { CartItem } from '@/lib/context/restaurant-context';
 import { TEAL, BG } from '@/lib/constants/figma-tokens';
+
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
+  modifiers?: { name: string; option: string; price: number }[];
+}
 
 const ACCENT = TEAL[600];
 

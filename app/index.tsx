@@ -58,7 +58,7 @@ export default function SplashScreen() {
     const endMs = endedAtMs.current;
     if (endMs != null) {
       const delta = Math.max(0, navMs - endMs);
-      console.log(`[splash] video ended at +${endMs}ms, navigating at +${navMs}ms (Δ${delta}ms)`);
+      if (__DEV__) console.log(`[splash] video ended at +${endMs}ms, navigating at +${navMs}ms (Δ${delta}ms)`);
     }
 
     const { isSignedIn: signedIn, portal: activePortal } = authRef.current;
