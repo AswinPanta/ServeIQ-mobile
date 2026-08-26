@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
 import { CORAL as CORALTokens, GRAY, BRAND, NEUTRAL, BG, SLATE } from '@/lib/constants/figma-tokens';
-import { hostApi } from '@/lib/api/host-api';
 
 const CORAL = CORALTokens[500];
 

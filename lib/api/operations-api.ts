@@ -2,13 +2,13 @@ import { api, handleResponse, isDemoMode, getActiveToken } from '@/lib/api';
 import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
 import type {
   OperationRoom, OperationBooking, Folio, FolioCharge,
-  HousekeepingTask, TableItem, MenuItem, MenuModifier,
-  Order, OrderItem, KdsTicket,
+  HousekeepingTask, TableItem, MenuItem,
+  Order, KdsTicket,
   BackendMyTask, TaskStatusUpdateRequest,
   BackendCleaningSubmission, SupervisorReviewRequest,
   BackendLeaveRequest, CreateLeaveRequest,
   BackendShiftSwap, CreateSwapRequest,
-  BackendMaintenanceReport, CreateMaintenanceReportRequest,
+  BackendMaintenanceReport,
   BackendScheduleEntry, BackendWorkHistoryStats,
 } from '@/types/api';
 
@@ -72,6 +72,7 @@ async function apiPost<T, D>(endpoint: string, data: D, fallback: () => T, opts?
 }
 
 async function apiPatch<T, D>(endpoint: string, data: D, fallback: () => T): Promise<T> {
+  if (await isDemoMode()) return fallback();
   try {
     const response = await api.patch(endpoint, data);
     return await handleResponse<T>(response);
@@ -81,6 +82,7 @@ async function apiPatch<T, D>(endpoint: string, data: D, fallback: () => T): Pro
 }
 
 async function apiDelete(endpoint: string): Promise<boolean> {
+  if (await isDemoMode()) return false;
   try {
     const response = await api.delete(endpoint);
     return response.ok;
@@ -93,6 +95,7 @@ async function apiPostFormData<T>(endpoint: string, formData: FormData, fallback
   if (await isDemoMode()) return fallback();
   try {
     const token = await getActiveToken();
+    if (!token) return fallback();
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },

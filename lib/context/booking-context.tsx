@@ -69,6 +69,14 @@ function mapBookingStatus(status?: string): Booking['status'] {
 }
 
 function mapBackendBooking(item: BookingListItem): Booking {
+  let discountApplied: Booking['discountApplied']
+  const couponDiscount = parseFloat(item.coupon_discount || '0') || 0
+  const offerDiscount = parseFloat(item.special_offer_discount || '0') || 0
+  if (item.coupon_code && couponDiscount > 0) {
+    discountApplied = { code: item.coupon_code, type: 'fixed', amount: couponDiscount }
+  } else if (offerDiscount > 0) {
+    discountApplied = { code: 'Special offer', type: 'percentage', amount: offerDiscount }
+  }
   return {
     id: item.id || item.booking_number || item.ref_number,
     refNumber: item.ref_number || item.booking_number || item.id,
@@ -82,6 +90,7 @@ function mapBackendBooking(item: BookingListItem): Booking {
     roomTypeName: (item.room_names || []).join(', ') || 'Room',
     guests: (item.number_of_adults ?? 1) + (item.number_of_children ?? 0),
     totalPrice: item.total_amount,
+    discountApplied,
     status: mapBookingStatus(item.status),
     createdAt: item.created_at,
   }

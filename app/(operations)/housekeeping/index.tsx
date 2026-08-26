@@ -35,7 +35,7 @@ export default function HousekeepingScreen() {
       fetchTasks(operator.property_id);
     }
     refreshSyncCount();
-  }, [operator?.property_id, setPropertyId]);
+  }, [operator?.property_id, setPropertyId, fetchTasks, refreshSyncCount]);
 
   const [activeNav, setActiveNav] = useState('housekeeping');
 

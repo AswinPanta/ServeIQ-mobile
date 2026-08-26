@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { OperatorProfile } from '@/types/api';
-import { SRS, BG, SLATE, BLUE, EMERALD, AMBER, RED, ORANGE, PURPLE, PINK } from '@/lib/constants/figma-tokens';
+import { SRS, BG, SLATE, BLUE, EMERALD, AMBER, RED } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY, SHADOWS } from '@/constants/portal-theme';
 
 const DARK = SLATE[900];
@@ -165,7 +165,7 @@ export default function OperationsDashboard() {
               <Text style={s.headerTitle}>ServeIQ</Text>
               <Text style={s.headerSub}>Front Desk</Text>
             </View>
-            <TouchableOpacity style={s.headerIconBtn} onPress={() => router.push('/(operations)/notifications')}>
+            <TouchableOpacity style={s.headerIconBtn} onPress={() => router.push('/(tabs)/profile/notifications')}>
               <Ionicons name="notifications-outline" size={22} color={DARK} />
               {unreadCount > 0 && (
                 <View style={s.notifBadge}><Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>

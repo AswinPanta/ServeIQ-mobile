@@ -421,6 +421,7 @@ export interface BackendStaff {
   monthly_salary: string;
   joining_date: string;
   status: BackendStaffStatus;
+  shift?: ShiftType;
   photos: StaffPhotos | null;
 }
 
@@ -742,8 +743,10 @@ export interface PaginatedBookingsResponse {
 }
 
 export interface PaymentIntentRequest {
-  payment_gateway: string;
+  payment_method?: string;
+  payment_gateway: string | null;
   return_url?: string | null;
+  advance_amount?: number | null;
 }
 
 export interface PaymentIntentResponse {
@@ -853,14 +856,19 @@ export interface BackendCleaningSubmission {
   staff_id: string;
   staff_name: string;
   property_id: string;
+  room_id: string;
+  room_name: string;
+  task_type: TaskType;
+  task_priority: TaskPriorityBE;
   checklist_items: Record<string, boolean>;
   suppliers_used: Record<string, unknown> | null;
   before_images: string[];
   after_images: string[];
   status: CleaningSubmissionStatus;
   rejection_reason: string | null;
-  reviewed_by: string | null;
+  reviewed_by_name: string | null;
   reviewed_at: string | null;
+  submitted_at: string;
   created_at: string;
   updated_at: string;
 }

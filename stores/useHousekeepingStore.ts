@@ -44,7 +44,7 @@ function mapBackendTaskToHKTask(t: BackendMyTask): HKTask {
     status: statusMap[t.status] ?? 'Dirty',
     priority: priorityMap[t.priority] ?? 'Normal',
     cleaner: t.assigned_by_name || 'Unassigned',
-    lastCleaned: t.completed_at || t.created_at,
+    lastCleaned: t.completed_at || '',
     notes: t.notes || undefined,
     taskType: t.task_type,
     property_id: t.property_id,
@@ -73,7 +73,7 @@ function mapAdminTaskToHKTask(t: BackendTask): HKTask {
     status: statusMap[t.status] ?? 'Dirty',
     priority: priorityMap[t.priority] ?? 'Normal',
     cleaner: t.assigned_staff_name || 'Unassigned',
-    lastCleaned: t.completed_at || t.created_at,
+    lastCleaned: t.completed_at || '',
     notes: t.notes || undefined,
     taskType: t.task_type,
     property_id: t.property_id,
@@ -268,7 +268,7 @@ export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
       priority: data.priority,
       cleaner: data.cleaner,
       lastCleaned: data.lastCleaned,
-      taskType: data.taskType || 'turnover',
+      taskType: data.taskType || 'ROOM_CLEANING',
       property_id: data.property_id,
       synced: false,
     };
@@ -277,8 +277,8 @@ export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
     if (data.property_id && UUID_RE.test(data.property_id)) {
       hostApi.createTask(data.property_id, {
         room_name: data.room,
-        task_type: data.taskType || 'turnover',
-        priority: data.priority,
+        task_type: data.taskType || 'ROOM_CLEANING',
+        priority: data.priority.toUpperCase() as any,
         notes: `Floor ${data.floor} — ${data.cleaner}`,
       }, () => {});
     }

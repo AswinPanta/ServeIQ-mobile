@@ -649,7 +649,7 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       available,
       dirty,
       maintenance,
-      occupancyRate: Math.round((occupied / total) * 100),
+      occupancyRate: total > 0 ? Math.round((occupied / total) * 100) : 0,
     };
   }, [rooms]);
 

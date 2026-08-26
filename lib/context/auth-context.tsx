@@ -505,7 +505,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           : rawBody.message || rawBody.error || 'Registration failed';
         throw new Error(message);
       }
-      return rawBody as RegistrationResult;
+      return (rawBody.success === true && rawBody.data) ? rawBody.data : rawBody as RegistrationResult;
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
