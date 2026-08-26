@@ -48,7 +48,7 @@ export function ImageGallery({
 
   return (
     <View style={s.gallery}>
-      <Image source={{ uri: images[selectedImageIndex] }} style={s.mainImage} resizeMode="cover" />
+      <Image source={{ uri: images[selectedImageIndex] || images[0] }} style={s.mainImage} resizeMode="cover" />
 
       {images.length > 1 && (
         <>

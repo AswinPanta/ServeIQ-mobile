@@ -236,8 +236,7 @@ export default function HostDrawerShell() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchHostData();
-    setRefreshing(false);
+    try { await fetchHostData(); } finally { setRefreshing(false); }
   };
 
   const bookingStatusLabel = (status: string) => {

@@ -52,14 +52,14 @@ export default function CheckOutScreen() {
     const room = rooms.find((r) => r.room_number === selectedBooking.room_number);
     // Use the front desk context's checkOut method to properly transition booking to checked_out
     // (also marks room as dirty, updates booking status to checked_out, and calls the API)
-    frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number!);
+    frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number || '');
     useFolioStore.getState().settleFolio(selectedBooking.ref);
     useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: BLUE[500], property_id: operator?.property_id || 'prop-1' });
     useShiftStore.getState().incrementCheckOuts();
     useShiftStore.getState().addRevenue(folio?.total || 0);
     const guestFound = useGuestStore.getState().findGuest(selectedBooking.guest_name);
     if (guestFound.length > 0) useGuestStore.getState().recordStay(guestFound[0].id, folio?.total || 0);
-    useHousekeepingStore.getState().createTask({ room: selectedBooking.room_number || '', floor: room?.floor || 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'turnover', property_id: operator?.property_id || 'prop-1' });
+    useHousekeepingStore.getState().createTask({ room: selectedBooking.room_number || '', floor: room?.floor || 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'ROOM_CLEANING', property_id: operator?.property_id || 'prop-1' });
     useNotificationStore.getState().addNotification({ type: 'hk_alert', title: 'Room ready for cleaning', message: `Room ${selectedBooking.room_number} needs cleaning after checkout`, data: { roomNumber: selectedBooking.room_number || '' } });
     useActivityStore.getState().addActivity({ type: 'email', title: `Post-stay review requested — Email queued for ${selectedBooking.guest_name}`, icon: '✉️', color: PURPLE[500], property_id: operator?.property_id || 'prop-1' });
     useNotificationStore.getState().addNotification({ type: 'system', title: 'Review Request', message: `Post-stay review email queued for ${selectedBooking.guest_name}` });

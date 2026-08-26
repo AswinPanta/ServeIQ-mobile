@@ -87,7 +87,7 @@ function createApiClient(baseUrl: string = API_BASE_URL) {
       const { params, timeout = API_CONFIG.TIMEOUT, retries = API_CONFIG.RETRY_ATTEMPTS, ...fetchConfig } = config;
 
       let processedConfig: RequestConfig = {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...fetchConfig.headers },
         ...fetchConfig,
         params,
       };
@@ -161,10 +161,6 @@ function createApiClient(baseUrl: string = API_BASE_URL) {
       api.request(endpoint, { ...config, method: 'DELETE' }),
   };
 
-  api.useRequestInterceptor((config) => {
-    return config;
-  });
-
   api.useResponseInterceptor(async (response) => {
     if (response.status === 401) {
       const activePortal = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_PORTAL);
@@ -216,9 +212,11 @@ export async function handleResponse<T>(response: Response): Promise<T> {
     error.isServerError = true;
     throw error;
   }
+  const text = await response.text();
+  if (!text) return {} as T;
   const contentType = response.headers?.get?.('content-type') || '';
   if (!contentType.includes('application/json')) {
-    throw new Error(`Expected JSON response but got "${contentType}"`);
+    return text as unknown as T;
   }
-  return response.json() as Promise<T>;
+  return JSON.parse(text) as T;
 }

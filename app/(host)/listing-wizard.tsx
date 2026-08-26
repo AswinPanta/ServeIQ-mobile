@@ -47,7 +47,7 @@ const CANCELLATION_DESCRIPTIONS: Record<CancellationPolicy, string> = {
 export default function ListingWizard() {
   const { addProperty, addRoom } = useHost();
   const { tokens } = useAuth();
-  const isDemoAccount = !!tokens.accessToken?.startsWith('demo-');
+  const isDemoAccount = !!tokens?.accessToken?.startsWith('demo-');
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState<WizardStep>('type');
