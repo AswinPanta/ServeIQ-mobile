@@ -311,6 +311,8 @@ export default function ListingWizard() {
           : msg.includes('422')
             ? 'Some fields have invalid values. Please check your input and try again.'
             : msg);
+        setSaving(null);
+        return;  // Don't advance to next step on error
       }
       setSaving(null);
     }
@@ -849,8 +851,7 @@ export default function ListingWizard() {
   return (
     <KeyboardAvoidingView
       style={styles.portalPage}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
       <View style={styles.header}>

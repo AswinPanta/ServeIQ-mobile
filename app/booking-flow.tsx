@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { safeGoBack } from '@/lib/utils';
 import { PaymentCheckoutModal } from '@/components/feature/payment-checkout-modal';
+import { EsewaMockCheckout } from '@/components/feature/esewa-mock-checkout';
 import { SdkPaymentCheckout } from '@/components/feature/sdk-payment-checkout';
 import { useBookingFlow } from '@/hooks/use-booking-flow';
 import { BookingHeader, ProgressHeader, StepRooms, StepDetails, StepPayment, BottomBar, LoginGate } from '@/components/booking/steps';
@@ -36,6 +37,7 @@ export default function BookingFlowScreen() {
           availableRooms={flow.availableRooms}
           selectedRooms={flow.selectedRooms}
           nights={flow.nights}
+          currency={flow.currency}
           onRetry={flow.onRetry}
           onToggleRoom={flow.onToggleRoom}
           onUpdateQuantity={flow.onUpdateQuantity}
@@ -45,6 +47,7 @@ export default function BookingFlowScreen() {
         <StepDetails
           selectedRooms={flow.selectedRooms}
           nights={flow.nights}
+          currency={flow.currency}
           guestInfo={flow.guestInfo}
           guestErrors={flow.guestErrors}
           onFieldChange={flow.onFieldChange}
@@ -62,6 +65,7 @@ export default function BookingFlowScreen() {
           onClearPromo={flow.onClearPromo}
           selectedRooms={flow.selectedRooms}
           nights={flow.nights}
+          currency={flow.currency}
           promoDiscount={flow.promoDiscount}
           total={flow.total}
           checkIn={flow.checkIn}
@@ -73,6 +77,7 @@ export default function BookingFlowScreen() {
       <BottomBar
         step={flow.step}
         total={flow.total}
+        currency={flow.currency}
         isSubmitting={flow.isSubmitting}
         isProcessing={flow.isProcessing}
         onBack={flow.onBack}
@@ -81,12 +86,25 @@ export default function BookingFlowScreen() {
       />
 
       {/* Hosted gateway checkout — opens only for real payments */}
-      {flow.checkout && (
+      {flow.checkout && !!flow.checkout.url && (
         <PaymentCheckoutModal
           visible
           paymentUrl={flow.checkout.url}
           returnUrlPrefix={flow.returnUrlPrefix}
           gatewayName={flow.checkout.gateway}
+          onComplete={flow.handleCheckoutComplete}
+          onCancel={flow.handleCheckoutCancel}
+        />
+      )}
+
+      {/* eSewa sandbox checkout — the backend returns no hosted payment_url for
+          eSewa, so (like the reference web app) we simulate the wallet flow
+          locally; the confirm step still verifies server-side. */}
+      {flow.checkout && !flow.checkout.url && flow.checkout.gateway === 'eSewa' && (
+        <EsewaMockCheckout
+          visible
+          amount={flow.total}
+          currency={flow.currency}
           onComplete={flow.handleCheckoutComplete}
           onCancel={flow.handleCheckoutCancel}
         />

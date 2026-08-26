@@ -308,10 +308,12 @@ export default function GuestHotelDetail() {
         {checkInDate && checkOutDate && (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
             <View>
-              <Text style={s.bottomTotal}>{hotel.currency} {(roomPrice * nights + Math.round(roomPrice * 0.15) + Math.round(roomPrice * nights * 0.12)).toLocaleString()}</Text>
-              <Text style={s.bottomMeta}>{nights} night{nights > 1 ? 's' : ''}{selectedRoom ? ` · ${selectedRoom.name}` : ''}</Text>
+              <Text style={s.bottomTotal}>{hotel.currency} {selectedRoom ? (roomPrice * nights + Math.round(roomPrice * 0.15) + Math.round(roomPrice * nights * 0.12)).toLocaleString() : '—'}</Text>
+              <Text style={s.bottomMeta}>{nights} night{nights > 1 ? 's' : ''}{selectedRoom ? ` · ${selectedRoom.name}` : ' · Select a room'}</Text>
             </View>
-            <Text style={s.bottomPerNight}>{hotel.currency} {Math.round(roomPrice * nights + Math.round(roomPrice * 0.15) + Math.round(roomPrice * nights * 0.12) / nights)}/night</Text>
+            {selectedRoom && (
+              <Text style={s.bottomPerNight}>{hotel.currency} {Math.round((roomPrice * nights + Math.round(roomPrice * 0.15) + Math.round(roomPrice * nights * 0.12)) / nights)}/night</Text>
+            )}
           </View>
         )}
         <TouchableOpacity onPress={() => {
@@ -327,7 +329,7 @@ export default function GuestHotelDetail() {
           setIsLoading(true);
           setTimeout(() => {
             setIsLoading(false);
-            router.push({ pathname: '/booking-flow', params: { hotelName: hotel.name, propertyId: hotel.id, checkIn: checkInDate!.toISOString(), checkOut: checkOutDate!.toISOString(), guests: String(guestCount), adults: String(adultCount), children: String(childCount), roomId: selectedRoom!.id, roomName: selectedRoom!.name, roomPrice: String(selectedRoom!.price) } });
+            router.push({ pathname: '/booking-flow', params: { hotelName: hotel.name, propertyId: hotel.id, currency: hotel.currency || 'NPR', checkIn: checkInDate!.toISOString(), checkOut: checkOutDate!.toISOString(), guests: String(guestCount), adults: String(adultCount), children: String(childCount), roomId: selectedRoom!.id, roomName: selectedRoom!.name, roomPrice: String(selectedRoom!.price) } });
           }, 500);
         }} disabled={isLoading} style={[s.bookBtn, { opacity: isLoading ? 0.7 : 1 }]} activeOpacity={0.9}>
           {isLoading ? <ActivityIndicator color={BG.white} /> : (

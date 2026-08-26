@@ -25,6 +25,7 @@ export function useBookingFlow() {
   const params = useLocalSearchParams();
   const hotelName = (params.hotelName as string) || 'Hotel';
   const propertyId = (params.propertyId as string || params.id as string) || '';
+  const currency = (params.currency as string) || 'NPR';
   const checkIn = toDateParam(params.checkIn as string);
   const checkOut = toDateParam(params.checkOut as string);
   // Guest split: the search modal and detail page pass adults + children
@@ -68,7 +69,7 @@ export function useBookingFlow() {
   const [guestInfo, setGuestInfo] = useState({ firstName: '', lastName: '', email: '', phone: '', country: 'Nepal', specialRequests: '' });
   const [guestErrors, setGuestErrors] = useState<Record<string, string>>({});
 
-  const [paymentMethod, setPaymentMethod] = useState<'dummy' | 'stripe' | 'khalti' | 'razorpay'>('khalti');
+  const [paymentMethod, setPaymentMethod] = useState<'dummy' | 'stripe' | 'khalti' | 'razorpay' | 'esewa'>('khalti');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -254,7 +255,7 @@ export function useBookingFlow() {
   const validateGuest = (): boolean => {
     const e: Record<string, string> = {};
     if (!guestInfo.firstName.trim()) e.firstName = 'Required';
-    if (!guestInfo.lastName.trim()) e.lastName = 'Required';
+    // LastName is optional — many cultures use single-word names
     if (!guestInfo.email.trim()) e.email = 'Required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestInfo.email)) e.email = 'Invalid email';
     if (!guestInfo.phone.trim()) e.phone = 'Required';
@@ -427,10 +428,12 @@ export function useBookingFlow() {
         ref,
         {
           payment_gateway: paymentMethod,
-          // Khalti requires return_url to start with the backend's configured
-          // base — the WebView intercepts the redirect to it after payment and
-          // hands control back to the app with the authoritative pidx.
-          ...(paymentMethod === 'khalti' ? { return_url: returnUrlPrefix } : {}),
+          // Khalti/eSewa require return_url to start with the backend's
+          // configured base — the WebView intercepts the redirect to it after
+          // payment and hands control back with authoritative identifiers.
+          ...(paymentMethod === 'khalti' || paymentMethod === 'esewa'
+            ? { return_url: returnUrlPrefix }
+            : {}),
         },
         () => ({
           ref_number: ref,
@@ -482,7 +485,7 @@ export function useBookingFlow() {
               ? !!RAZORPAY_KEY_ID && !!paymentIntent.order_id
               : !!KHALTI_PUBLIC_KEY && !!paymentIntent.pidx);
 
-        if (!sdkReady && !checkoutUrl) {
+        if (!sdkReady && !checkoutUrl && paymentMethod !== 'esewa') {
           setIsProcessing(false);
           // Graceful note: the backend returns no hosted checkout URL for this
           // gateway and its native SDK can't run HERE — never silently confirm
@@ -581,6 +584,27 @@ export function useBookingFlow() {
             setCheckout({ url: checkoutUrl, gateway: gatewayName });
             // Safety net: if the modal ever fails to mount, never leave the
             // button spinning forever — auto-cancel after 15 minutes.
+            setTimeout(() => {
+              if (checkoutResolverRef.current) {
+                checkoutResolverRef.current(false, {});
+                checkoutResolverRef.current = null;
+              }
+            }, 15 * 60 * 1000);
+          });
+          checkoutParams = result.params || {};
+          if (!result.ok) {
+            setIsProcessing(false);
+            Alert.alert('Payment Cancelled', 'Your booking is saved. Complete the payment from your bookings to confirm it.');
+            return;
+          }
+        } else if (paymentMethod === 'esewa') {
+          // eSewa — the live backend has no real integration yet and returns no
+          // hosted payment_url, so (like the reference web app) we render a
+          // local sandbox checkout that mimics the eSewa wallet flow. The
+          // confirm step still verifies server-side against the payment intent.
+          const result = await new Promise<{ ok: boolean; params: Record<string, string> }>((resolve) => {
+            checkoutResolverRef.current = (ok, params) => resolve({ ok, params });
+            setCheckout({ url: '', gateway: 'eSewa' });
             setTimeout(() => {
               if (checkoutResolverRef.current) {
                 checkoutResolverRef.current(false, {});
@@ -717,6 +741,7 @@ export function useBookingFlow() {
     user, guestUser,
     openLogin, openRegister,
     step,
+    currency,
     preselectMatched,
     stepLabels, displayStep,
     isLoading, roomsError, availableRooms, selectedRooms, nights,

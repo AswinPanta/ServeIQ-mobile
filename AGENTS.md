@@ -120,6 +120,24 @@ app/
 
 ## Session History
 
+### 2026-08-26 — StayEasy Web Repo Parity: eSewa Sandbox, Password-Reset Guidance, Admin Profile
+
+**Repo analysis (`Thadaw/StayEasy` — React+Vite web app, 3 branches, all via web fetch)**
+- `feature/booking` is identical to `main` (same tree SHA) — zero unique changes
+- `admin-side-change` (unmerged, by Samip-khatri): adds `AdminProfilePage.tsx`, `/host/admin-profile` route, DashboardHeader profile dropdown with View Full Profile/Logout, `hideControls` prop; also non-app report tooling (`generate_report.py`)
+- Live backend OpenAPI verified: NO `/auth/reset-password` endpoint (only forgot-password + change-password); ConfirmPaymentRequest docs cover DUMMY/STRIPE/RAZORPAY/KHALTI only — no real eSewa integration server-side
+
+**Done**
+- **eSewa payments**: added `'esewa'` to `PaymentGateway` + `PAYMENT_METHODS`; new `components/feature/esewa-mock-checkout.tsx` (port of web EsewaMockPage — wallet login form → success → resolves `{oid, refId, status:'Completed'}`); `use-booking-flow.ts` sends `return_url` for esewa, skips the SDK/hosted-URL error path, opens the sandbox modal when backend returns no `payment_url`; confirm uses the standard `{payment_intent_id}` payload and still verifies server-side. `booking-flow.tsx` renders EsewaMockCheckout when `checkout.gateway === 'eSewa' && !checkout.url`
+- **Password reset honesty fix**: `create-new-password.tsx` non-temp mode no longer shows a dead Reset Token field — now explains resets work via Forgot Password temp-password flow (matches actual backend) with a deep link to forgot-password
+- **Admin Profile page**: new `app/(host)/admin-profile.tsx` ported from AdminProfilePage — identity card + tabs (Profile Information / Security / Notifications), recent-logins list (mock until backend exposes sessions), notification toggles, links to edit-profile and change-password; registered in `(host)/_layout.tsx`; drawer entry "Admin Profile" added in host dashboard
+- Host portal pages audit: Rooms/Guests/Staff/Housekeeping/Pricing/Reports/Settings (+integrations/logs/support) already existed as property-level screens — no gap vs the web repo beyond the above
+- `npx tsc --noEmit` — zero errors
+
+**Key decisions**
+- eSewa ships as a local sandbox (same contract as the web mock) because the live backend cannot verify eSewa payloads; the confirm step remains authoritative so guests see "Payment Not Verified" rather than a false success if the gateway is unsupported
+- Recent-logins data stays client-side mock like the web page — backend has no sessions endpoint yet
+
 ### 2026-08-03 — Backend Alignment: Nearby Search, Staff CRUD, Search Description, Khalti Payments
 
 **Backend context**

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { addToSyncQueue, processSyncQueue, getSyncQueueCount } from '@/lib/utils/offline-sync';
 import { persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
 import { hostApi } from '@/lib/api/host-api';
+import { operationsApi } from '@/lib/api/operations-api';
+import type { BackendMyTask, BackendTask } from '@/types/api';
 
 export type HKTaskStatus = 'Dirty' | 'In Progress' | 'Cleaned' | 'Inspected';
 export type HKPriority = 'High' | 'Normal' | 'Low';
@@ -19,6 +21,64 @@ export interface HKTask {
   property_id?: string;
   checklist?: Record<string, boolean>;
   synced?: boolean; // false when changes are pending sync
+}
+
+/** Map a BackendMyTask to an HKTask for mobile use */
+function mapBackendTaskToHKTask(t: BackendMyTask): HKTask {
+  const statusMap: Record<string, HKTaskStatus> = {
+    PENDING: 'Dirty',
+    IN_PROGRESS: 'In Progress',
+    AWAITING_INSPECTION: 'Cleaned',
+    COMPLETED: 'Inspected',
+    CANCELLED: 'Dirty',
+  };
+  const priorityMap: Record<string, HKPriority> = {
+    HIGH: 'High',
+    MEDIUM: 'Normal',
+    LOW: 'Low',
+  };
+  return {
+    id: t.id,
+    room: t.room_name,
+    floor: t.floor_number ?? 0,
+    status: statusMap[t.status] ?? 'Dirty',
+    priority: priorityMap[t.priority] ?? 'Normal',
+    cleaner: t.assigned_by_name || 'Unassigned',
+    lastCleaned: t.completed_at || t.created_at,
+    notes: t.notes || undefined,
+    taskType: t.task_type,
+    property_id: t.property_id,
+    synced: true,
+  };
+}
+
+/** Map an admin BackendTask to an HKTask */
+function mapAdminTaskToHKTask(t: BackendTask): HKTask {
+  const statusMap: Record<string, HKTaskStatus> = {
+    PENDING: 'Dirty',
+    IN_PROGRESS: 'In Progress',
+    AWAITING_INSPECTION: 'Cleaned',
+    COMPLETED: 'Inspected',
+    CANCELLED: 'Dirty',
+  };
+  const priorityMap: Record<string, HKPriority> = {
+    HIGH: 'High',
+    MEDIUM: 'Normal',
+    LOW: 'Low',
+  };
+  return {
+    id: t.id,
+    room: t.room_name,
+    floor: 0,
+    status: statusMap[t.status] ?? 'Dirty',
+    priority: priorityMap[t.priority] ?? 'Normal',
+    cleaner: t.assigned_staff_name || 'Unassigned',
+    lastCleaned: t.completed_at || t.created_at,
+    notes: t.notes || undefined,
+    taskType: t.task_type,
+    property_id: t.property_id,
+    synced: true,
+  };
 }
 
 export const STATUS_ORDER: HKTaskStatus[] = ['Dirty', 'In Progress', 'Cleaned', 'Inspected'];
@@ -46,7 +106,9 @@ interface HousekeepingStore {
   tasks: HKTask[];
   syncPendingCount: number;
   isSyncing: boolean;
+  isLoading: boolean;
   setPropertyId: (id: string) => void;
+  fetchTasks: (propertyId?: string) => Promise<void>;
   advanceStatus: (room: string) => void;
   updateChecklist: (room: string, index: number, done: boolean) => void;
   assignCleaner: (room: string, cleaner: string) => void;
@@ -74,8 +136,34 @@ export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
   tasks: INITIAL_TASKS,
   syncPendingCount: 0,
   isSyncing: false,
+  isLoading: false,
 
   setPropertyId: (id) => set({ propertyId: id }),
+
+  fetchTasks: async (propertyId?: string) => {
+    const pid = propertyId || get().propertyId;
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(pid)) return; // demo property, keep mock data
+
+    set({ isLoading: true });
+    try {
+      // Staff mobile endpoint returns their assigned tasks
+      const apiTasks = await operationsApi.getMyTasks(pid);
+      if (apiTasks.length > 0) {
+        set({ tasks: apiTasks.map(mapBackendTaskToHKTask) });
+      } else {
+        // No tasks from mobile endpoint, try admin endpoint (property owner view)
+        const adminTasks = await hostApi.getTasks(pid);
+        if (adminTasks.length > 0) {
+          set({ tasks: adminTasks.map(mapAdminTaskToHKTask) });
+        }
+      }
+    } catch {
+      // Keep existing mock data on failure
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   advanceStatus: (room) => {
     set((state) => {
@@ -84,6 +172,22 @@ export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
       const idx = STATUS_ORDER.indexOf(task.status);
       if (idx >= STATUS_ORDER.length - 1) return state;
       const nextStatus = STATUS_ORDER[idx + 1];
+
+      // Map HKTaskStatus to backend TaskStatusBE
+      const statusMapToBackend: Record<HKTaskStatus, string> = {
+        Dirty: 'PENDING',
+        'In Progress': 'IN_PROGRESS',
+        Cleaned: 'AWAITING_INSPECTION',
+        Inspected: 'COMPLETED',
+      };
+
+      // Call backend API if task has a valid UUID
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (task.property_id && UUID_RE.test(task.property_id) && UUID_RE.test(task.id)) {
+        operationsApi.updateTaskStatus(task.property_id, task.id, {
+          status: statusMapToBackend[nextStatus] as any,
+        }, () => ({} as any)).catch(() => {});
+      }
 
       // Add to sync queue for offline support
       addToSyncQueue({

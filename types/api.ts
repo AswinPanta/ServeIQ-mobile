@@ -792,3 +792,247 @@ export interface TenantCreateResponse {
   created_at: string;
   updated_at: string;
 }
+
+// ─── Housekeeping Types ──────────────────────────────────────────────────────
+
+export type TaskType = 'ROOM_CLEANING' | 'LINEN_CHANGE' | 'MAINTENANCE_CHECK' | 'DEEP_CLEANING' | 'INSPECTION' | 'RESTOCK_AMENITIES' | 'OTHER';
+export type TaskStatusBE = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'AWAITING_INSPECTION';
+export type TaskPriorityBE = 'LOW' | 'MEDIUM' | 'HIGH';
+export type CleaningSubmissionStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+export type MaintenanceCategory = 'PLUMBING' | 'ELECTRICAL' | 'HVAC' | 'FURNITURE' | 'APPLIANCE' | 'FLOORING' | 'PAINTING' | 'LOCK_SECURITY' | 'OTHER';
+export type ShiftType = 'MORNING' | 'EVENING' | 'NIGHT';
+export type SwapStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type LeaveType = 'SICK_LEAVE' | 'PERSONAL_LEAVE' | 'VACATION' | 'UNPAID_LEAVE' | 'OTHER';
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type RoomStatusBE = 'AVAILABLE' | 'BLOCKED' | 'BOOKED' | 'CLEANING' | 'DIRTY' | 'OCCUPIED' | 'INSPECTED' | 'MAINTENANCE' | 'OUT_OF_SERVICE';
+
+/** Admin task list response (GET /properties/{id}/tasks) */
+export interface BackendTask {
+  id: string;
+  property_id: string;
+  room_id: string;
+  room_name: string;
+  room_status: RoomStatusBE | null;
+  task_type: TaskType;
+  priority: TaskPriorityBE;
+  status: TaskStatusBE;
+  assigned_staff_id: string;
+  assigned_staff_name: string;
+  assigned_by_id: string | null;
+  assigned_by_name: string | null;
+  due_time: string;
+  notes: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Staff-facing mobile task response (GET /properties/{id}/housekeeping/tasks) */
+export interface BackendMyTask {
+  id: string;
+  property_id: string;
+  room_id: string;
+  room_name: string;
+  room_status: RoomStatusBE | null;
+  floor_number: number | null;
+  task_type: TaskType;
+  priority: TaskPriorityBE;
+  status: TaskStatusBE;
+  assigned_by_name: string | null;
+  due_time: string;
+  notes: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Cleaning submission response */
+export interface BackendCleaningSubmission {
+  id: string;
+  task_id: string;
+  staff_id: string;
+  staff_name: string;
+  property_id: string;
+  checklist_items: Record<string, boolean>;
+  suppliers_used: Record<string, unknown> | null;
+  before_images: string[];
+  after_images: string[];
+  status: CleaningSubmissionStatus;
+  rejection_reason: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Leave request response */
+export interface BackendLeaveRequest {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  status: LeaveStatus;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+/** Shift swap response */
+export interface BackendShiftSwap {
+  id: string;
+  requester_staff_id: string;
+  requester_staff_name: string;
+  target_staff_id: string;
+  target_staff_name: string;
+  requester_shift: ShiftType;
+  target_shift: ShiftType;
+  reason: string;
+  status: SwapStatus;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
+/** Maintenance report response */
+export interface BackendMaintenanceReport {
+  id: string;
+  property_id: string;
+  room_id: string;
+  room_name: string;
+  staff_name: string;
+  category: MaintenanceCategory;
+  priority: TaskPriorityBE;
+  description: string;
+  photos: Record<string, unknown>;
+  status: TaskStatusBE;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Schedule entry response */
+export interface BackendScheduleEntry {
+  id: string;
+  staff_id: string;
+  shift_date: string;
+  shift_type: ShiftType;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  tasks_assigned_today: number;
+  tasks_completed_today: number;
+}
+
+/** Work history stats response */
+export interface BackendWorkHistoryStats {
+  total_tasks_completed: number;
+  total_maintenance_reports: number;
+  total_duration_minutes: number;
+  tasks_completed_today: number;
+  tasks_completed_this_week: number;
+  tasks_completed_this_month: number;
+}
+
+/** Staff work summary (admin view) */
+export interface BackendStaffWorkSummary {
+  staff_id: string;
+  staff_name: string;
+  total_assigned: number;
+  completed: number;
+  pending: number;
+  in_progress: number;
+  cancelled: number;
+}
+
+/** Task type enum response */
+export interface BackendTaskTypeOption {
+  value: string;
+  label: string;
+}
+
+/** Create task request */
+export interface CreateTaskRequestBE {
+  room_id: string;
+  task_type: TaskType;
+  priority?: TaskPriorityBE;
+  assigned_staff_id: string;
+  due_time: string;
+  notes?: string | null;
+}
+
+/** Update task request */
+export interface UpdateTaskRequestBE {
+  task_type?: TaskType | null;
+  priority?: TaskPriorityBE | null;
+  assigned_staff_id?: string | null;
+  due_time?: string | null;
+  notes?: string | null;
+  status?: TaskStatusBE | null;
+}
+
+/** Bulk assign request */
+export interface BulkAssignTaskItem {
+  task_type: TaskType;
+  room_id: string;
+  staff_id: string;
+  priority?: TaskPriorityBE;
+  notes?: string | null;
+  due_time: string;
+}
+
+/** Task status update request (mobile) */
+export interface TaskStatusUpdateRequest {
+  status: TaskStatusBE;
+}
+
+/** Supervisor cleaning review request */
+export interface SupervisorReviewRequest {
+  status: CleaningSubmissionStatus;
+  rejection_reason?: string | null;
+}
+
+/** Create leave request */
+export interface CreateLeaveRequest {
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  reason: string;
+}
+
+/** Create swap request */
+export interface CreateSwapRequest {
+  target_staff_id: string;
+  target_shift: ShiftType;
+  reason: string;
+}
+
+/** Create maintenance report */
+export interface CreateMaintenanceReportRequest {
+  room_id: string;
+  category: MaintenanceCategory;
+  priority?: TaskPriorityBE;
+  description: string;
+}
+
+// ─── Review Types ────────────────────────────────────────────────────────────
+
+export interface BackendReview {
+  id: string;
+  property_id: string;
+  guest_id: string;
+  guest_name: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateReviewRequest {
+  rating: number;
+  comment?: string | null;
+}
+
+export interface UpdateReviewRequest {
+  rating?: number | null;
+  comment?: string | null;
+}

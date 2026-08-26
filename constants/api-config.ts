@@ -52,7 +52,6 @@ export const API_ENDPOINTS = {
     USER_ME: '/auth/users/me',
     // Password reset
     FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
     CHANGE_PASSWORD_GUEST: '/auth/guest/change-password',
     CHANGE_PASSWORD_USER: '/auth/user/change-password',
   },
@@ -62,11 +61,12 @@ export const API_ENDPOINTS = {
     CREATE: '/bookings/',
     MY_BOOKINGS: '/bookings/me',
     GET_BY_REF: (ref: string) => `/bookings/${ref}`,
-    DELETE: (ref: string) => `/bookings/${ref}`,
     PAYMENT_INTENT: (ref: string) => `/bookings/${ref}/payment-intent`,
     CONFIRM_PAYMENT: (ref: string) => `/bookings/${ref}/confirm`,
     APPLY_DISCOUNT: (ref: string) => `/bookings/${ref}/apply-discount`,
     SPECIAL_REQUESTS: (ref: string) => `/bookings/${ref}/special-requests`,
+    PAY_REMAINING: (ref: string) => `/bookings/${ref}/pay-remaining`,
+    RECORD_STAFF_PAYMENT: (ref: string) => `/bookings/${ref}/record-staff-payment`,
   },
 
   // ─── Tenants (SuperAdmin) ──────────────────────────────────────
@@ -81,22 +81,18 @@ export const API_ENDPOINTS = {
   PROPERTIES: {
     GET_ALL: '/properties/',
     GET_AMENITIES: '/properties/amenities',
-    CREATE_GENERAL_INFO: '/properties/general-information',
+    CREATE_GENERAL_INFO: '/properties',
     GET_BY_ID: (id: string) => `/properties/${id}`,
     GET_BY_ID_PUBLIC: (id: string) => `/properties/${id}/public`,
+    UPDATE: (id: string) => `/properties/${id}`,
     DELETE: (id: string) => `/properties/${id}`,
     TOGGLE_ACTIVATION: (id: string) => `/properties/${id}/toggle-property-activation`,
     GET_NUMBER_OF_FLOORS: (id: string) => `/properties/${id}/number-of-floors`,
-    // Setup wizard steps
-    CREATE_LOCATION: (id: string) => `/properties/${id}/create-location`,
-    CREATE_PHOTOS_AMENITIES: (id: string) => `/properties/${id}/create-photos-and-amenities`,
-    CREATE_LOCALIZATION: (id: string) => `/properties/${id}/create-localization`,
-    CREATE_BRAND_VISUAL: (id: string) => `/properties/${id}/create-brand-visual`,
     // Property bookings
     GET_PROPERTY_BOOKINGS: (id: string) => `/properties/${id}/bookings`,
-    // Image uploads
-    UPLOAD_IMAGE: (id: string) => `/properties/${id}/image`,
-    UPLOAD_IMAGES: (id: string) => `/properties/${id}/images`,
+    // Image uploads — backend: POST /properties/image (property_id in FormData body)
+    UPLOAD_IMAGE: (_id: string) => `/properties/image`,
+    UPLOAD_IMAGES: (_id: string) => `/properties/images`,
     // Room types & bed types
     GET_ROOM_TYPES: (id: string) => `/properties/${id}/rooms/room-types`,
     CREATE_ROOM_TYPE: (id: string) => `/properties/${id}/rooms/room-type`,
@@ -129,8 +125,64 @@ export const API_ENDPOINTS = {
     UPDATE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
     DELETE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
     UPLOAD_STAFF_IMAGE: (id: string) => `/properties/${id}/staffs/image`,
-    // Tasks
+    // Tasks (admin)
     CREATE_TASK: (id: string) => `/properties/${id}/tasks`,
+    GET_TASKS: (id: string) => `/properties/${id}/tasks`,
+    GET_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}`,
+    UPDATE_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}`,
+    DELETE_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}`,
+    COMPLETE_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}/complete`,
+    BULK_ASSIGN_TASKS: (id: string) => `/properties/${id}/tasks/bulk-assign`,
+    GET_HK_STAFF: (id: string) => `/properties/${id}/tasks/housekeeping-staff`,
+    GET_STAFF_WORK_SUMMARY: (id: string) => `/properties/${id}/tasks/staff-work-summary`,
+    GET_TASK_TYPES: (id: string) => `/properties/${id}/tasks/task-types`,
+    // Housekeeping mobile (staff-facing)
+    HK_GET_MY_TASKS: (id: string) => `/properties/${id}/housekeeping/tasks`,
+    HK_GET_MY_TASK: (id: string, taskId: string) => `/properties/${id}/housekeeping/tasks/${taskId}`,
+    HK_UPDATE_TASK_STATUS: (id: string, taskId: string) => `/properties/${id}/housekeeping/tasks/${taskId}/status`,
+    // Cleaning submissions
+    HK_GET_CLEANING: (id: string) => `/properties/${id}/housekeeping/cleaning`,
+    HK_GET_CLEANING_PENDING: (id: string) => `/properties/${id}/housekeeping/cleaning/pending`,
+    HK_SUBMIT_CLEANING: (id: string) => `/properties/${id}/housekeeping/cleaning/submit`,
+    HK_GET_CLEANING_DETAIL: (id: string, subId: string) => `/properties/${id}/housekeeping/cleaning/${subId}`,
+    HK_REVIEW_CLEANING: (id: string, subId: string) => `/properties/${id}/housekeeping/cleaning/${subId}/review`,
+    // Work history
+    HK_GET_HISTORY: (id: string) => `/properties/${id}/housekeeping/history`,
+    HK_GET_HISTORY_STATS: (id: string) => `/properties/${id}/housekeeping/history/stats`,
+    // Leave requests
+    HK_CREATE_LEAVE: (id: string) => `/properties/${id}/housekeeping/leave`,
+    HK_GET_LEAVE: (id: string) => `/properties/${id}/housekeeping/leave`,
+    HK_CANCEL_LEAVE: (id: string, leaveId: string) => `/properties/${id}/housekeeping/leave/${leaveId}`,
+    // Shift swaps
+    HK_CREATE_SWAP: (id: string) => `/properties/${id}/housekeeping/swap`,
+    HK_GET_SWAPS: (id: string) => `/properties/${id}/housekeeping/swap`,
+    HK_CANCEL_SWAP: (id: string, swapId: string) => `/properties/${id}/housekeeping/swap/${swapId}`,
+    // Maintenance reports
+    HK_CREATE_MAINTENANCE: (id: string) => `/properties/${id}/housekeeping/maintenance`,
+    HK_GET_MAINTENANCE: (id: string) => `/properties/${id}/housekeeping/maintenance`,
+    // Schedule
+    HK_GET_SCHEDULE_TODAY: (id: string) => `/properties/${id}/housekeeping/schedule/today`,
+    HK_GET_SCHEDULE_WEEKLY: (id: string) => `/properties/${id}/housekeeping/schedule/weekly`,
+    HK_GET_SCHEDULE_MONTHLY: (id: string) => `/properties/${id}/housekeeping/schedule/monthly`,
+    HK_GET_SCHEDULE_HISTORY: (id: string) => `/properties/${id}/housekeeping/schedule/history`,
+    // Reviews
+    GET_REVIEWS: (id: string) => `/properties/${id}/reviews`,
+    CREATE_REVIEW: (id: string) => `/properties/${id}/reviews`,
+    UPDATE_REVIEW: (id: string, reviewId: string) => `/properties/${id}/reviews/${reviewId}`,
+    // Room status
+    GET_ROOMS_STATUS: (id: string) => `/properties/${id}/rooms/status`,
+    GET_ROOMS_STATUS_SUMMARY: (id: string) => `/properties/${id}/rooms/status-summary`,
+    // Room images (cleaning/maintenance)
+    UPLOAD_CLEANING_STATUS_IMAGES: (id: string, roomId: string) => `/properties${id}/rooms/${roomId}/cleaning_status/images`,
+    UPLOAD_MAINTENANCE_IMAGES: (id: string, roomId: string) => `/properties${id}/rooms/${roomId}/maintenance/images`,
+  },
+
+  // ─── Staff Portal ─────────────────────────────────────────────
+  STAFF: {
+    GET_BOOKING: (ref: string) => `/staff/bookings/${ref}`,
+    CHECK_IN: (ref: string) => `/staff/check-in/${ref}`,
+    CHECK_OUT: (ref: string) => `/staff/check-out/${ref}`,
+    MODIFY_BOOKING: (ref: string) => `/staff/${ref}/booking-modify`,
   },
 
   // ─── Search ────────────────────────────────────────────────────

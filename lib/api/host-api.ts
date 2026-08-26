@@ -3,6 +3,8 @@ import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
 import type {
   Property, AdminRoom, AdminDiscountCode, SpecialOffer,
   BackendStaff, CreateStaffRequest, UpdateStaffRequest, CancellationPolicy,
+  BackendTask, CreateTaskRequestBE, UpdateTaskRequestBE, BulkAssignTaskItem,
+  BackendStaffWorkSummary, BackendTaskTypeOption,
 } from '@/types/api';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -11,6 +13,14 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  *  Seed/demo ids (e.g. "prop-1") must never reach the server. */
 function isValidUuid(id: string): boolean {
   return UUID_RE.test(id);
+}
+
+/** Build query string from params object, skipping undefined/null values */
+function buildQuery(params?: Record<string, string | number | undefined | null>): string {
+  if (!params) return '';
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
+  if (entries.length === 0) return '';
+  return '?' + entries.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`).join('&');
 }
 
 // ─── Step-by-step property setup types ───────────────────────────────
@@ -408,30 +418,52 @@ export const hostApi = {
   // ─── Setup wizard steps ──────────────────────────────────────
   createGeneralInfo: async (data: GeneralPropertyInfo, fallback: () => any) => {
     await ensureHostTenant(data.name);
-    return apiPost<any, GeneralPropertyInfo>(API_ENDPOINTS.PROPERTIES.CREATE_GENERAL_INFO, {
-      ...data,
-      phone_number: normalizePhone(data.phone_number),
+    // Backend POST /properties expects CreatePropertyRequest with nested general_information
+    // and location (both required). Provide sensible defaults for localization.
+    return apiPost<any, any>(API_ENDPOINTS.PROPERTIES.CREATE_GENERAL_INFO, {
+      general_information: {
+        ...data,
+        phone_number: normalizePhone(data.phone_number),
+      },
+      location: {
+        country: 'Nepal',
+        state: '',
+        city: '',
+        zip_code: '00000',
+        address: '',
+      },
+      localization: {
+        currency: 'NPR',
+        check_in_time: '15:00',
+        check_out_time: '11:00',
+        always_allow_check_in_and_check_out: false,
+      },
     }, fallback, { rethrowOnServerError: true });
   },
 
   createLocation: (propertyId: string, data: PropertyLocation, fallback: () => any) =>
-    apiPost<any, PropertyLocation>(API_ENDPOINTS.PROPERTIES.CREATE_LOCATION(propertyId), data, fallback),
+    apiPatch<any, PropertyLocation>(API_ENDPOINTS.PROPERTIES.UPDATE(propertyId), data, fallback),
 
   createPhotosAndAmenities: (propertyId: string, data: PropertyPhotosAndAmenities, fallback: () => any) =>
-    apiPost<any, PropertyPhotosAndAmenities>(API_ENDPOINTS.PROPERTIES.CREATE_PHOTOS_AMENITIES(propertyId), data, fallback),
+    apiPatch<any, PropertyPhotosAndAmenities>(API_ENDPOINTS.PROPERTIES.UPDATE(propertyId), data, fallback),
 
   createLocalization: (propertyId: string, data: PropertyLocalization, fallback: () => any) =>
-    apiPost<any, PropertyLocalization>(API_ENDPOINTS.PROPERTIES.CREATE_LOCALIZATION(propertyId), data, fallback),
+    apiPatch<any, PropertyLocalization>(API_ENDPOINTS.PROPERTIES.UPDATE(propertyId), data, fallback),
 
   createBrandVisual: (propertyId: string, data: BrandVisual, fallback: () => any) =>
-    apiPost<any, BrandVisual>(API_ENDPOINTS.PROPERTIES.CREATE_BRAND_VISUAL(propertyId), data, fallback),
+    apiPatch<any, BrandVisual>(API_ENDPOINTS.PROPERTIES.UPDATE(propertyId), data, fallback),
 
   // ─── Image uploads ──────────────────────────────────────────
-  uploadPropertyImage: (propertyId: string, formData: FormData) =>
-    apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_IMAGE(propertyId), formData),
+  // Backend: POST /properties/image (property_id in FormData body, not URL)
+  uploadPropertyImage: (propertyId: string, formData: FormData) => {
+    formData.append('property_id', propertyId);
+    return apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_IMAGE(propertyId), formData);
+  },
 
-  uploadPropertyImages: (propertyId: string, formData: FormData) =>
-    apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_IMAGES(propertyId), formData),
+  uploadPropertyImages: (propertyId: string, formData: FormData) => {
+    formData.append('property_id', propertyId);
+    return apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_IMAGES(propertyId), formData);
+  },
 
   // ─── Room types ──────────────────────────────────────────────
   getRoomTypes: (propertyId: string, fallback: () => any[]) =>
@@ -547,4 +579,109 @@ export const hostApi = {
 
   createTask: (propertyId: string, data: { room_id?: string; room_name?: string; task_type: string; priority?: string; assigned_staff_id?: string; due_time?: string; notes?: string }, fallback: () => any) =>
     apiPost<any, typeof data>(API_ENDPOINTS.PROPERTIES.CREATE_TASK(propertyId), data, fallback),
+
+  // ─── Housekeeping Tasks (admin) ────────────────────────────────
+  getTasks: (propertyId: string, params?: { skip?: number; limit?: number; search?: string; task_status?: string; priority?: string }, fallback: () => BackendTask[] = () => []) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendTask[]>(`${API_ENDPOINTS.PROPERTIES.GET_TASKS(propertyId)}${buildQuery(params)}`, fallback)
+      : Promise.resolve(fallback()),
+
+  getTask: (propertyId: string, taskId: string, fallback: () => BackendTask) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendTask>(API_ENDPOINTS.PROPERTIES.GET_TASK(propertyId, taskId), fallback)
+      : Promise.resolve(fallback()),
+
+  createTaskBE: (propertyId: string, data: CreateTaskRequestBE, fallback: () => BackendTask) =>
+    isValidUuid(propertyId)
+      ? apiPost<BackendTask, CreateTaskRequestBE>(API_ENDPOINTS.PROPERTIES.CREATE_TASK(propertyId), data, fallback, { rethrowOnServerError: true })
+      : Promise.resolve(fallback()),
+
+  updateTask: (propertyId: string, taskId: string, data: UpdateTaskRequestBE, fallback: () => BackendTask) =>
+    isValidUuid(propertyId)
+      ? apiPatch<BackendTask, UpdateTaskRequestBE>(API_ENDPOINTS.PROPERTIES.UPDATE_TASK(propertyId, taskId), data, fallback)
+      : Promise.resolve(fallback()),
+
+  deleteTask: (propertyId: string, taskId: string) =>
+    isValidUuid(propertyId)
+      ? apiDelete(API_ENDPOINTS.PROPERTIES.DELETE_TASK(propertyId, taskId))
+      : Promise.resolve(true),
+
+  completeTask: (propertyId: string, taskId: string, fallback: () => BackendTask) =>
+    isValidUuid(propertyId)
+      ? apiPatch<BackendTask, Record<string, never>>(API_ENDPOINTS.PROPERTIES.COMPLETE_TASK(propertyId, taskId), {}, fallback)
+      : Promise.resolve(fallback()),
+
+  bulkAssignTasks: (propertyId: string, tasks: BulkAssignTaskItem[], fallback: () => { created_count: number; tasks: BackendTask[] }) =>
+    isValidUuid(propertyId)
+      ? apiPost<{ created_count: number; tasks: BackendTask[] }, { tasks: BulkAssignTaskItem[] }>(API_ENDPOINTS.PROPERTIES.BULK_ASSIGN_TASKS(propertyId), { tasks }, fallback, { rethrowOnServerError: true })
+      : Promise.resolve(fallback()),
+
+  getHKStaff: (propertyId: string, fallback: () => BackendStaff[]) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendStaff[]>(API_ENDPOINTS.PROPERTIES.GET_HK_STAFF(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  getStaffWorkSummary: (propertyId: string, fallback: () => BackendStaffWorkSummary[]) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendStaffWorkSummary[]>(API_ENDPOINTS.PROPERTIES.GET_STAFF_WORK_SUMMARY(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  getTaskTypes: (propertyId: string, fallback: () => BackendTaskTypeOption[]) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendTaskTypeOption[]>(API_ENDPOINTS.PROPERTIES.GET_TASK_TYPES(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  // ─── Room Status ────────────────────────────────────────────
+  getRoomsByStatus: (propertyId: string, fallback: () => any[]) =>
+    isValidUuid(propertyId)
+      ? apiGet<any[]>(API_ENDPOINTS.PROPERTIES.GET_ROOMS_STATUS(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  getRoomStatusSummary: (propertyId: string, fallback: () => any) =>
+    isValidUuid(propertyId)
+      ? apiGet<any>(API_ENDPOINTS.PROPERTIES.GET_ROOMS_STATUS_SUMMARY(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  // ─── Room Images (cleaning/maintenance) ─────────────────────
+  uploadCleaningStatusImages: (propertyId: string, roomId: string, formData: FormData) =>
+    isValidUuid(propertyId)
+      ? apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_CLEANING_STATUS_IMAGES(propertyId, roomId), formData)
+      : Promise.resolve(null),
+
+  uploadMaintenanceImages: (propertyId: string, roomId: string, formData: FormData) =>
+    isValidUuid(propertyId)
+      ? apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_MAINTENANCE_IMAGES(propertyId, roomId), formData)
+      : Promise.resolve(null),
+
+  // ─── Reviews ────────────────────────────────────────────────
+  getReviews: (propertyId: string, fallback: () => any[]) =>
+    isValidUuid(propertyId)
+      ? apiGet<any[]>(API_ENDPOINTS.PROPERTIES.GET_REVIEWS(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  createReview: (propertyId: string, data: { rating: number; comment?: string }, fallback: () => any) =>
+    isValidUuid(propertyId)
+      ? apiPost<any, typeof data>(API_ENDPOINTS.PROPERTIES.CREATE_REVIEW(propertyId), data, fallback, { rethrowOnServerError: true })
+      : Promise.resolve(fallback()),
+
+  updateReview: (propertyId: string, reviewId: string, data: { rating?: number; comment?: string }, fallback: () => any) =>
+    isValidUuid(propertyId)
+      ? apiPatch<any, typeof data>(API_ENDPOINTS.PROPERTIES.UPDATE_REVIEW(propertyId, reviewId), data, fallback)
+      : Promise.resolve(fallback()),
+};
+
+// ─── Staff Portal API ───────────────────────────────────────────────────────
+// These endpoints are for staff at the front desk (check-in/out, modify bookings).
+export const staffApi = {
+  getBookingByRef: (ref: string, fallback: () => any) =>
+    apiGet<any>(API_ENDPOINTS.STAFF.GET_BOOKING(ref), fallback),
+
+  checkIn: (ref: string, data: { room_number?: string }, fallback: () => any) =>
+    apiPost<any, typeof data>(API_ENDPOINTS.STAFF.CHECK_IN(ref), data, fallback),
+
+  checkOut: (ref: string, data: { payment_method?: string }, fallback: () => any) =>
+    apiPost<any, typeof data>(API_ENDPOINTS.STAFF.CHECK_OUT(ref), data, fallback),
+
+  modifyBooking: (ref: string, data: Record<string, unknown>, fallback: () => any) =>
+    apiPatch<any, Record<string, unknown>>(API_ENDPOINTS.STAFF.MODIFY_BOOKING(ref), data, fallback),
 };

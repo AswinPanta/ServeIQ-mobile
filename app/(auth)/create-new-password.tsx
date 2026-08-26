@@ -17,7 +17,6 @@ export default function CreateNewPasswordScreen() {
   const isTempMode = mode === 'temp';
   const { user, changePassword, clearMustChangePassword, logout, tempPassword } = useAuth();
 
-  const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -27,7 +26,20 @@ export default function CreateNewPasswordScreen() {
 
   const handleConfirm = async () => {
     const newErrors: Record<string, string> = {};
-    if (!isTempMode && !token.trim()) newErrors.token = 'Reset token is required';
+    if (!isTempMode) {
+      // The live backend has no /auth/reset-password endpoint (verified against
+      // its OpenAPI spec) — password resets work by requesting a temporary
+      // password via Forgot Password, then changing it here.
+      Alert.alert(
+        'Password Reset',
+        'Reset links are not supported. Use “Forgot Password” on the login screen to receive a temporary password, then sign in with it and set a new password here.',
+        [
+          { text: 'Go to Forgot Password', onPress: () => router.replace('/(auth)/forgot-password') },
+          { text: t('common.ok') },
+        ],
+      );
+      return;
+    }
     if (!newPassword.trim()) newErrors.newPassword = 'Password is required';
     else if (newPassword.length < 6) newErrors.newPassword = 'Min 6 characters';
     if (!confirmPassword.trim()) newErrors.confirmPassword = 'Please confirm';
@@ -86,19 +98,14 @@ export default function CreateNewPasswordScreen() {
             </Text>
           </View>
         ) : (
-          <View style={s.field}>
-            <Text style={s.label}>Reset Token</Text>
-            <View style={[s.inputWrap, errors.token && s.inputError]}>
-              <TextInput
-                style={s.input}
-                placeholder="Paste the token from your email"
-                placeholderTextColor={GRAY[400]}
-                value={token}
-                onChangeText={(val) => { setToken(val); if (errors.token) setErrors({ ...errors, token: '' }); }}
-                autoCapitalize="none"
-              />
-            </View>
-            {errors.token && <Text style={s.error}>{errors.token}</Text>}
+          <View style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 12, padding: 12, marginBottom: 20 }}>
+            <Text style={{ fontSize: 12.5, lineHeight: 18, color: '#1E40AF' }}>
+              Reset links aren&apos;t supported by the current backend. Use “Forgot Password” to receive a temporary
+              password, sign in with it, then set a new password here.
+            </Text>
+            <TouchableOpacity onPress={() => router.replace('/(auth)/forgot-password')} activeOpacity={0.8}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#1D4ED8', marginTop: 8 }}>Go to Forgot Password →</Text>
+            </TouchableOpacity>
           </View>
         )}
 

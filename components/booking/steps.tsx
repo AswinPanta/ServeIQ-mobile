@@ -55,7 +55,7 @@ export function ProgressHeader({ stepLabels, displayStep }: {
 }
 
 export function StepRooms({
-  isLoading, roomsError, availableRooms, selectedRooms, nights,
+  isLoading, roomsError, availableRooms, selectedRooms, nights, currency,
   onRetry, onToggleRoom, onUpdateQuantity,
 }: {
   isLoading: boolean;
@@ -63,6 +63,7 @@ export function StepRooms({
   availableRooms: SelectedRoom[];
   selectedRooms: SelectedRoom[];
   nights: number;
+  currency: string;
   onRetry: () => void;
   onToggleRoom: (room: SelectedRoom) => void;
   onUpdateQuantity: (roomId: string, delta: number) => void;
@@ -114,7 +115,7 @@ export function StepRooms({
                     <Text style={styles.roomMeta}>{room.bedType} bed · Up to {room.maxAdults} guests</Text>
                   </View>
                   <View style={styles.roomPriceBox}>
-                    <Text style={styles.roomPrice}>NPR {room.price.toLocaleString()}</Text>
+                    <Text style={styles.roomPrice}>{currency} {room.price.toLocaleString()}</Text>
                     <Text style={styles.roomPerNight}>/night</Text>
                   </View>
                 </View>
@@ -136,7 +137,7 @@ export function StepRooms({
                         <Ionicons name="add" size={18} color={BLUE} />
                       </TouchableOpacity>
                     </View>
-                    <Text style={styles.qtyTotal}>NPR {(room.price * qty * nights).toLocaleString()}</Text>
+                    <Text style={styles.qtyTotal}>{currency} {(room.price * qty * nights).toLocaleString()}</Text>
                   </View>
                 )}
               </View>
@@ -149,11 +150,13 @@ export function StepRooms({
 }
 
 export function StepDetails({
-  selectedRooms, nights, guestInfo, guestErrors,
+  selectedRooms, nights,  currency,
+  guestInfo, guestErrors,
   onFieldChange, onClearError, onChangeRoom,
 }: {
   selectedRooms: SelectedRoom[];
   nights: number;
+  currency: string;
   guestInfo: GuestInfo;
   guestErrors: Record<string, string>;
   onFieldChange: (field: keyof GuestInfo, value: string) => void;
@@ -181,7 +184,7 @@ export function StepDetails({
                   <Text style={styles.roomSummaryName}>{r.name}{r.quantity > 1 ? ` ×${r.quantity}` : ''}</Text>
                   <Text style={styles.roomSummaryMeta}>{r.bedType} bed · {r.quantity} × {nights} night{nights > 1 ? 's' : ''}</Text>
                 </View>
-                <Text style={styles.roomSummaryPrice}>NPR {(r.price * r.quantity * nights).toLocaleString()}</Text>
+                <Text style={styles.roomSummaryPrice}>{currency} {(r.price * r.quantity * nights).toLocaleString()}</Text>
               </View>
             ))}
             <TouchableOpacity onPress={onChangeRoom} style={styles.roomSummaryChange}>
@@ -191,13 +194,13 @@ export function StepDetails({
         )}
 
         {[
-          { key: 'firstName', label: 'First name', placeholder: 'John', value: guestInfo.firstName, onChange: (v: string) => onFieldChange('firstName', v) },
-          { key: 'lastName', label: 'Last name', placeholder: 'Doe', value: guestInfo.lastName, onChange: (v: string) => onFieldChange('lastName', v) },
-          { key: 'email', label: 'Email address', placeholder: 'john@example.com', value: guestInfo.email, onChange: (v: string) => onFieldChange('email', v), keyboard: 'email-address' as const },
-          { key: 'phone', label: 'Phone number', placeholder: '+977 98XXXXXXXX', value: guestInfo.phone, onChange: (v: string) => onFieldChange('phone', v), keyboard: 'phone-pad' as const },
+          { key: 'firstName', label: 'First name', placeholder: 'John', value: guestInfo.firstName, onChange: (v: string) => onFieldChange('firstName', v), required: true },
+          { key: 'lastName', label: 'Last name (optional)', placeholder: 'Doe', value: guestInfo.lastName, onChange: (v: string) => onFieldChange('lastName', v), required: false },
+          { key: 'email', label: 'Email address', placeholder: 'john@example.com', value: guestInfo.email, onChange: (v: string) => onFieldChange('email', v), keyboard: 'email-address' as const, required: true },
+          { key: 'phone', label: 'Phone number', placeholder: '+977 98XXXXXXXX', value: guestInfo.phone, onChange: (v: string) => onFieldChange('phone', v), keyboard: 'phone-pad' as const, required: true },
         ].map(f => (
           <View key={f.key} style={styles.field}>
-            <Text style={styles.fieldLabel}>{f.label} <Text style={{ color: RED[500] }}>*</Text></Text>
+            <Text style={styles.fieldLabel}>{f.label} {f.required && <Text style={{ color: RED[500] }}>*</Text>}</Text>
             <TextInput
               placeholder={f.placeholder}
               placeholderTextColor={SLATE[400]}
@@ -238,7 +241,7 @@ export function StepDetails({
 
 export function StepPayment({
   appliedPromo, promoCode, onPromoCodeChange, onApplyPromo, promoLoading, onClearPromo,
-  selectedRooms, nights, promoDiscount, total, checkIn, paymentMethod, onSelectPaymentMethod,
+  selectedRooms, nights, currency, promoDiscount, total, checkIn, paymentMethod, onSelectPaymentMethod,
 }: {
   appliedPromo: { code: string; discount: number } | null;
   promoCode: string;
@@ -248,6 +251,7 @@ export function StepPayment({
   onClearPromo: () => void;
   selectedRooms: SelectedRoom[];
   nights: number;
+  currency: string;
   promoDiscount: number;
   total: number;
   checkIn: string;
@@ -293,13 +297,13 @@ export function StepPayment({
         {selectedRooms.map(r => (
           <View key={r.id} style={styles.priceRow}>
             <Text style={styles.priceLabel}>{r.name} x{r.quantity} × {nights}n</Text>
-            <Text style={styles.priceVal}>NPR {(r.price * r.quantity * nights).toLocaleString()}</Text>
+            <Text style={styles.priceVal}>{currency} {(r.price * r.quantity * nights).toLocaleString()}</Text>
           </View>
         ))}
         {promoDiscount > 0 && (
           <View style={styles.priceRow}>
             <Text style={[styles.priceLabel, { color: RED[600] }]}>Discount</Text>
-            <Text style={[styles.priceVal, { color: RED[600] }]}>-NPR {promoDiscount.toLocaleString()}</Text>
+            <Text style={[styles.priceVal, { color: RED[600] }]}>-{currency} {promoDiscount.toLocaleString()}</Text>
           </View>
         )}
         <View style={styles.priceRow}>
@@ -309,7 +313,7 @@ export function StepPayment({
         <View style={styles.priceDivider} />
         <View style={styles.priceRow}>
           <Text style={styles.priceTotalLabel}>Total</Text>
-          <Text style={styles.priceTotalVal}>NPR {total.toLocaleString()}</Text>
+          <Text style={styles.priceTotalVal}>{currency} {total.toLocaleString()}</Text>
         </View>
       </View>
 
@@ -357,10 +361,11 @@ export function StepPayment({
 }
 
 export function BottomBar({
-  step, total, isSubmitting, isProcessing, onBack, onNext, onComplete,
+  step, total, currency, isSubmitting, isProcessing, onBack, onNext, onComplete,
 }: {
   step: Step;
   total: number;
+  currency: string;
   isSubmitting: boolean;
   isProcessing: boolean;
   onBack: () => void;
@@ -371,7 +376,7 @@ export function BottomBar({
     <View style={styles.bottomBar}>
       <View style={styles.bottomPrice}>
         <Text style={styles.bottomTotalLabel}>Total</Text>
-        <Text style={styles.bottomTotalVal}>NPR {total.toLocaleString()}</Text>
+        <Text style={styles.bottomTotalVal}>{currency} {total.toLocaleString()}</Text>
       </View>
       <View style={styles.bottomBtns}>
         {step > 0 && (

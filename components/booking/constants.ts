@@ -27,12 +27,13 @@ export const NAVY = BRAND.navyLight;
 export const BLUE = PAYMENT.bookingBlue;
 export const TEAL = PAYMENT.success;
 
-export type PaymentGateway = 'dummy' | 'stripe' | 'khalti' | 'razorpay';
+export type PaymentGateway = 'dummy' | 'stripe' | 'khalti' | 'razorpay' | 'esewa';
 
 export const PAYMENT_METHODS: { key: PaymentGateway; name: string; desc: string }[] = [
   { key: 'khalti', name: 'Khalti', desc: 'Pay with Khalti wallet' },
   { key: 'stripe', name: 'Card (Stripe)', desc: 'Credit / debit card' },
   { key: 'razorpay', name: 'Razorpay', desc: 'UPI, cards & net banking' },
+  { key: 'esewa', name: 'eSewa', desc: 'Pay via eSewa wallet' },
   { key: 'dummy', name: 'Test (Demo)', desc: 'No real charge — for testing' },
 ];
 

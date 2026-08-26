@@ -4,8 +4,10 @@ import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { safeGoBack } from "@/lib/utils";
+import { useAuth } from '@/lib/context/auth-context';
 
 export default function HostRegisterScreen() {
+  const { register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '',
@@ -33,12 +35,14 @@ export default function HostRegisterScreen() {
     if (!validate()) return;
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const fullName = `${form.firstName} ${form.lastName}`.trim();
+      await register(form.email, form.phone, fullName, form.password, 'host');
       Alert.alert('Success', 'Account created! Please check your email to verify.', [
         { text: 'OK', onPress: () => router.replace('/(auth)/login') },
       ]);
     } catch (error) {
-      Alert.alert('Error', 'Registration failed');
+      const message = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      Alert.alert('Registration Failed', message);
     } finally {
       setIsLoading(false);
     }

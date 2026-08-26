@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ScreenContainer } from '@/components/screen-container';
@@ -11,6 +11,7 @@ import { Testimonials } from '@/components/guest/Testimonials';
 import { TrustBadges } from '@/components/guest/TrustBadges';
 import { GuestFooter } from '@/components/guest/GuestFooter';
 import { useAuth } from '@/lib/context/auth-context';
+import { useNotifications } from '@/lib/context/notification-context';
 import { searchHotelsApi } from '@/lib/api';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import type { Hotel } from '@/types/api';
@@ -28,11 +29,15 @@ function formatDistance(km?: number): string {
   return `${Math.round(km * 10) / 10} km`.replace('.0 km', ' km');
 }
 
+const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop';
+
 export default function HomeScreen() {
   const { t } = useTranslation();
   const { isSignedIn } = useAuth();
+  const { unreadCount } = useNotifications();
   const [showSearch, setShowSearch] = useState(false);
   const [selectedPropertyType, setSelectedPropertyType] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const routeKey = '/(tabs)/home';
   const handleScroll = useScrollRestoration(scrollRef, routeKey);
@@ -46,6 +51,21 @@ export default function HomeScreen() {
   );
 
   useEffect(() => { mark('home first render'); }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    let cancelled = false;
+    const [ktm, pkr] = await Promise.all([
+      searchHotelsApi({ destination: 'Kathmandu' }),
+      searchHotelsApi({ destination: 'Pokhara' }),
+    ]);
+    if (!cancelled) {
+      if (ktm.hotels.length > 0) setKathmanduHotels(ktm.hotels);
+      if (pkr.hotels.length > 0) setPokharaHotels(pkr.hotels);
+      setRefreshing(false);
+    }
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +93,7 @@ export default function HomeScreen() {
         contentInsetAdjustmentBehavior="automatic"
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={SRS.teal} />}
       >
         {/* Header */}
         <View style={s.header}>
@@ -93,7 +114,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity style={s.notifBtn} onPress={() => router.push('/(tabs)/profile/notifications')} activeOpacity={0.7}>
               <IconSymbol name="notifications" size={18} color={BRAND.navyLight} />
-              <View style={s.notifDot} />
+              {unreadCount > 0 && <View style={s.notifDot} />}
             </TouchableOpacity>
           </View>
         </View>
@@ -153,7 +174,7 @@ export default function HomeScreen() {
                       activeOpacity={0.85}
                     >
                       <Image
-                        source={{ uri: hotel.images[0] }}
+                        source={{ uri: hotel.images?.[0] || PLACEHOLDER_IMAGE }}
                         style={s.nearbyImage}
                         resizeMode="cover"
                       />
@@ -205,7 +226,7 @@ export default function HomeScreen() {
                 onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
                 activeOpacity={0.85}
               >
-                <Image source={{ uri: hotel.images[0] }} style={s.cityPropImage} resizeMode="cover" />
+                <Image source={{ uri: hotel.images?.[0] || PLACEHOLDER_IMAGE }} style={s.cityPropImage} resizeMode="cover" />
                 <View style={s.cityPropInfo}>
                   <Text style={s.cityPropName} numberOfLines={1}>{hotel.name}</Text>
                   <Text style={s.cityPropLocation} numberOfLines={1}>{hotel.location}</Text>
@@ -247,7 +268,7 @@ export default function HomeScreen() {
                 onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
                 activeOpacity={0.85}
               >
-                <Image source={{ uri: hotel.images[0] }} style={s.cityPropImage} resizeMode="cover" />
+                <Image source={{ uri: hotel.images?.[0] || PLACEHOLDER_IMAGE }} style={s.cityPropImage} resizeMode="cover" />
                 <View style={s.cityPropInfo}>
                   <Text style={s.cityPropName} numberOfLines={1}>{hotel.name}</Text>
                   <Text style={s.cityPropLocation} numberOfLines={1}>{hotel.location}</Text>

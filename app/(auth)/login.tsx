@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image,
+  ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image, Alert,
 } from 'react-native';
 import { router, usePathname, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -272,11 +272,19 @@ export default function LoginScreen() {
           </View>
 
           <View style={s.socialRow}>
-            <TouchableOpacity style={s.socialBtn}>
+            <TouchableOpacity
+              style={[s.socialBtn, { opacity: 0.6 }]}
+              onPress={() => Alert.alert('Coming Soon', 'Google sign-in will be available in a future update.')}
+              activeOpacity={0.7}
+            >
               <Ionicons name="logo-google" size={18} color={SOCIAL.googleRed} />
               <Text style={s.socialBtnText}>Google</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.socialBtn}>
+            <TouchableOpacity
+              style={[s.socialBtn, { opacity: 0.6 }]}
+              onPress={() => Alert.alert('Coming Soon', 'Apple sign-in will be available in a future update.')}
+              activeOpacity={0.7}
+            >
               <Ionicons name="logo-apple" size={18} color={TEXT.black} />
               <Text style={s.socialBtnText}>Apple</Text>
             </TouchableOpacity>

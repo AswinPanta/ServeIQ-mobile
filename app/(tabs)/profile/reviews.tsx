@@ -1,9 +1,11 @@
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
 import { CORAL as CORALTokens, GRAY, BRAND, NEUTRAL, BG, SLATE } from '@/lib/constants/figma-tokens';
+import { hostApi } from '@/lib/api/host-api';
 
 const CORAL = CORALTokens[500];
 
@@ -56,6 +58,25 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
 
 export default function ReviewsScreen() {
   const { t } = useTranslation();
+  const [reviews, setReviews] = useState<MockReview[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch reviews from all user's properties
+    const fetchReviews = async () => {
+      try {
+        // For now, use mock data since we need property IDs to fetch reviews
+        // In production, this would fetch from the user's booking history
+        setReviews(MOCK_REVIEWS);
+      } catch {
+        setReviews(MOCK_REVIEWS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReviews();
+  }, []);
+
   return (
     <ScrollView
       style={s.container}
@@ -70,7 +91,12 @@ export default function ReviewsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      {MOCK_REVIEWS.length === 0 ? (
+      {loading ? (
+        <View style={{ padding: 40, alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={CORAL} />
+          <Text style={{ marginTop: 12, color: SLATE[400] }}>Loading reviews...</Text>
+        </View>
+      ) : reviews.length === 0 ? (
         <View style={s.emptyState}>
           <IconSymbol name="star" size={64} color={CORAL + '30'} />
           <Text style={s.emptyTitle}>{t('profile.reviews.empty')}</Text>
@@ -78,7 +104,7 @@ export default function ReviewsScreen() {
         </View>
       ) : (
         <View style={{ paddingHorizontal: 16, gap: 12 }}>
-          {MOCK_REVIEWS.map(review => (
+          {reviews.map(review => (
             <View key={review.id} style={s.reviewCard}>
               <View style={s.reviewHeader}>
                 <Text style={s.hotelName}>{review.hotelName}</Text>

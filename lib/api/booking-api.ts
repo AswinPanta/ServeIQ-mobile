@@ -38,7 +38,6 @@ export const bookingApi = {
     apiPost<BookingReservationResponse, BookingCreateRequest>(API_ENDPOINTS.BOOKINGS.CREATE, data, fallback),
 
   getMyBookings: (fallback: () => PaginatedBookingsResponse, page = 1, limit = 20) =>
-    // Backend /bookings/me paginates with skip/limit (not page) — translate.
     apiGet<PaginatedBookingsResponse>(
       `${API_ENDPOINTS.BOOKINGS.MY_BOOKINGS}?skip=${(page - 1) * limit}&limit=${limit}`,
       fallback,
@@ -56,9 +55,6 @@ export const bookingApi = {
   /** Strict confirm — throws on failure so the flow can retry (reference behavior). */
   confirmPaymentStrict: async (ref: string, data: ConfirmPaymentRequest): Promise<ConfirmPaymentResponse> => {
     if (await isDemoMode()) return { status: 'confirmed', ref_number: ref };
-    // Dummy/test gateway: skip the real backend confirmation — the payment
-    // never actually happened, so the backend would reject the empty payload.
-    // Return a confirmed status so the booking flow completes in demo/test mode.
     const isDummy = !data.gateway_payload || Object.keys(data.gateway_payload).length === 0;
     if (isDummy) return { status: 'confirmed', ref_number: ref };
     const response = await api.post(API_ENDPOINTS.BOOKINGS.CONFIRM_PAYMENT(ref), data);
@@ -69,8 +65,6 @@ export const bookingApi = {
   applyDiscount: async (ref: string, code: string, fallback: () => BookingReservationResponse) => {
     if (await isDemoMode()) return fallback();
     try {
-      // Backend schema is ApplyDiscountRequest { code } in the JSON body — a
-      // query param is silently ignored and the endpoint 422s on the empty body.
       const response = await api.post(API_ENDPOINTS.BOOKINGS.APPLY_DISCOUNT(ref), { code });
       const json = await handleResponse<{ success?: boolean; data?: BookingReservationResponse }>(response);
       return (json.success !== false && json.data !== undefined) ? json.data : (json as unknown as BookingReservationResponse);
@@ -79,15 +73,13 @@ export const bookingApi = {
     }
   },
 
-  cancelBooking: async (ref: string): Promise<boolean> => {
-    if (await isDemoMode()) return true;
-    try {
-      const response = await api.delete(API_ENDPOINTS.BOOKINGS.DELETE(ref));
-      return response.ok;
-    } catch {
-      return false;
-    }
-  },
+  /** Pay remaining balance on a booking. */
+  payRemaining: (ref: string, data: { payment_method: string; gateway_payload?: Record<string, unknown> }, fallback: () => ConfirmPaymentResponse) =>
+    apiPost<ConfirmPaymentResponse, typeof data>(API_ENDPOINTS.BOOKINGS.PAY_REMAINING(ref), data, fallback),
+
+  /** Record a staff-assigned payment (e.g. pay at front desk). */
+  recordStaffPayment: (ref: string, data: { payment_method: string; amount: number; notes?: string }, fallback: () => ConfirmPaymentResponse) =>
+    apiPost<ConfirmPaymentResponse, typeof data>(API_ENDPOINTS.BOOKINGS.RECORD_STAFF_PAYMENT(ref), data, fallback),
 
   updateSpecialRequests: async (ref: string, specialRequests: string): Promise<boolean> => {
     if (await isDemoMode()) return true;
@@ -97,5 +89,11 @@ export const bookingApi = {
     } catch {
       return false;
     }
+  },
+
+  /** Backend has no DELETE for bookings — gracefully return false. */
+  cancelBooking: async (_ref: string): Promise<boolean> => {
+    console.warn('[booking-api] cancelBooking: backend has no DELETE endpoint for bookings');
+    return false;
   },
 };

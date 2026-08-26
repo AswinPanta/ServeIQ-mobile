@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ScarcityBadge } from '@/components/feature/scarcity-badge';
 import { FONTS } from '@/constants/portal-theme';
 import type { Hotel } from '@/types/api';
 import { SRS, SLATE, BG, BRAND } from '@/lib/constants/figma-tokens';
@@ -70,7 +69,6 @@ export function RoomSelectionPanel({
                   {hotelCurrency} {room.price.toLocaleString()}
                   <Text style={s.perNight}>/night</Text>
                 </Text>
-                <ScarcityBadge count={getAvailability(room.name)} maxThreshold={3} position="relative" />
               </View>
               <View style={[
                 s.radio,

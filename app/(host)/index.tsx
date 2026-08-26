@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/context/auth-context';
 import { useHost } from '@/lib/context/host-context';
 import { useBookings } from '@/lib/context/booking-context';
+import { useNotifications } from '@/lib/context/notification-context';
 import { isApiPropertyId } from '@/lib/context/host-utils';
 import { PropertySyncBanner } from '@/components/host/PropertySyncBanner';
 import { AnimatedPressable } from '@/components/ui/motion';
@@ -33,6 +34,7 @@ export default function HostDrawerShell() {
   const { user, logout } = useAuth();
   const { properties, isDataLoading, fetchHostData, togglePropertyActivation, removeProperty, getFilteredBookings } = useHost();
   const { bookings: guestBookings } = useBookings();
+  const { unreadCount } = useNotifications();
   const [open, setOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
@@ -41,6 +43,12 @@ export default function HostDrawerShell() {
   // Fetch rooms for ALL properties on mount for accurate KPIs
   const [allRooms, setAllRooms] = useState<PropertyRoomsData[]>([]);
   const [roomsLoaded, setRoomsLoaded] = useState(false);
+
+  // Filtered properties based on dropdown selection
+  const filteredProperties = useMemo(() => {
+    if (!selectedPropertyId) return properties;
+    return properties.filter(p => p.id === selectedPropertyId);
+  }, [properties, selectedPropertyId]);
 
   useEffect(() => {
     if (properties.length === 0) return;
@@ -123,21 +131,32 @@ export default function HostDrawerShell() {
 
   // ── Portfolio KPIs (matching web dashboard) ──
   const kpis = useMemo(() => {
-    const totalRooms = flatRooms.length;
-    const occupiedRooms = flatRooms.filter(r => r.status === 'OCCUPIED' || r.status === 'DIRTY').length;
-    const availableRooms = flatRooms.filter(r => r.status === 'AVAILABLE').length;
-    const maintenanceRooms = flatRooms.filter(r => r.status === 'MAINTENANCE' || r.status === 'BLOCKED').length;
-    const outOfOrderRooms = flatRooms.filter(r => r.status === 'BLOCKED').length;
+    const activeProps = filteredProperties;
+    const activePropIds = new Set(activeProps.map(p => p.id));
+    const relevantRooms = flatRooms.filter(r => {
+      // If filtering, only count rooms from selected property
+      if (selectedPropertyId) {
+        return allRooms.some(ar => ar.propertyId === selectedPropertyId && ar.rooms.includes(r));
+      }
+      return true;
+    });
+
+    const totalRooms = relevantRooms.length;
+    const occupiedRooms = relevantRooms.filter(r => r.status === 'OCCUPIED' || r.status === 'DIRTY').length;
+    const availableRooms = relevantRooms.filter(r => r.status === 'AVAILABLE').length;
+    const maintenanceRooms = relevantRooms.filter(r => r.status === 'MAINTENANCE' || r.status === 'BLOCKED').length;
+    const outOfOrderRooms = relevantRooms.filter(r => r.status === 'BLOCKED').length;
     const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
-    const totalRevenue = allBookings.reduce((sum, b) => sum + (b.total || 0), 0);
-    const totalBookings = allBookings.length;
+    const relevantBookings = allBookings.filter(b => activePropIds.has(b.property_id));
+    const totalRevenue = relevantBookings.reduce((sum, b) => sum + (b.total || 0), 0);
+    const totalBookings = relevantBookings.length;
     const adr = occupiedRooms > 0 ? Math.round(totalRevenue / occupiedRooms) : 0;
     const revpar = totalRooms > 0 ? Math.round(totalRevenue / totalRooms) : 0;
 
     return {
-      totalProperties: properties.length,
-      activeProperties: properties.filter(p => p.is_active).length,
+      totalProperties: activeProps.length,
+      activeProperties: activeProps.filter(p => p.is_active).length,
       totalRooms,
       occupiedRooms,
       availableRooms,
@@ -148,9 +167,9 @@ export default function HostDrawerShell() {
       totalBookings,
       adr,
       revpar,
-      totalFloors: properties.reduce((sum, p) => sum + (p.number_of_floors || 0), 0),
+      totalFloors: activeProps.reduce((sum, p) => sum + (p.number_of_floors || 0), 0),
     };
-  }, [flatRooms, allBookings, properties]);
+  }, [flatRooms, allBookings, filteredProperties, selectedPropertyId, allRooms]);
 
   // ── Recent bookings (last 5) ──
   const recentBookings = useMemo(() =>
@@ -359,6 +378,16 @@ export default function HostDrawerShell() {
         </AnimatedPressable>
 
         <AnimatedPressable portal="host" haptic="light" scaleTo={0.96}
+          onPress={() => { setOpen(false); router.push('/(host)/admin-profile'); }}
+          style={s.navItem}
+        >
+          <View style={s.navIcon}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={CLOUD.cloud} />
+          </View>
+          <Text style={s.navLabel}>Admin Profile</Text>
+        </AnimatedPressable>
+
+        <AnimatedPressable portal="host" haptic="light" scaleTo={0.96}
           onPress={() => { setOpen(false); router.push('/(host)/change-password'); }}
           style={s.navItem}
         >
@@ -438,7 +467,6 @@ export default function HostDrawerShell() {
                     onPress={() => {
                       setSelectedPropertyId(p.id);
                       setShowPropertyDropdown(false);
-                      router.push(`/(host)/property/${p.id}`);
                     }}
                   >
                     <Text style={[s.dropdownText, selectedPropertyId === p.id && s.dropdownTextActive]} numberOfLines={1}>{p.name}</Text>
@@ -455,9 +483,11 @@ export default function HostDrawerShell() {
             activeOpacity={0.7}
           >
             <Ionicons name="notifications-outline" size={20} color={NAVY} />
-            <View style={s.notifBadge}>
-              <Text style={s.notifBadgeText}>3</Text>
-            </View>
+            {unreadCount > 0 && (
+              <View style={s.notifBadge}>
+                <Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(host)/listing-wizard')} style={s.newBtn}>
             <Ionicons name="add" size={14} color={BGTokens.white} />
@@ -680,11 +710,11 @@ export default function HostDrawerShell() {
           {/* ── Quick Actions ── */}
           <View style={s.quickActions}>
             {[
-              { icon: 'add-circle' as const, label: 'New Booking', route: '/(host)/listing-wizard' },
-              { icon: 'walk' as const, label: 'Walk-in', route: '/(host)/listing-wizard' },
-              { icon: 'bed' as const, label: 'Add Room', route: '/(host)/listing-wizard' },
-              { icon: 'people' as const, label: 'Guest List', route: '/(host)/listing-wizard' },
-              { icon: 'bar-chart' as const, label: 'Reports', route: '/(host)/listing-wizard' },
+              { icon: 'add-circle' as const, label: 'New Booking', route: firstPropertyId ? `/(host)/property/${firstPropertyId}/bookings` : '/(host)/listing-wizard' },
+              { icon: 'walk' as const, label: 'Walk-in', route: firstPropertyId ? `/(host)/property/${firstPropertyId}/bookings` : '/(host)/listing-wizard' },
+              { icon: 'bed' as const, label: 'Add Room', route: firstPropertyId ? `/(host)/property/${firstPropertyId}/rooms` : '/(host)/listing-wizard' },
+              { icon: 'people' as const, label: 'Guest List', route: firstPropertyId ? `/(host)/property/${firstPropertyId}/guests` : '/(host)/listing-wizard' },
+              { icon: 'bar-chart' as const, label: 'Reports', route: firstPropertyId ? `/(host)/property/${firstPropertyId}/reports` : '/(host)/listing-wizard' },
             ].map((action, i) => (
               <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => router.push(action.route as any)} activeOpacity={0.8}>
                 <Ionicons name={action.icon} size={20} color={ACCENT} />

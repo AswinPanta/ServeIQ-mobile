@@ -26,11 +26,13 @@ export default function HousekeepingScreen() {
   const operator = user as { property_id?: string } | null;
   const tasks = useHousekeepingStore((s) => s.tasks);
   const setPropertyId = useHousekeepingStore((s) => s.setPropertyId);
+  const fetchTasks = useHousekeepingStore((s) => s.fetchTasks);
   const refreshSyncCount = useHousekeepingStore((s) => s.refreshSyncCount);
 
   useEffect(() => {
     if (operator?.property_id) {
       setPropertyId(operator.property_id);
+      fetchTasks(operator.property_id);
     }
     refreshSyncCount();
   }, [operator?.property_id, setPropertyId]);

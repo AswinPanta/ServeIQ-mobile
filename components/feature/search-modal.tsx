@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Pressable,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -32,9 +31,6 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
 
   const totalGuests = adults + children;
 
-  // Backend wants "YYYY-MM-DD". Date#toISOString() is UTC, so slicing it
-  // shifts the date BACKWARD in positive-offset timezones (Nepal +5:45) and
-  // the backend rejects it as "in the past" — format from local components.
   const toLocalDate = (d: Date | null): string => {
     if (!d) return '';
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -253,7 +249,6 @@ const s = StyleSheet.create({
     color: '#111827',
   },
   sheetScroll: {
-    flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 16,
   },

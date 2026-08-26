@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { BottomTabBar } from '@/components/operations/BottomTabBar';
 import { useAuth } from '@/lib/context/auth-context';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import type { OperatorProfile } from '@/types/api';
 import { SRS, BG, SLATE, BLUE, EMERALD, AMBER, RED, ORANGE, PURPLE, PINK } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY, SHADOWS } from '@/constants/portal-theme';
@@ -23,12 +24,6 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; dot: string }> = 
   maintenance: { bg: AMBER[50], text: SRS.orange, dot: SRS.orange },
 };
 
-const ASSIGNED_TASKS = [
-  { id: '1', label: 'Welcome VIP Guest — Mr. John Doe', time: '10:00 AM', status: 'completed', color: SRS.green },
-  { id: '2', label: 'Room 402 Inspection', time: '', status: 'in_progress', color: SRS.teal },
-  { id: '3', label: 'Follow Up — Pending Payment (2)', time: '', status: 'pending', color: SRS.orange },
-];
-
 export default function OperationsDashboard() {
   const { user } = useAuth();
   const operator = user as OperatorProfile | null;
@@ -36,9 +31,12 @@ export default function OperationsDashboard() {
     rooms, arrivingGuests, departingToday, checkedInGuests,
     summaryStats, occupancySnapshot,
   } = useFrontDesk();
+  const notifications = useNotificationStore((s) => s.notifications);
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockStartTime, setClockStartTime] = useState<Date | null>(null);
+  const [elapsedTick, setElapsedTick] = useState(0);
 
   const handleClockToggle = () => {
     if (isClockedIn) {
@@ -50,13 +48,22 @@ export default function OperationsDashboard() {
     }
   };
 
+  // Update elapsed time every 30 seconds while clocked in
+  useEffect(() => {
+    if (!isClockedIn) return;
+    const interval = setInterval(() => {
+      setElapsedTick(t => t + 1);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isClockedIn]);
+
   const elapsed = useMemo(() => {
     if (!clockStartTime) return '0h 00m';
     const diff = Date.now() - clockStartTime.getTime();
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     return `${h}h ${String(m).padStart(2, '0')}m`;
-  }, [clockStartTime]);
+  }, [clockStartTime, elapsedTick]);
 
   // Room status counts
   const statusCounts = useMemo(() => {
@@ -80,6 +87,59 @@ export default function OperationsDashboard() {
   const pendingPayments = useMemo(() => {
     return arrivingGuests.reduce((sum, b) => sum + (b.balance || 0), 0);
   }, [arrivingGuests]);
+
+  // Dynamic tasks derived from room and booking data
+  const assignedTasks = useMemo(() => {
+    const tasks: { id: string; label: string; time: string; status: string; color: string }[] = [];
+    let taskId = 1;
+
+    // VIP arrivals as tasks
+    arrivingGuests.filter(b => b.vip).slice(0, 2).forEach(b => {
+      tasks.push({
+        id: String(taskId++),
+        label: `Welcome VIP Guest — ${b.guest_name}`,
+        time: '',
+        status: 'pending',
+        color: SRS.teal,
+      });
+    });
+
+    // Dirty rooms need cleaning
+    rooms.filter(r => r.status === 'dirty').slice(0, 3).forEach(r => {
+      tasks.push({
+        id: String(taskId++),
+        label: `Clean Room ${r.room_number}`,
+        time: '',
+        status: 'in_progress',
+        color: SRS.orange,
+      });
+    });
+
+    // Pending balance follow-ups
+    const pendingCount = arrivingGuests.filter(b => (b.balance || 0) > 0).length;
+    if (pendingCount > 0) {
+      tasks.push({
+        id: String(taskId++),
+        label: `Follow Up — Pending Payment (${pendingCount})`,
+        time: '',
+        status: 'pending',
+        color: SRS.orange,
+      });
+    }
+
+    // Maintenance rooms
+    rooms.filter(r => r.status === 'maintenance').slice(0, 1).forEach(r => {
+      tasks.push({
+        id: String(taskId++),
+        label: `Room ${r.room_number} Inspection`,
+        time: '',
+        status: 'in_progress',
+        color: SRS.teal,
+      });
+    });
+
+    return tasks;
+  }, [arrivingGuests, rooms]);
 
   // Room statuses for the floor display
   const floorStatuses = useMemo(() => {
@@ -105,9 +165,11 @@ export default function OperationsDashboard() {
               <Text style={s.headerTitle}>ServeIQ</Text>
               <Text style={s.headerSub}>Front Desk</Text>
             </View>
-            <TouchableOpacity style={s.headerIconBtn}>
+            <TouchableOpacity style={s.headerIconBtn} onPress={() => router.push('/(operations)/notifications')}>
               <Ionicons name="notifications-outline" size={22} color={DARK} />
-              <View style={s.notifBadge}><Text style={s.notifBadgeText}>3</Text></View>
+              {unreadCount > 0 && (
+                <View style={s.notifBadge}><Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>
+              )}
             </TouchableOpacity>
             <View style={s.avatarContainer}>
               <Ionicons name="person" size={18} color={SLATE[400]} />
@@ -154,7 +216,7 @@ export default function OperationsDashboard() {
         <View style={s.section}>
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>Today at a Glance</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(operations)/front-desk')}>
               <Text style={s.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -194,7 +256,7 @@ export default function OperationsDashboard() {
         <View style={s.section}>
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>Today&apos;s Arrivals</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(operations)/front-desk')}>
               <Text style={s.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -212,7 +274,7 @@ export default function OperationsDashboard() {
                 <View style={{ flex: 1 }}>
                   <Text style={s.bookingName}>{b.guest_name}</Text>
                   <Text style={s.bookingMeta}>Room {b.room_number || '—'} · {b.room_type}</Text>
-                  <Text style={s.bookingMeta}>2 Guests</Text>
+                  <Text style={s.bookingMeta}>{b.adults || 1}{(b.adults || 1) === 1 ? ' Guest' : ' Guests'}{b.children ? ` + ${b.children} children` : ''}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => router.push({ pathname: '/(operations)/front-desk/check-in', params: { bookingRef: b.ref } })}
@@ -229,7 +291,7 @@ export default function OperationsDashboard() {
         <View style={s.section}>
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>Today&apos;s Departures</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(operations)/front-desk')}>
               <Text style={s.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -260,10 +322,10 @@ export default function OperationsDashboard() {
           )}
         </View>
 
-        {/* Room Status (Floor 3) */}
+        {/* Room Status */}
         <View style={s.section}>
           <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Room Status (Floor 3)</Text>
+            <Text style={s.sectionTitle}>Room Status</Text>
             <TouchableOpacity onPress={() => router.push('/(operations)/room-plan')}>
               <Text style={s.viewAll}>View All</Text>
             </TouchableOpacity>
@@ -303,25 +365,32 @@ export default function OperationsDashboard() {
         <View style={s.section}>
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>Assigned Tasks</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/(operations)/housekeeping')}>
               <Text style={s.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
           <View style={s.tasksCard}>
-            {ASSIGNED_TASKS.map((task, i) => (
-              <View key={task.id} style={[s.taskRow, i < ASSIGNED_TASKS.length - 1 && s.taskRowBorder]}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={task.color} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.taskLabel}>{task.label}</Text>
-                  {task.time ? <Text style={s.taskTime}>{task.time}</Text> : null}
-                </View>
-                <View style={[s.taskBadge, { backgroundColor: task.color + '15' }]}>
-                  <Text style={[s.taskBadgeText, { color: task.color }]}>
-                    {task.status === 'completed' ? 'Done' : task.status === 'in_progress' ? 'In Progress' : 'Pending'}
-                  </Text>
-                </View>
+            {assignedTasks.length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Ionicons name="checkmark-circle-outline" size={28} color={SRS.green} />
+                <Text style={{ fontSize: 13, color: SLATE[400], marginTop: 6 }}>All caught up!</Text>
               </View>
-            ))}
+            ) : (
+              assignedTasks.map((task, i) => (
+                <View key={task.id} style={[s.taskRow, i < assignedTasks.length - 1 && s.taskRowBorder]}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color={task.color} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.taskLabel}>{task.label}</Text>
+                    {task.time ? <Text style={s.taskTime}>{task.time}</Text> : null}
+                  </View>
+                  <View style={[s.taskBadge, { backgroundColor: task.color + '15' }]}>
+                    <Text style={[s.taskBadgeText, { color: task.color }]}>
+                      {task.status === 'completed' ? 'Done' : task.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         </View>
       </ScrollView>
