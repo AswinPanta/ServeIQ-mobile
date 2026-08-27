@@ -99,6 +99,12 @@ export function StepRooms({
           const isSelected = selectedRooms.some(r => r.id === room.id);
           const selectedRoom = selectedRooms.find(r => r.id === room.id);
           const qty = selectedRoom?.quantity || 0;
+          // Total quantity selected across all rooms of the same type
+          const typeSelectedTotal = selectedRooms
+            .filter(r => r.roomType === room.roomType)
+            .reduce((sum, r) => sum + r.quantity, 0);
+          const maxQty = room.maxQuantity ?? 1;
+          const atMax = typeSelectedTotal >= maxQty;
 
           return (
             <TouchableOpacity
@@ -113,6 +119,9 @@ export function StepRooms({
                   <View style={{ flex: 1 }}>
                     <Text style={styles.roomName}>{room.name}</Text>
                     <Text style={styles.roomMeta}>{room.bedType} bed · Up to {room.maxAdults} guests</Text>
+                    <Text style={[styles.roomMeta, { fontSize: 11, marginTop: 2, color: atMax ? '#E63946' : '#6B7280' }]}>
+                      {maxQty} available
+                    </Text>
                   </View>
                   <View style={styles.roomPriceBox}>
                     <Text style={styles.roomPrice}>{currency} {room.price.toLocaleString()}</Text>
@@ -133,7 +142,11 @@ export function StepRooms({
                         <Ionicons name="remove" size={18} color={BLUE} />
                       </TouchableOpacity>
                       <Text style={styles.qtyVal}>{qty}</Text>
-                      <TouchableOpacity onPress={() => onUpdateQuantity(room.id, 1)} style={styles.qtyBtn}>
+                      <TouchableOpacity
+                        onPress={() => onUpdateQuantity(room.id, 1)}
+                        style={[styles.qtyBtn, atMax && { opacity: 0.35 }]}
+                        disabled={atMax}
+                      >
                         <Ionicons name="add" size={18} color={BLUE} />
                       </TouchableOpacity>
                     </View>

@@ -25,6 +25,7 @@ export interface Booking {
   roomTypeName: string
   guests: number
   totalPrice: number
+  subtotal?: number
   discountApplied?: {
     code: string
     type: 'percentage' | 'fixed'
@@ -32,6 +33,11 @@ export interface Booking {
   }
   status: 'upcoming' | 'completed' | 'cancelled'
   createdAt: string
+  paymentMethod?: string
+  transactionId?: string
+  propertyPhone?: string
+  propertyEmail?: string
+  nights?: number
   folio?: FolioCharge[]
   refundAmount?: number
 }
@@ -90,9 +96,13 @@ function mapBackendBooking(item: BookingListItem): Booking {
     roomTypeName: (item.room_names || []).join(', ') || 'Room',
     guests: (item.number_of_adults ?? 1) + (item.number_of_children ?? 0),
     totalPrice: item.total_amount,
+    subtotal: parseFloat(item.subtotal || '0') || item.total_amount,
     discountApplied,
     status: mapBookingStatus(item.status),
     createdAt: item.created_at,
+    paymentMethod: item.payment_gateway || undefined,
+    transactionId: item.payment_gateway ? `pay_${item.ref_number || item.id}` : undefined,
+    nights: Math.max(1, Math.round((new Date(item.checkout_date).getTime() - new Date(item.checkin_date).getTime()) / 86400000)),
   }
 }
 
@@ -117,9 +127,15 @@ export function mapReservationToBooking(res: BookingReservationResponse): Bookin
     roomTypeName: (res.rooms || []).map(r => r.room_name).join(', ') || 'Room',
     guests: (res.number_of_adults ?? 1) + (res.number_of_children ?? 0),
     totalPrice: res.total_amount,
+    subtotal: res.subtotal || res.total_amount,
     discountApplied,
     status: mapBookingStatus(res.status),
     createdAt: res.created_at || '',
+    paymentMethod: res.payment_gateway || undefined,
+    transactionId: res.payment_gateway ? `pay_${res.ref_number || res.booking_id}` : undefined,
+    propertyPhone: res.property?.phone_number || undefined,
+    propertyEmail: res.property?.email || undefined,
+    nights: res.nights || Math.max(1, Math.round((new Date(res.check_out).getTime() - new Date(res.check_in).getTime()) / 86400000)),
   }
 }
 

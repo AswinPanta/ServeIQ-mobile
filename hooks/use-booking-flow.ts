@@ -34,6 +34,15 @@ export function useBookingFlow() {
   const children = Math.max(0, parseInt((params.children as string) || '0', 10) || 0);
   const guests = adults + children;
   const preselectedRoomId = params.roomId as string | undefined;
+  // Multiple rooms pre-selected from room-select page (JSON array of {id, qty})
+  const preselectedRoomIds = useMemo(() => {
+    try {
+      const raw = params.roomIds as string | undefined;
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as { id: string; qty: number }[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }, [params.roomIds]);
   const nights = useMemo(() => calculateNights(checkIn, checkOut), [checkIn, checkOut]);
 
   const { user } = useAuth();
@@ -144,38 +153,54 @@ export function useBookingFlow() {
       const rooms = await getAvailableRoomsApi(pid, checkIn, checkOut);
       if (isCancelled()) return;
 
-      const mapped: SelectedRoom[] = rooms.map((r: AvailableRoom) => ({
-        id: r.id,
-        name: r.room_name,
-        roomType: r.room_type || 'Standard',
-        bedType: r.bed_type || 'Queen',
-        price: parseFloat(r.base_rate) || 0,
-        maxAdults: r.max_adults,
-        maxChildren: r.max_children,
-        image: r.photos?.cover || '',
-        cancellation: r.cancellation_title || 'Free cancellation',
-        cancellationDesc: r.cancellation_description || 'Cancel up to 24 hours before check-in',
-        quantity: 0,
-      }));
+      // Count how many rooms of each type are available from the backend.
+      const typeCountMap = new Map<string, number>();
+      for (const r of rooms) {
+        const t = r.room_type || 'Standard';
+        typeCountMap.set(t, (typeCountMap.get(t) || 0) + 1);
+      }
+
+      const mapped: SelectedRoom[] = rooms.map((r: AvailableRoom) => {
+        const roomType = r.room_type || 'Standard';
+        return {
+          id: r.id,
+          name: r.room_name,
+          roomType,
+          bedType: r.bed_type || 'Queen',
+          price: parseFloat(r.base_rate) || 0,
+          maxAdults: r.max_adults,
+          maxChildren: r.max_children,
+          image: r.photos?.cover || '',
+          cancellation: r.cancellation_title || 'Free cancellation',
+          cancellationDesc: r.cancellation_description || 'Cancel up to 24 hours before check-in',
+          quantity: 0,
+          maxQuantity: typeCountMap.get(roomType) || 1,
+        };
+      });
 
       if (!isCancelled()) setAvailableRooms(mapped);
 
-      // Auto-select preselected room — only skip the room step when the
-      // pre-picked room actually fits the guest split (otherwise the backend
-      // rejects the booking and the fallback mock breaks the payment intent).
-      if (preselectedRoomId && !isCancelled()) {
+      // Auto-select preselected rooms from room-select page (multiple rooms)
+      if (preselectedRoomIds.length > 0 && !isCancelled()) {
+        const preselected = preselectedRoomIds
+          .map(p => mapped.find(r => r.id === p.id))
+          .filter((r): r is SelectedRoom => !!r)
+          .map(r => ({ ...r, quantity: preselectedRoomIds.find(p => p.id === r.id)?.qty || 1 }));
+        if (preselected.length > 0) {
+          setSelectedRooms(preselected);
+          setPreselectMatched(true);
+          setStep(prev => (prev === 0 ? 1 : prev));
+        } else {
+          setPreselectMatched(false);
+        }
+      // Single room preselected from hotel detail page
+      } else if (preselectedRoomId && !isCancelled()) {
         const pre = mapped.find(r => r.id === preselectedRoomId);
         if (pre && (pre.maxAdults ?? 0) >= adults && (pre.maxChildren ?? 0) >= children) {
           setSelectedRooms([{ ...pre, quantity: 1 }]);
           setPreselectMatched(true);
-          // The room was already picked on the hotel detail page — skip the
-          // "Select your rooms" step (matches the reference flow where the
-          // detail page selects the room and booking starts at details).
           setStep(prev => (prev === 0 ? 1 : prev));
         } else {
-          // Room no longer available for these dates, or too small for the
-          // guest count — stay on the room step so the guest can pick a
-          // room that fits.
           setPreselectMatched(false);
         }
       }
@@ -190,13 +215,19 @@ export function useBookingFlow() {
     let cancelled = false;
     fetchRooms(() => cancelled);
     return () => { cancelled = true; };
-  }, [propertyId, hotelName, checkIn, checkOut, preselectedRoomId]);
+  }, [propertyId, hotelName, checkIn, checkOut, preselectedRoomId, preselectedRoomIds]);
 
   // ── Room selection handlers ──
   const toggleRoom = (room: SelectedRoom) => {
     setSelectedRooms(prev => {
       const existing = prev.find(r => r.id === room.id);
       if (existing) return prev.filter(r => r.id !== room.id);
+      // Check if adding this room would exceed the type's available count
+      const typeTotal = prev
+        .filter(r => r.roomType === room.roomType)
+        .reduce((sum, r) => sum + r.quantity, 0);
+      const max = room.maxQuantity ?? Infinity;
+      if (typeTotal >= max) return prev;
       return [...prev, { ...room, quantity: 1 }];
     });
   };
@@ -207,6 +238,12 @@ export function useBookingFlow() {
       if (!existing) return prev;
       const newQty = existing.quantity + delta;
       if (newQty <= 0) return prev.filter(r => r.id !== roomId);
+      // Cap at maxQuantity for this room type (total across all rooms of same type).
+      const typeTotal = prev
+        .filter(r => r.roomType === existing.roomType && r.id !== roomId)
+        .reduce((sum, r) => sum + r.quantity, 0) + newQty;
+      const max = existing.maxQuantity ?? Infinity;
+      if (typeTotal > max) return prev;
       return prev.map(r => r.id === roomId ? { ...r, quantity: newQty } : r);
     });
   };

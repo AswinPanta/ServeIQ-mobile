@@ -91,6 +91,8 @@ export interface SelectedRoom {
   cancellation: string;
   cancellationDesc: string;
   quantity: number;
+  /** Max units of this room type available from the backend (across all rooms of the same type). */
+  maxQuantity?: number;
 }
 
 export interface GuestInfo {
