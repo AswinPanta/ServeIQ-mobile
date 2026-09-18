@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -14,9 +14,9 @@ import { useHousekeepingStore } from '@/stores/useHousekeepingStore';
 import { Stepper } from '@/components/ui/Stepper';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { safeGoBack } from "@/lib/utils";
+import { bookingApi } from '@/lib/api/booking-api';
+import { staffApi } from '@/lib/api/host-api';
 import { BLUE, PURPLE, STATUS_COLORS, PINK, BG, FLAT } from '@/lib/constants/figma-tokens';
-;
-;
 
 const STEPS = [
   { label: 'Search', description: 'Find guest' },
@@ -27,6 +27,14 @@ const STEPS = [
 
 const CATEGORY_ICONS: Record<string, string> = { room: 'room', restaurant: 'food', minibar: 'drink', laundry: 'laundry', service: 'room.maintenance', other: 'folder' };
 const CATEGORY_LABELS: Record<string, string> = { room: 'Room', restaurant: 'Restaurant', minibar: 'Minibar', laundry: 'Laundry', service: 'Service', other: 'Other' };
+const FOLIO_CATEGORY_SERVER: Record<string, string> = { room: 'ROOM_CHARGE', restaurant: 'DINING', minibar: 'MINIBAR', laundry: 'LAUNDRY', service: 'SERVICE', other: 'OTHER' };
+
+const DEFAULT_PAYMENT_METHODS: { id: string; label: string; icon: string; color: string }[] = [
+  { id: 'card', label: 'Card', icon: 'payment', color: SRS.teal },
+  { id: 'cash', label: 'Cash', icon: 'wallet', color: SRS.green },
+  { id: 'upi', label: 'UPI', icon: 'qr.code', color: STATUS_COLORS.inspected },
+  { id: 'wallet', label: 'Wallet', icon: 'wallet', color: SRS.orange },
+];
 
 export default function CheckOutScreen() {
   const { rooms, bookings, updateRoomStatus, checkOut: frontDeskCheckOut } = useFrontDesk();
@@ -38,12 +46,59 @@ export default function CheckOutScreen() {
   const [search, setSearch] = useState('');
   const [selectedBooking, setSelectedBooking] = useState<typeof checkedInGuests[0] | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState(DEFAULT_PAYMENT_METHODS);
+  const [serverFolio, setServerFolio] = useState<any>(null);
+
+  // Augment the local method list with the backend's canonical /staff/enums/payment-methods.
+  // Offline (empty result) → keep the hardcoded defaults.
+  useEffect(() => {
+    staffApi.getEnums('payment-methods')
+      .then(enums => {
+        if (!enums.length) return;
+        setPaymentMethods(prev => {
+          const merged = [...prev];
+          enums.forEach(e => {
+            const id = e.value.toLowerCase();
+            if (!merged.some(m => m.id === id)) {
+              merged.push({ id, label: e.label || e.value, icon: 'payment', color: GRAY[600] });
+            }
+          });
+          return merged;
+        });
+      })
+      .catch(() => {});
+  }, []);
+
+  // When a booking is selected, try to load its server-side folio for richer data
+  useEffect(() => {
+    if (!selectedBooking) { setServerFolio(null); return; }
+    const propId = operator?.property_id;
+    if (!propId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(propId)) return;
+    staffApi.getBookingGuestFolio(propId, selectedBooking.ref, () => null)
+      .then((folio: any) => { if (folio) setServerFolio(folio); })
+      .catch(() => {});
+  }, [selectedBooking?.ref, operator?.property_id]);
 
   const filtered = search ? checkedInGuests.filter((g) => { const q = search.toLowerCase(); return g.guest_name.toLowerCase().includes(q) || g.email.toLowerCase().includes(q) || g.ref.toLowerCase().includes(q) || (g.phone && g.phone.toLowerCase().includes(q)) || g.checkin.toLowerCase().includes(q) || (g.room_number && g.room_number.toLowerCase().includes(q)); }) : [];
   const folio = selectedBooking ? useFolioStore.getState().getFolio(selectedBooking.ref) : undefined;
+  // Use server folio charges as fallback when local folio is empty
+  const effectiveFolio = folio || (serverFolio ? {
+    ref: selectedBooking?.ref || '',
+    guest_name: selectedBooking?.guest_name || '',
+    room_number: selectedBooking?.room_number || '',
+    charges: (serverFolio.charges || []).map((c: any) => ({
+      id: c.id, description: c.description, amount: parseFloat(c.amount) || 0,
+      category: c.category?.toLowerCase() || 'other', posted_at: c.posted_at, posted_by: c.posted_by_name || c.posted_by || '',
+    })),
+    subtotal: parseFloat(serverFolio.subtotal) || 0,
+    tax: parseFloat(serverFolio.tax) || 0,
+    discount: parseFloat(serverFolio.discount) || 0,
+    total: parseFloat(serverFolio.total) || 0,
+    settled: serverFolio.status === 'SETTLED',
+  } : undefined);
 
   const categoryGroups: Record<string, { description: string; amount: number }[]> = {};
-  if (folio) folio.charges.forEach((c) => { if (!categoryGroups[c.category]) categoryGroups[c.category] = []; categoryGroups[c.category].push({ description: c.description, amount: c.amount }); });
+  if (effectiveFolio) effectiveFolio.charges.forEach((c: any) => { if (!categoryGroups[c.category]) categoryGroups[c.category] = []; categoryGroups[c.category].push({ description: c.description, amount: c.amount }); });
 
   const handleSelectGuest = (g: typeof checkedInGuests[0]) => { setSelectedBooking(g); setSearch(g.guest_name); setStep(1); };
 
@@ -52,13 +107,42 @@ export default function CheckOutScreen() {
     const room = rooms.find((r) => r.room_number === selectedBooking.room_number);
     // Use the front desk context's checkOut method to properly transition booking to checked_out
     // (also marks room as dirty, updates booking status to checked_out, and calls the API)
-    frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number || '');
+    frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number || '', effectiveFolio?.total || 0);
+    // Record the staff-collected payment server-side (POST /bookings/{ref}/record-staff-payment);
+    // the apiPost wrapper falls back gracefully when the backend is unreachable.
+    bookingApi.recordStaffPayment(
+      selectedBooking.ref,
+      { payment_method: paymentMethod.toUpperCase(), amount: effectiveFolio?.total || 0, notes: `Check-out · Room ${selectedBooking.room_number}` },
+      () => ({ status: 'PAYMENT_RECORDED', ref_number: selectedBooking.ref }),
+    );
+    // Open a backend folio for the booking (best-effort; the local folio store
+    // remains the screen's source of truth). POST /staff/properties/{pid}/bookings/{ref}/folio
+    const propId = operator?.property_id;
+    if (propId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(propId) && effectiveFolio) {
+      // Sync the local charges to the server ledger, then settle it. All
+      // best-effort: createFolio + addFolioCharge + settleFolio fall back
+      // silently when offline, leaving the local store authoritative.
+      staffApi.createFolio(propId, selectedBooking.ref, () => null)
+        .then((created: any) => {
+          const folioId = created?.id;
+          if (!folioId) return;
+          effectiveFolio.charges.forEach((c: any) =>
+            staffApi.addFolioCharge(folioId, {
+              description: c.description,
+              amount: c.amount,
+              category: FOLIO_CATEGORY_SERVER[c.category] || c.category.toUpperCase(),
+            }, () => null),
+          );
+          staffApi.settleFolio(folioId, () => null);
+        })
+        .catch(() => {});
+    }
     useFolioStore.getState().settleFolio(selectedBooking.ref);
     useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: BLUE[500], property_id: operator?.property_id || 'prop-1' });
     useShiftStore.getState().incrementCheckOuts();
-    useShiftStore.getState().addRevenue(folio?.total || 0);
+    useShiftStore.getState().addRevenue(effectiveFolio?.total || 0);
     const guestFound = useGuestStore.getState().findGuest(selectedBooking.guest_name);
-    if (guestFound.length > 0) useGuestStore.getState().recordStay(guestFound[0].id, folio?.total || 0);
+    if (guestFound.length > 0) useGuestStore.getState().recordStay(guestFound[0].id, effectiveFolio?.total || 0);
     useHousekeepingStore.getState().createTask({ room: selectedBooking.room_number || '', floor: room?.floor || 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'ROOM_CLEANING', property_id: operator?.property_id || 'prop-1' });
     useNotificationStore.getState().addNotification({ type: 'hk_alert', title: 'Room ready for cleaning', message: `Room ${selectedBooking.room_number} needs cleaning after checkout`, data: { roomNumber: selectedBooking.room_number || '' } });
     useActivityStore.getState().addActivity({ type: 'email', title: `Post-stay review requested — Email queued for ${selectedBooking.guest_name}`, icon: '✉️', color: PURPLE[500], property_id: operator?.property_id || 'prop-1' });
@@ -112,16 +196,28 @@ export default function CheckOutScreen() {
                 </View>
               ))
             )}
-            {folio && (
+            {effectiveFolio && (
               <View style={{ borderTopWidth: 1, borderTopColor: GRAY[100], paddingTop: SPACING.md, gap: 4 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Subtotal</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{folio.subtotal.toLocaleString()}</Text></View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Tax (12%)</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{folio.tax.toLocaleString()}</Text></View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Subtotal</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{effectiveFolio.subtotal.toLocaleString()}</Text></View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Tax (12%)</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{effectiveFolio.tax.toLocaleString()}</Text></View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: GRAY[100], paddingTop: SPACING.sm }}>
                   <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy }}>Total</Text>
-                  <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.teal }}>₹{folio.total.toLocaleString()}</Text>
+                  <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.teal }}>₹{effectiveFolio.total.toLocaleString()}</Text>
                 </View>
               </View>
             )}
+            {/* View Full Folio Link */}
+            {serverFolio?.id && selectedBooking && (
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/(operations)/front-desk/folio', params: { folioId: serverFolio.id, bookingRef: selectedBooking.ref, guestName: selectedBooking.guest_name } })}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: SPACING.md, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: SRS.teal + '08', borderWidth: 1, borderColor: SRS.teal + '20' }}
+              >
+                <IconSymbol name="receipt" size={16} color={SRS.teal} />
+                <Text style={{ ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.teal, flex: 1 }}>View Full Folio Ledger</Text>
+                <IconSymbol name="arrow.forward" size={14} color={SRS.teal} />
+              </TouchableOpacity>
+            )}
+
             {/* Quick Charges */}
             <View style={{ borderTopWidth: 1, borderTopColor: GRAY[200], marginTop: SPACING.lg, paddingTop: SPACING.lg }}>
               <Text style={{ ...TYPOGRAPHY.small, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.sm }}>Quick Charge</Text>
@@ -139,7 +235,7 @@ export default function CheckOutScreen() {
           <View style={s.card}>
             <Text style={s.cardTitle}>Payment Method</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md }}>
-              {[{ id: 'card', label: 'Card', icon: 'payment', color: SRS.teal }, { id: 'cash', label: 'Cash', icon: 'wallet', color: SRS.green }, { id: 'upi', label: 'UPI', icon: 'qr.code', color: STATUS_COLORS.inspected }, { id: 'wallet', label: 'Wallet', icon: 'wallet', color: SRS.orange }].map((pm) => (
+              {paymentMethods.map((pm) => (
                 <TouchableOpacity key={pm.id} onPress={() => setPaymentMethod(pm.id)}
                   style={[s.paymentOption, { backgroundColor: paymentMethod === pm.id ? pm.color + '12' : GRAY[50], borderColor: paymentMethod === pm.id ? pm.color : GRAY[200] }]}
                 >
@@ -170,13 +266,13 @@ export default function CheckOutScreen() {
                     </View>
                   ))
                 ) : <Text style={{ ...TYPOGRAPHY.small, color: GRAY[400], textAlign: 'center', paddingVertical: SPACING.sm }}>No charges on folio</Text>}
-                {folio && (
+                {effectiveFolio && (
                   <View style={{ borderTopWidth: 1, borderTopColor: GRAY[100], marginTop: 6, paddingTop: 6, gap: 2 }}>
-                    <View style={doneStyles.receiptRow}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Subtotal</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{folio.subtotal.toLocaleString()}</Text></View>
-                    <View style={doneStyles.receiptRow}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Tax (12%)</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{folio.tax.toLocaleString()}</Text></View>
+                    <View style={doneStyles.receiptRow}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Subtotal</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{effectiveFolio.subtotal.toLocaleString()}</Text></View>
+                    <View style={doneStyles.receiptRow}><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Tax (12%)</Text><Text style={{ ...TYPOGRAPHY.caption, color: SRS.navy }}>₹{effectiveFolio.tax.toLocaleString()}</Text></View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: GRAY[100], paddingTop: 4, marginTop: 4 }}>
                       <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy }}>Total</Text>
-                      <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.teal }}>₹{folio.total.toLocaleString()}</Text>
+                      <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.teal }}>₹{effectiveFolio.total.toLocaleString()}</Text>
                     </View>
                   </View>
                 )}
