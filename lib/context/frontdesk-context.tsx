@@ -1,11 +1,7 @@
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { operationsApi } from '@/lib/api/operations-api';
-import { hostApi } from '@/lib/api/host-api';
-import { bookingApi } from '@/lib/api/booking-api';
-import { loadOpsState, persistOpsState, OPS_STORAGE_KEYS } from '@/lib/utils/ops-persistence';
-import { loadBridgedGuestBookings } from '@/lib/utils';
-import type { AdminRoom } from '@/types/api';
+import { hostApi, staffApi } from '@/lib/api/host-api';
+import type { AdminRoom, FrontDeskBookingResponse, BackendRoomCalendarResponse } from '@/types/api';
 const OPS_DEFAULT_PROPERTY_ID_KEY = '@serveiq_default_ops_property_id';
 
 export type RoomStatus = 'available' | 'occupied' | 'dirty' | 'maintenance';
@@ -77,13 +73,14 @@ interface FrontDeskContextValue {
   getBooking: (id: string) => FrontDeskBooking | undefined;
   searchReservations: (query: string, filters?: { status?: string; date?: string; roomType?: string }) => FrontDeskBooking[];
   checkIn: (guest: FrontDeskBooking, roomNumber: string) => void;
-  checkOut: (guestId: string, roomNumber: string) => void;
+  checkOut: (guestId: string, roomNumber: string, amount?: number) => void;
   createBooking: (data: {
     guestName: string;
     email: string;
     phone: string;
     nationality: string;
     roomType: 'Standard' | 'Deluxe' | 'Suite';
+    roomNumber?: string;
     checkIn: string;
     checkOut: string;
     adults: number;
@@ -93,168 +90,23 @@ interface FrontDeskContextValue {
     company?: string;
     otaRef?: string;
     idNumber?: string;
-  }) => void;
+    paymentMethod?: 'ONLINE' | 'ADVANCE' | 'PAY_ON_ARRIVAL';
+    paymentGateway?: 'KHALTI' | 'ESEWA' | 'BANK_TRANSFER' | 'CASH' | 'CARD' | null;
+    amountPaid?: number;
+  }) => Promise<FrontDeskBooking>;
   cancelBooking: (bookingId: string, reason: string) => { refundAmount: number; penalty: number };
   timeline: TimelineEvent[];
   addTimelineEvent: (event: Omit<TimelineEvent, 'id' | 'timestamp'>) => void;
   getBookingTimeline: (bookingRef: string) => TimelineEvent[];
   summaryStats: { arrivals: number; inHouse: number; departures: number; occupancy: string };
   occupancySnapshot: OccupancySnapshot;
+  /** Server-side guest list with rich details (citizenship, VIP, etc.) */
+  bookingGuestsData: FrontDeskBookingResponse[];
+  /** Room calendar showing date-range occupancy per room */
+  roomCalendarData: BackendRoomCalendarResponse | null;
+  /** Get rooms available for a specific date range from room-calendar data */
+  getAvailableRoomsForDates: (checkIn: string, checkOut: string) => string[];
 }
-
-/** Dynamically registered property data (for properties added by hosts at runtime) */
-const dynamicPropertyRooms = new Map<string, FrontDeskRoom[]>();
-const dynamicPropertyBookings = new Map<string, FrontDeskBooking[]>();
-
-/**
- * Register ops data for a newly host-created property so it shows up in
- * the front desk, housekeeping, and other ops screens.
- */
-export function registerOpsProperty(propertyId: string, _propertyName: string): void {
-  if (dynamicPropertyRooms.has(propertyId)) return;
-
-  const rooms: FrontDeskRoom[] = [];
-  for (let floor = 1; floor <= 2; floor++) {
-    for (let room = 1; room <= 5; room++) {
-      const num = `${floor}0${room}`;
-      rooms.push({
-        id: `room-${propertyId}-${num}`,
-        room_number: num,
-        floor,
-        status: 'available',
-        room_type: room <= 3 ? 'Standard' : 'Deluxe',
-      });
-    }
-  }
-  dynamicPropertyRooms.set(propertyId, rooms);
-  dynamicPropertyBookings.set(propertyId, []);
-
-  bookingCounters[propertyId] = 0;
-  idCounters[propertyId] = 0;
-}
-
-export function updateOpsPropertyName(_propertyId: string, _newName: string): void {}
-
-export function addOpsFrontDeskRoom(propertyId: string, roomNumber: string, floor: number): void {
-  if (dynamicPropertyRooms.has(propertyId)) {
-    const rooms = dynamicPropertyRooms.get(propertyId)!;
-    rooms.push({
-      id: `room-${propertyId}-${roomNumber}`,
-      room_number: roomNumber,
-      floor,
-      status: 'available',
-      room_type: 'Standard',
-    });
-    dynamicPropertyRooms.set(propertyId, rooms);
-  }
-}
-
-export function removeOpsFrontDeskRoom(propertyId: string, roomNumber: string): void {
-  if (dynamicPropertyRooms.has(propertyId)) {
-    const rooms = dynamicPropertyRooms.get(propertyId)!;
-    dynamicPropertyRooms.set(propertyId, rooms.filter(r => r.room_number !== roomNumber));
-  }
-}
-
-export function removeOpsProperty(propertyId: string): void {
-  dynamicPropertyRooms.delete(propertyId);
-  dynamicPropertyBookings.delete(propertyId);
-}
-
-function getRoomsForProperty(propertyId: string): FrontDeskRoom[] {
-  if (dynamicPropertyRooms.has(propertyId)) {
-    return dynamicPropertyRooms.get(propertyId)!;
-  }
-  switch (propertyId) {
-    case 'prop-2':
-      return [
-        { id: 'r101', room_number: '101', floor: 1, status: 'available', room_type: 'Standard' },
-        { id: 'r102', room_number: '102', floor: 1, status: 'occupied', room_type: 'Standard', guest_name: 'Ravi Sharma', booking_ref: 'BK-2003' },
-        { id: 'r103', room_number: '103', floor: 1, status: 'available', room_type: 'Standard' },
-        { id: 'r104', room_number: '104', floor: 1, status: 'dirty', room_type: 'Standard' },
-        { id: 'r105', room_number: '105', floor: 1, status: 'available', room_type: 'Deluxe' },
-        { id: 'r201', room_number: '201', floor: 2, status: 'occupied', room_type: 'Standard', guest_name: 'Pema Sherpa', booking_ref: 'BK-2004' },
-        { id: 'r202', room_number: '202', floor: 2, status: 'available', room_type: 'Deluxe' },
-        { id: 'r203', room_number: '203', floor: 2, status: 'available', room_type: 'Standard' },
-        { id: 'r204', room_number: '204', floor: 2, status: 'dirty', room_type: 'Standard' },
-        { id: 'r205', room_number: '205', floor: 2, status: 'maintenance', room_type: 'Deluxe' },
-        { id: 'r301', room_number: '301', floor: 3, status: 'available', room_type: 'Standard' },
-        { id: 'r302', room_number: '302', floor: 3, status: 'available', room_type: 'Suite' },
-      ];
-    case 'prop-3':
-      return [
-        { id: 'rva', room_number: 'Villa A', floor: 1, status: 'occupied', room_type: 'Suite', guest_name: 'Henry Taylor', booking_ref: 'BK-3001' },
-        { id: 'rvb', room_number: 'Villa B', floor: 1, status: 'available', room_type: 'Suite' },
-        { id: 'rvc', room_number: 'Villa C', floor: 1, status: 'available', room_type: 'Suite' },
-        { id: 'rvd', room_number: 'Villa D', floor: 2, status: 'dirty', room_type: 'Suite' },
-        { id: 'rve', room_number: 'Villa E', floor: 2, status: 'available', room_type: 'Suite' },
-        { id: 'rvf', room_number: 'Villa F', floor: 2, status: 'available', room_type: 'Suite' },
-      ];
-    default:
-      return [
-        { id: 'r1', room_number: '101', floor: 1, status: 'available', room_type: 'Standard' },
-        { id: 'r2', room_number: '102', floor: 1, status: 'occupied', room_type: 'Standard', guest_name: 'Carol Davis', booking_ref: 'BK-1003' },
-        { id: 'r3', room_number: '103', floor: 1, status: 'dirty', room_type: 'Standard' },
-        { id: 'r4', room_number: '104', floor: 1, status: 'maintenance', room_type: 'Standard' },
-        { id: 'r5', room_number: '105', floor: 1, status: 'available', room_type: 'Deluxe' },
-        { id: 'r6', room_number: '106', floor: 1, status: 'occupied', room_type: 'Deluxe', guest_name: 'Eve Martin', booking_ref: 'BK-1005' },
-        { id: 'r7', room_number: '201', floor: 2, status: 'occupied', room_type: 'Standard', guest_name: 'David Brown', booking_ref: 'BK-1004' },
-        { id: 'r8', room_number: '202', floor: 2, status: 'occupied', room_type: 'Deluxe', guest_name: 'Frank Green', booking_ref: 'BK-1006' },
-        { id: 'r9', room_number: '203', floor: 2, status: 'dirty', room_type: 'Standard' },
-        { id: 'r10', room_number: '204', floor: 2, status: 'occupied', room_type: 'Suite', guest_name: 'Grace Lee', booking_ref: 'BK-1007' },
-        { id: 'r11', room_number: '205', floor: 2, status: 'available', room_type: 'Deluxe' },
-        { id: 'r12', room_number: '206', floor: 2, status: 'available', room_type: 'Standard' },
-        { id: 'r13', room_number: '301', floor: 3, status: 'occupied', room_type: 'Suite', guest_name: 'Henry Wilson', booking_ref: 'BK-1008' },
-        { id: 'r14', room_number: '302', floor: 3, status: 'occupied', room_type: 'Suite', guest_name: 'Irene Taylor', booking_ref: 'BK-1009' },
-        { id: 'r15', room_number: '303', floor: 3, status: 'maintenance', room_type: 'Standard' },
-        { id: 'r16', room_number: '304', floor: 3, status: 'available', room_type: 'Deluxe' },
-        { id: 'r17', room_number: '305', floor: 3, status: 'dirty', room_type: 'Standard' },
-        { id: 'r18', room_number: '306', floor: 3, status: 'occupied', room_type: 'Suite', guest_name: 'Jack Black', booking_ref: 'BK-1010' },
-      ];
-  }
-}
-
-function getBookingsForProperty(propertyId: string): FrontDeskBooking[] {
-  if (dynamicPropertyBookings.has(propertyId)) {
-    return dynamicPropertyBookings.get(propertyId)!;
-  }
-  switch (propertyId) {
-    case 'prop-2':
-      return [
-        { id: 'b7', guest_name: 'Ravi Sharma', email: 'ravi@email.com', phone: '+977-9812345678', room_type: 'Deluxe', ref: 'BK-2003', checkin: '2026-07-05', checkout: '2026-07-08', status: 'checked_in', balance: 5000, source: 'phone' },
-        { id: 'b8', guest_name: 'Pema Sherpa', email: 'pema@email.com', phone: '+977-9854321098', room_type: 'Standard', ref: 'BK-2004', checkin: '2026-07-06', checkout: '2026-07-09', status: 'checked_in', balance: 0, source: 'walk_in' },
-        { id: 'b9', guest_name: 'Mingma Tamang', email: 'mingma@email.com', phone: '+977-9845678901', room_type: 'Deluxe', ref: 'BK-2005', checkin: '2026-07-10', checkout: '2026-07-12', status: 'confirmed', balance: 8999, source: 'online' },
-        { id: 'b10', guest_name: 'Sunita Rai', email: 'sunita@email.com', phone: '+977-9865432109', room_type: 'Standard', ref: 'BK-2006', checkin: '2026-07-08', checkout: '2026-07-08', status: 'checked_out', balance: 0, source: 'walk_in' },
-      ];
-    case 'prop-3':
-      return [
-        { id: 'b11', guest_name: 'Henry Taylor', email: 'henry@email.com', phone: '+977-9811112233', room_type: 'Suite', ref: 'BK-3001', checkin: '2026-07-01', checkout: '2026-07-10', status: 'checked_in', balance: 12000, source: 'ota', ota_ref: 'EXP-88472' },
-        { id: 'b12', guest_name: 'Anita Gurung', email: 'anita@email.com', phone: '+977-9855556677', room_type: 'Suite', ref: 'BK-3002', checkin: '2026-07-15', checkout: '2026-07-18', status: 'confirmed', balance: 17999, source: 'corporate', company: 'Gurung Industries' },
-        { id: 'b13', guest_name: 'Rajesh Hamal', email: 'rajesh@email.com', phone: '+977-9844445566', room_type: 'Suite', ref: 'BK-3003', checkin: '2026-07-03', checkout: '2026-07-05', status: 'checked_out', balance: 0, source: 'agent' },
-      ];
-    default:
-      return [
-        { id: 'b1', guest_name: 'Alice Johnson', email: 'alice@email.com', phone: '+977-9841234567', room_type: 'Deluxe', ref: 'BK-1001', checkin: '2026-07-04', checkout: '2026-07-07', status: 'confirmed', balance: 14997, source: 'online' },
-        { id: 'b2', guest_name: 'Bob Williams', email: 'bob@email.com', phone: '+977-9847654321', room_type: 'Suite', ref: 'BK-1002', checkin: '2026-07-04', checkout: '2026-07-08', status: 'confirmed', balance: 17998, source: 'ota', ota_ref: 'BKNG-4521' },
-        { id: 'b3', guest_name: 'Carol Davis', email: 'carol@email.com', phone: '+977-9851122334', room_type: 'Standard', room_number: '102', ref: 'BK-1003', checkin: '2026-07-02', checkout: '2026-07-05', status: 'checked_in', balance: 0, source: 'walk_in', vip: true },
-        { id: 'b4', guest_name: 'David Brown', email: 'david@email.com', phone: '+977-9849988776', room_type: 'Deluxe', room_number: '201', ref: 'BK-1004', checkin: '2026-07-01', checkout: '2026-07-05', status: 'checked_in', balance: 5000, source: 'phone' },
-        { id: 'b5', guest_name: 'Eve Martin', email: 'eve@email.com', phone: '+977-9865544332', room_type: 'Standard', room_number: '106', ref: 'BK-1005', checkin: '2026-07-03', checkout: '2026-07-05', status: 'checked_in', balance: 0, source: 'online' },
-        { id: 'b6', guest_name: 'David Brown (checked out)', email: 'david2@email.com', phone: '+977-9811122334', room_type: 'Deluxe', ref: 'BK-1011', checkin: '2026-07-01', checkout: '2026-07-04', status: 'checked_out', balance: 0, source: 'walk_in' },
-      ];
-  }
-}
-
-let bookingCounters: Record<string, number> = { 'prop-1': 11, 'prop-2': 6, 'prop-3': 3 };
-function nextBookingRef(propertyId: string) {
-  bookingCounters[propertyId] = (bookingCounters[propertyId] || 11) + 1;
-  return `BK-${bookingCounters[propertyId]}`;
-}
-let idCounters: Record<string, number> = { 'prop-1': 6, 'prop-2': 10, 'prop-3': 13 };
-function nextId(propertyId: string) {
-  idCounters[propertyId] = (idCounters[propertyId] || 6) + 1;
-  return `b${idCounters[propertyId]}`;
-}
-let timelineCounter = 0;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isValidUuid(id: string): boolean { return UUID_RE.test(id); }
@@ -280,6 +132,16 @@ function mapFDStatusToBackend(status: RoomStatus): string {
   return map[status] || 'AVAILABLE';
 }
 
+const STATUS_LOWER: Record<string, BookingArrivalStatus> = {
+  CONFIRMED: 'confirmed', CHECKED_IN: 'checked_in', CHECKED_OUT: 'checked_out',
+  CANCELLED: 'cancelled', PENDING: 'confirmed', FAILED: 'cancelled',
+};
+function normalizeStatus(status?: string): BookingArrivalStatus {
+  const s = String(status || '').trim().toUpperCase();
+  return STATUS_LOWER[s] || (String(status || '').toLowerCase() as BookingArrivalStatus) || 'confirmed';
+}
+
+/** /properties/{pid}/bookings list item → FrontDeskBooking */
 function mapBackendBookingToFD(b: any): FrontDeskBooking {
   return {
     id: b.id,
@@ -291,10 +153,29 @@ function mapBackendBookingToFD(b: any): FrontDeskBooking {
     ref: b.ref_number || b.booking_number || b.ref || '',
     checkin: b.checkin_date || b.check_in || '',
     checkout: b.checkout_date || b.check_out || '',
-    status: (b.status || 'confirmed') as BookingArrivalStatus,
+    status: normalizeStatus(b.status),
     adults: b.number_of_adults || b.adults || 1,
     children: b.number_of_children || b.children || 0,
-    balance: typeof b.total_amount === 'number' ? b.total_amount : 0,
+    balance: typeof b.amount_due === 'number' ? b.amount_due : (typeof b.total_amount === 'number' ? b.total_amount : 0),
+  };
+}
+
+/** GET /staff/properties/{pid}/today/{arrivals,departures} item → FrontDeskBooking */
+function mapStaffBookingToFD(b: any): FrontDeskBooking {
+  return {
+    id: b.booking_id || b.id,
+    guest_name: b.guest?.full_name || b.guest_name || 'Guest',
+    email: b.guest?.email || b.guest_email || '',
+    phone: b.guest?.phone || b.phone,
+    room_type: (b.rooms?.[0]?.room_type || b.room_type || 'Standard') as FrontDeskBooking['room_type'],
+    room_number: b.rooms?.[0]?.room_name || b.room_number,
+    ref: b.ref_number || b.booking_number || b.ref || '',
+    checkin: b.checkin_date || b.check_in || '',
+    checkout: b.checkout_date || b.check_out || '',
+    status: normalizeStatus(b.status),
+    adults: b.number_of_adults || b.adults || 1,
+    children: b.number_of_children || b.children || 0,
+    balance: typeof b.amount_due === 'number' ? b.amount_due : 0,
     special_requests: b.special_requests,
   };
 }
@@ -302,115 +183,78 @@ function mapBackendBookingToFD(b: any): FrontDeskBooking {
 const FrontDeskContext = createContext<FrontDeskContextValue | null>(null);
 
 export function FrontDeskProvider({ children, propertyId: propPropertyId }: { children: React.ReactNode; propertyId?: string }) {
-  const activePropertyId = useRef(propPropertyId || 'prop-1');
+  const activePropertyId = useRef(propPropertyId || '');
   const backendRoomsRef = useRef<Map<string, AdminRoom>>(new Map());
-  const [propertyId, setPropertyId] = useState<string>(propPropertyId || 'prop-1');
-  const defaultPropId = propPropertyId || 'prop-1';
-  const [rooms, setRooms] = useState<FrontDeskRoom[]>(() => getRoomsForProperty(defaultPropId));
-  const [bookings, setBookings] = useState<FrontDeskBooking[]>(() => getBookingsForProperty(defaultPropId));
+  const [propertyId, setPropertyId] = useState<string>(propPropertyId || '');
+  const [rooms, setRooms] = useState<FrontDeskRoom[]>([]);
+  const [bookings, setBookings] = useState<FrontDeskBooking[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [roomSummary, setRoomSummary] = useState<{ total_rooms?: number; available_rooms?: number; occupied_rooms?: number; dirty_rooms?: number; maintenance_rooms?: number } | null>(null);
+  const [fdSummary, setFdSummary] = useState<{ todays_arrivals: number; todays_departures: number; todays_checked_in: number; occupied_rooms: number; total_rooms: number; total_available_rooms: number } | null>(null);
+  const [bookingGuestsData, setBookingGuestsData] = useState<FrontDeskBookingResponse[]>([]);
+  const [roomCalendarData, setRoomCalendarData] = useState<BackendRoomCalendarResponse | null>(null);
 
   useEffect(() => {
     (async () => {
-      let pid = propPropertyId || 'prop-1';
+      let pid = propPropertyId || '';
       if (!propPropertyId) {
         const savedId = await AsyncStorage.getItem(OPS_DEFAULT_PROPERTY_ID_KEY);
         if (savedId) pid = savedId;
       }
       activePropertyId.current = pid;
       setPropertyId(pid);
-
-      const [savedRooms, savedBookings] = await Promise.all([
-        loadOpsState<FrontDeskRoom[] | null>(OPS_STORAGE_KEYS.rooms(pid), null),
-        loadOpsState<FrontDeskBooking[] | null>(OPS_STORAGE_KEYS.bookings(pid), null),
-      ]);
-      setRooms(savedRooms ?? getRoomsForProperty(pid));
-      setBookings(savedBookings ?? getBookingsForProperty(pid));
       setLoaded(true);
     })();
   }, []);
 
-  useEffect(() => {
-    if (!loaded) return;
-    let cancelled = false;
-    loadBridgedGuestBookings(propertyId || 'prop-1').then(bridged => {
-      if (cancelled) return;
-      if (bridged.length > 0) {
-        const pid = propertyId || 'prop-1';
-        const newBookings: FrontDeskBooking[] = bridged.map((b, i) => ({
-          id: `bridge-${Date.now()}-${i}`,
-          guest_name: b.guest_name,
-          email: b.email,
-          phone: b.phone,
-          room_type: b.room_type,
-          ref: `BK-BRIDGE-${Date.now().toString(36).toUpperCase().slice(0, 6)}-${i}`,
-          checkin: b.checkin,
-          checkout: b.checkout,
-          status: 'confirmed',
-          adults: b.adults,
-          children: b.children,
-          balance: 0,
-          special_requests: b.special_requests,
-          source: 'online',
-        }));
-        setBookings(prev => {
-          const updated = [...newBookings, ...prev];
-          persistOpsState(OPS_STORAGE_KEYS.bookings(pid), updated);
-          return updated;
-        });
-        // Add timeline events for bridged bookings
-        newBookings.forEach(b => {
-          addTimelineEvent({
-            bookingRef: b.ref,
-            type: 'created',
-            description: `Online booking from ${b.guest_name}`,
-            performedBy: 'Guest Portal',
-          });
-        });
-      }
-    });
-    return () => { cancelled = true; };
-  }, [loaded]);
+  const refreshRooms = useCallback(async (pid: string) => {
+    const apiRooms: any[] = await hostApi.getRooms(pid, () => []);
+    if (apiRooms.length > 0) {
+      setRooms(apiRooms.map(mapBackendRoomToFD));
+      backendRoomsRef.current = new Map(apiRooms.map((r: AdminRoom) => [r.room_name, r]));
+    }
+  }, []);
+
+  const refreshBookings = useCallback(async (pid: string) => {
+    const [propertyBookings, arrivals, departures] = await Promise.all([
+      hostApi.getPropertyBookings(pid, () => []),
+      staffApi.getTodayArrivals(pid, () => []),
+      staffApi.getTodayDepartures(pid, () => []),
+    ]);
+    const byRef = new Map<string, FrontDeskBooking>();
+    (propertyBookings as any[]).forEach(b => byRef.set(mapBackendBookingToFD(b).ref || b.id, mapBackendBookingToFD(b)));
+    arrivals.forEach(b => byRef.set(b.ref_number || b.booking_id, mapStaffBookingToFD(b)));
+    departures.forEach(b => byRef.set(b.ref_number || b.booking_id, mapStaffBookingToFD(b)));
+    setBookings(Array.from(byRef.values()));
+  }, []);
 
   useEffect(() => {
     if (!loaded) return;
-    let cancelled = false;
     const pid = activePropertyId.current;
-    if (isValidUuid(pid)) {
-      hostApi.getRooms(pid, () => []).then((apiRooms: any[]) => {
-        if (!cancelled && apiRooms.length > 0) {
-          const mapped = apiRooms.map(mapBackendRoomToFD);
-          setRooms(mapped);
-          const idMap = new Map<string, AdminRoom>();
-          apiRooms.forEach((r: AdminRoom) => idMap.set(r.room_name, r));
-          backendRoomsRef.current = idMap;
-        }
-      });
-      hostApi.getPropertyBookings(pid, () => []).then((apiBookings: any[]) => {
-        if (!cancelled && apiBookings.length > 0) {
-          setBookings(apiBookings.map(mapBackendBookingToFD));
-        }
-      });
-    } else {
-      operationsApi.getRooms(() => []).then(apiRooms => {
-        if (!cancelled && apiRooms.length > 0) setRooms(apiRooms as any);
-      });
-      operationsApi.getBookings(() => []).then(apiBookings => {
-        if (!cancelled && apiBookings.length > 0) setBookings(apiBookings as any);
-      });
-    }
+    if (!isValidUuid(pid)) return;
+    let cancelled = false;
+    Promise.all([
+      refreshRooms(pid),
+      refreshBookings(pid),
+      hostApi.getRoomStatusSummary(pid, () => null).then((summary: any) => {
+        if (!cancelled && summary) setRoomSummary(summary.data?.summary || summary.summary || summary);
+      }),
+      staffApi.getFrontDeskSummary(pid, () => null).then(s => { if (!cancelled && s) setFdSummary(s); }),
+      staffApi.getBookingGuests(pid, { limit: 50 }, () => []).then(guests => {
+        if (!cancelled && Array.isArray(guests) && guests.length > 0) setBookingGuestsData(guests);
+      }),
+      staffApi.getRoomCalendar(pid, {}, () => ({ start_date: '', end_date: '', rooms: [] })).then(cal => {
+        if (!cancelled && cal && cal.rooms?.length > 0) setRoomCalendarData(cal);
+      }),
+    ]);
     return () => { cancelled = true; };
-  }, [loaded]);
+  }, [loaded, refreshRooms, refreshBookings]);
 
   const getRoom = useCallback((roomNumber: string) => rooms.find(r => r.room_number === roomNumber), [rooms]);
 
   const updateRoomStatus = useCallback((roomNumber: string, status: RoomStatus, guestName?: string, bookingRef?: string) => {
-    setRooms(prev => {
-      const next = prev.map(r => r.room_number === roomNumber ? { ...r, status, guest_name: guestName, booking_ref: bookingRef } : r);
-      persistOpsState(OPS_STORAGE_KEYS.rooms(activePropertyId.current), next);
-      return next;
-    });
+    setRooms(prev => prev.map(r => r.room_number === roomNumber ? { ...r, status, guest_name: guestName, booking_ref: bookingRef } : r));
     const pid = activePropertyId.current;
     if (isValidUuid(pid)) {
       const backendRoom = backendRoomsRef.current.get(roomNumber);
@@ -425,7 +269,7 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
   const addTimelineEvent = useCallback((data: Omit<TimelineEvent, 'id' | 'timestamp'>) => {
     const event: TimelineEvent = {
       ...data,
-      id: `tl-${++timelineCounter}`,
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: new Date().toISOString(),
     };
     setTimeline(prev => [event, ...prev]);
@@ -472,21 +316,14 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       if (backendRoom) {
         hostApi.updateRoom(pid, backendRoom.id, { status: 'OCCUPIED' as any }, () => backendRoom);
       }
+      staffApi.checkIn(guest.ref, {}, () => null);
     }
-    setRooms(prev => {
-      const next = prev.map(r =>
-        r.room_number === roomNumber ? { ...r, status: 'occupied' as RoomStatus, guest_name: guest.guest_name, booking_ref: guest.ref } : r
-      );
-      persistOpsState(OPS_STORAGE_KEYS.rooms(pid), next);
-      return next;
-    });
-    setBookings(prev => {
-      const next = prev.map(b =>
-        b.id === guest.id ? { ...b, status: 'checked_in' as BookingArrivalStatus, room_number: roomNumber } : b
-      );
-      persistOpsState(OPS_STORAGE_KEYS.bookings(pid), next);
-      return next;
-    });
+    setRooms(prev => prev.map(r =>
+      r.room_number === roomNumber ? { ...r, status: 'occupied' as RoomStatus, guest_name: guest.guest_name, booking_ref: guest.ref } : r
+    ));
+    setBookings(prev => prev.map(b =>
+      b.id === guest.id ? { ...b, status: 'checked_in' as BookingArrivalStatus, room_number: roomNumber } : b
+    ));
     addTimelineEvent({
       bookingRef: guest.ref,
       type: 'checked_in',
@@ -497,7 +334,7 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
     });
   }, [addTimelineEvent]);
 
-  const checkOut = useCallback((guestId: string, roomNumber: string) => {
+  const checkOut = useCallback((guestId: string, roomNumber: string, amount?: number) => {
     const pid = activePropertyId.current;
     const booking = bookings.find(b => b.id === guestId);
     if (isValidUuid(pid)) {
@@ -505,21 +342,16 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       if (backendRoom) {
         hostApi.updateRoom(pid, backendRoom.id, { status: 'DIRTY' as any }, () => backendRoom);
       }
+      if (booking) {
+        staffApi.checkOut(booking.ref, { amount: amount ?? 0 }, () => null);
+      }
     }
-    setRooms(prev => {
-      const next = prev.map(r =>
-        r.room_number === roomNumber ? { ...r, status: 'dirty' as RoomStatus, guest_name: undefined, booking_ref: undefined } : r
-      );
-      persistOpsState(OPS_STORAGE_KEYS.rooms(pid), next);
-      return next;
-    });
-    setBookings(prev => {
-      const next = prev.map(b =>
-        b.id === guestId ? { ...b, status: 'checked_out' as BookingArrivalStatus } : b
-      );
-      persistOpsState(OPS_STORAGE_KEYS.bookings(pid), next);
-      return next;
-    });
+    setRooms(prev => prev.map(r =>
+      r.room_number === roomNumber ? { ...r, status: 'dirty' as RoomStatus, guest_name: undefined, booking_ref: undefined } : r
+    ));
+    setBookings(prev => prev.map(b =>
+      b.id === guestId ? { ...b, status: 'checked_out' as BookingArrivalStatus } : b
+    ));
     if (booking) {
       addTimelineEvent({
         bookingRef: booking.ref,
@@ -532,16 +364,22 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
     }
   }, [bookings, addTimelineEvent]);
 
-  const createBooking = useCallback((data: {
+  const createBooking = useCallback(async (data: {
     guestName: string; email: string; phone: string; nationality: string;
-    roomType: 'Standard' | 'Deluxe' | 'Suite';
+    roomType: 'Standard' | 'Deluxe' | 'Suite'; roomNumber?: string;
     checkIn: string; checkOut: string; adults: number; children: number; specialRequests: string;
     source?: BookingSource; company?: string; otaRef?: string; idNumber?: string;
+    /** PAY_ON_ARRIVAL (default) confirms immediately; ADVANCE requires paymentGateway. */
+    paymentMethod?: 'ONLINE' | 'ADVANCE' | 'PAY_ON_ARRIVAL';
+    paymentGateway?: 'KHALTI' | 'ESEWA' | 'BANK_TRANSFER' | 'CASH' | 'CARD' | null;
+    /** Cash/card collected at the desk right now — recorded on the booking. */
+    amountPaid?: number;
   }) => {
     const pid = activePropertyId.current;
+    const roomSource: BookingSource = data.source || 'walk_in';
     const newBooking: FrontDeskBooking = {
-      id: nextId(pid),
-      ref: nextBookingRef(pid),
+      id: `fd-${Date.now()}`,
+      ref: `BK-FD-${Date.now().toString(36).toUpperCase().slice(-6)}`,
       guest_name: data.guestName,
       email: data.email,
       phone: data.phone,
@@ -553,27 +391,44 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       children: data.children,
       balance: 0,
       special_requests: data.specialRequests,
-      source: data.source || 'walk_in',
+      source: roomSource,
       company: data.company,
       ota_ref: data.otaRef,
       id_number: data.idNumber,
     };
-    setBookings(prev => {
-      const next = [...prev, newBooking];
-      persistOpsState(OPS_STORAGE_KEYS.bookings(pid), next);
-      return next;
-    });
+    setBookings(prev => [...prev, newBooking]);
     if (isValidUuid(pid)) {
-      bookingApi.createBooking({
+      // Backend room_ids are required UUIDs (min 1) — a local-only room number
+      // can't be booked server-side, so surface that instead of a silent 422.
+      const backendRoom = data.roomNumber ? backendRoomsRef.current.get(data.roomNumber) : undefined;
+      if (!backendRoom) {
+        throw new Error(
+          `Room "${data.roomNumber}" isn't synced to the server yet. It can't be booked until the room list is refreshed.`
+        );
+      }
+      const created = await staffApi.createWalkinBooking({
         idempotency_key: `fd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         property_id: pid,
-        room_ids: [],
+        room_ids: [backendRoom.id],
         check_in: data.checkIn,
         check_out: data.checkOut,
         adults: data.adults,
         children: data.children || 0,
+        guest_full_name: data.guestName,
+        guest_email: data.email,
+        guest_phone: data.phone || undefined,
+        guest_nationality: data.nationality || undefined,
+        payment_method: data.paymentMethod || 'PAY_ON_ARRIVAL',
+        payment_gateway: data.paymentGateway ?? null,
+        amount_paid: data.amountPaid ?? 0,
         special_requests: data.specialRequests || undefined,
-      }, () => ({ id: newBooking.id, ref_number: newBooking.ref, status: 'confirmed' } as any));
+      }, () => null);
+      // Adopt the server's authoritative ref so check-in/out and folio
+      // lookups hit the same booking the backend created.
+      if (created?.ref_number && created.ref_number !== newBooking.ref) {
+        newBooking.ref = created.ref_number;
+        setBookings(prev => prev.map(b => b.id === newBooking.id ? { ...b, ref: created.ref_number } : b));
+      }
     }
     addTimelineEvent({
       bookingRef: newBooking.ref,
@@ -581,6 +436,7 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       description: `Booking created for ${data.guestName} — ${data.roomType}`,
       performedBy: 'Front Desk',
     });
+    return newBooking;
   }, [addTimelineEvent]);
 
   const cancelBooking = useCallback((bookingId: string, reason: string) => {
@@ -606,13 +462,9 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       penalty = booking?.balance || 0;
     }
 
-    setBookings(prev => {
-      const next = prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' as BookingArrivalStatus, balance: 0 } : b);
-      persistOpsState(OPS_STORAGE_KEYS.bookings(pid), next);
-      return next;
-    });
-    if (booking) {
-      bookingApi.cancelBooking(booking.ref);
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'cancelled' as BookingArrivalStatus, balance: 0 } : b));
+    if (booking && isValidUuid(pid)) {
+      staffApi.cancelBooking(booking.ref, { reason }, () => null);
       addTimelineEvent({
         bookingRef: booking.ref,
         type: 'cancelled',
@@ -630,14 +482,36 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
     return bookings.filter(b => b.status === 'checked_in' && b.checkout === today);
   }, [bookings]);
 
-  const summaryStats = useMemo(() => ({
-    arrivals: bookings.filter(b => b.status === 'confirmed').length,
-    inHouse: bookings.filter(b => b.status === 'checked_in').length,
-    departures: bookings.filter(b => b.status === 'checked_out').length,
-    occupancy: `${rooms.filter(r => r.status === 'occupied').length}/${rooms.length}`,
-  }), [bookings, rooms]);
+  const summaryStats = useMemo(() => {
+    if (fdSummary) {
+      return {
+        arrivals: fdSummary.todays_arrivals,
+        inHouse: fdSummary.occupied_rooms,
+        departures: fdSummary.todays_departures,
+        occupancy: `${fdSummary.total_available_rooms}/${fdSummary.total_rooms}`,
+      };
+    }
+    return {
+      arrivals: bookings.filter(b => b.status === 'confirmed').length,
+      inHouse: bookings.filter(b => b.status === 'checked_in').length,
+      departures: bookings.filter(b => b.status === 'checked_out').length,
+      occupancy: `${rooms.filter(r => r.status === 'occupied').length}/${rooms.length}`,
+    };
+  }, [bookings, rooms, fdSummary]);
 
   const occupancySnapshot = useMemo(() => {
+    if (roomSummary) {
+      const total = roomSummary.total_rooms ?? rooms.length;
+      const occupied = roomSummary.occupied_rooms ?? 0;
+      return {
+        total,
+        occupied,
+        available: roomSummary.available_rooms ?? Math.max(0, total - occupied - (roomSummary.dirty_rooms || 0) - (roomSummary.maintenance_rooms || 0)),
+        dirty: roomSummary.dirty_rooms ?? 0,
+        maintenance: roomSummary.maintenance_rooms ?? 0,
+        occupancyRate: total > 0 ? Math.round((occupied / total) * 100) : 0,
+      };
+    }
     const total = rooms.length;
     const occupied = rooms.filter(r => r.status === 'occupied').length;
     const available = rooms.filter(r => r.status === 'available').length;
@@ -651,7 +525,24 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       maintenance,
       occupancyRate: total > 0 ? Math.round((occupied / total) * 100) : 0,
     };
-  }, [rooms]);
+  }, [rooms, roomSummary]);
+
+  /** Returns room_names that have NO overlapping booking for the given date range. */
+  const getAvailableRoomsForDates = useCallback((checkIn: string, checkOut: string): string[] => {
+    if (!roomCalendarData?.rooms) return [];
+    const inDate = new Date(checkIn).getTime();
+    const outDate = new Date(checkOut).getTime();
+    return roomCalendarData.rooms
+      .filter(room => {
+        if (!room.bookings || room.bookings.length === 0) return true;
+        return room.bookings.every(b => {
+          const bOut = new Date(b.check_out).getTime();
+          const bIn = new Date(b.check_in).getTime();
+          return outDate <= bIn || inDate >= bOut;
+        });
+      })
+      .map(room => room.room_name);
+  }, [roomCalendarData]);
 
   return (
     <FrontDeskContext.Provider value={{
@@ -673,6 +564,9 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
       getBookingTimeline,
       summaryStats,
       occupancySnapshot,
+      bookingGuestsData,
+      roomCalendarData,
+      getAvailableRoomsForDates,
     }}>
       {children}
     </FrontDeskContext.Provider>

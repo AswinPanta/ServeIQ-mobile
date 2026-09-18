@@ -138,14 +138,16 @@ export default function CheckOutScreen() {
         .catch(() => {});
     }
     useFolioStore.getState().settleFolio(selectedBooking.ref);
-    useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: BLUE[500], property_id: operator?.property_id || 'prop-1' });
+    useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: BLUE[500], property_id: operator?.property_id || '' });
     useShiftStore.getState().incrementCheckOuts();
     useShiftStore.getState().addRevenue(effectiveFolio?.total || 0);
     const guestFound = useGuestStore.getState().findGuest(selectedBooking.guest_name);
     if (guestFound.length > 0) useGuestStore.getState().recordStay(guestFound[0].id, effectiveFolio?.total || 0);
-    useHousekeepingStore.getState().createTask({ room: selectedBooking.room_number || '', floor: room?.floor || 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'ROOM_CLEANING', property_id: operator?.property_id || 'prop-1' });
+    if (operator?.property_id) {
+      useHousekeepingStore.getState().createTask({ room: selectedBooking.room_number || '', floor: room?.floor || 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'ROOM_CLEANING', property_id: operator.property_id });
+    }
     useNotificationStore.getState().addNotification({ type: 'hk_alert', title: 'Room ready for cleaning', message: `Room ${selectedBooking.room_number} needs cleaning after checkout`, data: { roomNumber: selectedBooking.room_number || '' } });
-    useActivityStore.getState().addActivity({ type: 'email', title: `Post-stay review requested — Email queued for ${selectedBooking.guest_name}`, icon: '✉️', color: PURPLE[500], property_id: operator?.property_id || 'prop-1' });
+    useActivityStore.getState().addActivity({ type: 'email', title: `Post-stay review requested — Email queued for ${selectedBooking.guest_name}`, icon: '✉️', color: PURPLE[500], property_id: operator?.property_id || '' });
     useNotificationStore.getState().addNotification({ type: 'system', title: 'Review Request', message: `Post-stay review email queued for ${selectedBooking.guest_name}` });
     Alert.alert('Review Request', 'Check-out complete! Review request will be sent to guest.');
     setStep(3);

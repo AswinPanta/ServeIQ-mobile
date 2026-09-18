@@ -23,7 +23,7 @@ interface ActivityStore {
 let activityCounter = 0;
 
 export const useActivityStore = create<ActivityStore>((set, get) => ({
-  propertyId: 'prop-1',
+  propertyId: '',
   activities: [],
 
   setPropertyId: (id) => {
