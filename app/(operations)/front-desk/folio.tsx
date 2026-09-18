@@ -4,7 +4,6 @@ import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SRS, SLATE, BG, BLUE, RED, EMERALD } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY, SPACING, TYPOGRAPHY } from '@/constants/portal-theme';
-import { useAuth } from '@/lib/context/auth-context';
 import { staffApi } from '@/lib/api/host-api';
 import { safeGoBack } from '@/lib/utils';
 import type { BackendFolioDetail } from '@/types/api';
@@ -22,7 +21,6 @@ const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
 
 export default function FolioScreen() {
   const { folioId, bookingRef, guestName } = useLocalSearchParams<{ folioId: string; bookingRef: string; guestName: string }>();
-  const { user } = useAuth();
   const [folio, setFolio] = useState<BackendFolioDetail | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [desc, setDesc] = useState('');
@@ -39,8 +37,8 @@ export default function FolioScreen() {
   useEffect(() => { fetchFolio(); }, [fetchFolio]);
 
   const settled = folio?.status === 'SETTLED';
-  const waiveed = folio?.status === 'WAIVED';
-  const isDone = settled || waiveed;
+  const waived = folio?.status === 'WAIVED';
+  const isDone = settled || waived;
 
   const handleAdd = () => {
     if (!desc.trim() || !amount.trim()) return;
