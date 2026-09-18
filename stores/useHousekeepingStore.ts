@@ -111,28 +111,19 @@ interface HousekeepingStore {
   fetchTasks: (propertyId?: string) => Promise<void>;
   advanceStatus: (room: string) => void;
   updateChecklist: (room: string, index: number, done: boolean) => void;
-  assignCleaner: (room: string, cleaner: string) => void;
+  assignCleaner: (room: string, cleaner: string, staffId?: string) => void;
   updateNotes: (room: string, notes: string) => void;
   createTask: (data: { room: string; floor: number; status: HKTaskStatus; priority: HKPriority; cleaner: string; lastCleaned: string; taskType?: string; property_id?: string }) => void;
   syncPendingChanges: () => Promise<void>;
   refreshSyncCount: () => Promise<void>;
 }
 
-const INITIAL_TASKS: HKTask[] = [
-  { id: '1', room: '102', floor: 1, status: 'Dirty', priority: 'High', cleaner: 'Rajesh', lastCleaned: '2 days ago', property_id: 'prop-1', synced: true },
-  { id: '2', room: '103', floor: 1, status: 'In Progress', priority: 'Normal', cleaner: 'Sita', lastCleaned: '3 days ago', property_id: 'prop-1', synced: true },
-  { id: '3', room: '106', floor: 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: '1 day ago', property_id: 'prop-1', synced: true },
-  { id: '4', room: '203', floor: 2, status: 'Dirty', priority: 'Normal', cleaner: 'Rajesh', lastCleaned: '4 days ago', property_id: 'prop-1', synced: true },
-  { id: '5', room: '303', floor: 3, status: 'Inspected', priority: 'Low', cleaner: 'Anita', lastCleaned: '5 days ago', property_id: 'prop-1', synced: true },
-  { id: '6', room: '305', floor: 3, status: 'In Progress', priority: 'Normal', cleaner: 'Sita', lastCleaned: '2 days ago', property_id: 'prop-1', synced: true },
-  { id: '7', room: '206', floor: 2, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', property_id: 'prop-1', synced: true },
-  { id: '8', room: '104', floor: 1, status: 'Cleaned', priority: 'Low', cleaner: 'Anita', lastCleaned: 'Today', property_id: 'prop-1', synced: true },
-];
+const INITIAL_TASKS: HKTask[] = [];
 
 let taskIdCounter = 100;
 
 export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
-  propertyId: 'prop-1',
+  propertyId: '',
   tasks: INITIAL_TASKS,
   syncPendingCount: 0,
   isSyncing: false,
@@ -225,10 +216,17 @@ export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
     });
   },
 
-  assignCleaner: (room, cleaner) => {
+  assignCleaner: (room, cleaner, staffId) => {
     set((state) => {
       const task = state.tasks.find(t => t.room === room);
       if (!task) return state;
+
+      // Persist the real staff assignment for UUID task/property pairs
+      // (staffId comes from GET /properties/{id}/tasks/housekeeping-staff)
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (staffId && task.property_id && UUID_RE.test(task.property_id) && UUID_RE.test(task.id)) {
+        hostApi.updateTask(task.property_id, task.id, { assigned_staff_id: staffId }, () => ({} as any)).catch(() => {});
+      }
 
       addToSyncQueue({
         type: 'ASSIGN_CLEANER',
@@ -246,6 +244,12 @@ export const useHousekeepingStore = create<HousekeepingStore>((set, get) => ({
     set((state) => {
       const task = state.tasks.find(t => t.room === room);
       if (!task) return state;
+
+      // Sync notes to the backend for UUID task/property pairs.
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (task.property_id && UUID_RE.test(task.property_id) && UUID_RE.test(task.id)) {
+        hostApi.updateTask(task.property_id, task.id, { notes }, () => ({} as any)).catch(() => {});
+      }
 
       addToSyncQueue({
         type: 'UPDATE_NOTES',
