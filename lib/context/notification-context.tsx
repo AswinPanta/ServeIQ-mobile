@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/lib/context/auth-context';
+import { HostContext } from '@/lib/context/host-context';
+import { notificationsApi } from '@/lib/api/notifications-api';
+
 
 export interface Notification {
   id: string;
@@ -53,6 +56,8 @@ async function saveNotifications(notifications: Notification[], userId?: string 
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const hostCtx = useContext(HostContext);
+  const activePropertyId = hostCtx?.activePropertyId ?? null;
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const userId = (user as { id?: string | number } | null)?.id;
@@ -89,13 +94,27 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const markAsRead = useCallback((id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
+    if (activePropertyId) {
+      try {
+        await notificationsApi.markRead(id, activePropertyId);
+      } catch (e) {
+        console.warn('Failed to mark notification as read on server:', e);
+      }
+    }
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
-  }, []);
+  }, [activePropertyId]);
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
+    if (activePropertyId) {
+      try {
+        await notificationsApi.markAllRead(activePropertyId);
+      } catch (e) {
+        console.warn('Failed to mark all notifications as read on server:', e);
+      }
+    }
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  }, []);
+  }, [activePropertyId]);
 
   const deleteNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -106,9 +125,33 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshNotifications = useCallback(async () => {
-    const data = await loadNotifications(userId);
-    setNotifications(data);
-  }, [userId]);
+    if (!activePropertyId) {
+      const data = await loadNotifications(userId);
+      setNotifications(data);
+      return;
+    }
+    try {
+      const res = await notificationsApi.list(activePropertyId);
+      const apiNotifs: Notification[] = (res.notifications || []).map(n => ({
+        ...n,
+        icon: 'bell',
+        color: '#1E40AF',
+        bgColor: '#EFF6FF',
+        timestamp: n.created_at,
+        property_id: n.property_id || activePropertyId,
+      }));
+      setNotifications(prev => {
+        const localOnly = prev.filter(
+          ln => !apiNotifs.some(an => an.id === ln.id),
+        );
+        return [...apiNotifs, ...localOnly];
+      });
+    } catch (e) {
+      console.warn('Failed to fetch notifications from server:', e);
+      const data = await loadNotifications(userId);
+      setNotifications(data);
+    }
+  }, [activePropertyId, userId]);
 
   const registerPushToken = useCallback((_token: string) => {
     // Push token registration is handled by the push notification hook

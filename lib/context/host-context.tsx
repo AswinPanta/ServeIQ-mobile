@@ -164,7 +164,7 @@ interface HostContextType {
   removePropertyGalleryPhoto: (propertyId: string, photoUrl: string) => Promise<void>;
 }
 
-const HostContext = createContext<HostContextType | undefined>(undefined);
+export const HostContext = createContext<HostContextType | undefined>(undefined);
 
 export function HostProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, portal, isLoading: authLoading, user, tokens } = useAuth();
