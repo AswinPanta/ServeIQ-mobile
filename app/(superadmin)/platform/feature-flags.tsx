@@ -2,27 +2,20 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from "@/lib/utils";
+import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { PURPLE, SLATE, STATUS, AMBER, BG, EMERALD } from '@/lib/constants/figma-tokens';
-;
-;
 
 const ACCENT = PURPLE[700];
 
-const INITIAL_FLAGS = [
-  { id: '1', name: 'Multi-Language', description: 'Enable multi-language support across all tenant dashboards', enabled: true, environments: ['Production', 'Staging'], rollout: 100 },
-  { id: '2', name: 'Dynamic Pricing', description: 'AI-driven dynamic pricing based on occupancy and demand', enabled: true, environments: ['Staging'], rollout: 25 },
-  { id: '3', name: 'Early Check-in', description: 'Allow guests to request early check-in for an additional fee', enabled: true, environments: ['Production', 'Staging'], rollout: 80 },
-  { id: '4', name: 'Loyalty Program', description: 'Points-based loyalty program for returning guests', enabled: false, environments: ['Staging'], rollout: 10 },
-  { id: '5', name: 'Coupon System', description: 'Discount coupons and promotional codes for bookings', enabled: true, environments: ['Production', 'Staging'], rollout: 60 },
-  { id: '6', name: 'OTA Sync', description: 'Sync inventory and pricing with OTAs like Booking.com and Expedia', enabled: false, environments: [], rollout: 0 },
-];
-
 export default function FeatureFlagsScreen() {
-  const [flags, setFlags] = useState(INITIAL_FLAGS);
+  const { featureFlags, updateFeatureFlag } = useSuperAdmin();
   const [search, setSearch] = useState('');
 
-  const toggle = (id: string) => setFlags(prev => prev.map(f => f.id === id ? { ...f, enabled: !f.enabled } : f));
-  const filtered = flags.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
+  const toggle = async (id: string) => {
+    const flag = featureFlags.find(f => f.id === id);
+    if (flag) await updateFeatureFlag(id, { enabled: !flag.enabled });
+  };
+  const filtered = featureFlags.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <View style={s.container}>
@@ -55,16 +48,16 @@ export default function FeatureFlagsScreen() {
             </View>
             <View style={s.metaRow}>
               <View style={s.envRow}>
-                {flag.environments.map(env => (
+                {(flag.environments || []).map(env => (
                   <View key={env} style={[s.envBadge, { backgroundColor: env === 'Production' ? EMERALD[500] + '12' : AMBER[500] + '12' }]}>
                     <Text style={[s.envText, { color: env === 'Production' ? STATUS.activeGreen : AMBER[500] }]}>{env}</Text>
                   </View>
                 ))}
               </View>
               <View style={s.rolloutBar}>
-                <View style={[s.rolloutFill, { width: `${flag.rollout}%`, backgroundColor: flag.enabled ? STATUS.activeGreen : SLATE[300] }]} />
+                <View style={[s.rolloutFill, { width: `${flag.rollout ?? (flag.enabled ? 100 : 0)}%`, backgroundColor: flag.enabled ? STATUS.activeGreen : SLATE[300] }]} />
               </View>
-              <Text style={s.rolloutLabel}>{flag.rollout}%</Text>
+              <Text style={s.rolloutLabel}>{flag.rollout ?? (flag.enabled ? 100 : 0)}%</Text>
             </View>
           </View>
         ))}

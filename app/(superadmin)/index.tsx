@@ -4,6 +4,7 @@ import { router, type Href } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
 import { useAnalytics } from '@/lib/context/analytics-context';
+import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { StatCard } from '@/components/superadmin/StatCard';
 import { AdminCard } from '@/components/superadmin/AdminCard';
 import { AnimatedPressable, FadeInView, Stagger } from '@/components/ui/motion';
@@ -12,13 +13,6 @@ import { PURPLE, SLATE, BLUE, STATUS, AMBER, RED } from '@/lib/constants/figma-t
 
 const ACCENT = PURPLE[700];
 const DARK = SLATE[900];
-
-const SYSTEM_STATUS = [
-  { label: 'API', value: '142ms', ok: true },
-  { label: 'DB', value: '2.8k q/s', ok: true },
-  { label: 'Redis', value: '45ms', ok: true },
-  { label: 'Storage', value: '67%', ok: false },
-];
 
 const QUICK_ACTIONS = [
   { label: 'Create Tenant', icon: 'add' as const, color: PURPLE[700], route: '/(superadmin)/commerce/tenant-setup' },
@@ -30,6 +24,7 @@ const QUICK_ACTIONS = [
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
   const { superAdminKPIs } = useAnalytics();
+  const { dashboardMetrics, healthStatus, plans } = useSuperAdmin();
   const [tenants, setTenants] = useState<any[]>([]);
 
   useEffect(() => {
@@ -64,8 +59,25 @@ export default function SuperAdminDashboard() {
       </View>
 
       {/* KPI Cards */}
+      {dashboardMetrics && (
+        <View style={styles.kpiRow}>
+          {[
+            { label: 'Tenants', value: String(dashboardMetrics.total_tenants), color: PURPLE[700] },
+            { label: 'Users', value: String(dashboardMetrics.total_users), color: BLUE[500] },
+            { label: 'Active Subs', value: String(dashboardMetrics.active_subscriptions), color: STATUS.activeGreen },
+            { label: 'Revenue', value: `NPR ${(dashboardMetrics.revenue / 1000).toFixed(0)}K`, color: AMBER[500] },
+          ].map((kpi) => (
+            <StatCard
+              key={kpi.label}
+              label={kpi.label}
+              value={kpi.value}
+              color={kpi.color}
+            />
+          ))}
+        </View>
+      )}
       <View style={styles.kpiRow}>
-        {superAdminKPIs.map((kpi) => (
+        {!dashboardMetrics && superAdminKPIs.map((kpi) => (
           <StatCard
             key={kpi.label}
             label={kpi.label}
@@ -160,31 +172,35 @@ export default function SuperAdminDashboard() {
         </Stagger>
       </AdminCard>
 
-      {/* Plans Distribution — derived from tenant data */}
+      {/* Plans Distribution — from context plans */}
       <AdminCard title="Plan Distribution" style={styles.cardMargin}>
-        {tenants.length > 0 ? [
-          { name: 'Enterprise', value: Math.floor(tenants.length * 0.17), color: PURPLE[700] },
-          { name: 'Pro', value: Math.floor(tenants.length * 0.33), color: BLUE[500] },
-          { name: 'Basic', value: Math.floor(tenants.length * 0.33), color: STATUS.activeGreen },
-          { name: 'Trial', value: Math.max(1, tenants.length - Math.floor(tenants.length * 0.83)), color: AMBER[500] },
-        ].map((plan) => (
-          <View key={plan.name} style={styles.planRow}>
-            <View style={[styles.planDot, { backgroundColor: plan.color }]} />
+        {plans.length > 0 ? plans.map((plan) => (
+          <View key={plan.id} style={styles.planRow}>
+            <View style={[styles.planDot, { backgroundColor: ACCENT }]} />
             <Text style={styles.planName}>{plan.name}</Text>
             <View style={styles.planBarBg}>
-              <View style={[styles.planBar, { width: `${(plan.value / tenants.length) * 100}%`, backgroundColor: plan.color }]} />
+              <View style={[styles.planBar, { width: `${Math.min(100, plan.price / 2000)}%`, backgroundColor: ACCENT }]} />
             </View>
-            <Text style={styles.planValue}>{plan.value}</Text>
+            <Text style={styles.planValue}>{plan.price === 0 ? 'Free' : `NPR ${(plan.price / 1000).toFixed(0)}K`}</Text>
           </View>
         )) : (
-          <Text style={styles.noData}>No data available</Text>
+          <Text style={styles.noData}>No plans available</Text>
         )}
       </AdminCard>
 
-      {/* System Status */}
+      {/* System Status — from healthStatus context */}
       <AdminCard title="System Status" style={styles.cardMargin}>
         <View style={styles.statusGrid}>
-          {SYSTEM_STATUS.map((s) => (
+          {healthStatus?.services ? healthStatus.services.slice(0, 4).map((svc: any) => (
+            <View key={svc.name} style={styles.statusItem}>
+              <View style={[styles.statusDot, { backgroundColor: svc.status === 'Operational' ? STATUS.activeGreen : AMBER[500] }]} />
+              <Text style={styles.statusLabel}>{svc.name}</Text>
+              <Text style={styles.statusValue}>{svc.response || svc.uptime || '—'}</Text>
+            </View>
+          )) : [
+            { label: 'API', value: '...', ok: true },
+            { label: 'DB', value: '...', ok: true },
+          ].map((s) => (
             <View key={s.label} style={styles.statusItem}>
               <View style={[styles.statusDot, { backgroundColor: s.ok ? STATUS.activeGreen : AMBER[500] }]} />
               <Text style={styles.statusLabel}>{s.label}</Text>

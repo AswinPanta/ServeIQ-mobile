@@ -2,13 +2,12 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from "@/lib/utils";
+import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { PURPLE, STATUS, AMBER, RED, SLATE, BG, EMERALD } from '@/lib/constants/figma-tokens';
-;
-;
 
 const ACCENT = PURPLE[700];
 
-const SERVICES = [
+const FALLBACK_SERVICES = [
   { name: 'API Server', status: 'Operational', uptime: '99.97%', response: '45ms', lastIncident: '2025-04-15', color: STATUS.activeGreen },
   { name: 'Database', status: 'Operational', uptime: '99.99%', response: '12ms', lastIncident: '2025-03-22', color: STATUS.activeGreen },
   { name: 'Cache (Redis)', status: 'Operational', uptime: '99.95%', response: '3ms', lastIncident: '2025-05-10', color: STATUS.activeGreen },
@@ -17,7 +16,7 @@ const SERVICES = [
   { name: 'Payment Gateway', status: 'Operational', uptime: '99.92%', response: '180ms', lastIncident: '2025-06-15', color: STATUS.activeGreen },
 ];
 
-const RECENT_INCIDENTS = [
+const FALLBACK_INCIDENTS = [
   { title: 'File Storage Slow Response', date: '2025-06-28', status: 'Resolved', duration: '1h 23m' },
   { title: 'Email Delivery Delay', date: '2025-06-20', status: 'Resolved', duration: '45m' },
   { title: 'Payment Gateway Timeout', date: '2025-06-15', status: 'Resolved', duration: '32m' },
@@ -31,6 +30,11 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
 };
 
 export default function HealthScreen() {
+  const { healthStatus } = useSuperAdmin();
+  const services = healthStatus?.services || FALLBACK_SERVICES;
+  const incidents = healthStatus?.incidents || FALLBACK_INCIDENTS;
+  const degradedCount = services.filter((s: any) => s.status !== 'Operational').length;
+
   return (
     <View style={s.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} contentInsetAdjustmentBehavior="automatic">
@@ -42,17 +46,18 @@ export default function HealthScreen() {
         </View>
 
         <View style={s.statusBanner}>
-          <View style={[s.statusDot, { backgroundColor: AMBER[500] }]} />
-          <Text style={s.bannerTitle}>Degraded Performance</Text>
-          <Text style={s.bannerDesc}>1 service experiencing degraded performance</Text>
+          <View style={[s.statusDot, { backgroundColor: degradedCount > 0 ? AMBER[500] : STATUS.activeGreen }]} />
+          <Text style={s.bannerTitle}>{degradedCount > 0 ? 'Degraded Performance' : 'All Systems Operational'}</Text>
+          <Text style={s.bannerDesc}>{degradedCount > 0 ? `${degradedCount} service(s) experiencing issues` : 'All services are running normally'}</Text>
         </View>
 
-        {SERVICES.map(svc => {
+        {services.map((svc: any) => {
           const si = STATUS_STYLES[svc.status] || STATUS_STYLES.Operational;
+          const svcColor = svc.status === 'Operational' ? STATUS.activeGreen : AMBER[500];
           return (
             <View key={svc.name} style={s.card}>
               <View style={s.cardHead}>
-                <View style={[s.dot, { backgroundColor: svc.color }]} />
+                <View style={[s.dot, { backgroundColor: svcColor }]} />
                 <Text style={s.svcName}>{svc.name}</Text>
                 <View style={[s.statusBadge, { backgroundColor: si.bg }]}>
                   <Text style={[s.statusText, { color: si.text }]}>{svc.status}</Text>
@@ -61,15 +66,15 @@ export default function HealthScreen() {
               <View style={s.metricsRow}>
                 <View>
                   <Text style={s.metricLabel}>Uptime</Text>
-                  <Text style={s.metricValue}>{svc.uptime}</Text>
+                  <Text style={s.metricValue}>{svc.uptime || '—'}</Text>
                 </View>
                 <View>
                   <Text style={s.metricLabel}>Response</Text>
-                  <Text style={s.metricValue}>{svc.response}</Text>
+                  <Text style={s.metricValue}>{svc.response || '—'}</Text>
                 </View>
                 <View>
                   <Text style={s.metricLabel}>Last Incident</Text>
-                  <Text style={s.metricValue}>{svc.lastIncident}</Text>
+                  <Text style={s.metricValue}>{svc.lastIncident || '—'}</Text>
                 </View>
               </View>
             </View>
@@ -78,8 +83,8 @@ export default function HealthScreen() {
 
         <View style={s.incidentCard}>
           <Text style={s.sectionTitle}>Recent Incidents</Text>
-          {RECENT_INCIDENTS.map((inc, i) => (
-            <View key={inc.title} style={[s.incidentRow, i < RECENT_INCIDENTS.length - 1 && { borderBottomWidth: 1, borderBottomColor: SLATE[100] }]}>
+          {incidents.map((inc: any, i: number) => (
+            <View key={inc.title} style={[s.incidentRow, i < incidents.length - 1 && { borderBottomWidth: 1, borderBottomColor: SLATE[100] }]}>
               <View style={[s.incidentDot, { backgroundColor: STATUS.activeGreen }]} />
               <View style={{ flex: 1 }}>
                 <Text style={s.incidentTitle}>{inc.title}</Text>

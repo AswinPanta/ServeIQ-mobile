@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { StatusBadge } from '@/components/superadmin/StatusBadge';
 import { PURPLE, GRAY, BLUE, AMBER, STATUS, BG, RED, SLATE, TEXT } from '@/lib/constants/figma-tokens';
 
@@ -10,29 +10,16 @@ const ACCENT = PURPLE[700];
 type PlanStatus = 'Active' | 'Inactive' | 'Coming Soon';
 type BillingCycle = 'monthly' | 'yearly';
 
-interface Plan {
-  id: string; name: string; price: number; billing_cycle: BillingCycle;
-  features: string[]; status: PlanStatus;
-}
-
-const INITIAL_PLANS: Plan[] = [
-  { id: '1', name: 'Free', price: 0, billing_cycle: 'monthly', features: ['Up to 1 property', 'Up to 2 users', 'Basic reporting', 'Email support'], status: 'Active' },
-  { id: '2', name: 'Basic', price: 25000, billing_cycle: 'monthly', features: ['Up to 3 properties', 'Up to 10 users', 'Revenue reports', 'Chat support', 'Basic API access'], status: 'Active' },
-  { id: '3', name: 'Pro', price: 75000, billing_cycle: 'monthly', features: ['Up to 10 properties', 'Up to 50 users', 'Advanced analytics', 'Priority support', 'Full API access', 'Custom branding'], status: 'Active' },
-  { id: '4', name: 'Enterprise', price: 200000, billing_cycle: 'yearly', features: ['Unlimited properties', 'Unlimited users', 'Dedicated account manager', 'Custom integrations', 'SLA guarantee'], status: 'Coming Soon' },
-  { id: '5', name: 'Starter', price: 10000, billing_cycle: 'monthly', features: ['Up to 2 properties', 'Up to 5 users', 'Basic reporting', 'Standard support'], status: 'Inactive' },
-];
-
 const PLAN_COLORS: Record<string, string> = {
   Free: GRAY[500], Basic: BLUE[500], Pro: ACCENT, Enterprise: AMBER[500], Starter: STATUS.activeGreen,
 };
 
-const emptyPlan: Plan = { id: '', name: '', price: 0, billing_cycle: 'monthly', features: [], status: 'Active' };
+const emptyPlan = { id: '', name: '', price: 0, billing_cycle: 'monthly' as BillingCycle, features: [] as string[], is_active: true };
 
 export default function PlansScreen() {
-  const [plans, setPlans] = useState<Plan[]>(INITIAL_PLANS);
+  const { plans: ctxPlans, createPlan, updatePlan, deletePlan } = useSuperAdmin();
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState<Plan>({ ...emptyPlan });
+  const [editing, setEditing] = useState(emptyPlan);
   const [isEdit, setIsEdit] = useState(false);
   const [featuresText, setFeaturesText] = useState('');
 
@@ -41,33 +28,39 @@ export default function PlansScreen() {
     setFeaturesText(''); setIsEdit(false); setShowModal(true);
   };
 
-  const openEdit = (plan: Plan) => {
-    setEditing({ ...plan }); setFeaturesText(plan.features.join('\n')); setIsEdit(true); setShowModal(true);
+  const openEdit = (plan: typeof ctxPlans[0]) => {
+    setEditing({ ...plan, billing_cycle: 'monthly' });
+    setFeaturesText(plan.features.join('\n')); setIsEdit(true); setShowModal(true);
   };
 
-  const save = () => {
+  const save = async () => {
     const featureList = featuresText.split('\n').map(f => f.trim()).filter(Boolean);
-    const updated = { ...editing, features: featureList };
-    if (isEdit) setPlans(prev => prev.map(p => p.id === updated.id ? updated : p));
-    else setPlans(prev => [...prev, updated]);
+    const updated = { ...editing, features: featureList, is_active: editing.is_active ?? true };
+    if (isEdit) {
+      await updatePlan(editing.id, { name: updated.name, price: updated.price, features: updated.features, is_active: updated.is_active });
+    } else {
+      await createPlan({ name: updated.name, price: updated.price, features: updated.features, is_active: updated.is_active });
+    }
     setShowModal(false);
     Alert.alert('Saved', `Plan "${updated.name}" ${isEdit ? 'updated' : 'created'}.`);
   };
 
-  const deletePlan = (id: string) => {
-    Alert.alert('Delete Plan', 'Are you sure?', [
+  const handleDelete = (id: string, name: string) => {
+    Alert.alert('Delete Plan', `Delete "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => setPlans(prev => prev.filter(p => p.id !== id)) },
+      { text: 'Delete', style: 'destructive', onPress: () => deletePlan(id) },
     ]);
   };
 
-  const toggleStatus = (id: string) => {
-    setPlans(prev => prev.map(p => {
-      if (p.id !== id) return p;
-      const next: Record<PlanStatus, PlanStatus> = { 'Active': 'Inactive', 'Inactive': 'Active', 'Coming Soon': 'Active' };
-      return { ...p, status: next[p.status] };
-    }));
+  const toggleStatus = async (plan: typeof ctxPlans[0]) => {
+    await updatePlan(plan.id, { is_active: !plan.is_active });
   };
+
+  const plans = ctxPlans.map(p => ({
+    ...p,
+    status: (p.is_active ? 'Active' : 'Inactive') as PlanStatus,
+    billing_cycle: 'monthly' as BillingCycle,
+  }));
 
   return (
     <View style={styles.container}>
@@ -122,10 +115,10 @@ export default function PlansScreen() {
                   <IconSymbol name="settings" size={14} color={ACCENT} />
                   <Text style={styles.editText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => toggleStatus(plan.id)} style={styles.toggleBtn} activeOpacity={0.7}>
-                  <Text style={styles.toggleText}>{plan.status === 'Active' ? 'Deactivate' : 'Activate'}</Text>
+                <TouchableOpacity onPress={() => toggleStatus(plan)} style={styles.toggleBtn} activeOpacity={0.7}>
+                  <Text style={styles.toggleText}>{plan.is_active ? 'Deactivate' : 'Activate'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => deletePlan(plan.id)} style={styles.deleteBtn} activeOpacity={0.7}>
+                <TouchableOpacity onPress={() => handleDelete(plan.id, plan.name)} style={styles.deleteBtn} activeOpacity={0.7}>
                   <IconSymbol name="delete" size={14} color={RED[500]} />
                 </TouchableOpacity>
               </View>

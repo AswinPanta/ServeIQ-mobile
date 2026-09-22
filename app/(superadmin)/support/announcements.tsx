@@ -2,58 +2,48 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from "@/lib/utils";
+import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { PURPLE, BLUE, STATUS, BG, AMBER, RED, SLATE, TEXT, EMERALD } from '@/lib/constants/figma-tokens';
-;
-;
 
 const ACCENT = PURPLE[700];
-
-const INITIAL_ANNOUNCEMENTS = [
-  { id: '1', title: 'New Feature: Dynamic Pricing', body: 'We are excited to announce the launch of AI-driven dynamic pricing for all Pro and Enterprise plans.', audience: 'All', status: 'Published', date: '2025-06-28' },
-  { id: '2', title: 'Scheduled Maintenance: June 30', body: 'The platform will undergo scheduled maintenance on June 30, 2025 from 2:00 AM to 4:00 AM NPT.', audience: 'All', status: 'Published', date: '2025-06-25' },
-  { id: '3', title: 'Holiday Booking Season Tips', body: 'Get ready for the upcoming holiday season! Here are our top tips to maximize your bookings.', audience: 'Hosts', status: 'Draft', date: '2025-06-22' },
-  { id: '4', title: 'Payment Gateway Update', body: 'We have upgraded our payment gateway to support additional payment methods including Connect IPS and Khalti.', audience: 'Guests', status: 'Published', date: '2025-06-18' },
-  { id: '5', title: 'Platform Upgrade: v2.5 Release Notes', body: 'Version 2.5 is here with improved performance, new reporting features, and enhanced security.', audience: 'All', status: 'Published', date: '2025-06-15' },
-];
 
 const AUDIENCE_COLORS: Record<string, string> = { All: ACCENT, Hosts: BLUE[500], Guests: STATUS.activeGreen };
 
 type Audience = 'All' | 'Hosts' | 'Guests';
-type Draft = { id: string; title: string; body: string; audience: Audience; status: 'Published' | 'Draft'; date: string };
 
 export default function AnnouncementsScreen() {
-  const [announcements, setAnnouncements] = useState(INITIAL_ANNOUNCEMENTS);
+  const { announcements: ctxAnnouncements, createAnnouncement, deleteAnnouncement } = useSuperAdmin();
   const [showCreate, setShowCreate] = useState(false);
-  const [draft, setDraft] = useState<Draft>({
-    id: '', title: '', body: '', audience: 'All', status: 'Draft', date: new Date().toISOString().slice(0, 10),
+  const [draft, setDraft] = useState({
+    title: '', body: '', audience: 'All' as Audience,
   });
+
+  const announcements = ctxAnnouncements.map(a => ({
+    ...a,
+    body: a.message,
+    audience: 'All' as Audience,
+    status: 'Published' as const,
+    date: a.created_at ? new Date(a.created_at).toISOString().slice(0, 10) : '',
+  }));
 
   const handleDelete = (id: string, title: string) => {
     Alert.alert('Delete Announcement', `Delete "${title}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => setAnnouncements(prev => prev.filter(a => a.id !== id)) },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteAnnouncement(id) },
     ]);
   };
 
   const openCreate = () => {
-    setDraft({
-      id: `a-${Date.now()}`,
-      title: '',
-      body: '',
-      audience: 'All',
-      status: 'Draft',
-      date: new Date().toISOString().slice(0, 10),
-    });
+    setDraft({ title: '', body: '', audience: 'All' });
     setShowCreate(true);
   };
 
-  const saveDraft = (publish: boolean) => {
+  const saveDraft = async (publish: boolean) => {
     if (!draft.title.trim() || !draft.body.trim()) {
       Alert.alert('Missing fields', 'Please add a title and body before saving.');
       return;
     }
-    const newAnn: typeof draft = { ...draft, status: publish ? 'Published' : 'Draft' };
-    setAnnouncements(prev => [newAnn, ...prev]);
+    await createAnnouncement({ title: draft.title.trim(), message: draft.body.trim() });
     setShowCreate(false);
   };
 
