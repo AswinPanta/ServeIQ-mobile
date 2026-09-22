@@ -259,6 +259,45 @@ export const API_ENDPOINTS = {
   // endpoint returns 422.
   AVAILABLE_ROOMS: (propertyId: string, checkin: string, checkout: string) =>
     `/properties/${propertyId}/rooms/available-rooms?checkin_date=${toDateParam(checkin)}&checkout_date=${toDateParam(checkout)}`,
+
+  // ─── SuperAdmin ──────────────────────────────────────────────────
+  SUPERADMIN: {
+    ME: '/superadmin/me',
+    ADMINS: {
+      LIST: '/superadmin/admins',
+      CREATE: '/superadmin/admins',
+      GET: (id: string) => `/superadmin/admins/${id}`,
+      UPDATE: (id: string) => `/superadmin/admins/${id}`,
+      DELETE: (id: string) => `/superadmin/admins/${id}`,
+      AUDIT: (id: string) => `/superadmin/admins/${id}/audit`,
+      IMPERSONATE: (id: string) => `/superadmin/admins/${id}/impersonate`,
+    },
+    AUDIT_LOGS: '/superadmin/audit-logs',
+    PLANS: {
+      LIST: '/superadmin/plans',
+      CREATE: '/superadmin/plans',
+      GET: (id: string) => `/superadmin/plans/${id}`,
+      UPDATE: (id: string) => `/superadmin/plans/${id}`,
+      DELETE: (id: string) => `/superadmin/plans/${id}`,
+    },
+    SUBSCRIPTIONS: {
+      ASSIGN: (tenantId: string) => `/superadmin/tenants/${tenantId}/subscription`,
+      GET: (tenantId: string) => `/superadmin/tenants/${tenantId}/subscription`,
+    },
+    FEATURE_FLAGS: {
+      LIST: '/superadmin/feature-flags',
+      CREATE: '/superadmin/feature-flags',
+      UPDATE: (id: string) => `/superadmin/feature-flags/${id}`,
+      DELETE: (id: string) => `/superadmin/feature-flags/${id}`,
+    },
+    ANNOUNCEMENTS: {
+      LIST: '/superadmin/announcements',
+      CREATE: '/superadmin/announcements',
+      DELETE: (id: string) => `/superadmin/announcements/${id}`,
+    },
+    DASHBOARD: '/superadmin/dashboard',
+    HEALTH: '/superadmin/health',
+  },
 };
 
 // Request/Response Configuration

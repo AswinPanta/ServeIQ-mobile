@@ -3,3 +3,4 @@ export { normalizeAmenities } from './mappers';
 export { getAvailableRoomsApi, getPropertyById, tryFetchHostProperties, type AvailableRoom } from './properties';
 export { searchHotelsApi, searchNearbyApi } from './search';
 export { createTenant, getTenants, getTenantById, updateTenant, deleteTenantApi } from './tenants';
+export { superadminApi } from './superadmin-api';
