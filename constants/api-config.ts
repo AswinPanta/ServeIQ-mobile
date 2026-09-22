@@ -245,6 +245,14 @@ export const API_ENDPOINTS = {
     TOGGLE: (propertyId: string) => `/favorites/${propertyId}/toggle`,
   },
 
+  // ─── Notifications ─────────────────────────────────────────────
+  NOTIFICATIONS: {
+    LIST: (propertyId: string) => `/notifications?property_id=${propertyId}`,
+    UNREAD_COUNT: (propertyId: string) => `/notifications/unread-count?property_id=${propertyId}`,
+    MARK_READ: (notifId: string, propertyId: string) => `/notifications/${notifId}/read?property_id=${propertyId}`,
+    MARK_ALL_READ: (propertyId: string) => `/notifications/read-all?property_id=${propertyId}`,
+  },
+
   // ─── Available rooms for a property ──────────────────────────
   // Backend validates checkin/checkout as exact dates (zero time). Normalize
   // any ISO datetime ("2026-08-10T14:00:00.000Z") to "YYYY-MM-DD" or the
