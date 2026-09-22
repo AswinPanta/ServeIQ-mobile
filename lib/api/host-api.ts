@@ -775,6 +775,22 @@ export const hostApi = {
     isValidUuid(propertyId)
       ? apiPatch<any, typeof data>(API_ENDPOINTS.PROPERTIES.UPDATE_REVIEW(propertyId, reviewId), data, fallback)
       : Promise.resolve(fallback()),
+
+  getMyReviews: (fallback: () => any[]) =>
+    apiGet<any[]>(API_ENDPOINTS.REVIEWS.MY_REVIEWS, fallback),
+
+  // ─── Tasks (bulk) ──────────────────────────────────────────
+  bulkAssignTasks: (propertyId: string, taskIds: string[], staffIds: string[], fallback: () => any) =>
+    apiPost<any, { task_ids: string[]; staff_ids: string[] }>(
+      API_ENDPOINTS.PROPERTIES.BULK_ASSIGN_TASKS(propertyId),
+      { task_ids: taskIds, staff_ids: staffIds },
+      fallback,
+    ),
+
+  getStaffWorkSummary: (propertyId: string, fallback: () => any) =>
+    isValidUuid(propertyId)
+      ? apiGet<any>(API_ENDPOINTS.PROPERTIES.STAFF_WORK_SUMMARY(propertyId), fallback)
+      : Promise.resolve(fallback()),
 };
 
 // ─── Staff Portal API ───────────────────────────────────────────────────────

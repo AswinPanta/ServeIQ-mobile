@@ -143,6 +143,7 @@ export const API_ENDPOINTS = {
     DELETE_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}`,
     COMPLETE_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}/complete`,
     BULK_ASSIGN_TASKS: (id: string) => `/properties/${id}/tasks/bulk-assign`,
+    STAFF_WORK_SUMMARY: (id: string) => `/properties/${id}/tasks/staff-work-summary`,
     // Picker options scoped to the tasks module (id + name [+ status])
     GET_TASK_HK_STAFF: (id: string) => `/properties/${id}/tasks/housekeeping-staff`,
     GET_TASK_ROOMS: (id: string) => `/properties/${id}/tasks/rooms`,
@@ -237,6 +238,11 @@ export const API_ENDPOINTS = {
     SYSTEM_AMENITIES: '/search/system-amenities',
     SYSTEM_BED_TYPES: '/search/system-bed-types',
     SYSTEM_ROOM_TYPES: '/search/system-room-types',
+  },
+
+  // ─── Reviews (guest) ─────────────────────────────────────────
+  REVIEWS: {
+    MY_REVIEWS: '/properties/me/reviews',
   },
 
   // ─── Favorites ────────────────────────────────────────────────

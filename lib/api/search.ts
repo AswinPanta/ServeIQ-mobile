@@ -354,3 +354,8 @@ export function fetchSystemAmenities(): Promise<SystemItem[]> {
 export function fetchSystemBedTypes(): Promise<SystemItem[]> {
   return fetchSystemList(API_ENDPOINTS.SEARCH.SYSTEM_BED_TYPES, 'bed_name');
 }
+
+/** Backend system room-type list — for mapping filter names → UUID room_type_ids. */
+export function getSystemRoomTypes(): Promise<SystemItem[]> {
+  return fetchSystemList(API_ENDPOINTS.SEARCH.SYSTEM_ROOM_TYPES, 'room_type_name');
+}
