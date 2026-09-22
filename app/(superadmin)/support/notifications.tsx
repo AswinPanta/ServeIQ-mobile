@@ -1,23 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from '@/lib/utils';
 import { PURPLE, BLUE, STATUS, AMBER, RED, CYAN, PINK, GRAY, SLATE, BG } from '@/lib/constants/figma-tokens';
+import { useNotifications } from '@/lib/context/notification-context';
 
 const ACCENT = PURPLE[700];
 
 type NotifType = 'booking' | 'checkin' | 'checkout' | 'cancellation' | 'maintenance' | 'payment' | 'review' | 'property' | 'system';
-
-interface AdminNotification {
-  id: string;
-  type: NotifType;
-  title: string;
-  message: string;
-  property: string;
-  time: string;
-  read: boolean;
-  priority: 'high' | 'medium' | 'low';
-}
 
 const TYPE_CONFIG: Record<NotifType, { icon: string; color: string; label: string }> = {
   booking: { icon: 'calendar', color: BLUE[500], label: 'Booking' },
@@ -37,69 +27,6 @@ const PRIORITY_DOT: Record<string, string> = {
   low: STATUS.activeGreen,
 };
 
-const INITIAL_NOTIFICATIONS: AdminNotification[] = [
-  {
-    id: 'an1', type: 'booking', title: 'New Booking — Himalayan Lakeview Resort',
-    message: 'Rahul Sharma booked Annapurna Penthouse (3 nights, Jun 20–23). Total: NPR 156,000.',
-    property: 'Himalayan Lakeview Resort', time: '5 min ago', read: false, priority: 'high',
-  },
-  {
-    id: 'an2', type: 'checkin', title: 'Check-in Completed — Durbar Square Heritage Haveli',
-    message: 'Guest Priya Adhikari checked into Courtyard Room. ID verified, welcome kit delivered.',
-    property: 'Durbar Square Heritage Haveli', time: '18 min ago', read: false, priority: 'medium',
-  },
-  {
-    id: 'an3', type: 'maintenance', title: 'Maintenance Request — Pokhara Lakeside Resort',
-    message: 'Room 204 (Mountain Suite): AC not cooling. Maintenance team dispatched. ETA 30 min.',
-    property: 'Pokhara Lakeside Resort', time: '32 min ago', read: false, priority: 'high',
-  },
-  {
-    id: 'an4', type: 'payment', title: 'Payment Received — Chitwan Jungle Lodge',
-    message: 'NPR 42,500 received for booking #BK-2026-0847 via Khalti. Folio updated.',
-    property: 'Chitwan Jungle Lodge', time: '1 hr ago', read: false, priority: 'medium',
-  },
-  {
-    id: 'an5', type: 'cancellation', title: 'Cancellation — Lumbini Buddha Garden',
-    message: 'Booking #BK-2026-0832 cancelled by guest. 1-night penalty applied per policy.',
-    property: 'Lumbini Buddha Garden', time: '1.5 hrs ago', read: false, priority: 'high',
-  },
-  {
-    id: 'an6', type: 'checkout', title: 'Check-out Completed — Himalayan Lakeview Resort',
-    message: 'Guest Thomas Hall checked out of Lakeview Room. Room marked for housekeeping.',
-    property: 'Himalayan Lakeview Resort', time: '2 hrs ago', read: true, priority: 'low',
-  },
-  {
-    id: 'an7', type: 'review', title: 'New 5-Star Review — Nagarkot Garden Resort',
-    message: '"Absolutely magical stay!" — Yuki S. gave 5/5 stars. Review published.',
-    property: 'Nagarkot Garden Resort', time: '3 hrs ago', read: true, priority: 'low',
-  },
-  {
-    id: 'an8', type: 'property', title: 'Property Activated — Bardia River Camp',
-    message: 'Bardia River Camp has been activated and is now visible in search results.',
-    property: 'Bardia River Camp', time: '4 hrs ago', read: true, priority: 'medium',
-  },
-  {
-    id: 'an9', type: 'booking', title: 'Bulk Booking — Kathmandu Grand Hotel',
-    message: 'Corporate group booking: 8 rooms, Jul 5–8. 10% group discount applied.',
-    property: 'Kathmandu Grand Hotel', time: '5 hrs ago', read: true, priority: 'high',
-  },
-  {
-    id: 'an10', type: 'maintenance', title: 'Maintenance Completed — Pokhara Lakeside Resort',
-    message: 'Room 108 (Deluxe Lake View): Plumbing fixed. Room status changed to Available.',
-    property: 'Pokhara Lakeside Resort', time: '6 hrs ago', read: true, priority: 'low',
-  },
-  {
-    id: 'an11', type: 'system', title: 'System Alert: High API Latency',
-    message: 'API response time exceeded 500ms threshold for 15 minutes. Investigating.',
-    property: 'Platform', time: '7 hrs ago', read: true, priority: 'medium',
-  },
-  {
-    id: 'an12', type: 'checkin', title: 'Self Check-in — Mountain View Lodge',
-    message: 'Guest James R. used self check-in for Room 301. Digital key activated.',
-    property: 'Mountain View Lodge', time: '8 hrs ago', read: true, priority: 'low',
-  },
-];
-
 const FILTERS: { key: string; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'unread', label: 'Unread' },
@@ -112,8 +39,20 @@ const FILTERS: { key: string; label: string }[] = [
 ];
 
 export default function AdminNotificationsScreen() {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const { notifications: ctxNotifs, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    refreshNotifications();
+  }, []);
+
+  const notifications = ctxNotifs.map(n => ({
+    ...n,
+    type: (n.type || 'system') as NotifType,
+    time: n.timestamp,
+    property: 'Platform',
+    priority: 'medium' as const,
+  }));
 
   const filtered = notifications.filter(n => {
     if (filter === 'unread') return !n.read;
@@ -121,21 +60,11 @@ export default function AdminNotificationsScreen() {
     return n.type === filter;
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  const markRead = (id: string) => markAsRead(id);
+  const markAllRead = () => markAllAsRead();
 
   const clearAll = () => {
-    Alert.alert('Clear All', 'Remove all notifications?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => setNotifications([]) },
-    ]);
+    Alert.alert('Clear All', 'Remove all notifications?');
   };
 
   return (
@@ -184,7 +113,7 @@ export default function AdminNotificationsScreen() {
           </View>
         ) : (
           filtered.map(n => {
-            const cfg = TYPE_CONFIG[n.type];
+            const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.system;
             return (
               <TouchableOpacity
                 key={n.id}

@@ -1,24 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from '@/lib/utils';
-import { useHost } from '@/lib/context/host-context';
 import { BLUE, STATUS, AMBER, RED, PURPLE, CYAN, PINK, GRAY, SLATE, BG } from '@/lib/constants/figma-tokens';
+import { useNotifications } from '@/lib/context/notification-context';
 
 const ACCENT = BLUE[600];
 
 type NotifType = 'booking' | 'checkin' | 'checkout' | 'cancellation' | 'maintenance' | 'payment' | 'subscription' | 'review' | 'system';
-
-interface HostNotification {
-  id: string;
-  type: NotifType;
-  title: string;
-  message: string;
-  property: string;
-  time: string;
-  read: boolean;
-  priority: 'high' | 'medium' | 'low';
-}
 
 const TYPE_CONFIG: Record<NotifType, { icon: string; color: string; label: string }> = {
   booking: { icon: 'calendar', color: BLUE[500], label: 'Booking' },
@@ -50,80 +39,21 @@ const FILTERS: { key: string; label: string }[] = [
   { key: 'cancellation', label: 'Cancellations' },
 ];
 
-function buildNotifications(properties: { name: string }[]): HostNotification[] {
-  const pNames = properties.map(p => p.name);
-  const p1 = pNames[0] || 'Your Property';
-  const p2 = pNames[1] || p1;
-  const p3 = pNames[2] || p1;
-
-  return [
-    {
-      id: 'hn1', type: 'booking', title: `New Booking — ${p1}`,
-      message: `Rahul Sharma booked Annapurna Penthouse (3 nights, Aug 15–18). Total: NPR 156,000.`,
-      property: p1, time: '5 min ago', read: false, priority: 'high',
-    },
-    {
-      id: 'hn2', type: 'checkin', title: `Check-in Completed — ${p1}`,
-      message: 'Guest Priya Adhikari checked into Courtyard Room. ID verified, welcome kit delivered.',
-      property: p1, time: '18 min ago', read: false, priority: 'medium',
-    },
-    {
-      id: 'hn3', type: 'maintenance', title: `Maintenance Request — ${p2}`,
-      message: 'Room 204 (Mountain Suite): AC not cooling. Maintenance team dispatched. ETA 30 min.',
-      property: p2, time: '32 min ago', read: false, priority: 'high',
-    },
-    {
-      id: 'hn4', type: 'subscription', title: 'Subscription Renewal Due',
-      message: 'Your Premium Host plan renews on Aug 20, 2026. NPR 4,999/year. Ensure billing info is up to date.',
-      property: 'Platform', time: '1 hr ago', read: false, priority: 'high',
-    },
-    {
-      id: 'hn5', type: 'payment', title: `Payment Received — ${p2}`,
-      message: 'NPR 42,500 received for booking #BK-2026-0847 via Khalti. Folio updated.',
-      property: p2, time: '1.5 hrs ago', read: false, priority: 'medium',
-    },
-    {
-      id: 'hn6', type: 'cancellation', title: `Cancellation — ${p3}`,
-      message: 'Booking #BK-2026-0832 cancelled by guest. 1-night penalty applied per policy.',
-      property: p3, time: '2 hrs ago', read: false, priority: 'high',
-    },
-    {
-      id: 'hn7', type: 'checkout', title: `Check-out Completed — ${p1}`,
-      message: 'Guest Thomas Hall checked out of Lakeview Room. Room marked for housekeeping.',
-      property: p1, time: '3 hrs ago', read: true, priority: 'low',
-    },
-    {
-      id: 'hn8', type: 'review', title: `New 5-Star Review — ${p1}`,
-      message: '"Absolutely magical stay!" — Yuki S. gave 5/5 stars. Review published.',
-      property: p1, time: '4 hrs ago', read: true, priority: 'low',
-    },
-    {
-      id: 'hn9', type: 'maintenance', title: `Maintenance Completed — ${p2}`,
-      message: 'Room 108 (Deluxe Lake View): Plumbing fixed. Room status changed to Available.',
-      property: p2, time: '5 hrs ago', read: true, priority: 'low',
-    },
-    {
-      id: 'hn10', type: 'subscription', title: 'New Feature: Express Check-in',
-      message: 'SuperAdmin has enabled Express Check-in for your properties. Guests can now check in via QR code.',
-      property: 'Platform', time: '6 hrs ago', read: true, priority: 'medium',
-    },
-    {
-      id: 'hn11', type: 'booking', title: `Bulk Booking — ${p3}`,
-      message: 'Corporate group booking: 8 rooms, Sep 5–8. 10% group discount applied automatically.',
-      property: p3, time: '8 hrs ago', read: true, priority: 'high',
-    },
-    {
-      id: 'hn12', type: 'system', title: 'Platform Update v2.4',
-      message: 'New analytics dashboard available. Check your host portal for revenue insights and booking trends.',
-      property: 'Platform', time: '12 hrs ago', read: true, priority: 'low',
-    },
-  ];
-}
-
 export default function HostNotificationsScreen() {
-  const { properties } = useHost();
-  const [notifications, setNotifications] = useState<HostNotification[]>(() => buildNotifications(properties));
+  const { notifications: ctxNotifs, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    refreshNotifications();
+  }, []);
+
+  const notifications = ctxNotifs.map(n => ({
+    ...n,
+    type: (n.type || 'system') as NotifType,
+    time: n.timestamp,
+    property: 'Platform',
+    priority: 'medium' as const,
+  }));
 
   const filtered = notifications.filter(n => {
     if (filter === 'unread') return !n.read;
@@ -131,21 +61,11 @@ export default function HostNotificationsScreen() {
     return n.type === filter;
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  const markRead = (id: string) => markAsRead(id);
+  const markAllRead = () => markAllAsRead();
 
   const clearAll = () => {
-    Alert.alert('Clear All', 'Remove all notifications?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => setNotifications([]) },
-    ]);
+    Alert.alert('Clear All', 'Remove all notifications?');
   };
 
   return (
@@ -213,7 +133,7 @@ export default function HostNotificationsScreen() {
           </View>
         ) : (
           filtered.map(n => {
-            const cfg = TYPE_CONFIG[n.type];
+            const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.system;
             return (
               <TouchableOpacity
                 key={n.id}

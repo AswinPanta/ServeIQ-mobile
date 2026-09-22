@@ -1,11 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, GRAY } from '@/constants/portal-theme';
 import { safeGoBack } from '@/lib/utils';
 import { BG, SRS as SRSTokens, AMBER, RED, EMERALD, BLUE, PURPLE } from '@/lib/constants/figma-tokens';
-import { useFrontDesk } from '@/lib/context/frontdesk-context';
-import type { FrontDeskBookingResponse } from '@/types/api';
+import { useNotifications } from '@/lib/context/notification-context';
 
 type Category = 'all' | 'guest_requests' | 'arrivals' | 'housekeeping' | 'payments';
 
@@ -39,97 +38,41 @@ function relTime(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-/** Derives a front-desk inbox from live property data (bookings + room status + activity context). */
-function deriveItems(
-  bookings: FrontDeskBookingResponse[],
-  arrivingRefs: Set<string>,
-  dirtyRooms: number,
-  maintenanceRooms: number,
-): InboxItem[] {
-  const items: InboxItem[] = [];
-
-  bookings.forEach(b => {
-    const name = b.guest?.full_name || 'Guest';
-    const ref = b.ref_number;
-    const unpaid = (b.payment_status || 'UNPAID').toUpperCase() !== 'PAID';
-
-    if (arrivingRefs.has(ref)) {
-      items.push({
-        id: `arr-${b.booking_id}`,
-        category: 'arrivals',
-        title: `Arrival: ${name}`,
-        description: `${ref} scheduled check-in${b.rooms?.[0]?.room_name ? ` — Room ${b.rooms[0].room_name}` : ''}.`,
-        created_at: b.created_at,
-        read: false,
-        icon: 'checkin',
-        color: SRSTokens.green,
-      });
-    }
-    if (unpaid && b.amount_due && b.amount_due > 0) {
-      items.push({
-        id: `pay-${b.booking_id}`,
-        category: 'payments',
-        title: `Payment due: ${name}`,
-        description: `${ref} — NPR ${(b.amount_due || 0).toLocaleString()} outstanding.`,
-        created_at: b.created_at,
-        read: false,
-        icon: 'payment',
-        color: SRSTokens.orange,
-      });
-    }
-    if ((b.special_requests || '').trim()) {
-      items.push({
-        id: `req-${b.booking_id}`,
-        category: 'guest_requests',
-        title: `Request from ${name}`,
-        description: b.special_requests!.slice(0, 120),
-        created_at: b.created_at,
-        read: false,
-        icon: 'message',
-        color: BLUE[500],
-      });
-    }
-  });
-
-  if (dirtyRooms > 0) {
-    items.push({
-      id: 'hk-dirty',
-      category: 'housekeeping',
-      title: `${dirtyRooms} room${dirtyRooms !== 1 ? 's' : ''} need turnover`,
-      description: 'Housekeeping flagged rooms as dirty — assign cleaners before arrivals.',
-      created_at: new Date().toISOString(),
-      read: false,
-      icon: 'housekeeping',
-      color: PURPLE[700],
-    });
-  }
-  if (maintenanceRooms > 0) {
-    items.push({
-      id: 'hk-maint',
-      category: 'housekeeping',
-      title: `${maintenanceRooms} room${maintenanceRooms !== 1 ? 's' : ''} in maintenance`,
-      description: 'Blocked rooms affect availability — review maintenance status.',
-      created_at: new Date().toISOString(),
-      read: false,
-      icon: 'room.maintenance',
-      color: RED[500],
-    });
-  }
-
-  return items.sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
-}
-
 export default function NotificationsScreen() {
-  const { bookings, occupancySnapshot, arrivingGuests, timeline } = useFrontDesk();
+  const { notifications: ctxNotifs, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
   const [tab, setTab] = useState<Category>('all');
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
-  const arrivingRefs = useMemo(() => new Set(arrivingGuests.map(b => b.ref)), [arrivingGuests]);
+  useEffect(() => {
+    refreshNotifications();
+  }, []);
 
-  const items = useMemo(
-    () => deriveItems(bookings as unknown as FrontDeskBookingResponse[], arrivingRefs, occupancySnapshot.dirty, occupancySnapshot.maintenance),
-    [bookings, arrivingRefs, occupancySnapshot.dirty, occupancySnapshot.maintenance],
-  );
+  const items = useMemo((): InboxItem[] => {
+    const CATEGORY_MAP: Record<string, { category: InboxItem['category']; icon: InboxItem['icon']; color: string }> = {
+      booking: { category: 'arrivals', icon: 'checkin', color: SRSTokens.green },
+      checkin: { category: 'arrivals', icon: 'checkin', color: SRSTokens.green },
+      checkout: { category: 'arrivals', icon: 'checkin', color: SRSTokens.green },
+      payment: { category: 'payments', icon: 'payment', color: SRSTokens.orange },
+      maintenance: { category: 'housekeeping', icon: 'housekeeping', color: PURPLE[700] },
+      subscription: { category: 'guest_requests', icon: 'message', color: BLUE[500] },
+      review: { category: 'guest_requests', icon: 'message', color: BLUE[500] },
+      system: { category: 'guest_requests', icon: 'message', color: BLUE[500] },
+      cancellation: { category: 'payments', icon: 'payment', color: RED[500] },
+    };
+    return ctxNotifs.map(n => {
+      const cat = CATEGORY_MAP[n.type] || CATEGORY_MAP.system;
+      return {
+        id: n.id,
+        category: cat.category,
+        title: n.title,
+        description: n.message,
+        created_at: n.created_at,
+        read: n.read,
+        icon: cat.icon,
+        color: cat.color,
+      };
+    });
+  }, [ctxNotifs]);
 
   const withRead = useMemo(
     () => items.map(i => (readIds.has(i.id) ? { ...i, read: true } : i)),
@@ -149,12 +92,14 @@ export default function NotificationsScreen() {
     return counts;
   }, [withRead]);
 
-  const markAllRead = () => setReadIds(new Set(withRead.map(i => i.id)));
-  const markRead = (id: string) => setReadIds(prev => new Set(prev).add(id));
-
-  // Timeline events from check-in/out actions become acknowledged (read) automatically —
-  // they mirror what the guest/timeline feed already shows.
-  const timelineCount = timeline.length;
+  const markAllRead = () => {
+    markAllAsRead();
+    setReadIds(new Set(withRead.map(i => i.id)));
+  };
+  const markRead = (id: string) => {
+    markAsRead(id);
+    setReadIds(prev => new Set(prev).add(id));
+  };
 
   return (
     <View style={s.container}>
@@ -165,7 +110,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.title}>Notifications</Text>
-          <Text style={s.sub}>Guest needs, room readiness, and team handoffs{timelineCount ? ` · ${timelineCount} desk events logged` : ''}</Text>
+          <Text style={s.sub}>Guest needs, room readiness, and team handoffs</Text>
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllRead} style={s.markAllBtn}>
