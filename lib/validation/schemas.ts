@@ -5,14 +5,24 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+// Backend password policy (verified live against GuestCreate/UserCreate):
+// min 8 chars + at least one digit (0-9) + at least one special character.
+// Case is NOT enforced server-side — requiring upper+lower here would block
+// passwords the backend happily accepts and confuse users with a mismatched
+// error at registration time.
+const PASSWORD_RULES = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/\d/, 'Must contain at least one number (0-9)')
+  .regex(/[^A-Za-z0-9]/, 'Must contain at least one special character');
+
 export const registerSchema = z.object({
   fullName: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
-  phone: z.string().min(1, 'Phone is required').regex(/^\+?[\d\s-]{7,15}$/, 'Invalid phone number'),
-  password: z.string().min(8, 'Password must be at least 8 characters')
-    .regex(/[a-z]/, 'Must contain a lowercase letter')
-    .regex(/[A-Z]/, 'Must contain an uppercase letter')
-    .regex(/\d/, 'Must contain a number'),
+  // Optional — matches the backend (GuestCreate.phone is nullable). When given,
+  // the backend requires EXACTLY 10 digits, so keep digits-only validation here.
+  phone: z.string().regex(/^\d{10}$/, 'Phone must be exactly 10 digits').or(z.literal('')),
+  password: PASSWORD_RULES,
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
@@ -34,10 +44,7 @@ export const resetPasswordSchema = z.object({
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters')
-    .regex(/[a-z]/, 'Must contain a lowercase letter')
-    .regex(/[A-Z]/, 'Must contain an uppercase letter')
-    .regex(/\d/, 'Must contain a number'),
+  newPassword: PASSWORD_RULES,
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: 'Passwords do not match',

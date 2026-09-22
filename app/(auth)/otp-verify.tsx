@@ -7,8 +7,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
 import { BG, NEUTRAL, TEXT, CORAL, GRAY } from '@/lib/constants/figma-tokens';
-;
-;
+import { Ionicons } from '@expo/vector-icons';
+import { safeGoBack } from '@/lib/utils';
 
 export default function OTPVerifyScreen() {
   const { t } = useTranslation();
@@ -66,8 +66,8 @@ export default function OTPVerifyScreen() {
     try {
       await resendOTP(email, portal);
       setResendTimer(30);
-    } catch {
-      setError('Failed to resend code');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to resend code');
     } finally {
       setResendLoading(false);
     }
@@ -77,6 +77,9 @@ export default function OTPVerifyScreen() {
     <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.container}>
 
+        <TouchableOpacity onPress={() => safeGoBack('/(auth)/register')} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#1A3C5E" />
+        </TouchableOpacity>
 
         <View style={s.card}>
           <Text style={s.title}>{t('auth.otp.code')}</Text>

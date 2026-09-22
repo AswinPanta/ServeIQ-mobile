@@ -3,8 +3,8 @@ import {
   View, Text, ScrollView, TouchableOpacity, Alert, TextInput, StyleSheet, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FONTS } from '@/constants/portal-theme';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FONTS, MANAGER_CODE } from '@/constants/portal-theme';
 import { TEAL, BRAND, BLUE, RED, PURPLE, AMBER, STATUS, BG, SLATE, BORDER, GRAY, EMERALD } from '@/lib/constants/figma-tokens';
 
 const ACCENT = TEAL[600];
@@ -99,7 +99,7 @@ export default function ApprovalsScreen() {
   };
 
   const confirmAction = () => {
-    if (managerCode !== '1234') {
+    if (managerCode !== MANAGER_CODE) {
       Alert.alert('Invalid Code', 'Manager authorization code is incorrect.');
       return;
     }
@@ -124,7 +124,7 @@ export default function ApprovalsScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="arrow.back" size={18} color={NAVY} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>

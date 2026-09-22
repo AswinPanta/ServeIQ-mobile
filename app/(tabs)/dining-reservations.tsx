@@ -13,6 +13,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import { safeGoBack } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { CORAL, TEXT, AMBER, BG } from '@/lib/constants/figma-tokens';
+import type { GuestProfile } from '@/types/api';
 
 const STORAGE_KEY = 'serveiq_dining_reservations';
 
@@ -86,7 +87,7 @@ export default function DiningReservationsScreen() {
   const [timeSlot, setTimeSlot] = useState('');
   const [partySize, setPartySize] = useState(2);
   const [specialRequests, setSpecialRequests] = useState('');
-  const [contactPhone, setContactPhone] = useState(user && 'phone' in user ? (user as any).phone || '' : '');
+  const [contactPhone, setContactPhone] = useState(user && 'phone' in user ? (user as GuestProfile).phone || '' : '');
 
   const selectedRestaurant = selectedRestaurantId
     ? RESTAURANTS.find(r => r.id === selectedRestaurantId)
@@ -113,7 +114,7 @@ export default function DiningReservationsScreen() {
       contactPhone,
       specialRequests,
       createdAt: new Date().toISOString(),
-      guestEmail: (user && 'email' in user ? (user as any).email : undefined) || undefined,
+      guestEmail: (user && 'email' in user ? (user as GuestProfile).email : undefined) || undefined,
     };
 
     // RS-003 — persist locally so the guest sees it in their profile and

@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Property, AdminRoom, StaffMember, BackendStaff } from '@/types/api';
-import { mockProperties } from '@/lib/mock/host-data';
+import type { Property, AdminRoom, RoomTypeDef, StaffMember, BackendStaff } from '@/types/api';
 
 /** SA-004: Subscription plan limits enforcement */
 export const SUBSCRIPTION_PLANS = {
@@ -71,30 +70,20 @@ export const persistHostProperties = (list: Property[], userId?: string) => {
 export { HOST_PROPERTIES_KEY, HOST_DELETED_SEEDS_KEY, SEED_PROPERTY_IDS };
 
 /**
- * Pure merge used by the host-context restore effect. Demo hosts get the demo
- * seed properties back (minus any the user deleted); REAL hosts never see the
- * seeds — only their own per-user saved properties plus anything added earlier
- * in this session.
+ * Pure merge used by the host-context restore effect: only this user's own
+ * per-user saved properties plus anything added earlier in this session.
+ * No seed/demo data — every property must have been created by this user
+ * (locally or via the backend).
  */
 export function mergeRestoredProperties(opts: {
   prev: Property[];
   saved: Property[];
-  deletedSeedIds: ReadonlySet<string>;
-  isDemoHost: boolean;
+  deletedSeedIds?: ReadonlySet<string>;
+  isDemoHost?: boolean;
 }): Property[] {
-  const { prev, saved, deletedSeedIds, isDemoHost } = opts;
+  const { prev, saved } = opts;
   const savedList = (Array.isArray(saved) ? saved : []).map(normalizeSavedProperty);
   const normalizedPrev = prev.map(normalizeSavedProperty);
-  if (isDemoHost) {
-    const seeds = mockProperties.filter(p => !deletedSeedIds.has(p.id)).map(normalizeSavedProperty);
-    const seedIds = new Set(seeds.map(s => s.id));
-    const restored = savedList.filter(p => p && p.id && !seedIds.has(p.id) && !deletedSeedIds.has(p.id));
-    const extra = normalizedPrev.filter(
-      p => !deletedSeedIds.has(p.id) && !seedIds.has(p.id) && !restored.some(r => r.id === p.id),
-    );
-    return [...seeds, ...restored, ...extra];
-  }
-  // Real host: seeds are excluded from both restored and session data.
   const restored = savedList.filter(p => p && p.id && !SEED_PROPERTY_IDS.has(p.id));
   const extra = normalizedPrev.filter(
     p => p && p.id && !SEED_PROPERTY_IDS.has(p.id) && !restored.some(r => r.id === p.id),
@@ -104,22 +93,18 @@ export function mergeRestoredProperties(opts: {
 
 /**
  * Pick the surviving active property id after a restore so child effects never
- * fetch rooms/staff for a ghost (e.g. a deleted seed) property.
+ * fetch rooms/staff for a ghost (e.g. a deleted) property.
  */
 export function computeActivePropertyId(opts: {
   prevActive: string | null;
   saved: Property[];
-  deletedSeedIds: ReadonlySet<string>;
-  isDemoHost: boolean;
+  deletedSeedIds?: ReadonlySet<string>;
+  isDemoHost?: boolean;
 }): string | null {
-  const { prevActive, saved, deletedSeedIds, isDemoHost } = opts;
+  const { prevActive, saved } = opts;
   const savedIds = new Set((Array.isArray(saved) ? saved : []).map(p => p && p.id));
   if (prevActive && savedIds.has(prevActive)) return prevActive;
-  if (isDemoHost && prevActive && mockProperties.some(p => p.id === prevActive) && !deletedSeedIds.has(prevActive)) {
-    return prevActive;
-  }
-  if (isDemoHost) return mockProperties.find(p => !deletedSeedIds.has(p.id))?.id ?? saved[0]?.id ?? null;
-  return saved[0]?.id ?? null;
+  return (Array.isArray(saved) ? saved : []).find(p => p && p.id)?.id ?? null;
 }
 
 export const OPS_DEFAULT_PROPERTY_ID_KEY = '@serveiq_default_ops_property_id';
@@ -241,13 +226,62 @@ export function mapApiProperty(p: any): Property {
   };
 }
 
+/** id→name lookups for joining GET /rooms responses (which carry only type UUIDs) to display names. */
+export interface RoomTypeNames {
+  roomTypes: Record<string, string>;
+  bedTypes: Record<string, string>;
+}
+
+/**
+ * Backend RoomTypeResponse/BedTypeResponse lists → local RoomTypeDef entries
+ * plus id→name maps. Global defaults from the backend (property_id null) are
+ * tagged with `propertyId` so they show up in that property's type lists.
+ */
+export function mapApiRoomTypes(
+  apiRoomTypes: any[],
+  apiBedTypes: any[],
+  propertyId: string
+): { defs: RoomTypeDef[]; names: RoomTypeNames } {
+  const nowIso = new Date().toISOString();
+  const roomTypes: Record<string, string> = {};
+  const bedTypes: Record<string, string> = {};
+  const defs: RoomTypeDef[] = [];
+  for (const t of Array.isArray(apiRoomTypes) ? apiRoomTypes : []) {
+    if (!t?.id) continue;
+    roomTypes[t.id] = t.room_type_name || '';
+    defs.push({
+      id: t.id,
+      property_id: t.property_id || propertyId,
+      room_type_name: t.room_type_name || '',
+      is_default: !!t.is_default,
+      description: '',
+      max_occupancy: 2,
+      bed_configuration: '',
+      view_type: '',
+      amenities: [],
+      photos: [],
+      base_rate: 0,
+      rate_plan: '',
+      extra_charges: [],
+      created_at: t.created_at || nowIso,
+      updated_at: t.updated_at || nowIso,
+    });
+  }
+  for (const t of Array.isArray(apiBedTypes) ? apiBedTypes : []) {
+    if (t?.id) bedTypes[t.id] = t.bed_name || '';
+  }
+  return { defs, names: { roomTypes, bedTypes } };
+}
+
 /** Transform API room to AdminRoom shape */
-export function mapApiRoom(r: any, activePropertyId: string | null): AdminRoom {
+export function mapApiRoom(r: any, activePropertyId: string | null, names?: RoomTypeNames): AdminRoom {
   return {
     id: r.id,
     property_id: r.property_id || activePropertyId || '',
     room_type_id: r.room_type_id || '',
     bed_type_id: r.bed_type_id || '',
+    room_type_name: r.room_type_name || (r.room_type_id ? names?.roomTypes?.[r.room_type_id] : undefined) || undefined,
+    bed_name: r.bed_name || (r.bed_type_id ? names?.bedTypes?.[r.bed_type_id] : undefined) || undefined,
     room_name: r.room_name || '',
     floor_number: r.floor_number ?? 1,
     max_adults: r.max_adults ?? 2,

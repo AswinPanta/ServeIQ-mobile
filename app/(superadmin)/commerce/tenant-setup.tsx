@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { createTenant } from "@/lib/api";
+import { safeGoBack } from '@/lib/utils';import { createTenant } from "@/lib/api";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { PURPLE, BG, SLATE, STATUS, RED } from '@/lib/constants/figma-tokens';
 import { validateName } from '@/lib/utils/validation';
@@ -47,7 +47,7 @@ export default function TenantSetup() {
     try {
       await createTenant({ name: name.trim() });
       Alert.alert('Success', `"${name.trim()}" has been created.`, [
-        { text: 'OK', onPress: () => router.back() },
+        { text: 'OK', onPress: () => safeGoBack() },
       ]);
     } catch (e: any) {
       // handleResponse already extracts the backend error message string
@@ -64,7 +64,7 @@ export default function TenantSetup() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => step === 0 ? router.back() : setStep(0)} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => step === 0 ? safeGoBack() : setStep(0)} style={styles.backBtn}>
           <IconSymbol name="arrow.back" size={18} color={ACCENT} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Tenant</Text>

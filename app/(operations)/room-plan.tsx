@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { safeGoBack } from '@/lib/utils';
 import { ScreenContainer } from '@/components/screen-container';
@@ -47,8 +47,25 @@ export default function RoomPlanScreen() {
   const [backendRooms, setBackendRooms] = useState<BackendRoomStatusItem[]>([]);
   const [summary, setSummary] = useState<BackendRoomStatusSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch live room status from backend
+  const refresh = useCallback(() => {
+    const propId = (user as { property_id?: string } | null)?.property_id;
+    if (!propId || !UUID_RE.test(propId)) return;
+    setRefreshing(true);
+    Promise.all([
+      operationsApi.getRoomStatus(propId),
+      operationsApi.getRoomStatusSummary(propId),
+    ])
+      .then(([rooms, s]) => {
+        if (rooms.length > 0) setBackendRooms(rooms);
+        if (s) setSummary(s);
+      })
+      .catch(() => {})
+      .finally(() => setRefreshing(false));
+  }, [user]);
+
+  // Initial fetch
   useEffect(() => {
     const propId = (user as { property_id?: string } | null)?.property_id;
     if (!propId || !UUID_RE.test(propId)) { setLoading(false); return; }
@@ -125,7 +142,7 @@ export default function RoomPlanScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[SRS.teal]} tintColor={SRS.teal} />}>
         {/* Header */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>

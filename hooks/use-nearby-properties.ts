@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as Location from 'expo-location';
-import { MOCK_PROPERTIES, type Hotel } from '@/lib/mock/properties';
+import type { Hotel } from '@/lib/mock/properties';
 import { searchNearbyApi } from '@/lib/api';
-import { readNearbyCache, saveNearbyCache, haversineDistanceKm } from '@/lib/cache/nearby-cache';
+import { readNearbyCache, saveNearbyCache } from '@/lib/cache/nearby-cache';
 import { markEnd, markStart } from '@/lib/utils/perf';
 
 interface UseNearbyPropertiesResult {
@@ -14,19 +14,6 @@ interface UseNearbyPropertiesResult {
   userLocation: { lat: number; lng: number } | null;
 }
 
-function fallbackNearby(lat: number, lng: number): Hotel[] {
-  const withDistance = MOCK_PROPERTIES.map((h) => ({
-    hotel: h,
-    distance: haversineDistanceKm(lat, lng, h.lat ?? 0, h.lng ?? 0),
-  }))
-    .filter((h) => h.hotel.lat && h.hotel.lng)
-    .sort((a, b) => a.distance - b.distance);
-
-  return withDistance.slice(0, 6).map((h) => ({
-    ...h.hotel,
-    distance_km: Math.round(h.distance * 10) / 10,
-  }));
-}
 
 export function useNearbyProperties(): UseNearbyPropertiesResult {
   // Start empty — the "Stays nearby" section is hidden until the user grants
@@ -45,18 +32,6 @@ export function useNearbyProperties(): UseNearbyPropertiesResult {
   }, []);
 
   const fetchNearby = useCallback(async (lat: number, lng: number) => {
-    // Web can never reach the backend (CORS) — local haversine sort only.
-    if (Platform.OS === 'web') {
-      applyHotels(fallbackNearby(lat, lng));
-      return;
-    }
-    // Stale-while-revalidate: if nothing is shown yet, render the local sort
-    // immediately so the section never sits on a spinner while the Render
-    // instance cold-starts (10–13s). The API result replaces it in the
-    // background if/when it arrives.
-    if (hotelsRef.current.length === 0) {
-      applyHotels(fallbackNearby(lat, lng));
-    }
     try {
       const res = await searchNearbyApi({ lat, lon: lng, limit: 6 });
       if (res.fromApi && res.hotels.length > 0) {
@@ -67,11 +42,6 @@ export function useNearbyProperties(): UseNearbyPropertiesResult {
       }
     } catch {
       // fall through — keep whatever is already displayed
-    }
-    // Backend unavailable. Persist the current list only when no API data was
-    // cached this session, so a good API cache is never clobbered by mock.
-    if (!apiCacheWritten.current) {
-      saveNearbyCache(lat, lng, hotelsRef.current, false);
     }
   }, [applyHotels]);
 

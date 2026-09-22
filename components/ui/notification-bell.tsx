@@ -1,22 +1,23 @@
 import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useNotifications } from '@/lib/context/notification-context';
 import { useColors } from '@/hooks/use-colors';
 import { RED, BG } from '@/lib/constants/figma-tokens';
 
 interface NotificationBellProps {
   color?: string;
+  href?: Href;
 }
 
-export function NotificationBell({ color }: NotificationBellProps) {
+export function NotificationBell({ color, href = '/notifications' as Href }: NotificationBellProps) {
   const colors = useColors();
   const { unreadCount } = useNotifications();
   const dotColor = color || RED[500];
 
   return (
     <TouchableOpacity
-      onPress={() => router.push('/notifications' as any)}
+      onPress={() => router.push(href)}
       style={{ position: 'relative', padding: 4 }}
     >
       <Text style={{ fontSize: 18 }}>🔔</Text>

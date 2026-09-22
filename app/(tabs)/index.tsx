@@ -1,26 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Image, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ScreenContainer } from '@/components/screen-container';
 import { HeroSection } from '@/components/feature/hero-section';
 import { SearchModal } from '@/components/feature/search-modal';
 import { PropertyTypeBrowser } from '@/components/guest/PropertyTypeBrowser';
 import { NewsletterCTA } from '@/components/guest/NewsletterCTA';
-import { Testimonials } from '@/components/guest/Testimonials';
 import { TrustBadges } from '@/components/guest/TrustBadges';
 import { GuestFooter } from '@/components/guest/GuestFooter';
 import { useAuth } from '@/lib/context/auth-context';
 import { useNotifications } from '@/lib/context/notification-context';
 import { searchHotelsApi } from '@/lib/api';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import type { Hotel } from '@/types/api';
 import { POPULAR_DESTINATIONS } from '@/lib/mock/landing-data';
 import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
 import { useTranslation } from 'react-i18next';
 import { useNearbyProperties } from '@/hooks/use-nearby-properties';
+import { useAppCurrency, convertPrice, formatPrice } from '@/hooks/use-app-currency';
 import { mark, markEnd, markStart } from '@/lib/utils/perf';
 import { BRAND, BG, SRS, AMBER, SLATE, RED, TEXT, CORAL } from '@/lib/constants/figma-tokens';
+import { STORAGE_KEYS } from '@/constants/api-config';
 
 
 function formatDistance(km?: number): string {
@@ -33,7 +34,7 @@ const PLACEHOLDER_IMAGE = 'https://images.unsplash.com/photo-1566073771259-6a850
 
 export default function HomeScreen() {
   const { t } = useTranslation();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, isHost } = useAuth();
   const { unreadCount } = useNotifications();
   const [showSearch, setShowSearch] = useState(false);
   const [selectedPropertyType, setSelectedPropertyType] = useState('');
@@ -42,15 +43,19 @@ export default function HomeScreen() {
   const routeKey = '/(tabs)/home';
   const handleScroll = useScrollRestoration(scrollRef, routeKey);
   const { nearbyHotels, loading: nearbyLoading, locationGranted, requestLocation } = useNearbyProperties();
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const { currency } = useAppCurrency();
 
-  const [kathmanduHotels, setKathmanduHotels] = useState<Hotel[]>(() =>
-    MOCK_PROPERTIES.filter(h => h.city === 'Kathmandu')
-  );
-  const [pokharaHotels, setPokharaHotels] = useState<Hotel[]>(() =>
-    MOCK_PROPERTIES.filter(h => h.city === 'Pokhara')
-  );
+  const [kathmanduHotels, setKathmanduHotels] = useState<Hotel[]>([]);
+  const [pokharaHotels, setPokharaHotels] = useState<Hotel[]>([]);
 
   useEffect(() => { mark('home first render'); }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEYS.NEWSLETTER_SUBSCRIBED).then(v => {
+      if (v === 'true') setNewsletterSubscribed(true);
+    });
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -99,7 +104,7 @@ export default function HomeScreen() {
         <View style={s.header}>
           <View style={s.brandRow}>
             <Image source={require('@/assets/images/serveiq-logo.png')} style={s.logoImage} />
-            <Text style={s.brandName}>
+            <Text style={s.brandName} numberOfLines={1}>
               Serve<Text style={s.brandAccent}>IQ</Text>
             </Text>
           </View>
@@ -109,7 +114,7 @@ export default function HomeScreen() {
                 <Text style={s.signInBtnText}>Sign in</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={s.hostBtn} onPress={() => router.push('/(host)/landing')}>
+            <TouchableOpacity style={s.hostBtn} onPress={() => router.push(isHost ? '/(host)' : '/(host)/landing')}>
               <Text style={s.hostBtnText}>{t('home.becomeHost')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.notifBtn} onPress={() => router.push('/(tabs)/profile/notifications')} activeOpacity={0.7}>
@@ -119,7 +124,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Hero Section — search bar, vibe filters, trust text */}
+        {/* Hero Section — search bar, trust text */}
         <HeroSection onSearchPress={() => setShowSearch(true)} />
 
         {/* Browse by property type */}
@@ -170,7 +175,7 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       key={hotel.id}
                       style={s.nearbyCard}
-                      onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
+                      onPress={() => router.push(`/${hotel.id}`)}
                       activeOpacity={0.85}
                     >
                       <Image
@@ -191,7 +196,7 @@ export default function HomeScreen() {
                             <Text style={s.nearbyStar}>⭐</Text>
                             <Text style={s.nearbyRatingText}>{hotel.rating}</Text>
                           </View>
-                          <Text style={s.nearbyPrice}>{hotel.currency} {hotel.price}</Text>
+                          <Text style={s.nearbyPrice}>{formatPrice(convertPrice(hotel.price, hotel.currency, currency), currency)}</Text>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -207,9 +212,9 @@ export default function HomeScreen() {
           <View style={s.sectionHeader}>
             <View style={s.sectionTitleRow}>
               <Text style={s.cityEmoji}>🏛️</Text>
-              <View>
+              <View style={s.sectionTitleCol}>
                 <Text style={s.sectionTitle}>Stay in Kathmandu</Text>
-                <Text style={s.sectionHint}>Nepal{"'"}s capital — temples, history, vibrant culture</Text>
+                <Text style={s.sectionHint} numberOfLines={1}>Nepal{"'"}s capital — temples, history, vibrant culture</Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => router.push({ pathname: '/guest-search-results', params: { location: 'Kathmandu' } })}>
@@ -223,7 +228,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={hotel.id}
                 style={s.cityPropCard}
-                onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
+                onPress={() => router.push(`/${hotel.id}`)}
                 activeOpacity={0.85}
               >
                 <Image source={{ uri: hotel.images?.[0] || PLACEHOLDER_IMAGE }} style={s.cityPropImage} resizeMode="cover" />
@@ -236,7 +241,7 @@ export default function HomeScreen() {
                       <Text style={s.cityPropRatingText}>{hotel.rating}</Text>
                       <Text style={s.cityPropReviews}>({hotel.review_count})</Text>
                     </View>
-                    <Text style={s.cityPropPrice}>{hotel.currency} {hotel.price}</Text>
+                    <Text style={s.cityPropPrice}>{formatPrice(convertPrice(hotel.price, hotel.currency, currency), currency)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -249,9 +254,9 @@ export default function HomeScreen() {
           <View style={s.sectionHeader}>
             <View style={s.sectionTitleRow}>
               <Text style={s.cityEmoji}>🏔️</Text>
-              <View>
+              <View style={s.sectionTitleCol}>
                 <Text style={s.sectionTitle}>Stay in Pokhara</Text>
-                <Text style={s.sectionHint}>Lakeside paradise — Annapurna views, adventure sports</Text>
+                <Text style={s.sectionHint} numberOfLines={1}>Lakeside paradise — Annapurna views, adventure sports</Text>
               </View>
             </View>
             <TouchableOpacity onPress={() => router.push({ pathname: '/guest-search-results', params: { location: 'Pokhara' } })}>
@@ -265,7 +270,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={hotel.id}
                 style={s.cityPropCard}
-                onPress={() => router.push(`/guest-hotel-detail/${hotel.id}`)}
+                onPress={() => router.push(`/${hotel.id}`)}
                 activeOpacity={0.85}
               >
                 <Image source={{ uri: hotel.images?.[0] || PLACEHOLDER_IMAGE }} style={s.cityPropImage} resizeMode="cover" />
@@ -278,7 +283,7 @@ export default function HomeScreen() {
                       <Text style={s.cityPropRatingText}>{hotel.rating}</Text>
                       <Text style={s.cityPropReviews}>({hotel.review_count})</Text>
                     </View>
-                    <Text style={s.cityPropPrice}>{hotel.currency} {hotel.price}</Text>
+                    <Text style={s.cityPropPrice}>{formatPrice(convertPrice(hotel.price, hotel.currency, currency), currency)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -324,15 +329,12 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* Newsletter CTA */}
-        <View style={{ marginTop: 24 }}>
-          <NewsletterCTA />
-        </View>
-
-        {/* Testimonials */}
-        <View style={{ marginTop: 24 }}>
-          <Testimonials />
-        </View>
+        {/* Newsletter CTA — hidden if already subscribed */}
+        {!newsletterSubscribed && (
+          <View style={{ marginTop: 24 }}>
+            <NewsletterCTA />
+          </View>
+        )}
 
         {/* Trust Badges */}
         <View style={{ marginTop: 24 }}>
@@ -364,6 +366,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
   },
   logoImage: {
     width: 60,
@@ -375,6 +378,7 @@ const s = StyleSheet.create({
     fontWeight: '800',
     color: BRAND.navyLight,
     letterSpacing: -0.5,
+    flexShrink: 1,
   },
   brandAccent: {
     color: SRS.teal,
@@ -440,12 +444,20 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    // Let long section titles/hints shrink instead of pushing the
+    // "View All" chip off the right edge of the row.
+    flexShrink: 1,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: BRAND.navyLight,
     letterSpacing: -0.3,
+  },
+  sectionTitleCol: {
+    // Hint column inside sectionTitleRow — must be shrinkable so the
+    // hint never widens the row beyond the screen width.
+    flexShrink: 1,
   },
   seeAll: {
     fontSize: 13,
@@ -524,6 +536,11 @@ const s = StyleSheet.create({
     color: BRAND.navyLight,
     marginBottom: 2,
   },
+  nearbyNameShrink: {
+    // Flex-shrink guard so long hotel names wrap instead of stretching the
+    // card's info block past its 200pt width.
+    flexShrink: 1,
+  },
   nearbyLocRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -568,6 +585,7 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: CORAL[500],
+    flexShrink: 1,
   },
   cityCard: {
     flex: 1,
@@ -641,6 +659,7 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: CORAL[500],
+    flexShrink: 1,
   },
   popularCard: {
     width: 140,
@@ -695,5 +714,6 @@ const s = StyleSheet.create({
   popularProps: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.6)',
+    flexShrink: 1,
   },
 });

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { PermissionToggle } from '@/components/superadmin/PermissionToggle';
 import { AdminCard } from '@/components/superadmin/AdminCard';
@@ -29,7 +29,7 @@ export default function EditRoleScreen() {
       <View style={styles.container}>
         <View style={styles.centered}>
           <Text style={styles.notFound}>Role not found</Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backLink}>
             <Text style={styles.backLinkText}>Go back</Text>
           </TouchableOpacity>
         </View>
@@ -60,7 +60,7 @@ export default function EditRoleScreen() {
     updateRole(role.id, { name: editName.trim(), description: editDescription.trim() });
     setHasChanges(false);
     Alert.alert('Saved', `"${editName}" role has been updated.`, [
-      { text: 'OK', onPress: () => router.back() },
+      { text: 'OK', onPress: () => safeGoBack() },
     ]);
   };
 
@@ -75,7 +75,7 @@ export default function EditRoleScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
             <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Role</Text>

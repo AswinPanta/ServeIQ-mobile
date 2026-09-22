@@ -3,11 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet 
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useHousekeepingStore, STATUS_ORDER, STATUS_FLOW_COLORS, CLEANING_CHECKLIST } from '@/stores/useHousekeepingStore';
-import { useActivityStore } from '@/stores/useActivityStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useAuth } from '@/lib/context/auth-context';
+import { hostApi } from '@/lib/api/host-api';
 import { SyncIndicator } from '@/components/operations/SyncIndicator';
 import { safeGoBack } from '@/lib/utils';
+import type { BackendStaffOption } from '@/types/api';
 import { HK_COLORS as C, HK_STATUS_TEXT as STATUS_TEXT, HK_STATUS_BG as STATUS_BG } from '@/lib/constants/housekeeping-theme';
 import { BG, TEXT } from '@/lib/constants/figma-tokens';
 
@@ -26,6 +27,20 @@ export default function RoomDetailScreen() {
 
   const [cleanerInput, setCleanerInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
+  const [hkStaff, setHkStaff] = useState<BackendStaffOption[]>([]);
+  const [showStaffPicker, setShowStaffPicker] = useState(false);
+
+  // Real housekeeping staff options (GET /properties/{id}/tasks/housekeeping-staff)
+  // — assigning sends a real UUID via PATCH /properties/{id}/tasks/{task_id}.
+  useEffect(() => {
+    const pid = operator?.property_id;
+    if (!pid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pid)) return;
+    let cancelled = false;
+    hostApi.getTaskHKStaffOptions(pid)
+      .then((staff) => { if (!cancelled) setHkStaff(staff); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [operator?.property_id]);
 
   const completedCount = useMemo(() => {
     if (!task?.checklist) return 0;
@@ -44,12 +59,6 @@ export default function RoomDetailScreen() {
     if (currentIdx >= STATUS_ORDER.length - 1) return;
     const nextStatus = STATUS_ORDER[currentIdx + 1];
     useHousekeepingStore.getState().advanceStatus(roomId);
-    useActivityStore.getState().addActivity({
-      type: 'hk',
-      title: `Room ${roomId} → ${nextStatus}`,
-      icon: '🔄',
-      color: STATUS_FLOW_COLORS[nextStatus],
-    });
 
     const noteAdd = useNotificationStore.getState().addNotification;
     const managerChannel =
@@ -75,13 +84,6 @@ export default function RoomDetailScreen() {
         message: `Cleaning + inspection complete. Ready for next assignment.`,
         data: { target: managerChannel, roomId, nextStatus },
       });
-      useActivityStore.getState().addActivity({
-        type: 'hk',
-        title: `Room ${roomId} inspection complete`,
-        description: `Room ${roomId} passed inspection, ready for assignment`,
-        icon: '✅',
-        color: C.cleaned,
-      });
     }
   }, [task, roomId, allDone, operator?.role]);
 
@@ -93,17 +95,11 @@ export default function RoomDetailScreen() {
     [task, roomId]
   );
 
-  const handleAssign = useCallback(() => {
-    if (!cleanerInput.trim()) return;
-    useHousekeepingStore.getState().assignCleaner(roomId, cleanerInput.trim());
-    useActivityStore.getState().addActivity({
-      type: 'hk',
-      title: `Room ${roomId} assigned to ${cleanerInput.trim()}`,
-      icon: '🔄',
-      color: C.teal,
-    });
+  const handleAssign = useCallback((name: string, staffId?: string) => {
+    if (!name.trim()) return;
+    useHousekeepingStore.getState().assignCleaner(roomId, name.trim(), staffId);
     setCleanerInput('');
-  }, [cleanerInput, roomId]);
+  }, [roomId]);
 
   const handleSaveNotes = useCallback(() => {
     if (!notesInput.trim()) return;
@@ -225,10 +221,38 @@ export default function RoomDetailScreen() {
               placeholder="Enter cleaner name..." placeholderTextColor={C.textMuted}
               style={[s.input, { flex: 1 }]}
             />
-            <TouchableOpacity onPress={handleAssign} style={s.assignBtn}>
+            <TouchableOpacity onPress={() => handleAssign(cleanerInput)} style={s.assignBtn}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: BG.white }}>Assign</Text>
             </TouchableOpacity>
           </View>
+          {hkStaff.length > 0 && (
+            <View style={{ marginTop: 8 }}>
+              <TouchableOpacity
+                onPress={() => setShowStaffPicker(!showStaffPicker)}
+                style={[s.input, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+              >
+                <Text style={{ fontSize: 13, color: C.textMuted }}>
+                  {showStaffPicker ? 'Hide staff list' : 'Or pick from housekeeping staff…'}
+                </Text>
+                <Ionicons name={showStaffPicker ? 'chevron-up' : 'chevron-down'} size={14} color={C.textMuted} />
+              </TouchableOpacity>
+              {showStaffPicker && (
+                <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 4, marginTop: 4 }}>
+                  {hkStaff.map((st) => (
+                    <TouchableOpacity
+                      key={st.id}
+                      onPress={() => { handleAssign(st.name, st.id); setShowStaffPicker(false); }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border }}
+                    >
+                      <Ionicons name="person-circle-outline" size={20} color={C.teal} />
+                      <Text style={{ fontSize: 14, color: C.textPrimary, flex: 1 }}>{st.name}</Text>
+                      {task.cleaner === st.name && <Ionicons name="checkmark" size={16} color={C.cleaned} />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
           {task.cleaner !== 'Unassigned' && (
             <Text style={{ fontSize: 10, color: C.textMuted, marginTop: 8 }}>
               Currently assigned to <Text style={{ fontWeight: '600', color: C.textPrimary }}>{task.cleaner}</Text>

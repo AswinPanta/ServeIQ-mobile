@@ -93,7 +93,7 @@ export default function FavoritesScreen() {
             <View style={s.cardWrap}>
               <HotelCard
                 hotel={item}
-                onPress={() => router.push({ pathname: '/guest-hotel-detail/[id]', params: { id: item.id } })}
+                onPress={() => router.push({ pathname: '/[id]', params: { id: item.id } })}
                 isFavorite={true}
                 onFavoritePress={() => removeFavorite(item.id)}
               />

@@ -19,7 +19,7 @@ import {
   STRIPE_PUBLISHABLE_KEY, RAZORPAY_KEY_ID, KHALTI_PUBLIC_KEY, KHALTI_ENVIRONMENT,
   PAYMENT_METHODS,
 } from '@/components/booking/constants';
-import type { Step, SelectedRoom, GuestInfo } from '@/components/booking/constants';
+import type { Step, SelectedRoom, GuestInfo, PaymentGateway, PaymentMode } from '@/components/booking/constants';
 
 export function useBookingFlow() {
   const params = useLocalSearchParams();
@@ -78,7 +78,9 @@ export function useBookingFlow() {
   const [guestInfo, setGuestInfo] = useState({ firstName: '', lastName: '', email: '', phone: '', country: 'Nepal', specialRequests: '' });
   const [guestErrors, setGuestErrors] = useState<Record<string, string>>({});
 
-  const [paymentMethod, setPaymentMethod] = useState<'dummy' | 'stripe' | 'khalti' | 'razorpay' | 'esewa'>('khalti');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentGateway>('khalti');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('online');
+  const [advanceAmount, setAdvanceAmount] = useState<number | null>(null);
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -101,6 +103,10 @@ export function useBookingFlow() {
     options: SdkStripeOptions | SdkRazorpayOptions | SdkKhaltiOptions;
   } | null>(null);
   const sdkResolverRef = useRef<((ok: boolean, params: Record<string, string>, message?: string) => void) | null>(null);
+  // eSewa form checkout (WebView auto-POST of the signed form_fields). Same
+  // resolver pattern: only after the wallet finishes does payment proceed.
+  const [esewaCheckout, setEsewaCheckout] = useState<{ formUrl: string; formFields: Record<string, string> } | null>(null);
+  const esewaResolverRef = useRef<((ok: boolean, params: Record<string, string>) => void) | null>(null);
   // Khalti only accepts return_urls starting with the backend's configured base
   // (KHALTI_RETURN_URL_BASE), so we use it for both the intent call and the
   // WebView's completion-detection prefix (Khalti redirects here after payment).
@@ -437,6 +443,13 @@ export function useBookingFlow() {
       let finalBooking = await ensureBooking(pid);
       const ref = finalBooking.ref_number;
 
+      // Step 1.5: Special requests — the backend BookingCreateRequest schema has
+      // no special_requests field (verified via OpenAPI), so it's silently
+      // dropped at create time. Sync it via the dedicated PATCH endpoint.
+      if (guestInfo.specialRequests?.trim()) {
+        bookingApi.updateSpecialRequests(ref, guestInfo.specialRequests.trim());
+      }
+
       // Step 2: Apply a typed-but-unapplied promo code before payment
       let finalDiscount = appliedPromo?.discount || 0;
       const pendingPromo = promoCode.trim().toUpperCase();
@@ -461,10 +474,20 @@ export function useBookingFlow() {
       setIsProcessing(true);
 
       // Step 3: Create payment intent
-      const paymentIntent = await bookingApi.createPaymentIntent(
+      //  - ONLINE / ADVANCE → a gateway intent to pay now (full or deposit).
+      //  - PAY_ON_ARRIVAL   → confirmed immediately server-side (UNPAID) with
+      //    no gateway, so the intent response already carries status=CONFIRMED.
+      const isArrival = paymentMode === 'arrival';
+      // Strict: a gateway failure here must surface the server's real error
+      // (missing Stripe key, Razorpay currency rejection, Khalti url rejection…).
+      // A silent mock fallback would leave no client_secret / order_id / pidx
+      // and break every downstream SDK checkout with a misleading alert.
+      const paymentIntent = await bookingApi.createPaymentIntentStrict(
         ref,
         {
-          payment_gateway: paymentMethod,
+          payment_method: isArrival ? 'PAY_ON_ARRIVAL' : paymentMode === 'advance' ? 'ADVANCE' : 'ONLINE',
+          payment_gateway: isArrival ? null : paymentMethod,
+          advance_amount: paymentMode === 'advance' ? (advanceAmount ?? Math.round(finalTotal * 0.2)) : null,
           // Khalti/eSewa require return_url to start with the backend's
           // configured base — the WebView intercepts the redirect to it after
           // payment and hands control back with authoritative identifiers.
@@ -472,23 +495,32 @@ export function useBookingFlow() {
             ? { return_url: returnUrlPrefix }
             : {}),
         },
-        () => ({
-          ref_number: ref,
-          payment_gateway: paymentMethod,
-          amount: finalTotal,
-          currency: 'NPR',
-        }),
       );
+
+      // Pay-at-arrival is confirmed by the intention call itself — if the
+      // property refuses it (or the backend is down) we stop with a clear
+      // message instead of silently confirming an unverifiable booking.
+      if (isArrival && !isPaymentVerified(paymentIntent.status)) {
+        setIsProcessing(false);
+        Alert.alert(
+          'Pay at arrival unavailable',
+          paymentIntent.message || 'The property does not accept pay-at-arrival for this booking. Choose another payment option.',
+        );
+        return;
+      }
+
+      // The backend's Khalti strategy returns the pidx as `payment_intent_id`
+      // (khalti_strategy.py: return {"payment_intent_id": data["pidx"], ...}),
+      // NOT as a `pidx` field — normalize once here for everything below.
+      const khaltiPidx = paymentIntent.pidx || (paymentMethod === 'khalti' ? paymentIntent.payment_intent_id : undefined) || '';
 
       // Build the gateway payload the backend verifies against.
       const gatewayPayload: Record<string, unknown> =
-        paymentMethod === 'dummy'
-          ? {}
-          : paymentMethod === 'khalti'
-            ? (paymentIntent.pidx ? { pidx: paymentIntent.pidx } : paymentIntent.payment_intent_id ? { payment_intent_id: paymentIntent.payment_intent_id } : {})
-            : paymentMethod === 'razorpay'
-              ? (paymentIntent.order_id ? { order_id: paymentIntent.order_id } : {})
-              : (paymentIntent.payment_intent_id ? { payment_intent_id: paymentIntent.payment_intent_id } : {});
+        paymentMethod === 'khalti'
+          ? (khaltiPidx ? { pidx: khaltiPidx } : {})
+          : paymentMethod === 'razorpay'
+            ? (paymentIntent.order_id ? { order_id: paymentIntent.order_id } : {})
+            : (paymentIntent.payment_intent_id ? { payment_intent_id: paymentIntent.payment_intent_id } : {});
 
       // Step 4: Real gateways require an actual checkout — the guest enters
       // credentials and pays BEFORE the booking is confirmed:
@@ -497,9 +529,9 @@ export function useBookingFlow() {
       //  - Stripe/Razorpay: native SDK checkout (PaymentSheet / Razorpay sheet)
       //    — the backend returns no hosted URL for these, so the SDK must be
       //    able to run HERE, otherwise we explain and stop.
-      // The demo gateway skips straight to confirm (no real charge).
       let checkoutParams: Record<string, string> = {};
-      if (paymentMethod !== 'dummy') {
+      let confirmRes: ConfirmPaymentResponse | null = null;
+      if (!isArrival) {
         // Khalti: if backend omits payment_url, construct the hosted checkout
         // URL from the pidx so the WebView fallback works in Expo Go / web.
         const khaltiHostedBase =
@@ -508,8 +540,8 @@ export function useBookingFlow() {
             : 'https://test.khalti.com/#/payment';
         const checkoutUrl =
           paymentIntent.payment_url ||
-          (paymentMethod === 'khalti' && paymentIntent.pidx
-            ? `${khaltiHostedBase}/${paymentIntent.pidx}`
+          (paymentMethod === 'khalti' && khaltiPidx
+            ? `${khaltiHostedBase}/${khaltiPidx}`
             : undefined);
         const isSdkGateway = GATEWAYS_WITH_SDK.includes(paymentMethod);
         const sdkReady =
@@ -520,7 +552,7 @@ export function useBookingFlow() {
             ? !!STRIPE_PUBLISHABLE_KEY && !!paymentIntent.client_secret
             : paymentMethod === 'razorpay'
               ? !!RAZORPAY_KEY_ID && !!paymentIntent.order_id
-              : !!KHALTI_PUBLIC_KEY && !!paymentIntent.pidx);
+              : !!KHALTI_PUBLIC_KEY && !!khaltiPidx);
 
         if (!sdkReady && !checkoutUrl && paymentMethod !== 'esewa') {
           setIsProcessing(false);
@@ -543,12 +575,11 @@ export function useBookingFlow() {
             ...(paymentMethod !== 'khalti'
               ? [{ text: 'Use Khalti', onPress: () => setPaymentMethod('khalti') }]
               : []),
-            { text: 'Use Test (Demo)', onPress: () => setPaymentMethod('dummy') },
             { text: 'OK' },
           ];
           Alert.alert(
             'Payment method unavailable',
-            `${note}\n${hint}\n\nYour booking is saved — you can switch payment method and try again.`,
+            `${note}\n${hint}\n\nYour booking is saved — switch payment method and try again.`,
             actions,
           );
           return;
@@ -574,7 +605,10 @@ export function useBookingFlow() {
                     ? {
                         keyId: RAZORPAY_KEY_ID,
                         orderId: paymentIntent.order_id as string,
-                        amount: finalTotal,
+                        // The server's order is for the intent amount (ADVANCE
+                        // mode = advance, not full total) — matching it avoids
+                        // Razorpay's amount-vs-order mismatch rejection.
+                        amount: paymentIntent.amount || finalTotal,
                         currency: paymentIntent.currency || 'NPR',
                         description: `${hotelName} · Booking ${ref}`,
                         prefillName: `${guestInfo.firstName} ${guestInfo.lastName}`.trim(),
@@ -583,7 +617,7 @@ export function useBookingFlow() {
                       }
                     : {
                         publicKey: KHALTI_PUBLIC_KEY,
-                        pidx: paymentIntent.pidx as string,
+                        pidx: khaltiPidx,
                         environment: KHALTI_ENVIRONMENT,
                       },
             });
@@ -598,12 +632,11 @@ export function useBookingFlow() {
                 ...(paymentMethod !== 'khalti'
                   ? [{ text: 'Use Khalti', onPress: () => setPaymentMethod('khalti') }]
                   : []),
-                { text: 'Use Test (Demo)', onPress: () => setPaymentMethod('dummy') },
                 { text: 'OK' },
               ];
               Alert.alert(
                 'Payment method unavailable',
-                `${result.message}\n\nYour booking is saved — switch to Khalti or Test (Demo) to continue.`,
+                `${result.message}\n\nYour booking is saved — switch to another gateway to continue.`,
                 actions,
               );
             } else {
@@ -635,48 +668,71 @@ export function useBookingFlow() {
             return;
           }
         } else if (paymentMethod === 'esewa') {
-          // eSewa — the live backend has no real integration yet and returns no
-          // hosted payment_url, so (like the reference web app) we render a
-          // local sandbox checkout that mimics the eSewa wallet flow. The
-          // confirm step still verifies server-side against the payment intent.
-          const result = await new Promise<{ ok: boolean; params: Record<string, string> }>((resolve) => {
-            checkoutResolverRef.current = (ok, params) => resolve({ ok, params });
-            setCheckout({ url: '', gateway: 'eSewa' });
-            setTimeout(() => {
-              if (checkoutResolverRef.current) {
-                checkoutResolverRef.current(false, {});
-                checkoutResolverRef.current = null;
-              }
-            }, 15 * 60 * 1000);
-          });
-          checkoutParams = result.params || {};
-          if (!result.ok) {
-            setIsProcessing(false);
-            Alert.alert('Payment Cancelled', 'Your booking is saved. Complete the payment from your bookings to confirm it.');
-            return;
+          if (paymentIntent.form_url && Object.keys(paymentIntent.form_fields || {}).length) {
+            // Live eSewa — the backend returns an HMAC-signed form. Auto-POST
+            // the form_fields to the sandbox form; eSewa's success redirect
+            // appends `data` (base64 JSON) which confirm verifies server-side.
+            const result = await new Promise<{ ok: boolean; params: Record<string, string> }>((resolve) => {
+              esewaResolverRef.current = (ok, params) => resolve({ ok, params });
+              setEsewaCheckout({
+                formUrl: paymentIntent.form_url as string,
+                formFields: paymentIntent.form_fields || {},
+              });
+              setTimeout(() => {
+                if (esewaResolverRef.current) {
+                  esewaResolverRef.current(false, {});
+                  esewaResolverRef.current = null;
+                }
+              }, 15 * 60 * 1000);
+            });
+            checkoutParams = result.params || {};
+            if (!result.ok) {
+              setIsProcessing(false);
+              Alert.alert('Payment Cancelled', 'Your booking is saved. Complete the payment from your bookings to confirm it.');
+              return;
+            }
+          } else {
+            // No live integration configured (merchant credentials absent) —
+            // keep the local sandbox that mimics the eSewa wallet flow. The
+            // confirm step still verifies server-side against the intent.
+            const result = await new Promise<{ ok: boolean; params: Record<string, string> }>((resolve) => {
+              checkoutResolverRef.current = (ok, params) => resolve({ ok, params });
+              setCheckout({ url: '', gateway: 'eSewa' });
+              setTimeout(() => {
+                if (checkoutResolverRef.current) {
+                  checkoutResolverRef.current(false, {});
+                  checkoutResolverRef.current = null;
+                }
+              }, 15 * 60 * 1000);
+            });
+            checkoutParams = result.params || {};
+            if (!result.ok) {
+              setIsProcessing(false);
+              Alert.alert('Payment Cancelled', 'Your booking is saved. Complete the payment from your bookings to confirm it.');
+              return;
+            }
           }
         }
-      }
 
-      // Prefer the gateway-returned identifiers from the checkout redirect
-      // (Khalti appends the authoritative pidx; a future Stripe/Razorpay
-      // hosted page would append payment_id + signature / payment_intent_id)
-      // over the intent response.
-      for (const k of ['pidx', 'payment_intent_id', 'order_id', 'payment_id', 'signature'] as const) {
-        if (checkoutParams[k]) gatewayPayload[k] = checkoutParams[k];
-      }
+        // Prefer the gateway-returned identifiers from the checkout redirect
+        // (Khalti appends the authoritative pidx; eSewa appends `data`) over
+        // the intent response.
+        for (const k of ['pidx', 'payment_intent_id', 'order_id', 'payment_id', 'signature', 'data'] as const) {
+          if (checkoutParams[k]) gatewayPayload[k] = checkoutParams[k];
+        }
 
-      const confirmRes = await confirmWithRetry(ref, {
-        idempotency_key: `pay-${finalBooking.booking_id || ref}-${Date.now().toString(36)}`,
-        gateway_payload: gatewayPayload,
-      });
+        confirmRes = await confirmWithRetry(ref, {
+          idempotency_key: `pay-${finalBooking.booking_id || ref}-${Date.now().toString(36)}`,
+          gateway_payload: gatewayPayload,
+        });
+      }
 
       // Step 5: Only a verified payment may land on the "confirmed / paid" screen
-      if (!isPaymentVerified(confirmRes.status)) {
+      if (!isArrival && !isPaymentVerified(confirmRes?.status)) {
         setIsProcessing(false);
         Alert.alert(
           'Payment Not Verified',
-          confirmRes.message || 'We could not verify your payment. Your booking is saved — retry payment from your bookings or contact support.',
+          confirmRes?.message || 'We could not verify your payment. Your booking is saved — retry payment from your bookings or contact support.',
         );
         return;
       }
@@ -700,11 +756,14 @@ export function useBookingFlow() {
       });
 
       // Navigate to confirmation
+      const paidAmount = isArrival ? 0 : paymentMode === 'advance' ? (advanceAmount ?? Math.round(finalTotal * 0.2)) : finalTotal;
       router.replace({
         pathname: '/booking-confirmation',
         params: {
           bookingId: finalBooking.booking_id,
           confirmationCode: ref,
+          paid: String(paidAmount),
+          currency,
           hotelName,
           hotelImage: selectedRooms[0]?.image || '',
           hotelCity: finalBooking.property?.city || '',
@@ -728,7 +787,10 @@ export function useBookingFlow() {
     } catch (error: any) {
       setIsProcessing(false);
       const msg = error?.message || 'An unexpected error occurred. Please try again.';
-      Alert.alert('Booking Failed', msg);
+      // By this point the booking itself was already created — surface the
+      // real gateway error and tell the guest their booking is saved.
+      Alert.alert('Payment Failed', `${msg}\n\nYour booking is saved — retry payment from your bookings. ` +
+        'If this keeps happening, the property\'s payment gateway may be temporarily unavailable.');
     } finally {
       setIsSubmitting(false);
     }
@@ -773,6 +835,16 @@ export function useBookingFlow() {
     sdkResolverRef.current = null;
     setSdkCheckout(null);
   };
+  const handleEsewaComplete = (params: Record<string, string>) => {
+    esewaResolverRef.current?.(true, params);
+    esewaResolverRef.current = null;
+    setEsewaCheckout(null);
+  };
+  const handleEsewaCancel = () => {
+    esewaResolverRef.current?.(false, {});
+    esewaResolverRef.current = null;
+    setEsewaCheckout(null);
+  };
 
   return {
     user, guestUser,
@@ -789,6 +861,10 @@ export function useBookingFlow() {
     onFieldChange, onClearError, onChangeRoom,
     paymentMethod,
     onSelectPaymentMethod: setPaymentMethod,
+    paymentMode,
+    onSelectPaymentMode: setPaymentMode,
+    advanceAmount,
+    onChangeAdvanceAmount: setAdvanceAmount,
     promoCode, onPromoCodeChange: setPromoCode,
     appliedPromo, onApplyPromo: handleApplyPromo, promoLoading, onClearPromo,
     promoDiscount, total, checkIn,
@@ -797,6 +873,8 @@ export function useBookingFlow() {
     checkout, sdkCheckout,
     handleCheckoutComplete, handleCheckoutCancel,
     handleSdkComplete, handleSdkCancel,
+    esewaCheckout,
+    handleEsewaComplete, handleEsewaCancel,
     returnUrlPrefix,
   };
 }

@@ -1,0 +1,53 @@
+# dependencies (EAS installs these)
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native generated
+/ios
+/android
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# debug/logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+logs
+
+# build artifacts
+*.tgz
+*.tar.gz
+.cache/
+.webdev/
+.project-config.json
+
+# env (not needed in build)
+.env
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# dead code quarantine
+_unused/
+
+# duplicate
+ServeIQ/
+ServeIQ.zip
+app-example
+
+# MCP config
+.mcp.json

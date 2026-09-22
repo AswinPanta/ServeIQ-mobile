@@ -6,8 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BG, RED, SLATE, AMBER, PAYMENT } from '@/lib/constants/figma-tokens';
 import { styles } from './styles';
-import { NAVY, BLUE, TEAL, formatDate, PAYMENT_METHODS, gatewayUnavailableNote } from './constants';
-import type { PaymentGateway, SelectedRoom, Step, GuestInfo } from './constants';
+import { NAVY, BLUE, TEAL, formatDate, PAYMENT_METHODS, PAYMENT_MODES, gatewayUnavailableNote } from './constants';
+import type { PaymentGateway, PaymentMode, SelectedRoom, Step, GuestInfo } from './constants';
 
 export function BookingHeader({ onBack }: { onBack: () => void }) {
   return (
@@ -255,6 +255,7 @@ export function StepDetails({
 export function StepPayment({
   appliedPromo, promoCode, onPromoCodeChange, onApplyPromo, promoLoading, onClearPromo,
   selectedRooms, nights, currency, promoDiscount, total, checkIn, paymentMethod, onSelectPaymentMethod,
+  paymentMode, onSelectPaymentMode, advanceAmount, onChangeAdvanceAmount,
 }: {
   appliedPromo: { code: string; discount: number } | null;
   promoCode: string;
@@ -270,7 +271,12 @@ export function StepPayment({
   checkIn: string;
   paymentMethod: PaymentGateway;
   onSelectPaymentMethod: (m: PaymentGateway) => void;
+  paymentMode: PaymentMode;
+  onSelectPaymentMode: (m: PaymentMode) => void;
+  advanceAmount: number | null;
+  onChangeAdvanceAmount: (n: number | null) => void;
 }) {
+  const advanceFallback = Math.round(total * 0.2);
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Text style={styles.stepTitle}>Finish booking</Text>
@@ -339,7 +345,64 @@ export function StepPayment({
         </View>
       </View>
 
-      {/* Payment method */}
+      {/* Payment plan */}
+      <View style={styles.payBox}>
+        <Text style={styles.fieldLabel}>How you'll pay</Text>
+        {PAYMENT_MODES.map(m => {
+          const selected = paymentMode === m.key;
+          return (
+            <TouchableOpacity
+              key={m.key}
+              onPress={() => onSelectPaymentMode(m.key)}
+              style={[styles.payOption, selected && { borderColor: BLUE, backgroundColor: PAYMENT.successLight }]}
+            >
+              <View style={styles.payOptionRow}>
+                <View style={[styles.payRadio, selected && { borderColor: BLUE }]}>
+                  {selected && <View style={styles.payRadioInner} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.payName}>{m.name}</Text>
+                  <Text style={styles.payDesc}>{m.desc}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+
+        {paymentMode === 'advance' && (
+          <View style={styles.promoBox}>
+            <Text style={styles.fieldLabel}>Advance amount (10–50% of total)</Text>
+            <View style={styles.chipRow}>
+              {[10, 20, 30, 40, 50].map(pct => {
+                const amt = Math.round(total * pct / 100);
+                const active = (advanceAmount ?? advanceFallback) === amt;
+                return (
+                  <TouchableOpacity
+                    key={pct}
+                    onPress={() => onChangeAdvanceAmount(amt)}
+                    style={[styles.chip, active && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{pct}%</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.payDesc}>
+              {currency} {(advanceAmount ?? advanceFallback).toLocaleString()} now
+              {' · '}{currency} {(total - (advanceAmount ?? advanceFallback)).toLocaleString()} at the property
+            </Text>
+          </View>
+        )}
+        {paymentMode === 'arrival' && (
+          <View style={styles.payNote}>
+            <Ionicons name="wallet-outline" size={14} color={AMBER[700]} />
+            <Text style={styles.payNoteText}>No online payment — the property collects {currency} {total.toLocaleString()} at check-in.</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Payment method — the gateway to use; not needed for pay-at-arrival */}
+      {paymentMode !== 'arrival' && (
       <View style={styles.payBox}>
         <Text style={styles.fieldLabel}>Payment method</Text>
         {PAYMENT_METHODS.map(m => {
@@ -369,6 +432,7 @@ export function StepPayment({
           );
         })}
       </View>
+      )}
     </ScrollView>
   );
 }

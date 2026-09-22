@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Modal, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { StatusBadge } from '@/components/superadmin/StatusBadge';
 import { SectionHeader } from '@/components/superadmin/SectionHeader';
@@ -65,7 +65,7 @@ export default function RolesScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
             <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Roles & Permissions</Text>

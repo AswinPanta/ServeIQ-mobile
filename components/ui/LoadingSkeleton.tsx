@@ -27,7 +27,7 @@ export function Skeleton({ width = '100%', height = 16, borderRadius = 8, style 
 
   return (
     <Animated.View
-      style={[{ width: width as any, height, borderRadius, backgroundColor: SLATE[200], opacity: opacityAnim }, style]}
+      style={[{ width, height, borderRadius, backgroundColor: SLATE[200], opacity: opacityAnim }, style]}
     />
   );
 }

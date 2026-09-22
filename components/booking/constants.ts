@@ -27,14 +27,23 @@ export const NAVY = BRAND.navyLight;
 export const BLUE = PAYMENT.bookingBlue;
 export const TEAL = PAYMENT.success;
 
-export type PaymentGateway = 'dummy' | 'stripe' | 'khalti' | 'razorpay' | 'esewa';
+export type PaymentGateway = 'stripe' | 'khalti' | 'razorpay' | 'esewa';
 
 export const PAYMENT_METHODS: { key: PaymentGateway; name: string; desc: string }[] = [
   { key: 'khalti', name: 'Khalti', desc: 'Pay with Khalti wallet' },
   { key: 'stripe', name: 'Card (Stripe)', desc: 'Credit / debit card' },
   { key: 'razorpay', name: 'Razorpay', desc: 'UPI, cards & net banking' },
   { key: 'esewa', name: 'eSewa', desc: 'Pay via eSewa wallet' },
-  { key: 'dummy', name: 'Test (Demo)', desc: 'No real charge — for testing' },
+];
+
+// How the guest pays. Maps to the backend's PaymentMethod enum:
+// ONLINE (pay full now), ADVANCE (pay 10–50% now, rest later), PAY_ON_ARRIVAL.
+export type PaymentMode = 'online' | 'advance' | 'arrival';
+
+export const PAYMENT_MODES: { key: PaymentMode; name: string; desc: string }[] = [
+  { key: 'online', name: 'Pay in full', desc: 'Pay the full amount online now' },
+  { key: 'advance', name: 'Pay advance', desc: 'Pay a deposit (10–50%) now, the rest later' },
+  { key: 'arrival', name: 'Pay at arrival', desc: 'No online payment — pay at the property' },
 ];
 
 // Gateway checkout capability, from the LIVE backend's payment strategies
@@ -44,7 +53,8 @@ export const PAYMENT_METHODS: { key: PaymentGateway; name: string; desc: string 
 //    missing public key).
 //  - Stripe   returns { client_secret, payment_intent_id } → native Stripe PaymentSheet.
 //  - Razorpay returns { order_id }                         → native Razorpay checkout sheet.
-//  - Dummy    returns fake ids and always verifies         → no checkout at all.
+//  - eSewa    returns { form_url, form_fields }            → eSewa wallet form (WebView
+//    auto-POST); falls back to a local sandbox only when the backend returns none.
 // Stripe/Razorpay have NO hosted payment_url on the backend, so they run
 // through their native SDKs (SdkPaymentCheckout) — which need a development
 // build and the gateway's public key.
@@ -63,13 +73,13 @@ export const KHALTI_ENVIRONMENT: 'TEST' | 'PROD' =
 
 export const gatewayUnavailableNote = (key: PaymentGateway): string | null => {
   if (key === 'stripe') {
-    if (Platform.OS === 'web') return 'Card payments use the Stripe SDK, which doesn\'t run on web — use Khalti or Test (Demo).';
+    if (Platform.OS === 'web') return 'Card payments use the Stripe SDK, which doesn\'t run on web — use Khalti instead.';
     if (IS_EXPO_GO) return 'Card payments need the Stripe SDK — it only works in a development build, not Expo Go.';
     if (!STRIPE_PUBLISHABLE_KEY) return 'Card payments need the Stripe SDK and a publishable key. Set EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY in .env and rebuild.';
     return null;
   }
   if (key === 'razorpay') {
-    if (Platform.OS === 'web') return 'Razorpay payments use its SDK, which doesn\'t run on web — use Khalti or Test (Demo).';
+    if (Platform.OS === 'web') return 'Razorpay payments use its SDK, which doesn\'t run on web — use Khalti instead.';
     if (IS_EXPO_GO) return 'Razorpay payments need its SDK — it only works in a development build, not Expo Go.';
     if (!RAZORPAY_KEY_ID) return 'Razorpay payments need its SDK and a key ID. Set EXPO_PUBLIC_RAZORPAY_KEY_ID in .env and rebuild.';
     return null;

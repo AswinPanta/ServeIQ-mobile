@@ -115,6 +115,13 @@ export const styles = StyleSheet.create({
   payName: { fontSize: 14, fontWeight: '600', color: NAVY },
   payDesc: { fontSize: 12, color: SLATE[500], marginTop: 1 },
 
+  // Advance-amount chips
+  chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 4 },
+  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: SLATE[100], borderWidth: 1, borderColor: SLATE[200] },
+  chipActive: { backgroundColor: BLUE, borderColor: BLUE },
+  chipText: { fontSize: 13, fontWeight: '600', color: NAVY },
+  chipTextActive: { color: BG.white },
+
   // Bottom bar
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 36 : 16, backgroundColor: BG.white, borderTopWidth: 1, borderTopColor: SLATE[200], gap: 10 },
   bottomPrice: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

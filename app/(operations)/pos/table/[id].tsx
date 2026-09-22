@@ -5,7 +5,6 @@ import { useTableStore } from '@/stores/useTableStore';
 import { useMenuStore } from '@/stores/useMenuStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/lib/context/auth-context';
-import { useActivityStore } from '@/stores/useActivityStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { ACCENT, getAccentColor } from '@/constants/portal-theme';
 import { Modal } from '@/components/ui/modal';
@@ -141,11 +140,9 @@ export default function TableOrderScreen() {
       return;
     }
     const { placeOrder, clearCart } = useOrderStore.getState();
-    const { addActivity } = useActivityStore.getState();
     const { addNotification } = useNotificationStore.getState();
     placeOrder(tableId, table?.number ?? '', notes.trim() || undefined);
     useTableStore.getState().updateTableStatus(tableId, 'occupied');
-    addActivity({ type: 'order', title: `Order placed for Table ${table?.number ?? ''}`, description: `${cart.length} items`, icon: '🍽️', color: ACCENT, property_id: operator?.property_id || 'prop-1' });
     addNotification({ type: 'new_order', title: `New Order — Table ${table?.number ?? ''}`, message: `${cart.length} items sent to kitchen`, data: { tableId } });
     setNotes('');
     Alert.alert('Order Placed', `Order sent to kitchen for Table ${table?.number ?? ''}`, [

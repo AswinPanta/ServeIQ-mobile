@@ -9,13 +9,14 @@ import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
 import { useHost } from '@/lib/context/host-context';
 import { useAuth } from '@/lib/context/auth-context';
 import { isApiPropertyId } from '@/lib/context/host-utils';
-import { hostApi, normalizeTime, normalizePhone, ensureRoomType, ensureBedType } from '@/lib/api/host-api';
+import { hostApi, normalizeTime, normalizePhone, ensureRoomType, ensureBedType, imageFormFile } from '@/lib/api/host-api';
 import { getStatesForCountry } from '@/lib/mock/country-states';
 import { safeGoBack } from '@/lib/utils';
 import { validateEmail, validatePropertyPhone, validateName, validateTime } from '@/lib/utils/validation';
 import { FadeInView } from '@/components/ui/motion';
 import { reverseGeocode } from '@/hooks/use-location';
 import { BG, PURPLE } from '@/lib/constants/figma-tokens';
+import type { PropertyType } from '@/types/api';
 import ListingWizardSteps from '@/components/host/wizard/steps';
 import { DEFAULT_OFFERS, ACCENT, AMENITY_OPTIONS, STEP_ORDER } from '@/components/host/wizard/types';
 import type { WizardStep, PropertyData, LocationData, Offer, WizardCtx, WizardFieldErrors } from '@/components/host/wizard/types';
@@ -45,7 +46,7 @@ const CANCELLATION_DESCRIPTIONS: Record<CancellationPolicy, string> = {
 };
 
 export default function ListingWizard() {
-  const { addProperty, addRoom } = useHost();
+  const { addProperty, addRoom, refreshRooms, refreshRoomTypes } = useHost();
   const { tokens } = useAuth();
   const isDemoAccount = !!tokens?.accessToken?.startsWith('demo-');
 
@@ -192,9 +193,9 @@ export default function ListingWizard() {
           ? [photoUris[coverIndex], ...photoUris.filter((_, i) => i !== coverIndex)]
           : photoUris;
         const formData = new FormData();
-        ordered.forEach((uri, i) => {
-          formData.append('files', { uri, type: 'image/jpeg', name: `photo_${Date.now()}_${i}.jpg` } as any);
-        });
+        for (const [i, uri] of ordered.entries()) {
+          formData.append('files', imageFormFile(uri, `photo_${Date.now()}_${i}.jpg`));
+        }
         const result = await hostApi.uploadPropertyImages(pid, formData);
         const urls = Array.isArray(result) ? result : (result?.data ?? []);
         if (Array.isArray(urls) && urls.length > 0) uploaded.push(...urls);
@@ -225,7 +226,7 @@ export default function ListingWizard() {
     if (!logo) return null;
     try {
       const formData = new FormData();
-      formData.append('image', { uri: logo, type: 'image/jpeg', name: 'owner_logo.jpg' } as any);
+      formData.append('image', imageFormFile(logo, 'owner_logo.jpg'));
       const result = await hostApi.uploadPropertyImage(pid, formData);
       const url = result?.data || result;
       return typeof url === 'string' && url.length > 0 ? url : null;
@@ -425,8 +426,10 @@ export default function ListingWizard() {
             _photos: room.photos || [],
           };
         });
+        let bulkCreated = false;
         try {
           await hostApi.bulkCreateRooms(propertyId, { rooms: roomsPayload }, () => ({} as any));
+          bulkCreated = true;
         } catch {
           const roomFailures: string[] = [];
           for (const roomData of roomsPayload) {
@@ -468,6 +471,14 @@ export default function ListingWizard() {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }, { skipBackend: true });
+        }
+        // The backend now owns these rooms — replace the temp-id local copies
+        // with the server's (real UUID ids, joined type names) so the room list
+        // and guest portal see them, and the local-only auto-sync never
+        // re-uploads them as duplicates.
+        if (bulkCreated) {
+          refreshRooms(propertyId);
+          refreshRoomTypes(propertyId);
         }
       } catch (e) {
         console.warn('Failed to save rooms:', e);
@@ -605,7 +616,7 @@ export default function ListingWizard() {
         id: publishedId,
         tenant_id: 'demo-host-1',
         name: propData.name || 'My Property',
-        type: propertyType.toUpperCase() as any,
+        type: propertyType.toUpperCase() as PropertyType,
         description: propData.description,
         phone_number: propData.phone || undefined,
         email: propData.email || undefined,
@@ -715,7 +726,7 @@ export default function ListingWizard() {
         // No backend ID yet — create the property first
         const created = await hostApi.createProperty({
           name: propData.name || 'My Property',
-          type: (propertyType || 'HOTEL').toUpperCase() as any,
+          type: (propertyType || 'HOTEL').toUpperCase() as PropertyType,
           total_rooms: Math.max(1, propData.totalRooms || 1),
           description: propData.description || '',
           // Backend requires phone + email on create — without them the request

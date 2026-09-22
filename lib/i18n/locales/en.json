@@ -232,6 +232,7 @@
   "profile.bookings.upcoming": "Upcoming",
   "profile.bookings.completed": "Completed",
   "profile.bookings.cancelled": "Cancelled",
+  "profile.bookings.expired": "Expired",
   "profile.bookings.empty": "No {{tab}} bookings",
   "profile.bookings.emptyDesc": "You have no {{tab}} reservations",
   "profile.bookings.viewDetails": "View Details",

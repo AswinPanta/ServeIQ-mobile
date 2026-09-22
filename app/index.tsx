@@ -1,149 +1,167 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, Text, Image, Animated, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAuth } from '@/lib/context/auth-context';
 import { mark } from '@/lib/utils/perf';
-import { NEUTRAL } from '@/lib/constants/figma-tokens';
 
-// ServeIQ splash video (8s, portrait 720×1280). It already contains the
-// "ServeIQ" wordmark and the "Service with Intelligence and Quality" tagline
-// baked into its frames, so no extra overlay is rendered on top of it.
-const SPLASH_VIDEO = require('@/assets/Splash.animation/ServeIQsplash.mp4');
+// Stage 1 asset — Nepal map boot animation (8s, 720x1280)
+const MAP_VIDEO = require('@/assets/Splash.animation/ServeIQ_Nepal_map_animation_20260910153912.mp4');
 
-// How often the player reports playback time, so the end can be caught within
-// ~100ms if the playToEnd event is ever missed.
-const TIME_UPDATE_INTERVAL_S = 0.1;
-// Treat playback as ended once within this many seconds of the video duration.
-const END_EPSILON_S = 0.12;
+const MAX_SPLASH_MS = 10000;
+// Hard cap for the video stage: video is 8s; playToEnd normally fires first.
+const MAX_VIDEO_MS = 9500;
+const { width: W, height: H } = Dimensions.get('window');
 
-// Absolute safety net only — navigates if the player never ends nor errors
-// (should never fire in normal operation; real nav happens at video end).
-const MAX_SPLASH_MS = 15000;
+const LOGO = require('@/assets/images/serveiq-logo.png');
+
+type BootStage = 'video' | 'logo';
 
 export default function SplashScreen() {
   const { isSignedIn, portal } = useAuth();
-
-  // Time of splash mount. Set in an effect (not during render) so the
-  // impure Date.now call stays out of the render phase.
+  const [stage, setStage] = useState<BootStage>('video');
   const splashStart = useRef(0);
   const navigated = useRef(false);
-  // When the video reached its end, measured in ms since splash mount.
-  const endedAtMs = useRef<number | null>(null);
-
-  const player = useVideoPlayer(SPLASH_VIDEO, (p) => {
-    p.loop = false;
-    p.timeUpdateEventInterval = TIME_UPDATE_INTERVAL_S;
-    p.play();
-  });
-
-  useEffect(() => {
-    splashStart.current = Date.now();
-    mark('splash mounted');
-  }, []);
-
-  // Always hold the latest auth state so the timer can route correctly even
-  // when auth is still initializing when it fires.
   const authRef = useRef({ isSignedIn, portal });
+
   useEffect(() => {
     authRef.current = { isSignedIn, portal };
   }, [isSignedIn, portal]);
 
-  const navigate = () => {
-    if (navigated.current) return;
-    navigated.current = true;
-
-    const navMs = Date.now() - splashStart.current;
-    mark(`navigating away from splash (+${navMs}ms)`);
-    const endMs = endedAtMs.current;
-    if (endMs != null) {
-      const delta = Math.max(0, navMs - endMs);
-      if (__DEV__) console.log(`[splash] video ended at +${endMs}ms, navigating at +${navMs}ms (Δ${delta}ms)`);
-    }
-
-    const { isSignedIn: signedIn, portal: activePortal } = authRef.current;
-    if (signedIn && activePortal && activePortal !== 'guest') {
-      switch (activePortal) {
-        case 'host':
-          router.replace('/(host)');
-          return;
-        case 'operations':
-          router.replace('/(operations)');
-          return;
-        case 'superadmin':
-          router.replace('/(superadmin)');
-          return;
-        default:
-          router.replace('/(tabs)');
-          return;
-      }
-    }
-
-    router.replace('/(tabs)');
-  };
-
-  // Primary trigger: navigate the instant the mp4 finishes.
   useEffect(() => {
-    const sub = player.addListener('playToEnd', () => {
-      endedAtMs.current = Date.now() - splashStart.current;
-      mark('splash video ended (playToEnd)');
-      navigate();
-    });
-    return () => sub.remove();
-  }, [player]);
-
-  // Robust fallback: if playToEnd is ever missed, catch the end via playback
-  // time so navigation still happens within ~100ms of the true video end.
-  useEffect(() => {
-    const sub = player.addListener('timeUpdate', ({ currentTime }) => {
-      const duration = player.duration;
-      if (!duration || duration <= 0) return;
-      if (currentTime >= duration - END_EPSILON_S) {
-        if (endedAtMs.current == null) {
-          endedAtMs.current = Date.now() - splashStart.current;
-          mark('splash video ended (timeUpdate)');
-        }
-        navigate();
-      }
-    });
-    return () => sub.remove();
-  }, [player]);
-
-  // If the player errors, bail out so a broken video never traps the user.
-  useEffect(() => {
-    const sub = player.addListener('statusChange', ({ status }) => {
-      if (status === 'error') {
-        mark('splash video error — navigating');
-        navigate();
-      }
-    });
-    return () => sub.remove();
-  }, [player]);
-
-  // Absolute safety net (never reached in normal operation).
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      mark('splash safety net reached');
-      navigate();
-    }, MAX_SPLASH_MS);
-    return () => clearTimeout(timer);
+    splashStart.current = Date.now();
+    mark('splash mounted (video stage)');
   }, []);
 
+  const navigate = useCallback(() => {
+    if (navigated.current) return;
+    navigated.current = true;
+    mark(`navigating (+${Date.now() - splashStart.current}ms)`);
+    const { isSignedIn: s, portal: p } = authRef.current;
+    if (s && p && p !== 'guest') {
+      switch (p) {
+        case 'host': router.replace('/(host)'); return;
+        case 'operations': router.replace('/(operations)'); return;
+        case 'superadmin': router.replace('/(superadmin)'); return;
+      }
+    }
+    router.replace('/(tabs)');
+  }, []);
+
+  // ── Stage 1: Nepal map video ──────────────────────────────────────────────
+  const player = useVideoPlayer(MAP_VIDEO, (p) => {
+    p.loop = false;
+    p.play();
+  });
+
+  const goLogo = useCallback(() => {
+    setStage((prev) => {
+      if (prev !== 'video') return prev; // never leave the logo stage once entered
+      mark('video ended → logo stage');
+      return 'logo';
+    });
+  }, []);
+
+  useEffect(() => {
+    if (stage !== 'video') return;
+    // Fires when the video plays to its natural end.
+    const sub = player.addListener('playToEnd', goLogo);
+    // Fallbacks: codec error or a stalled stream must never trap the app on
+    // the boot screen — bail to the logo stage.
+    const cap = setTimeout(goLogo, MAX_VIDEO_MS);
+    return () => {
+      sub.remove();
+      clearTimeout(cap);
+    };
+  }, [stage, player, goLogo]);
+
+  // ── Stage 2: the original logo splash ("old pal") ─────────────────────────
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.85)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (stage !== 'logo') return;
+    Animated.parallel([
+      Animated.timing(logoOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, damping: 14, stiffness: 120, useNativeDriver: true }),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(300),
+      Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+
+    // Navigate after 2s — Stack's fade animation crossfades the screens
+    const t = setTimeout(() => navigate(), 2000);
+    // Hard cap (defense in depth — the 2s timer should always win)
+    const cap = setTimeout(() => navigate(), MAX_SPLASH_MS);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(cap);
+    };
+  }, [stage, navigate, logoOpacity, logoScale, textOpacity]);
+
+  if (stage === 'video') {
+    return (
+      <View style={s.videoContainer}>
+        <VideoView
+          player={player}
+          style={s.video}
+          contentFit="cover"
+          nativeControls={false}
+          allowsPictureInPicture={false}
+        />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <VideoView
-        player={player}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        nativeControls={false}
-      />
+    <View style={s.container}>
+      <Animated.View style={[s.logoWrap, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
+        <Image source={LOGO} style={s.logo} resizeMode="contain" />
+      </Animated.View>
+      <Animated.View style={[s.footer, { opacity: textOpacity }]}>
+        <Text style={s.footerText}>Service with Intelligence and Quality</Text>
+      </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
+  videoContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  video: {
+    flex: 1,
+    width: W,
+    height: H,
+  },
   container: {
     flex: 1,
-    backgroundColor: NEUTRAL[50],
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoWrap: {
+    alignItems: 'center',
+  },
+  logo: {
+    width: W * 0.65,
+    height: W * 0.65,
+    maxWidth: 320,
+    maxHeight: 320,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 60,
+    alignItems: 'center',
+  },
+  footerText: {
+    color: '#2E86AB',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 1,
   },
 });

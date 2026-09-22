@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { cn } from '@/lib/utils';
 import { BLUE, GRAY, BG } from '@/lib/constants/figma-tokens';
 
@@ -50,6 +50,21 @@ export function DatePickerCalendar({
   const [selectedCheckOut, setSelectedCheckOut] = useState<Date | null>(initialCheckOut || null);
   const [selectingCheckOut, setSelectingCheckOut] = useState(false);
 
+  // Resync the calendar session every time it opens: the parent's dates may
+  // have changed since the last open (new search, cleared dates), and the
+  // previous session must not leak into it (stale selectingCheckOut made the
+  // first tap after reopen instantly re-apply a range and close).
+  useEffect(() => {
+    if (!visible) return;
+    setSelectedCheckIn(initialCheckIn ? new Date(initialCheckIn) : null);
+    setSelectedCheckOut(initialCheckOut ? new Date(initialCheckOut) : null);
+    setSelectingCheckOut(false);
+    if (initialCheckIn) {
+      setCurrentMonth(new Date(initialCheckIn.getFullYear(), initialCheckIn.getMonth(), 1));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -92,8 +107,10 @@ export function DatePickerCalendar({
     setSelectingCheckOut(false);
   };
 
-  const screenWidth = Dimensions.get('window').width;
-  const dayCellSize = Math.floor((screenWidth - 80) / 7);
+  const { width: screenWidth } = useWindowDimensions();
+  // 20pt horizontal padding on each side keeps the 7 columns centered in the
+  // sheet's content area (was 40pt total — left-shifted the whole grid).
+  const dayCellSize = Math.floor((screenWidth - 40) / 7);
 
   const renderCalendarDays = () => {
     const daysInMonth = getDaysInMonth(currentMonth);

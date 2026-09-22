@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useAuth } from '@/lib/context/auth-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { NotificationBell } from '@/components/ui/notification-bell';
@@ -31,7 +31,7 @@ export function SuperAdminHeader({ title }: { title?: string }) {
         </View>
 
         <View style={s.actions}>
-          <NotificationBell color={SUPERADMIN} />
+          <NotificationBell color={SUPERADMIN} href={'/(superadmin)/support/notifications' as Href} />
           <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={s.avatarBtn}>
             <Text style={s.avatarText}>{admin?.name?.[0] || 'A'}</Text>
           </TouchableOpacity>

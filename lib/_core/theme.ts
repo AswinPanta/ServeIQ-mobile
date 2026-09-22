@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 
-import * as themeConfig from "@/theme.config";
+import * as themeConfig from "@/constants/theme.config";
 
 export type ColorScheme = "light" | "dark";
 
@@ -36,6 +36,9 @@ type RuntimePalette = SchemePaletteItem & {
   tabIconDefault: string;
   tabIconSelected: string;
   border: string;
+  surface: string;
+  foreground: string;
+  muted: string;
 };
 
 function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
@@ -49,6 +52,9 @@ function buildRuntimePalette(scheme: ColorScheme): RuntimePalette {
     tabIconDefault: base.muted,
     tabIconSelected: base.primary,
     border: base.border,
+    surface: base.surface,
+    foreground: base.foreground,
+    muted: base.muted,
   };
 }
 

@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet } from 'react-native';
+import { useState, useMemo, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
-import { useActivityStore } from '@/stores/useActivityStore';
+import { useAuth } from '@/lib/context/auth-context';
+import { staffApi } from '@/lib/api/host-api';
 import { useShiftStore } from '@/stores/useShiftStore';
 import { SRS, BG, SLATE, BLUE, EMERALD, RED, AMBER } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY, SHADOWS } from '@/constants/portal-theme';
@@ -19,7 +21,7 @@ const STEPS = [
 ];
 
 export default function CheckInScreen() {
-  const { rooms, bookings, checkIn: contextCheckIn } = useFrontDesk();
+  const { rooms, bookings, checkIn: contextCheckIn, getAvailableRoomsForDates } = useFrontDesk();
   const arrivingGuests = useMemo(() => bookings.filter((b) => b.status === 'confirmed'), [bookings]);
 
   const [step, setStep] = useState(0);
@@ -28,6 +30,8 @@ export default function CheckInScreen() {
   const [idType, setIdType] = useState('Passport');
   const [idNumber, setIdNumber] = useState('');
   const [idVerified, setIdVerified] = useState(false);
+  const [citizenshipFront, setCitizenshipFront] = useState<string | null>(null);
+  const [citizenshipBack, setCitizenshipBack] = useState<string | null>(null);
   const [selectedRoomNumber, setSelectedRoomNumber] = useState('');
   const [balanceCollected, setBalanceCollected] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -40,7 +44,18 @@ export default function CheckInScreen() {
       })
     : [];
 
-  const availableRooms = rooms.filter((r) => r.status === 'available');
+  /** Use room-calendar for date-range availability when booking dates are known, else fall back to current status */
+  const availableRoomNames = useMemo(() => {
+    if (selectedBooking?.checkin && selectedBooking?.checkout) {
+      const calendarRooms = getAvailableRoomsForDates(selectedBooking.checkin, selectedBooking.checkout);
+      if (calendarRooms.length > 0) return new Set(calendarRooms);
+    }
+    return null;
+  }, [selectedBooking?.checkin, selectedBooking?.checkout, getAvailableRoomsForDates]);
+
+  const availableRooms = availableRoomNames
+    ? rooms.filter((r) => r.status === 'available' || availableRoomNames.has(r.room_number))
+    : rooms.filter((r) => r.status === 'available');
   const suggestedRooms = selectedBooking ? availableRooms.filter((r) => r.room_type === selectedBooking.room_type) : [];
 
   const handleSelectGuest = (g: typeof arrivingGuests[0]) => {
@@ -49,12 +64,42 @@ export default function CheckInScreen() {
     setStep(0);
   };
 
-  const handleComplete = () => {
+  const completingRef = useRef(false);
+
+  const { user } = useAuth();
+  const propId = (user as { property_id?: string } | null)?.property_id || '';
+
+  const pickCitizenship = async (side: 'front' | 'back') => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permission needed', 'Please grant gallery access'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      if (side === 'front') setCitizenshipFront(uri);
+      else setCitizenshipBack(uri);
+    }
+  };
+
+  const uploadCitizenship = async (ref: string) => {
+    if (!citizenshipFront && !citizenshipBack) return;
+    const fd = new FormData();
+    if (citizenshipFront) fd.append('front', { uri: citizenshipFront, type: 'image/jpeg', name: 'front.jpg' } as any);
+    if (citizenshipBack) fd.append('back', { uri: citizenshipBack, type: 'image/jpeg', name: 'back.jpg' } as any);
+    await staffApi.uploadCitizenshipPhotos(ref, fd, () => ({ front: null, back: null }));
+  };
+
+  const handleComplete = async () => {
+    if (completingRef.current) return;
     if (!selectedBooking || !selectedRoomNumber) return;
-    contextCheckIn(selectedBooking, selectedRoomNumber);
-    useActivityStore.getState().addActivity({ type: 'checkin', title: `${selectedBooking.guest_name} checked in`, description: `Room ${selectedRoomNumber} - ${selectedBooking.room_type}`, icon: '🔑', color: SRS.green });
+    completingRef.current = true;
+    contextCheckIn(selectedBooking, selectedRoomNumber, balanceCollected && paymentMethod ? { amount: selectedBooking.balance || 0, payment_gateway: paymentMethod.toUpperCase() } : undefined);
+    // Upload citizenship photos if any were captured
+    if (citizenshipFront || citizenshipBack) {
+      uploadCitizenship(selectedBooking.ref).catch(() => {});
+    }
     useShiftStore.getState().incrementCheckIns();
     setStep(3);
+    completingRef.current = false;
   };
 
   const formatCheckTime = (date: string) => {
@@ -180,18 +225,46 @@ export default function CheckInScreen() {
               </View>
             </View>
 
-            <TouchableOpacity
-              onPress={() => {
-                setIdVerified(true);
-                if (!idNumber) setIdNumber('A81234567');
-              }}
-              style={[s.scanBtn, idVerified && s.scanBtnVerified]}
-            >
-              <Ionicons name="camera-outline" size={18} color={idVerified ? SRS.green : SRS.teal} />
-              <Text style={[s.scanBtnText, { color: idVerified ? SRS.green : SRS.teal }]}>
-                {idVerified ? '✓ Verified' : 'Scan Passport'}
-              </Text>
-            </TouchableOpacity>
+            {/* Citizenship Photo Upload */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+              <TouchableOpacity
+                onPress={() => pickCitizenship('front')}
+                style={[s.scanBtn, { flex: 1, borderColor: citizenshipFront ? SRS.green + '40' : SRS.teal + '30', backgroundColor: citizenshipFront ? SRS.green + '08' : SRS.teal + '06' }]}
+              >
+                {citizenshipFront ? (
+                  <Image source={{ uri: citizenshipFront }} style={{ width: 40, height: 28, borderRadius: 4 }} />
+                ) : (
+                  <Ionicons name="camera-outline" size={18} color={SRS.teal} />
+                )}
+                <Text style={[s.scanBtnText, { color: citizenshipFront ? SRS.green : SRS.teal }]}>
+                  {citizenshipFront ? '✓ Front' : 'Front ID'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => pickCitizenship('back')}
+                style={[s.scanBtn, { flex: 1, borderColor: citizenshipBack ? SRS.green + '40' : SRS.teal + '30', backgroundColor: citizenshipBack ? SRS.green + '08' : SRS.teal + '06' }]}
+              >
+                {citizenshipBack ? (
+                  <Image source={{ uri: citizenshipBack }} style={{ width: 40, height: 28, borderRadius: 4 }} />
+                ) : (
+                  <Ionicons name="camera-outline" size={18} color={SRS.teal} />
+                )}
+                <Text style={[s.scanBtnText, { color: citizenshipBack ? SRS.green : SRS.teal }]}>
+                  {citizenshipBack ? '✓ Back' : 'Back ID'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {(citizenshipFront || citizenshipBack) && (
+              <TouchableOpacity
+                onPress={() => { setIdVerified(true); if (!idNumber) setIdNumber('Verified'); }}
+                style={[s.scanBtn, idVerified && s.scanBtnVerified]}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color={idVerified ? SRS.green : SRS.teal} />
+                <Text style={[s.scanBtnText, { color: idVerified ? SRS.green : SRS.teal }]}>
+                  {idVerified ? '✓ Identity Verified' : 'Verify Identity'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Step 1: Room Assignment */}
             <View style={s.sectionDivider} />
@@ -288,6 +361,7 @@ export default function CheckInScreen() {
                 { label: 'Check-out', value: formatCheckOutTime(selectedBooking.checkout) },
                 { label: 'Guests', value: `${guestsCount} Adults` },
                 { label: 'ID Verified', value: idVerified ? 'Yes ✓' : 'No', color: idVerified ? SRS.green : SRS.orange },
+                { label: 'Citizenship', value: (citizenshipFront || citizenshipBack) ? `${citizenshipFront ? 'Front' : ''}${citizenshipFront && citizenshipBack ? ' + ' : ''}${citizenshipBack ? 'Back' : ''} ✓` : 'Not uploaded', color: (citizenshipFront || citizenshipBack) ? SRS.green : GRAY[400] },
                 { label: 'Balance', value: (selectedBooking.balance || 0) === 0 || balanceCollected ? '✓ Paid' : `NPR ${(selectedBooking.balance || 0).toLocaleString()}`, color: (selectedBooking.balance || 0) === 0 || balanceCollected ? SRS.green : SRS.red },
               ].map((r) => (
                 <View key={r.label} style={s.reviewRow}>
@@ -441,7 +515,7 @@ const s = StyleSheet.create({
   suggestedLabel: { fontSize: 12, fontWeight: '600', color: SLATE[500] },
   availableBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: EMERALD[50] },
   availableText: { fontSize: 10, fontWeight: '600', color: SRS.green },
-  suggestedRoomNumber: { fontSize: 28, fontWeight: '800', color: DARK, marginTop: 6, fontVariant: ['tabular-nums' as any] },
+  suggestedRoomNumber: { fontSize: 28, fontWeight: '800', color: DARK, marginTop: 6, fontVariant: ['tabular-nums'] },
 
   selectRoomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: SRS.teal + '30', backgroundColor: SRS.teal + '06', marginBottom: 8 },
   selectRoomBtnActive: { borderColor: SRS.teal, backgroundColor: SRS.teal + '12' },
@@ -453,7 +527,7 @@ const s = StyleSheet.create({
   // Payment
   balanceCard: { backgroundColor: RED[50], borderRadius: 12, padding: 14, borderWidth: 1, borderColor: RED[200], marginBottom: 16 },
   balanceLabel: { fontSize: 12, fontWeight: '600', color: RED[600] },
-  balanceAmount: { fontSize: 24, fontWeight: '800', color: RED[500], marginTop: 4, fontVariant: ['tabular-nums' as any] },
+  balanceAmount: { fontSize: 24, fontWeight: '800', color: RED[500], marginTop: 4, fontVariant: ['tabular-nums'] },
 
   paymentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
   paymentOption: { width: '47%', padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 2, gap: 4 },

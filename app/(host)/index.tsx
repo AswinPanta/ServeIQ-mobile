@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Drawer } from 'react-native-drawer-layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/lib/context/auth-context';
 import { useHost } from '@/lib/context/host-context';
@@ -18,7 +18,7 @@ import { usePagination } from '@/hooks/use-pagination';
 import { hostApi } from '@/lib/api/host-api';
 import { SRS, GRAY, RADIUS, TYPOGRAPHY, SHADOWS } from '@/constants/portal-theme';
 import { BG as BGTokens, CLOUD, RED, STATUS } from '@/lib/constants/figma-tokens';
-import type { AdminRoom } from '@/types/api';
+import type { AdminRoom, HostProfile } from '@/types/api';
 
 const ACCENT = SRS.teal;
 const NAVY = SRS.navy;
@@ -231,7 +231,7 @@ export default function HostDrawerShell() {
   const maxPropRevenue = Math.max(...propertyRevenue.map(d => d.revenue), 1);
 
   const userName = user && 'firstName' in user
-    ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim() || (user as any).name || 'Host'
+    ? `${(user as HostProfile).firstName || ''} ${(user as HostProfile).lastName || ''}`.trim() || user.name || 'Host'
     : 'Host';
 
   const onRefresh = async () => {
@@ -259,7 +259,7 @@ export default function HostDrawerShell() {
         </View>
         <Text style={s.drawerName}>{userName}</Text>
         <Text style={s.drawerRole}>Host</Text>
-        {(user as any)?.email ? <Text style={s.drawerEmail}>{(user as any).email}</Text> : null}
+        {(user as HostProfile)?.email ? <Text style={s.drawerEmail}>{(user as HostProfile).email}</Text> : null}
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -275,16 +275,6 @@ export default function HostDrawerShell() {
           </View>
           <Text style={[s.navLabel, s.navLabelActive]}>Dashboard</Text>
           <View style={s.navActiveDot} />
-        </AnimatedPressable>
-
-        <AnimatedPressable portal="host" haptic="light" scaleTo={0.96}
-          onPress={() => { setOpen(false); }}
-          style={s.navItem}
-        >
-          <View style={s.navIcon}>
-            <Ionicons name="business-outline" size={18} color={CLOUD.cloud} />
-          </View>
-          <Text style={s.navLabel}>Properties</Text>
         </AnimatedPressable>
 
         {firstPropertyId && (
@@ -529,40 +519,30 @@ export default function HostDrawerShell() {
               iconBg="#EFF6FF"
               label="Total Revenue"
               value={`NPR ${kpis.totalRevenue.toLocaleString()}`}
-              change="12.1%"
-              positive
             />
             <KpiCard
               icon="bed"
               iconBg="#EFF6FF"
               label="Occupancy Rate"
               value={`${kpis.occupancyRate}%`}
-              change="3.2%"
-              positive={kpis.occupancyRate > 50}
             />
             <KpiCard
               icon="calendar"
               iconBg="#EFF6FF"
               label="Total Bookings"
               value={String(kpis.totalBookings)}
-              change="13.7%"
-              positive
             />
             <KpiCard
               icon="trending-up"
               iconBg="#EFF6FF"
               label="ADR (Avg Room Rate)"
               value={`NPR ${kpis.adr.toLocaleString()}`}
-              change="1.2%"
-              positive
             />
             <KpiCard
               icon="cash"
               iconBg="#EFF6FF"
               label="RevPAR"
               value={`NPR ${kpis.revpar.toLocaleString()}`}
-              change="20.4%"
-              positive={kpis.revpar > 0}
             />
           </View>
 
@@ -715,9 +695,9 @@ export default function HostDrawerShell() {
               { icon: 'people' as const, label: 'Guest List', route: firstPropertyId ? `/(host)/property/${firstPropertyId}/guests` : '/(host)/listing-wizard' },
               { icon: 'bar-chart' as const, label: 'Reports', route: firstPropertyId ? `/(host)/property/${firstPropertyId}/reports` : '/(host)/listing-wizard' },
             ].map((action, i) => (
-              <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => router.push(action.route as any)} activeOpacity={0.8}>
+              <TouchableOpacity key={i} style={s.quickActionBtn} onPress={() => router.push(action.route as Href)} activeOpacity={0.8}>
                 <Ionicons name={action.icon} size={20} color={ACCENT} />
-                <Text style={s.quickActionText}>{action.label}</Text>
+                <Text style={s.quickActionText} numberOfLines={1}>{action.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -882,8 +862,8 @@ export default function HostDrawerShell() {
 
 // ── Sub-components ──
 
-function KpiCard({ icon, iconBg, label, value, change, positive }: {
-  icon: string; iconBg: string; label: string; value: string; change: string; positive: boolean;
+function KpiCard({ icon, iconBg, label, value }: {
+  icon: string; iconBg: string; label: string; value: string;
 }) {
   return (
     <View style={s.kpiCard}>
@@ -894,14 +874,6 @@ function KpiCard({ icon, iconBg, label, value, change, positive }: {
         </View>
       </View>
       <Text style={s.kpiValue}>{value}</Text>
-      <View style={s.kpiChangeRow}>
-        <View style={[s.kpiChangePill, { backgroundColor: positive ? '#DCFCE7' : '#FEE2E2' }]}>
-          <Text style={[s.kpiChangeText, { color: positive ? '#16A34A' : '#DC2626' }]}>
-            {positive ? '\u2197' : '\u2198'} {change}
-          </Text>
-        </View>
-        <Text style={s.kpiChangeLabel}>vs last month</Text>
-      </View>
     </View>
   );
 }
@@ -930,19 +902,19 @@ const s = StyleSheet.create({
   menuBtn: { width: 40, height: 40, borderRadius: RADIUS.button, backgroundColor: GRAY[100], alignItems: 'center', justifyContent: 'center' },
   brand: { ...TYPOGRAPHY.body, fontWeight: '800', color: NAVY, letterSpacing: -0.3 },
   tabLabel: { ...TYPOGRAPHY.caption, color: GRAY[400], marginTop: 1 },
-  newBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.button, backgroundColor: ACCENT },
+  newBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: RADIUS.button, backgroundColor: ACCENT, flexShrink: 0 },
   newBtnText: { ...TYPOGRAPHY.small, fontWeight: '700', color: BGTokens.white },
 
   topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
   // Property Switcher
-  propertySwitcherWrap: { position: 'relative', zIndex: 100 },
+  propertySwitcherWrap: { position: 'relative', zIndex: 100, flexShrink: 1 },
   propertySwitcher: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.button,
     backgroundColor: GRAY[100], borderWidth: 1, borderColor: GRAY[200],
   },
-  propertySwitcherText: { fontSize: 13, fontWeight: '600', color: NAVY, maxWidth: 100 },
+  propertySwitcherText: { fontSize: 13, fontWeight: '600', color: NAVY, maxWidth: 80 },
   dropdown: {
     position: 'absolute', top: '100%', right: 0, marginTop: 4,
     backgroundColor: BGTokens.white, borderRadius: 12, borderWidth: 1, borderColor: GRAY[200],
@@ -958,7 +930,7 @@ const s = StyleSheet.create({
   dropdownSubtext: { fontSize: 11, color: GRAY[400], marginTop: 2 },
 
   // Notification Bell
-  notifBtn: { width: 40, height: 40, borderRadius: RADIUS.button, backgroundColor: GRAY[100], alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: GRAY[200] },
+  notifBtn: { width: 40, height: 40, borderRadius: RADIUS.button, backgroundColor: GRAY[100], alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: GRAY[200], flexShrink: 0 },
   notifBadge: {
     position: 'absolute', top: 6, right: 6,
     width: 16, height: 16, borderRadius: 8, backgroundColor: RED[500],
@@ -1102,7 +1074,9 @@ const s = StyleSheet.create({
     backgroundColor: BGTokens.white, borderRadius: 12, paddingVertical: 12,
     borderWidth: 1, borderColor: GRAY[200],
   },
-  quickActionText: { ...TYPOGRAPHY.small, fontWeight: '600', color: GRAY[700] },
+  // flexShrink + single line: 5 buttons at minWidth 18% overflow their labels
+  // on narrow screens — clamp the text instead of letting it push the layout.
+  quickActionText: { ...TYPOGRAPHY.small, fontWeight: '600', color: GRAY[700], flexShrink: 1 },
 
   // Revenue by Property
   chartBars: { gap: 14 },

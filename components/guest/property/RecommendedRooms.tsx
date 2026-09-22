@@ -27,7 +27,7 @@ export function RecommendedRooms({ hotels, city, onHotelPress }: RecommendedRoom
               style={s.card}
               activeOpacity={0.8}
             >
-              <Image source={{ uri: h.images[0] }} style={s.img} resizeMode="cover" />
+              <Image source={{ uri: h.images?.[0] || 'https://via.placeholder.com/300x200?text=No+Image' }} style={s.img} resizeMode="cover" />
               <View style={s.info}>
                 <Text style={s.name} numberOfLines={1}>{h.name}</Text>
                 <Text style={s.price}>

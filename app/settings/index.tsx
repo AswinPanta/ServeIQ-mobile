@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useColors } from '@/hooks/use-colors';
 import { useAuth } from '@/lib/context/auth-context';
 import { ScreenContainer } from '@/components/screen-container';
@@ -64,7 +64,7 @@ export default function SettingsScreen() {
                 {section.items.map((item, index) => (
                   <TouchableOpacity
                     key={item.label}
-                    onPress={() => item.route ? router.push(item.route as any) : null}
+                    onPress={() => item.route ? router.push(item.route as Href) : null}
                     style={{
                       flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16,
                       borderBottomWidth: index < section.items.length - 1 ? 1 : 0,

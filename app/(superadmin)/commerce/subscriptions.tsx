@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StatCard } from '@/components/superadmin/StatCard';
 import { PURPLE, GRAY, BLUE, AMBER, STATUS, SLATE, BG, TEXT, EMERALD } from '@/lib/constants/figma-tokens';
 ;
@@ -30,7 +30,7 @@ export default function SubscriptionsScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
           <IconSymbol name="arrow.back" size={18} color={ACCENT} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Subscriptions</Text>

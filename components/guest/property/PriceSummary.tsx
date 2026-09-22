@@ -38,19 +38,21 @@ export function PriceSummary({
   rating,
   checkInSelected,
   checkOutSelected,
+  selectedRoomName,
 }: PriceSummaryProps) {
   const datesSelected = checkInSelected && checkOutSelected;
+  const roomSelected = !!selectedRoomName && roomPrice > 0;
+  const showBreakdown = datesSelected && roomSelected;
   const subtotal = roomPrice * nights;
-  const cleaningFee = Math.round(roomPrice * 0.15);
-  const serviceFee = Math.round(subtotal * 0.12);
-  const total = subtotal + cleaningFee + serviceFee;
 
   return (
     <View style={s.container}>
       <View style={s.header}>
         <Text style={s.price}>
-          {currency} {roomPrice.toLocaleString()}
-          <Text style={s.perNight}> /night</Text>
+          {roomSelected
+            ? `${currency} ${roomPrice.toLocaleString()}`
+            : 'Select a room to see pricing'}
+          {roomSelected ? <Text style={s.perNight}> /night</Text> : null}
         </Text>
         <View style={s.ratingBadge}>
           <IconSymbol name="star" size={12} color={STATUS_COLORS.gold} />
@@ -58,23 +60,15 @@ export function PriceSummary({
         </View>
       </View>
 
-      {datesSelected ? (
+      {showBreakdown ? (
         <View style={s.breakdown}>
           <PriceRow
             label={`${currency} ${roomPrice.toLocaleString()} × ${nights} night${nights > 1 ? 's' : ''}`}
             value={`${currency} ${subtotal.toLocaleString()}`}
           />
-          <PriceRow
-            label="Cleaning fee"
-            value={`${currency} ${cleaningFee.toLocaleString()}`}
-          />
-          <PriceRow
-            label="Service fee (12%)"
-            value={`${currency} ${serviceFee.toLocaleString()}`}
-          />
           <View style={s.totalRow}>
             <Text style={s.totalLabel}>Total</Text>
-            <Text style={s.totalValue}>{currency} {total.toLocaleString()}</Text>
+            <Text style={s.totalValue}>{currency} {subtotal.toLocaleString()}</Text>
           </View>
         </View>
       ) : (

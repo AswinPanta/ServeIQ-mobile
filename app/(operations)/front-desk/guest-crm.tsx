@@ -3,9 +3,11 @@ import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet 
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
+import { useFrontDesk } from '@/lib/context/frontdesk-context';
 import { useGuestStore } from '@/stores/useGuestStore';
 import { safeGoBack } from "@/lib/utils";
 import { STATUS_COLORS, BG, SRS as SRSTokens, AMBER, FLAT } from '@/lib/constants/figma-tokens';
+import type { FrontDeskBookingResponse } from '@/types/api';
 ;
 ;
 
@@ -19,8 +21,50 @@ const LOYALTY_TIER_CONFIG: Record<string, { color: string; label: string; minPoi
 };
 
 export default function GuestCRMScreen() {
+  const { bookingGuestsData } = useFrontDesk();
   const guestStore = useGuestStore();
-  const { guests, findGuest, addGuest, addNote, recordStay, earnPoints, toggleVip } = guestStore;
+  const { guests: localGuests, findGuest, addGuest, addNote, recordStay, earnPoints, toggleVip } = guestStore;
+
+  // Merge backend booking guests with local store
+  const guests = useMemo(() => {
+    const byEmail = new Map<string, any>();
+    // Backend guests first (authoritative)
+    bookingGuestsData.forEach((b: FrontDeskBookingResponse) => {
+      const g = b.guest;
+      if (!g?.email) return;
+      const key = g.email.toLowerCase();
+      if (byEmail.has(key)) {
+        const existing = byEmail.get(key);
+        existing.totalStays += 1;
+        existing.totalSpent += b.total_amount || 0;
+      } else {
+        byEmail.set(key, {
+          id: b.booking_id,
+          name: g.full_name || 'Guest',
+          email: g.email,
+          phone: g.phone || '',
+          nationality: g.nationality || '',
+          documentType: 'Passport',
+          documentNumber: '',
+          vip: false,
+          blacklisted: false,
+          totalStays: 1,
+          totalSpent: b.total_amount || 0,
+          loyaltyTier: 'standard' as const,
+          loyaltyPoints: Math.round((b.total_amount || 0) / 100),
+          notes: b.special_requests || '',
+          created_at: b.created_at,
+        });
+      }
+    });
+    // Add local guests not already from backend
+    localGuests.forEach(lg => {
+      if (!byEmail.has(lg.email.toLowerCase())) {
+        byEmail.set(lg.email.toLowerCase(), lg);
+      }
+    });
+    return Array.from(byEmail.values()).sort((a, b) => b.totalStays - a.totalStays);
+  }, [bookingGuestsData, localGuests]);
 
   const [activeTab, setActiveTab] = useState<Tab>('search');
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,11 +83,16 @@ export default function GuestCRMScreen() {
 
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    return findGuest(searchQuery);
-  }, [searchQuery, findGuest]);
+    const q = searchQuery.toLowerCase();
+    return guests.filter(g =>
+      g.name.toLowerCase().includes(q) ||
+      g.email.toLowerCase().includes(q) ||
+      g.phone.includes(q)
+    );
+  }, [searchQuery, guests]);
 
   const recentGuests = useMemo(() => {
-    return [...guests].sort((a, b) => b.totalStays - a.totalStays).slice(0, 20);
+    return guests.slice(0, 20);
   }, [guests]);
 
   const tierColor = (tier: string) => LOYALTY_TIER_CONFIG[tier]?.color || GRAY[500];
@@ -250,7 +299,7 @@ export default function GuestCRMScreen() {
                 </TouchableOpacity>
               </View>
               {selectedGuest.notes ? (
-                selectedGuest.notes.split('\n').filter(n => n.trim()).map((note, i) => (
+                selectedGuest.notes.split('\n').filter((n: string) => n.trim()).map((note: string, i: number) => (
                   <View key={i} style={s.noteRow}>
                     <View style={s.noteDot} />
                     <Text style={s.noteText}>{note}</Text>
@@ -313,19 +362,19 @@ export default function GuestCRMScreen() {
           <View style={s.modal}>
             <Text style={s.modalTitle}>New Guest</Text>
             <View style={{ gap: SPACING.md }}>
-              {[
+              {([
                 { label: 'Full Name', val: newName, set: setNewName, required: true },
                 { label: 'Email', val: newEmail, set: setNewEmail, keyboard: 'email-address' as const },
                 { label: 'Phone', val: newPhone, set: setNewPhone, keyboard: 'phone-pad' as const },
                 { label: 'Nationality', val: newNationality, set: setNewNationality },
                 { label: 'ID/Passport', val: newDocNumber, set: setNewDocNumber },
-              ].map(f => (
+              ] as Array<{ label: string; val: string; set: (v: string) => void; required?: boolean; keyboard?: 'default' | 'email-address' | 'phone-pad' }>).map(f => (
                 <View key={f.label}>
                   <Text style={s.fieldLabel}>{f.label}{f.required ? <Text style={{ color: SRS.red }}> *</Text> : null}</Text>
                   <TextInput
                     placeholder={`Enter ${f.label.toLowerCase()}`} placeholderTextColor={GRAY[400]}
                     value={f.val} onChangeText={f.set}
-                    keyboardType={(f as any).keyboard || 'default'} autoCapitalize="none"
+                    keyboardType={f.keyboard || 'default'} autoCapitalize="none"
                     style={s.input}
                   />
                 </View>
@@ -379,7 +428,7 @@ const s = StyleSheet.create({
 
   statsRow: { flexDirection: 'row', gap: SPACING.sm },
   statCard: { flex: 1, backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: GRAY[100], gap: 2 },
-  statValue: { fontSize: 16, fontWeight: '700', color: SRS.navy, fontVariant: ['tabular-nums'] as any },
+  statValue: { fontSize: 16, fontWeight: '700', color: SRS.navy, fontVariant: ['tabular-nums'] },
   statLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
 
   loyaltyCard: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },

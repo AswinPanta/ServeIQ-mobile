@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-nati
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/lib/context/auth-context';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-import { useActivityStore } from '@/stores/useActivityStore';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { SystemFlowBar } from '@/components/operations/SystemFlowBar';
@@ -144,15 +143,6 @@ export default function KDScreen() {
     if (!nextStatus) return;
 
     useOrderStore.getState().advanceTicketStatus(ticket.id);
-
-    useActivityStore.getState().addActivity({
-      type: 'order',
-      title: `Ticket ${getLastFour(ticket.id)} → ${COLUMN_LABELS[nextStatus]}`,
-      description: `Table ${ticket.table_number} · ${ticket.items.length} items`,
-      icon: '🍽️',
-      color: COLUMN_COLORS[nextStatus],
-      property_id: operator?.property_id || 'prop-1',
-    });
 
     if (nextStatus === 'ready') {
       useNotificationStore.getState().addNotification({
@@ -425,7 +415,7 @@ const kdsStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: DARK_TEXT,
-    fontVariant: ['tabular-nums' as any],
+    fontVariant: ['tabular-nums'],
   },
   kpiDarkSub: {
     fontSize: 10,
@@ -517,7 +507,7 @@ const kdsStyles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: DARK_TEXT,
-    fontVariant: ['tabular-nums' as any],
+    fontVariant: ['tabular-nums'],
   },
   vipBadge: {
     backgroundColor: PURPLE[700] + '25',
@@ -555,7 +545,7 @@ const kdsStyles = StyleSheet.create({
   timerValue: {
     fontSize: 14,
     fontWeight: '700',
-    fontVariant: ['tabular-nums' as any],
+    fontVariant: ['tabular-nums'],
   },
   itemsList: {
     marginBottom: SPACING.sm,

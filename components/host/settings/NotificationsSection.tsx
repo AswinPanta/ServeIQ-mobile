@@ -36,8 +36,8 @@ export function NotificationsSection() {
 
   // Load saved preferences from property metadata
   useEffect(() => {
-    if (property && (property as any).notification_prefs) {
-      const saved = (property as any).notification_prefs;
+    const saved = (property as { notification_prefs?: Record<string, NotifPref> } | undefined)?.notification_prefs;
+    if (saved) {
       setPrefs(prev => prev.map(p => saved[p.id] ?? p));
     }
   }, [property?.id]);
@@ -54,8 +54,9 @@ export function NotificationsSection() {
     if (!property) return;
     setSaving(true);
     try {
+      const prefsRecord = Object.fromEntries(prefs.map(p => [p.id, p]));
       await updateProperty(property.id, {
-        notification_prefs: prefs,
+        notification_prefs: prefsRecord,
       } as any);
       Alert.alert('Saved', 'Notification preferences updated');
     } catch {

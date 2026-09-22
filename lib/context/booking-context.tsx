@@ -31,13 +31,16 @@ export interface Booking {
     type: 'percentage' | 'fixed'
     amount: number
   }
-  status: 'upcoming' | 'completed' | 'cancelled'
+  status: 'upcoming' | 'completed' | 'cancelled' | 'expired'
   createdAt: string
   paymentMethod?: string
   transactionId?: string
   propertyPhone?: string
   propertyEmail?: string
   nights?: number
+  paymentStatus?: string
+  amountPaid?: number
+  amountDue?: number
   folio?: FolioCharge[]
   refundAmount?: number
 }
@@ -70,6 +73,7 @@ function autoCompletePastBookings(bookings: Booking[]): Booking[] {
 function mapBookingStatus(status?: string): Booking['status'] {
   const s = (status || '').toLowerCase()
   if (s.includes('cancel')) return 'cancelled'
+  if (s.includes('expire')) return 'expired'
   if (s.includes('complete') || s.includes('checkout')) return 'completed'
   return 'upcoming'
 }
@@ -133,6 +137,9 @@ export function mapReservationToBooking(res: BookingReservationResponse): Bookin
     createdAt: res.created_at || '',
     paymentMethod: res.payment_gateway || undefined,
     transactionId: res.payment_gateway ? `pay_${res.ref_number || res.booking_id}` : undefined,
+    paymentStatus: res.payment_status,
+    amountPaid: res.amount_paid,
+    amountDue: res.amount_due,
     propertyPhone: res.property?.phone_number || undefined,
     propertyEmail: res.property?.email || undefined,
     nights: res.nights || Math.max(1, Math.round((new Date(res.check_out).getTime() - new Date(res.check_in).getTime()) / 86400000)),
@@ -173,6 +180,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
           return
         } catch {
           // fall through to local-only
+          if (__DEV__) console.warn('Failed to fetch remote bookings');
         }
         if (!cancelled) setBookings(local)
       } catch (e) {
@@ -234,7 +242,9 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         })
       )
       if (target?.refNumber) {
-        try { await bookingApi.cancelBooking(target.refNumber) } catch {}
+        try { await bookingApi.cancelBooking(target.refNumber) } catch (e) {
+          console.warn('Failed to cancel booking remotely:', e);
+        }
       }
       return result
     },

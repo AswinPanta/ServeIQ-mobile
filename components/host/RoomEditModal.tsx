@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AdminRoom, AdminRoomStatus } from '@/types/api';
 import { useHost } from '@/lib/context/host-context';
 import { getRoomStatusColor, getRoomCapacitySummary } from '@/lib/host/capacity-validation';
-import { hostApi } from '@/lib/api/host-api';
+import { hostApi, imageFormFile, ensureRoomType, ensureBedType } from '@/lib/api/host-api';
 import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
 import { SRS, NEUTRAL, BG, SLATE, BLUE, GRAY } from '@/lib/constants/figma-tokens';
 ;
@@ -30,9 +30,13 @@ interface Props {
 
 export function RoomEditModal({ room, visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
-  const { updateRoom, properties, rooms } = useHost();
+  const { updateRoom, properties, rooms, roomTypes, refreshRooms } = useHost();
   const isNew = !room;
   const property = room ? properties.find(p => p.id === room.property_id) : null;
+  // Room types for this property (backend-fetched defs carry real UUID ids).
+  const propertyRoomTypes = property
+    ? roomTypes.filter(rt => rt.property_id === property.id)
+    : [];
 
   const [form, setForm] = useState({
     room_name: '',
@@ -80,7 +84,7 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
     if (!room) return;
     setUploading(true);
     const fd = new FormData();
-    fd.append('images', { uri, type: 'image/jpeg', name: `room-${room.id}-${Date.now()}.jpg` } as any);
+    fd.append('images', imageFormFile(uri, `room-${room.id}-${Date.now()}.jpg`));
     try {
       const res = await hostApi.uploadRoomImages(room.property_id, fd);
       const uploadedUrl = res?.data?.urls?.[0] || res?.data?.[0] || res?.url || uri;
@@ -134,33 +138,70 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
 
     if (room && propertyId) {
       if (isNewRef.current) {
-        const payload = {
-          floor_number: parseInt(form.floor_number) || 1,
+        // Backend RoomBase requires UUID references. Resolve the chosen room
+        // type (or ensure one exists from the typed name) and a bed type —
+        // non-UUID placeholders like 'standard' make the create 422.
+        const chosenType = propertyRoomTypes.find(rt => rt.id === form.room_type_id);
+        const roomTypeId = chosenType?.id
+          || await ensureRoomType(propertyId, chosenType?.room_type_name || form.room_type_id || 'Standard');
+        const bedTypeId = await ensureBedType(propertyId, 'Standard');
+        if (!roomTypeId || !bedTypeId) {
+          Alert.alert('Not saved', 'Could not resolve room/bed type on the server. Check your connection and try again.');
+          return;
+        }
+        let createdId: string | undefined;
+        try {
+          const result = await hostApi.createRoom(propertyId, {
+            floor_number: parseInt(form.floor_number) || 1,
+            room_name: form.room_name,
+            room_type_id: roomTypeId,
+            bed_type_id: bedTypeId,
+            base_rate: Math.max(1, parseFloat(form.base_rate) || 1),
+            max_adults: adults,
+            max_children: children,
+          }, () => ({ id: room.id } as any));
+          // Bulk create returns { rooms: [{ id, ... }] } — adopt the real id so
+          // the room is never re-uploaded as a duplicate by the local-sync flow.
+          const createdRoom = Array.isArray(result?.rooms) ? result.rooms[0] : result;
+          if (createdRoom?.id && createdRoom.id !== room.id) createdId = createdRoom.id;
+          refreshRooms(propertyId);
+        } catch (e: any) {
+          Alert.alert('Not saved', e?.message || 'Could not save the room on the server.');
+          return;
+        }
+        updateRoom(room.id, {
           room_name: form.room_name,
-          room_type_id: form.room_type_id || 'standard',
-          bed_type_id: 'standard',
-          base_rate: Math.max(1, parseFloat(form.base_rate) || 1),
+          room_type_id: roomTypeId,
+          room_type_name: propertyRoomTypes.find(rt => rt.id === roomTypeId)?.room_type_name,
+          floor_number: parseInt(form.floor_number) || 1,
           max_adults: adults,
           max_children: children,
+          max_occupancy: maxOcc,
+          base_rate: parseFloat(form.base_rate) || 0,
+          status: form.status,
           smoking: form.smoking,
           accessible: form.accessible,
-        };
-        await hostApi.createRoom(propertyId, payload, () => ({ id: room.id } as any));
+          amenities,
+          photos,
+          ...(createdId ? { id: createdId } : {}),
+        });
+      } else {
+        updateRoom(room.id, {
+          room_name: form.room_name,
+          room_type_id: form.room_type_id,
+          room_type_name: propertyRoomTypes.find(rt => rt.id === form.room_type_id)?.room_type_name,
+          floor_number: parseInt(form.floor_number) || 1,
+          max_adults: adults,
+          max_children: children,
+          max_occupancy: maxOcc,
+          base_rate: parseFloat(form.base_rate) || 0,
+          status: form.status,
+          smoking: form.smoking,
+          accessible: form.accessible,
+          amenities,
+          photos,
+        });
       }
-      updateRoom(room.id, {
-        room_name: form.room_name,
-        room_type_id: form.room_type_id,
-        floor_number: parseInt(form.floor_number) || 1,
-        max_adults: adults,
-        max_children: children,
-        max_occupancy: maxOcc,
-        base_rate: parseFloat(form.base_rate) || 0,
-        status: form.status,
-        smoking: form.smoking,
-        accessible: form.accessible,
-        amenities,
-        photos,
-      });
       Alert.alert('Saved', `Room ${form.room_name} updated`);
     }
     onClose();
@@ -191,7 +232,32 @@ export function RoomEditModal({ room, visible, onClose }: Props) {
             <Text style={styles.sectionTitle}>Room Info</Text>
             <View style={styles.card}>
               <Field label="Room Name / Number" value={form.room_name} onChange={v => set('room_name', v)} />
-              <Field label="Room Type ID" value={form.room_type_id} onChange={v => set('room_type_id', v)} />
+              {propertyRoomTypes.length > 0 ? (
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={fieldStyles.label}>Room Type</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {propertyRoomTypes.map(rt => (
+                        <TouchableOpacity
+                          key={rt.id}
+                          onPress={() => set('room_type_id', rt.id)}
+                          style={{
+                            paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
+                            backgroundColor: form.room_type_id === rt.id ? ACCENT : NEUTRAL[100],
+                            borderWidth: 1, borderColor: form.room_type_id === rt.id ? ACCENT : SLATE[200],
+                          }}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: form.room_type_id === rt.id ? BG.white : GRAY[900] }}>
+                            {rt.room_type_name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              ) : (
+                <Field label="Room Type" value={form.room_type_id} onChange={v => set('room_type_id', v)} />
+              )}
               <Field label="Floor Number" value={form.floor_number} onChange={v => set('floor_number', v)} keyboard="numeric" />
               <Field label="Base Rate ($)" value={form.base_rate} onChange={v => set('base_rate', v)} keyboard="numeric" />
             </View>

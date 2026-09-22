@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   kpiValue: {
     fontSize: 20,
     fontWeight: '800',
-    fontVariant: ['tabular-nums' as any],
+    fontVariant: ['tabular-nums'],
   },
   kpiLabel: {
     ...TYPOGRAPHY.caption,

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -6,7 +6,6 @@ import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/por
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
 import { useAuth } from '@/lib/context/auth-context';
 import { useFolioStore } from '@/stores/useFolioStore';
-import { useActivityStore } from '@/stores/useActivityStore';
 import { useShiftStore } from '@/stores/useShiftStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useGuestStore } from '@/stores/useGuestStore';
@@ -102,12 +101,16 @@ export default function CheckOutScreen() {
 
   const handleSelectGuest = (g: typeof checkedInGuests[0]) => { setSelectedBooking(g); setSearch(g.guest_name); setStep(1); };
 
+  const completingRef = useRef(false);
+
   const handleComplete = () => {
+    if (completingRef.current) return;
     if (!selectedBooking || !paymentMethod) return;
+    completingRef.current = true;
     const room = rooms.find((r) => r.room_number === selectedBooking.room_number);
     // Use the front desk context's checkOut method to properly transition booking to checked_out
     // (also marks room as dirty, updates booking status to checked_out, and calls the API)
-    frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number || '', effectiveFolio?.total || 0);
+    frontDeskCheckOut(selectedBooking.id, selectedBooking.room_number || '', effectiveFolio?.total || 0, paymentMethod.toUpperCase());
     // Record the staff-collected payment server-side (POST /bookings/{ref}/record-staff-payment);
     // the apiPost wrapper falls back gracefully when the backend is unreachable.
     bookingApi.recordStaffPayment(
@@ -138,7 +141,6 @@ export default function CheckOutScreen() {
         .catch(() => {});
     }
     useFolioStore.getState().settleFolio(selectedBooking.ref);
-    useActivityStore.getState().addActivity({ type: 'checkout', title: `${selectedBooking.guest_name} checked out`, description: `Room ${selectedBooking.room_number} - ${paymentMethod.toUpperCase()}`, icon: '🚪', color: BLUE[500], property_id: operator?.property_id || '' });
     useShiftStore.getState().incrementCheckOuts();
     useShiftStore.getState().addRevenue(effectiveFolio?.total || 0);
     const guestFound = useGuestStore.getState().findGuest(selectedBooking.guest_name);
@@ -147,10 +149,10 @@ export default function CheckOutScreen() {
       useHousekeepingStore.getState().createTask({ room: selectedBooking.room_number || '', floor: room?.floor || 1, status: 'Dirty', priority: 'High', cleaner: 'Unassigned', lastCleaned: 'Today', taskType: 'ROOM_CLEANING', property_id: operator.property_id });
     }
     useNotificationStore.getState().addNotification({ type: 'hk_alert', title: 'Room ready for cleaning', message: `Room ${selectedBooking.room_number} needs cleaning after checkout`, data: { roomNumber: selectedBooking.room_number || '' } });
-    useActivityStore.getState().addActivity({ type: 'email', title: `Post-stay review requested — Email queued for ${selectedBooking.guest_name}`, icon: '✉️', color: PURPLE[500], property_id: operator?.property_id || '' });
     useNotificationStore.getState().addNotification({ type: 'system', title: 'Review Request', message: `Post-stay review email queued for ${selectedBooking.guest_name}` });
     Alert.alert('Review Request', 'Check-out complete! Review request will be sent to guest.');
     setStep(3);
+    completingRef.current = false;
   };
 
   return (

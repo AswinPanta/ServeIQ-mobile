@@ -67,19 +67,23 @@ export const API_ENDPOINTS = {
     SPECIAL_REQUESTS: (ref: string) => `/bookings/${ref}/special-requests`,
     PAY_REMAINING: (ref: string) => `/bookings/${ref}/pay-remaining`,
     RECORD_STAFF_PAYMENT: (ref: string) => `/bookings/${ref}/record-staff-payment`,
+    CANCEL: (ref: string) => `/bookings/${ref}/cancel`,
+    EXPIRE: (ref: string) => `/bookings/${ref}/expire`,
   },
 
   // ─── Tenants (SuperAdmin) ──────────────────────────────────────
   TENANTS: {
-    GET: '/tenants/',
-    CREATE: '/tenants/',
-    UPDATE: '/tenants/',        // PATCH with ?tenant_id= query param
-    DELETE: '/tenants/',        // DELETE with ?tenant_id= query param
+    // No trailing slash — the live backend 307-redirects "/tenants/" to "/tenants",
+    // an extra round-trip that can drop POST/PATCH/DELETE bodies.
+    GET: '/tenants',
+    CREATE: '/tenants',
+    UPDATE: '/tenants',         // PATCH — JWT-scoped, no query param
+    DELETE: '/tenants',         // DELETE — JWT-scoped, no query param
   },
 
   // ─── Properties / PMS ─────────────────────────────────────────
   PROPERTIES: {
-    GET_ALL: '/properties/',
+    GET_ALL: '/properties',
     GET_AMENITIES: '/properties/amenities',
     CREATE_GENERAL_INFO: '/properties',
     GET_BY_ID: (id: string) => `/properties/${id}`,
@@ -90,6 +94,11 @@ export const API_ENDPOINTS = {
     GET_NUMBER_OF_FLOORS: (id: string) => `/properties/${id}/number-of-floors`,
     // Property bookings
     GET_PROPERTY_BOOKINGS: (id: string) => `/properties/${id}/bookings`,
+    // Property analytics (live dashboard data: overview KPIs + trends)
+    GET_ANALYTICS_OVERVIEW: (id: string) => `/properties/${id}/analytics`,
+    GET_ANALYTICS_REVENUE_TREND: (id: string) => `/properties/${id}/analytics/revenue-trend`,
+    GET_ANALYTICS_REVENUE_BY_ROOM_TYPE: (id: string) => `/properties/${id}/analytics/revenue-by-room-type`,
+    GET_ANALYTICS_BOOKING_TREND: (id: string) => `/properties/${id}/analytics/booking-trend`,
     // Image uploads — backend: POST /properties/image (property_id in FormData body)
     UPLOAD_IMAGE: (_id: string) => `/properties/image`,
     UPLOAD_IMAGES: (_id: string) => `/properties/images`,
@@ -106,21 +115,22 @@ export const API_ENDPOINTS = {
     DELETE_ROOM: (id: string, roomId: string) => `/properties/${id}/rooms/${roomId}`,
     UPLOAD_ROOM_IMAGE: (id: string) => `/properties/${id}/rooms/image`,
     UPLOAD_ROOM_IMAGES: (id: string) => `/properties/${id}/rooms/images`,
-    // Discount codes
-    GET_DISCOUNT_CODES: (id: string) => `/properties/${id}/discount-codes/`,
-    CREATE_DISCOUNT_CODE: (id: string) => `/properties/${id}/discount-codes/`,
+    // Discount codes (no trailing slash — backend 307s "/discount-codes/" to "/discount-codes")
+    GET_DISCOUNT_CODES: (id: string) => `/properties/${id}/discount-codes`,
+    CREATE_DISCOUNT_CODE: (id: string) => `/properties/${id}/discount-codes`,
     GET_DISCOUNT_CODE: (id: string, discountId: string) => `/properties/${id}/discount-codes/${discountId}`,
     UPDATE_DISCOUNT_CODE: (id: string, discountId: string) => `/properties/${id}/discount-codes/${discountId}`,
     DELETE_DISCOUNT_CODE: (id: string, discountId: string) => `/properties/${id}/discount-codes/${discountId}`,
-    // Special offers
-    GET_SPECIAL_OFFERS: (id: string) => `/properties/${id}/special-offers/`,
-    CREATE_SPECIAL_OFFERS: (id: string) => `/properties/${id}/special-offers/`,
+    // Special offers (no trailing slash — backend 307s "/special-offers/" to "/special-offers")
+    GET_SPECIAL_OFFERS: (id: string) => `/properties/${id}/special-offers`,
+    CREATE_SPECIAL_OFFERS: (id: string) => `/properties/${id}/special-offers`,
     GET_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
     UPDATE_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
     DELETE_SPECIAL_OFFER: (id: string, offerId: string) => `/properties/${id}/special-offers/${offerId}`,
     // Staff management
     GET_STAFF: (id: string) => `/properties/${id}/staffs`,
     CREATE_STAFF: (id: string) => `/properties/${id}/staffs`,
+    GET_STAFF_SUMMARY: (id: string) => `/properties/${id}/staffs/staffs-summary`,
     GET_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
     UPDATE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
     DELETE_STAFF_MEMBER: (id: string, staffId: string) => `/properties/${id}/staffs/${staffId}`,
@@ -133,9 +143,11 @@ export const API_ENDPOINTS = {
     DELETE_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}`,
     COMPLETE_TASK: (id: string, taskId: string) => `/properties/${id}/tasks/${taskId}/complete`,
     BULK_ASSIGN_TASKS: (id: string) => `/properties/${id}/tasks/bulk-assign`,
-    GET_HK_STAFF: (id: string) => `/properties/${id}/tasks/housekeeping-staff`,
-    GET_STAFF_WORK_SUMMARY: (id: string) => `/properties/${id}/tasks/staff-work-summary`,
-    GET_TASK_TYPES: (id: string) => `/properties/${id}/tasks/task-types`,
+    // Picker options scoped to the tasks module (id + name [+ status])
+    GET_TASK_HK_STAFF: (id: string) => `/properties/${id}/tasks/housekeeping-staff`,
+    GET_TASK_ROOMS: (id: string) => `/properties/${id}/tasks/rooms`,
+    GET_HK_STAFF: (id: string) => `/properties/${id}/staffs/housekeeping-staffs`,
+
     // Housekeeping mobile (staff-facing)
     HK_GET_MY_TASKS: (id: string) => `/properties/${id}/housekeeping/tasks`,
     HK_GET_MY_TASK: (id: string, taskId: string) => `/properties/${id}/housekeeping/tasks/${taskId}`,
@@ -170,11 +182,16 @@ export const API_ENDPOINTS = {
     CREATE_REVIEW: (id: string) => `/properties/${id}/reviews`,
     UPDATE_REVIEW: (id: string, reviewId: string) => `/properties/${id}/reviews/${reviewId}`,
     // Room status
-    GET_ROOMS_STATUS: (id: string) => `/properties/${id}/rooms/status`,
-    GET_ROOMS_STATUS_SUMMARY: (id: string) => `/properties/${id}/rooms/status-summary`,
-    // Room images (cleaning/maintenance)
-    UPLOAD_CLEANING_STATUS_IMAGES: (id: string, roomId: string) => `/properties${id}/rooms/${roomId}/cleaning_status/images`,
-    UPLOAD_MAINTENANCE_IMAGES: (id: string, roomId: string) => `/properties${id}/rooms/${roomId}/maintenance/images`,
+    GET_ROOMS_STATUS: (id: string) => `/properties/${id}/room-status`,
+    GET_ROOMS_STATUS_SUMMARY: (id: string) => `/properties/${id}/room-status/summary`,
+    // Room images (cleaning/maintenance). The live backend registered these
+    // routes with a MISSING slash (`/properties{property_id}/...`) — so only
+    // the malformed path exists today. Try well-formed first; if it 404s,
+    // fall back to the legacy malformed path that the backend actually serves.
+    UPLOAD_CLEANING_STATUS_IMAGES: (id: string, roomId: string) => `/properties/${id}/rooms/${roomId}/cleaning_status/images`,
+    UPLOAD_CLEANING_STATUS_IMAGES_LEGACY: (id: string, roomId: string) => `/properties${id}/rooms/${roomId}/cleaning_status/images`,
+    UPLOAD_MAINTENANCE_IMAGES: (id: string, roomId: string) => `/properties/${id}/rooms/${roomId}/maintenance/images`,
+    UPLOAD_MAINTENANCE_IMAGES_LEGACY: (id: string, roomId: string) => `/properties${id}/rooms/${roomId}/maintenance/images`,
   },
 
   // ─── Staff Portal ─────────────────────────────────────────────
@@ -183,12 +200,43 @@ export const API_ENDPOINTS = {
     CHECK_IN: (ref: string) => `/staff/check-in/${ref}`,
     CHECK_OUT: (ref: string) => `/staff/check-out/${ref}`,
     MODIFY_BOOKING: (ref: string) => `/staff/${ref}/booking-modify`,
+    CREATE_WALKIN: '/staff/create-walkin-booking',
+    CREATE_FOLIO: (propertyId: string, ref: string) => `/staff/properties/${propertyId}/bookings/${ref}/folio`,
+    FRONT_DESK_SUMMARY: (propertyId: string) => `/staff/properties/${propertyId}/front-desk-summary`,
+    // Live spec has NO "/today/" prefix — `/staff/properties/{id}/today/arrivals`
+    // 404s (verified); the real routes are `/arrivals` and `/departures`.
+    TODAY_ARRIVALS: (propertyId: string) => `/staff/properties/${propertyId}/arrivals`,
+    TODAY_DEPARTURES: (propertyId: string) => `/staff/properties/${propertyId}/departures`,
+    CANCEL_BOOKING: (ref: string) => `/staff/cancel-booking/${ref}`,
+    // Booking guests + calendar + citizenship + guest folio
+    BOOKING_GUESTS: (propertyId: string) => `/staff/properties/${propertyId}/booking-guests`,
+    ROOM_CALENDAR: (propertyId: string) => `/staff/properties/${propertyId}/room-calendar`,
+    CITIZENSHIP_PHOTOS: (ref: string) => `/staff/check-in/${ref}/citizenship-photos`,
+    BOOKING_GUEST_FOLIO: (propertyId: string, ref: string) => `/staff/properties/${propertyId}/bookings/${ref}/guest-folio`,
+    // Folio ledger
+    FOLIO_LIST: (propertyId: string) => `/staff/properties/${propertyId}/folios`,
+    FOLIO_GET: (folioId: string) => `/staff/folios/${folioId}`,
+    FOLIO_UPDATE: (folioId: string) => `/staff/folios/${folioId}`,
+    FOLIO_CHARGES: (folioId: string) => `/staff/folios/${folioId}/charges`,
+    FOLIO_CHARGE_ADD: (folioId: string) => `/staff/folios/${folioId}/charges`,
+    FOLIO_CHARGE_UPDATE: (folioId: string, chargeId: string) => `/staff/folios/${folioId}/charges/${chargeId}`,
+    FOLIO_CHARGE_DELETE: (folioId: string, chargeId: string) => `/staff/folios/${folioId}/charges/${chargeId}`,
+    FOLIO_SETTLE: (folioId: string) => `/staff/folios/${folioId}/settle`,
+    FOLIO_WAIVE: (folioId: string) => `/staff/folios/${folioId}/waive`,
+    // Activity log feeds (booking + housekeeping staff actions)
+    ACTIVITY_BOOKING: (propertyId: string) => `/staff/properties/${propertyId}/activities/booking`,
+    ACTIVITY_HOUSEKEEPING: (propertyId: string) => `/staff/properties/${propertyId}/activities/housekeeping`,
+    // Enum lookup (payment methods/statuses, booking statuses, etc.)
+    GET_ENUM: (kind: string) => `/staff/enums/${kind}`,
   },
 
   // ─── Search ────────────────────────────────────────────────────
   SEARCH: {
     SEARCH_HOTELS: '/search',
     SEARCH_NEARBY: '/search/nearby',
+    SYSTEM_AMENITIES: '/search/system-amenities',
+    SYSTEM_BED_TYPES: '/search/system-bed-types',
+    SYSTEM_ROOM_TYPES: '/search/system-room-types',
   },
 
   // ─── Favorites ────────────────────────────────────────────────
@@ -227,6 +275,7 @@ export const STORAGE_KEYS = {
   LAST_SEARCH: 'last_search',
   ACTIVE_PORTAL: 'active_portal',
   NEARBY_CACHE: 'nearby_cache',
+  NEWSLETTER_SUBSCRIBED: 'newsletter_subscribed',
 };
 
 // Portal-scoped storage key getter

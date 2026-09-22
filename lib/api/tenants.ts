@@ -60,9 +60,9 @@ export async function getTenantById(id: string): Promise<any | null> {
   if (await isDemoMode()) return null;
   try {
     // Backend only exposes GET /tenants/ (scoped to current user).
-    // Fetch the list and filter by id.
+    // Fetch the list and filter by id — never fall back to a different tenant.
     const tenants = await getTenants();
-    return tenants.find((t: any) => t.id === id) || tenants[0] || null;
+    return tenants.find((t: any) => t.id === id) || null;
   } catch {
     return null;
   }

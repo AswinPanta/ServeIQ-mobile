@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StatusBadge } from '@/components/superadmin/StatusBadge';
 import { PURPLE, GRAY, BLUE, AMBER, STATUS, BG, RED, SLATE, TEXT } from '@/lib/constants/figma-tokens';
 
@@ -77,7 +77,7 @@ export default function PlansScreen() {
         contentInsetAdjustmentBehavior="automatic"
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
             <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Manage Plans</Text>

@@ -20,35 +20,18 @@ import type {
   StaffPhotos,
   CreateStaffRequest,
 } from '@/types/api';
-import {
-  mockProperties,
-  mockRoomTypeDefs,
-  mockAdminRooms,
-  mockRatePlans,
-  mockDateOverrides,
-  mockDiscountCodes,
-  mockSpecialOffers,
-  mockTaxConfigs,
-  mockStaff,
-  mockShifts,
-  mockStaffTasks,
-  mockBookings,
-} from '@/lib/mock/host-data';
-import { hostApi, ensureRoomType, ensureBedType } from '@/lib/api/host-api';
-import { addMockProperty, updateMockProperty, removeMockProperty } from '@/lib/mock/properties';
-import type { Hotel, HotelAmenity, RoomType } from '@/lib/mock/properties';
-import { registerOpsProperty, addOpsFrontDeskRoom, removeOpsFrontDeskRoom, removeOpsProperty } from '@/lib/context/frontdesk-context';
+import { hostApi, ensureRoomType, ensureBedType, imageFormFile } from '@/lib/api/host-api';
 import {
   persistHostProperties,
   mapApiProperty,
   mapApiRoom,
   mapApiStaff,
+  mapApiRoomTypes,
   getHostPropertiesKey,
   mergeRestoredProperties,
   computeActivePropertyId,
   isApiPropertyId,
-  HOST_DELETED_SEEDS_KEY,
-  SEED_PROPERTY_IDS,
+  type RoomTypeNames,
   OPS_DEFAULT_PROPERTY_ID_KEY,
   OPS_DEFAULT_PROPERTY_NAME_KEY,
 } from '@/lib/context/host-utils';
@@ -103,7 +86,7 @@ interface HostContextType {
   staff: StaffMember[];
   shifts: Shift[];
   staffTasks: StaffTask[];
-  bookings: typeof mockBookings;
+  bookings: any[];
   /** System amenities fetched from GET /properties/amenities (backend-authoritative list). */
   systemAmenities: string[];
   activePropertyId: string | null;
@@ -114,6 +97,8 @@ interface HostContextType {
   syncingToServer: boolean;
   fetchHostData: () => void;
   refreshRooms: (propertyId?: string) => void;
+  /** Re-fetches room types + bed types for a property from the backend (no-op for local ids). */
+  refreshRoomTypes: (propertyId: string) => void;
 
   /** Adds a property locally and (when it isn't already a backend property) creates it on the server. Resolves with the final property (server id swapped in when created). */
   addProperty: (p: Property) => Promise<Property>;
@@ -172,7 +157,7 @@ interface HostContextType {
   getFilteredRooms: (propertyId: string) => AdminRoom[];
   getFilteredRoomTypes: (propertyId: string) => RoomTypeDef[];
   getFilteredStaff: (propertyId: string) => StaffMember[];
-  getFilteredBookings: (propertyId: string) => typeof mockBookings;
+  getFilteredBookings: (propertyId: string) => any[];
 
   setPropertyCoverPhoto: (propertyId: string, imageUri: string) => Promise<void>;
   addPropertyGalleryPhotos: (propertyId: string, imageUris: string[]) => Promise<void>;
@@ -183,27 +168,23 @@ const HostContext = createContext<HostContextType | undefined>(undefined);
 
 export function HostProvider({ children }: { children: React.ReactNode }) {
   const { isSignedIn, portal, isLoading: authLoading, user, tokens } = useAuth();
-  const [properties, setProperties] = useState<Property[]>([...mockProperties]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loadedPersisted, setLoadedPersisted] = useState(false);
-  const [roomTypes, setRoomTypes] = useState<RoomTypeDef[]>([...mockRoomTypeDefs]);
-  const [rooms, setRooms] = useState<AdminRoom[]>([...mockAdminRooms]);
-  const [ratePlans, setRatePlans] = useState<RatePlan[]>([...mockRatePlans]);
-  const [dateOverrides, setDateOverrides] = useState<DateOverride[]>([...mockDateOverrides]);
-  const [discountCodes, setDiscountCodes] = useState<AdminDiscountCode[]>([...mockDiscountCodes]);
-  const [specialOffers, setSpecialOffers] = useState<SpecialOffer[]>([...mockSpecialOffers]);
-  const [taxConfigs, setTaxConfigs] = useState<TaxConfig[]>([...mockTaxConfigs]);
-  const [staff, setStaff] = useState<StaffMember[]>([...mockStaff]);
-  const [shifts, setShifts] = useState<Shift[]>([...mockShifts]);
-  const [staffTasks, setStaffTasks] = useState<StaffTask[]>([...mockStaffTasks]);
-  const [bookings] = useState([...mockBookings]);
+  const [roomTypes, setRoomTypes] = useState<RoomTypeDef[]>([]);
+  const [rooms, setRooms] = useState<AdminRoom[]>([]);
+  const [ratePlans, setRatePlans] = useState<RatePlan[]>([]);
+  const [dateOverrides, setDateOverrides] = useState<DateOverride[]>([]);
+  const [discountCodes, setDiscountCodes] = useState<AdminDiscountCode[]>([]);
+  const [specialOffers, setSpecialOffers] = useState<SpecialOffer[]>([]);
+  const [taxConfigs, setTaxConfigs] = useState<TaxConfig[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [staffTasks, setStaffTasks] = useState<StaffTask[]>([]);
   const [apiBookings, setApiBookings] = useState<any[]>([]);
   const [systemAmenities, setSystemAmenities] = useState<string[]>([]);
   // Tracks which properties have had their bookings fetched from the backend.
-  // Once a property has been queried, we always prefer the API result (even if
-  // empty) over the mock data — this prevents stale mock bookings from showing
-  // when a real property has no bookings yet.
   const bookingsFetchedRef = useRef(new Set<string>());
-  const [activePropertyId, setActivePropertyIdState] = useState<string | null>('prop-1');
+  const [activePropertyId, setActivePropertyIdState] = useState<string | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
 
   // Offline-first sync: while the server is unreachable, properties are saved to
@@ -215,8 +196,8 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
 
   const isHostReady = isSignedIn && portal === 'host';
 
-  // Demo accounts carry local-only tokens and rely on the mock seed data. Real
-  // registered hosts must never see the demo seeds or another account's data.
+  // Demo accounts carry local-only tokens and get no data: with mock seeds
+  // removed, demo mode renders backend-or-empty like every other session.
   const isDemoHost = !!tokens.accessToken?.startsWith('demo-');
   const hostPropsKey = React.useMemo(
     () => getHostPropertiesKey((user as { id?: string } | null)?.id),
@@ -247,25 +228,16 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
     hostApi.getProperties(() => []).then(apiProps => {
       const mapped = apiProps.map(mapApiProperty);
-      if (isDemoHost) {
-        // Demo host: seeds stay unless the backend returns real properties.
-        if (mapped.length > 0) {
-          setProperties(mapped);
-          setActivePropertyIdState(mapped[0].id);
-        }
-      } else {
-        // Real host: the backend (tenant-scoped) is authoritative. Merge with
-        // anything this user created locally so offline work isn't wiped, but
-        // never show the demo seeds.
-        setProperties(prev => {
-          const existing = prev.filter(p => p.id && !mapped.some(m => m.id === p.id));
-          return [...mapped, ...existing];
-        });
-        setActivePropertyIdState(prevActive => {
-          const alive = mapped.length > 0 && mapped.some(m => m.id === prevActive);
-          return alive ? prevActive : (mapped[0]?.id ?? prevActive);
-        });
-      }
+      // The backend (tenant-scoped) is authoritative. Merge with anything this
+      // user created locally so offline work isn't wiped — no seed/mock data.
+      setProperties(prev => {
+        const existing = prev.filter(p => p.id && !mapped.some(m => m.id === p.id));
+        return [...mapped, ...existing];
+      });
+      setActivePropertyIdState(prevActive => {
+        const alive = mapped.length > 0 && mapped.some(m => m.id === prevActive);
+        return alive ? prevActive : (mapped[0]?.id ?? prevActive);
+      });
     }).finally(() => setIsDataLoading(false));
   }, [isDemoHost]);
 
@@ -278,9 +250,7 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   }, [isHostReady, authLoading, loadedPersisted, fetchHostData]);
 
   // Restore host-created properties from AsyncStorage so they survive reloads.
-  // Demo accounts MERGE the seed defaults (minus deleted seeds) with any
-  // host-created properties; real accounts never see seeds and only restore
-  // their OWN per-user saved properties.
+  // Only this user's own per-user saved properties — no seed/demo data.
   useEffect(() => {
     // Only restore once the host's identity is known — otherwise the fallback
     // key would read a previous user's (or a pre-migration) saved properties.
@@ -288,23 +258,17 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
       setLoadedPersisted(true);
       return;
     }
-    AsyncStorage.multiGet([hostPropsKey, HOST_DELETED_SEEDS_KEY])
-      .then(([[, raw], [, deletedRaw]]) => {
-        const deleted = new Set<string>();
-        if (deletedRaw) {
-          const parsed = JSON.parse(deletedRaw);
-          if (Array.isArray(parsed)) parsed.forEach((d: string) => { if (SEED_PROPERTY_IDS.has(d)) deleted.add(d); });
-        }
+    AsyncStorage.getItem(hostPropsKey)
+      .then(raw => {
         const saved: Property[] = raw ? JSON.parse(raw) : [];
-        setProperties(prev => mergeRestoredProperties({ prev, saved, deletedSeedIds: deleted, isDemoHost }));
-        // If the active property was deleted (e.g. its seed was removed in a
-        // previous session), point at the first surviving property so child
-        // effects never fetch rooms/staff for a ghost id.
-        setActivePropertyIdState(prevActive => computeActivePropertyId({ prevActive, saved, deletedSeedIds: deleted, isDemoHost }));
+        setProperties(prev => mergeRestoredProperties({ prev, saved }));
+        // If the active property was deleted, point at the first surviving
+        // property so child effects never fetch rooms/staff for a ghost id.
+        setActivePropertyIdState(prevActive => computeActivePropertyId({ prevActive, saved }));
       })
       .catch(e => console.warn('Failed to load saved properties:', e))
       .finally(() => setLoadedPersisted(true));
-  }, [isHostReady, isDemoHost, hostPropsKey]);
+  }, [isHostReady, hostPropsKey]);
 
   const refreshRooms = useCallback((propertyId?: string) => {
     const pid = propertyId || activePropertyId;
@@ -312,20 +276,39 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     hostApi.getRooms(pid, () => []).then(apiRooms => {
       if (apiRooms.length > 0) setRooms(prev => {
         const others = prev.filter(r => r.property_id !== pid);
-        return [...others, ...apiRooms.map(r => mapApiRoom({ ...r, property_id: pid }, pid))];
+        return [...others, ...apiRooms.map(r => mapApiRoom({ ...r, property_id: pid }, pid, roomTypeNamesRef.current))];
       });
     });
   }, [activePropertyId]);
+
+  /** Latest room/bed type id→name maps, so mapApiRoom can join names onto rooms. */
+  const roomTypeNamesRef = useRef<RoomTypeNames>({ roomTypes: {}, bedTypes: {} });
+
+  const refreshRoomTypes = useCallback((propertyId: string) => {
+    if (!isApiPropertyId(propertyId)) return;
+    Promise.all([
+      hostApi.getRoomTypes(propertyId, () => []),
+      hostApi.getBedTypes(propertyId, () => []),
+    ]).then(([apiRoomTypes, apiBedTypes]) => {
+      const { defs, names } = mapApiRoomTypes(apiRoomTypes, apiBedTypes, propertyId);
+      roomTypeNamesRef.current = names;
+      if (defs.length > 0) setRoomTypes(prev => {
+        const others = prev.filter(rt => rt.property_id !== propertyId);
+        return [...others, ...defs];
+      });
+    }).catch(e => console.warn('Failed to fetch room types:', e));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     // Only hit the backend for real property UUIDs — seed/demo ids like
     // "prop-1" are invalid and would 422 in the server logs.
     if (isApiPropertyId(activePropertyId)) {
+      refreshRoomTypes(activePropertyId);
       hostApi.getRooms(activePropertyId, () => []).then(apiRooms => {
         if (!cancelled && apiRooms.length > 0) setRooms(prev => {
           const others = prev.filter(r => r.property_id !== activePropertyId);
-          return [...others, ...apiRooms.map(r => mapApiRoom({ ...r, property_id: activePropertyId }, activePropertyId))];
+          return [...others, ...apiRooms.map(r => mapApiRoom({ ...r, property_id: activePropertyId }, activePropertyId, roomTypeNamesRef.current))];
         });
       }).catch(e => console.warn('Failed to fetch rooms:', e));
       hostApi.getDiscountCodes(activePropertyId, () => []).then(apiCodes => {
@@ -371,78 +354,6 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
 
   const now = () => new Date().toISOString();
 
-  /** Convert a host Property to a guest-facing Hotel and register it across portals */
-  const registerPropertyAcrossPortals = useCallback((created: Property) => {
-    const placeholderImage = 'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&h=600&fit=crop';
-    const roomPlaceholderImage = 'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=400&h=300&fit=crop';
-
-    // Generate default room types so the property is bookable from the guest portal
-    const defaultRoomTypes: RoomType[] = [
-      {
-        id: `rt-${created.id}-std`,
-        name: 'Standard Room',
-        price: created.min_rate_floor || 2000,
-        currency: created.currency || 'NPR',
-        occupancy: 2,
-        bed: 'Queen',
-        description: 'A comfortable room with modern amenities for a relaxing stay.',
-        available: Math.min(created.total_rooms || 5, 5),
-        amenities: ['WiFi', 'AC', 'TV'],
-        image: roomPlaceholderImage,
-      },
-      {
-        id: `rt-${created.id}-dlx`,
-        name: 'Deluxe Room',
-        price: (created.min_rate_floor || 2000) * 1.5,
-        currency: created.currency || 'NPR',
-        occupancy: 3,
-        bed: 'King + Single',
-        description: 'A spacious room with premium amenities and extra comfort.',
-        available: Math.min(Math.max(Math.floor((created.total_rooms || 5) / 2), 1), 3),
-        amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe'],
-        image: roomPlaceholderImage,
-      },
-    ];
-
-    // Build a basic guest-facing Hotel entry from the Property data
-    const guestHotel: Hotel = {
-      id: created.id.replace('prop-', ''),
-      name: created.name,
-      location: `${created.city}, ${created.country}`,
-      city: created.city,
-      country: created.country,
-      address: created.address,
-      rating: 3.0,
-      review_count: 0,
-      starRating: 3,
-      price: created.min_rate_floor || 2000,
-      currency: created.currency || 'NPR',
-      description: created.description || '',
-      shortDescription: (created.description || '').slice(0, 80),
-      images: created.photos.length > 0 ? created.photos.map(p => p.photo_url) : [placeholderImage],
-      amenities: created.amenities.map(a => ({ name: a, icon: '•' } as HotelAmenity)),
-      roomTypes: defaultRoomTypes,
-      reviews: [],
-      cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
-      checkInTime: created.check_in_time_from,
-      checkOutTime: created.check_out_time_to,
-      phone: '',
-      email: '',
-      coordinates: created.latitude && created.longitude ? { lat: created.latitude, lng: created.longitude } : undefined,
-      availableRooms: created.total_rooms,
-      tags: [created.type.toLowerCase()],
-      brandColor: created.brand_color,
-      lat: created.latitude || undefined,
-      lng: created.longitude || undefined,
-    };
-
-    // Register in guest portal
-    addMockProperty(guestHotel);
-
-    // Register in ops portal (front desk rooms, bookings)
-    registerOpsProperty(created.id, created.name);
-  }, []);
-
   const addProperty = useCallback(async (p: Property): Promise<Property> => {
     // Never persist the demo tenant on a real host's property. The backend
     // assigns the real tenant from the JWT when the property is created; until
@@ -465,7 +376,6 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     // the server id, and swapping it would orphan the rooms/photos created
     // against it on the backend.
     if (isApiPropertyId(normalized.id)) {
-      registerPropertyAcrossPortals(normalized);
       return normalized;
     }
 
@@ -477,20 +387,17 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
           persistHostProperties(next, (user as { id?: string } | null)?.id);
           return next;
         });
-        registerPropertyAcrossPortals(created);
         return created;
       }
     } catch (e) {
       console.warn('Failed to sync property to backend:', e);
       // Server unreachable — the property stays local; the caller can surface this.
     }
-    // Register local-only property in guest portal (fallback when server is unreachable)
-    registerPropertyAcrossPortals(normalized);
     // Refresh from backend so the dashboard shows the authoritative property list
     // (the backend may populate tenant_id, created_at, etc. that we don't have locally).
     setTimeout(() => fetchHostData(), 500);
     return normalized;
-  }, [registerPropertyAcrossPortals, user, properties, isDemoHost, fetchHostData]);
+  }, [user, properties, isDemoHost, fetchHostData]);
 
   /**
    * Push a local-only property (e.g. created while offline or in demo mode, or
@@ -565,9 +472,9 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
       let gallery: string[] = [];
       if (localUris.length > 0) {
         const formData = new FormData();
-        localUris.forEach(uri => {
-          formData.append('files', { uri, type: 'image/jpeg', name: `photo_${Date.now()}.jpg` } as any);
-        });
+        for (const uri of localUris) {
+          formData.append('files', imageFormFile(uri, `photo_${Date.now()}.jpg`));
+        }
         const result = await hostApi.uploadPropertyImages(created.id, formData);
         const urls = Array.isArray(result) ? result : (result?.data ?? []);
         if (Array.isArray(urls) && urls.length > 0) {
@@ -635,9 +542,9 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
           if (localRoomUris.length === 0) continue;
           try {
             const fd = new FormData();
-            localRoomUris.forEach(uri => {
-              fd.append('files', { uri, type: 'image/jpeg', name: `room_${Date.now()}.jpg` } as any);
-            });
+            for (const uri of localRoomUris) {
+              fd.append('files', imageFormFile(uri, `room_${Date.now()}.jpg`));
+            }
             const res = await hostApi.uploadRoomImages(created.id, fd);
             const urls = Array.isArray(res) ? res : (res?.data ?? []);
             roomPhotoUrls[room.id] = Array.isArray(urls) ? urls : [];
@@ -771,9 +678,8 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     setTaxConfigs(prev => prev.map(x => x.property_id === p.id ? { ...x, property_id: created.id } : x));
     setShifts(prev => prev.map(x => x.property_id === p.id ? { ...x, property_id: created.id } : x));
     setStaffTasks(prev => prev.map(x => x.property_id === p.id ? { ...x, property_id: created.id } : x));
-    registerPropertyAcrossPortals(merged);
     return { property: merged, warnings };
-  }, [registerPropertyAcrossPortals, user, rooms, roomTypes, specialOffers, staff, properties, isDemoHost]);
+  }, [user, rooms, roomTypes, specialOffers, staff, properties, isDemoHost]);
 
   /**
    * Offline-first publish: properties that couldn't reach the server stay in
@@ -825,17 +731,6 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   const updateProperty = useCallback((id: string, updates: Partial<Property>) => {
     hostApi.updateProperty(id, updates as any, () => ({ ...updates } as Property)).then(() => {
       setProperties(prev => prev.map(p => p.id === id ? { ...p, ...updates, updated_at: now() } : p));
-      // Sync property name/description changes to guest portal
-      const guestId = id.replace('prop-', '');
-      const guestUpdates: Partial<Hotel> = {};
-      if (updates.name) guestUpdates.name = updates.name;
-      if (updates.description !== undefined) guestUpdates.description = updates.description ?? undefined;
-      if (updates.city) guestUpdates.city = updates.city;
-      if (updates.country) guestUpdates.country = updates.country;
-      if (updates.min_rate_floor) guestUpdates.price = updates.min_rate_floor;
-      if (Object.keys(guestUpdates).length > 0) {
-        updateMockProperty(guestId, guestUpdates);
-      }
       // Sync name to AsyncStorage for ops default property
       if (updates.name) {
         AsyncStorage.setItem(OPS_DEFAULT_PROPERTY_NAME_KEY, updates.name);
@@ -859,7 +754,7 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
 
   const setPropertyCoverPhoto = useCallback(async (propertyId: string, imageUri: string) => {
     const formData = new FormData();
-    formData.append('image', { uri: imageUri, type: 'image/jpeg', name: 'cover.jpg' } as any);
+    formData.append('image', imageFormFile(imageUri, 'cover.jpg'));
     const result = await hostApi.uploadPropertyImage(propertyId, formData);
     const url = result?.data || result;
     if (url) {
@@ -885,9 +780,9 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
 
   const addPropertyGalleryPhotos = useCallback(async (propertyId: string, imageUris: string[]) => {
     const formData = new FormData();
-    imageUris.forEach(uri => {
-      formData.append('files', { uri, type: 'image/jpeg', name: `photo_${Date.now()}.jpg` } as any);
-    });
+    for (const uri of imageUris) {
+      formData.append('files', imageFormFile(uri, `photo_${Date.now()}.jpg`));
+    }
     const result = await hostApi.uploadPropertyImages(propertyId, formData);
     const newUrls: string[] = result?.data || result;
     if (newUrls && Array.isArray(newUrls) && newUrls.length > 0) {
@@ -950,8 +845,6 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
 
   const addRoom = useCallback((r: AdminRoom, opts?: { skipBackend?: boolean }) => {
     setRooms(prev => [...prev, r]);
-    // Sync new room to ops portal front desk
-    addOpsFrontDeskRoom(r.property_id, r.room_name, r.floor_number);
     // Persist to backend for real API properties (skip if caller already persisted, e.g. listing wizard)
     if (!opts?.skipBackend && isApiPropertyId(r.property_id)) {
       const fallbackRoom = { ...r, id: r.id };
@@ -1215,13 +1108,6 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const removeProperty = useCallback(async (id: string) => {
-    if (SEED_PROPERTY_IDS.has(id)) {
-      AsyncStorage.getItem(HOST_DELETED_SEEDS_KEY).then(raw => {
-        const existing: string[] = raw ? JSON.parse(raw) : [];
-        const next = [...new Set([...existing, id])];
-        AsyncStorage.setItem(HOST_DELETED_SEEDS_KEY, JSON.stringify(next)).catch(() => {});
-      });
-    }
     // Optimistically remove from local state
     setProperties(prev => {
       const next = prev.filter(p => p.id !== id);
@@ -1230,8 +1116,6 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
     });
     setRoomTypes(prev => prev.filter(rt => rt.property_id !== id));
     setRooms(prev => prev.filter(r => r.property_id !== id));
-    removeMockProperty(id.replace('prop-', ''));
-    removeOpsProperty(id);
     // If the deleted property was active, switch to the first remaining one
     if (activePropertyId === id) {
       setProperties(prev => {
@@ -1256,10 +1140,8 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
 
   const removeRoomType = useCallback((id: string) => setRoomTypes(prev => prev.filter(rt => rt.id !== id)), []);
   const removeRoom = useCallback((id: string) => {
-    // Clean up ops front desk room before removing from host state
     const room = rooms.find(r => r.id === id);
     if (room) {
-      removeOpsFrontDeskRoom(room.property_id, room.room_name);
       const pid = room.property_id || activePropertyId || '';
       if (isApiPropertyId(pid) && UUID_RE.test(id)) {
         hostApi.deleteRoom(pid, id);
@@ -1294,20 +1176,13 @@ export function HostProvider({ children }: { children: React.ReactNode }) {
   const getFilteredRooms = useCallback((propertyId: string) => rooms.filter(r => r.property_id === propertyId), [rooms]);
   const getFilteredRoomTypes = useCallback((propertyId: string) => roomTypes.filter(rt => rt.property_id === propertyId), [roomTypes]);
   const getFilteredStaff = useCallback((propertyId: string) => staff.filter(s => s.property_id === propertyId), [staff]);
-  const getFilteredBookings = useCallback((propertyId: string) => {
-    const api = apiBookings.filter(b => b.property_id === propertyId);
-    // If we've already queried the backend for this property, always prefer
-    // the API result (even if empty) — never fall back to stale mock data.
-    if (bookingsFetchedRef.current.has(propertyId)) return api;
-    // For properties we haven't fetched yet (e.g. demo seeds), show mocks
-    const mock = bookings.filter(b => b.property_id === propertyId);
-    return api.length > 0 ? api : mock;
-  }, [bookings, apiBookings]);
+  const getFilteredBookings = useCallback((propertyId: string) =>
+    apiBookings.filter(b => b.property_id === propertyId), [apiBookings]);
 
   const value: HostContextType = {
     properties, roomTypes, rooms, ratePlans, dateOverrides,
-    discountCodes, specialOffers, taxConfigs, staff, shifts, staffTasks, bookings, systemAmenities,
-    activePropertyId, setActivePropertyId, isDataLoading, loadedPersisted, syncingToServer, fetchHostData, refreshRooms,
+    discountCodes, specialOffers, taxConfigs, staff, shifts, staffTasks, bookings: apiBookings, systemAmenities,
+    activePropertyId, setActivePropertyId, isDataLoading, loadedPersisted, syncingToServer, fetchHostData, refreshRooms, refreshRoomTypes,
 
     addProperty, syncPropertyToServer, updateProperty, togglePropertyActivation, removeProperty,
     addRoomType, updateRoomType, removeRoomType,

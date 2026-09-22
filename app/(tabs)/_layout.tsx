@@ -34,6 +34,8 @@ export default function TabLayout() {
             tabs={tabs}
             activeIndex={state.index}
             onTabPress={(i) => {
+              // Prevent navigation if tab is already active (avoids reload/remount)
+              if (state.index === i) return;
               const route = state.routes[i];
               navigation.navigate(route.name);
             }}

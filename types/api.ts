@@ -62,6 +62,10 @@ export interface AuthResponse {
   access_token: string;
   refresh_token?: string;
   token_type?: string;
+  /** Backend Token schema: true when signed in with a temp password. */
+  must_change_password?: boolean;
+  /** Backend Token schema: 'guest' | 'user' (or the account role). */
+  role?: string;
 }
 
 // ─── Password Reset Types ──────────────────────────────────────────────────
@@ -559,6 +563,101 @@ export interface Folio {
   settled: boolean;
 }
 
+// ─── Backend /staff/* + /properties/* frontdesk types (live OpenAPI) ───────
+
+export interface FrontDeskGuestInfo {
+  guest_id?: string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  nationality?: string;
+}
+
+export interface RoomInfo {
+  room_id: string;
+  room_name: string;
+  room_type: string;
+  bed_type: string;
+  base_rate: number;
+}
+
+export interface FrontDeskBookingResponse {
+  booking_id: string;
+  ref_number: string;
+  status: string;
+  booking_type: string;
+  guest?: FrontDeskGuestInfo;
+  rooms?: RoomInfo[];
+  checkin_date: string;
+  checkout_date: string;
+  number_of_adults: number;
+  number_of_children: number;
+  special_requests?: string;
+  payment_method?: string;
+  payment_status?: string;
+  payment_gateway?: string;
+  amount_paid?: number;
+  amount_due?: number;
+  advance_amount?: number;
+  total_amount: number;
+  created_at: string;
+}
+
+// ─── Property Analytics (GET /properties/{id}/analytics*) ─────────────────
+// Amounts arrive as decimal strings ("1500.00") — parseFloat before display.
+
+export interface AnalyticsChannelPerformance {
+  channel_name: string;
+  booking_count: number;
+  /** Decimal string from the backend. */
+  revenue: string;
+}
+
+export interface AnalyticsOverview {
+  /** Decimal string. */
+  total_revenue: string;
+  /** ADR — decimal string. */
+  arr: string;
+  occupancy_rate: number;
+  bookings_today: number;
+  top_channels: AnalyticsChannelPerformance[];
+}
+
+export interface AnalyticsTrendPoint {
+  /** YYYY-MM-DD */
+  date: string;
+  /** Decimal string. */
+  revenue: string;
+}
+
+export interface AnalyticsRoomTypeRevenue {
+  room_type_name: string;
+  /** Decimal string. */
+  revenue: string;
+  booking_count: number;
+}
+
+export interface AnalyticsBookingPoint {
+  /** YYYY-MM-DD */
+  date: string;
+  booking_count: number;
+}
+
+export interface FrontDeskSummaryResponse {
+  todays_arrivals: number;
+  todays_departures: number;
+  todays_checked_in: number;
+  todays_checked_out: number;
+  total_rooms: number;
+  total_available_rooms: number;
+  dirty_rooms: number;
+  occupied_rooms: number;
+}
+
+export interface StaffCancelBookingRequest {
+  reason: string;
+}
+
 export interface HousekeepingTask {
   id: string;
   room_id: string;
@@ -697,6 +796,15 @@ export interface BookingReservationResponse {
   check_out: string;
   nights: number;
   payment_gateway?: string;
+  payment_method?: string;
+  payment_status?: string;
+  advance_amount?: number | null;
+  amount_paid?: number;
+  amount_due?: number;
+  min_advance_amount?: number;
+  max_advance_amount?: number;
+  min_advance_percentage?: number;
+  max_advance_percentage?: number;
   property: PropertySummary;
   rooms: RoomReservationDetail[];
   total_amount: number;
@@ -760,6 +868,15 @@ export interface PaymentIntentResponse {
   pidx?: string;
   /** Hosted checkout URL — Khalti returns one. Stripe/Razorpay do NOT (they return client_secret / order_id and run through native SDKs). */
   payment_url?: string;
+  /** eSewa — the live backend returns the sandbox form to auto-POST. */
+  form_url?: string;
+  form_fields?: Record<string, string>;
+  /** PAY_ON_ARRIVAL confirms the booking immediately (payment_status=UNPAID). */
+  status?: string;
+  payment_status?: string;
+  amount_paid?: number;
+  amount_due?: number;
+  message?: string;
 }
 
 export interface ConfirmPaymentRequest {
@@ -941,21 +1058,35 @@ export interface BackendWorkHistoryStats {
   tasks_completed_this_month: number;
 }
 
-/** Staff work summary (admin view) */
-export interface BackendStaffWorkSummary {
-  staff_id: string;
+/** Room status enum (matches backend RoomStatus) */
+export type BackendRoomStatus =
+  | 'AVAILABLE' | 'BLOCKED' | 'BOOKED' | 'CLEANING' | 'DIRTY'
+  | 'OCCUPIED' | 'INSPECTED' | 'MAINTENANCE' | 'OUT_OF_SERVICE';
+
+/** Activity log entry (booking / housekeeping staff actions) */
+export interface BackendActivityLog {
+  id: string;
   staff_name: string;
-  total_assigned: number;
-  completed: number;
-  pending: number;
-  in_progress: number;
-  cancelled: number;
+  activity_type: string;
+  description: string;
+  booking_id?: string | null;
+  room_id?: string | null;
+  extra_data?: Record<string, unknown> | null;
+  created_at: string; // ISO date-time
 }
 
-/** Task type enum response */
-export interface BackendTaskTypeOption {
-  value: string;
-  label: string;
+/** Housekeeping staff picker option (id + name [+ photo]) */
+export interface BackendStaffOption {
+  id: string;
+  name: string;
+  cover_photo?: string | null;
+}
+
+/** Room picker option for task creation */
+export interface BackendRoomOption {
+  id: string;
+  name: string;
+  status: BackendRoomStatus;
 }
 
 /** Create task request */
@@ -976,16 +1107,6 @@ export interface UpdateTaskRequestBE {
   due_time?: string | null;
   notes?: string | null;
   status?: TaskStatusBE | null;
-}
-
-/** Bulk assign request */
-export interface BulkAssignTaskItem {
-  task_type: TaskType;
-  room_id: string;
-  staff_id: string;
-  priority?: TaskPriorityBE;
-  notes?: string | null;
-  due_time: string;
 }
 
 /** Task status update request (mobile) */
@@ -1043,4 +1164,136 @@ export interface CreateReviewRequest {
 export interface UpdateReviewRequest {
   rating?: number | null;
   comment?: string | null;
+}
+
+/** Room status item from GET /room-status */
+export interface BackendRoomStatusItem {
+  id: string;
+  room_name: string;
+  cover_image: string | null;
+  room_type: string;
+  floor_number: number;
+  task_status: string | null;
+  assigned_to: string | null;
+  last_cleaned: string | null;
+}
+
+/** Room status summary from GET /room-status/summary */
+export interface BackendRoomStatusSummary {
+  total_rooms: number;
+  available_rooms: number;
+  occupied_rooms: number;
+  dirty_rooms: number;
+  in_progress_rooms: number;
+  cleaning_rooms: number;
+  inspected_rooms: number;
+  blocked_rooms: number;
+  booked_rooms: number;
+  out_of_service_rooms: number;
+  maintenance_rooms: number;
+}
+
+// ─── Folio Types (matching live backend) ────────────────────────────────────
+
+export interface BackendFolioCharge {
+  id: string;
+  folio_id: string;
+  description: string;
+  amount: string;
+  category: string;
+  posted_by: string;
+  posted_by_name?: string | null;
+  posted_at: string;
+}
+
+export interface BackendFolioDetail {
+  id: string;
+  booking_id: string;
+  guest_id?: string | null;
+  status: string;
+  subtotal: string;
+  tax: string;
+  discount: string;
+  total: string;
+  settled_at?: string | null;
+  charges: BackendFolioCharge[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackendFolioListItem {
+  id: string;
+  booking_id: string;
+  guest_id?: string | null;
+  status: string;
+  subtotal: string;
+  tax: string;
+  discount: string;
+  total: string;
+  settled_at?: string | null;
+  charges_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BackendFolioListResponse {
+  folios: BackendFolioListItem[];
+  total: number;
+  skip: number;
+  limit: number;
+  has_more: boolean;
+}
+
+// ─── Room Calendar ──────────────────────────────────────────────────────────
+
+export interface RoomCalendarRoom {
+  room_id: string;
+  room_name: string;
+  room_type: string;
+  floor_number: number;
+  bookings: {
+    booking_id: string;
+    ref_number: string;
+    guest_name: string;
+    check_in: string;
+    check_out: string;
+    status: string;
+  }[];
+}
+
+export interface BackendRoomCalendarResponse {
+  start_date: string;
+  end_date: string;
+  rooms: RoomCalendarRoom[];
+}
+
+// ─── Citizenship Photos ─────────────────────────────────────────────────────
+
+export interface BackendCitizenshipPhotos {
+  front?: string | null;
+  back?: string | null;
+}
+
+// ─── Booking Modify ─────────────────────────────────────────────────────────
+
+export interface ModifyBookingRequest {
+  checkin_date?: string;
+  checkout_date?: string;
+  room_unit_ids?: string[];
+  number_of_adults?: number;
+  number_of_children?: number;
+  special_requests?: string;
+  reason: string;
+}
+
+// ─── Check-in/out payment requests ─────────────────────────────────────────
+
+export interface CheckInPaymentRequest {
+  amount?: number | string;
+  payment_gateway?: string;
+}
+
+export interface CheckOutPaymentRequest {
+  amount: number | string;
+  payment_gateway?: string;
 }

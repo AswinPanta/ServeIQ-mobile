@@ -167,7 +167,7 @@ export default function ListingWizardSteps({ ctx }: { ctx: WizardCtx }) {
                 <Text style={styles.stepCardTitle}>Contact Information</Text>
               </View>
               <View style={styles.formRow2}>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.formLabel}>Phone Number *</Text>
                   <View style={[styles.inputWithIcon, fieldErrors.phone && { borderColor: RED[500] }]}>                    
                     <IconSymbol name="phone" size={14} color={GRAY[400]} />
@@ -187,7 +187,7 @@ export default function ListingWizardSteps({ ctx }: { ctx: WizardCtx }) {
                   </View>
                   {fieldErrors.phone ? <Text style={{ fontSize: 12, color: RED[500], marginTop: 4 }}>{fieldErrors.phone}</Text> : null}
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.formLabel}>Official Email *</Text>
                   <View style={[styles.inputWithIcon, fieldErrors.email && { borderColor: RED[500] }]}>                    
                     <IconSymbol name="email" size={14} color={GRAY[400]} />

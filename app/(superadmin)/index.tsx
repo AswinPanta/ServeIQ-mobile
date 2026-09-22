@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
 import { useAnalytics } from '@/lib/context/analytics-context';
@@ -79,37 +79,43 @@ export default function SuperAdminDashboard() {
 
       {/* Revenue Chart */}
       <AdminCard title="Revenue Overview" style={styles.cardMargin}>
-        <View style={styles.chartRow}>
-          {[
-            { month: 'Jan', revenue: tenants.length * 0.32 || 3.2, mrr: tenants.length * 0.21 || 2.1 },
-            { month: 'Feb', revenue: tenants.length * 0.38 || 3.8, mrr: tenants.length * 0.23 || 2.3 },
-            { month: 'Mar', revenue: tenants.length * 0.35 || 3.5, mrr: tenants.length * 0.24 || 2.4 },
-            { month: 'Apr', revenue: tenants.length * 0.42 || 4.2, mrr: tenants.length * 0.26 || 2.6 },
-            { month: 'May', revenue: tenants.length * 0.45 || 4.5, mrr: tenants.length * 0.28 || 2.8 },
-            { month: 'Jun', revenue: tenants.length * 0.48 || 4.8, mrr: tenants.length * 0.30 || 3.0 },
-          ].map((d) => {
-            const maxRev = tenants.length > 0 ? tenants.length * 0.48 : 4.8;
-            return (
-              <View key={d.month} style={styles.chartCol}>
-                <View style={styles.barContainer}>
-                  <View style={[styles.bar, { height: (d.revenue / maxRev) * 80, backgroundColor: ACCENT }]} />
-                  <View style={[styles.bar, { height: (d.mrr / maxRev) * 80, backgroundColor: ACCENT + '35' }]} />
-                </View>
-                <Text style={styles.chartLabel}>{d.month}</Text>
+        {tenants.length > 0 ? (
+          <>
+            <View style={styles.chartRow}>
+              {[
+                { month: 'Jan', revenue: tenants.length * 0.32, mrr: tenants.length * 0.21 },
+                { month: 'Feb', revenue: tenants.length * 0.38, mrr: tenants.length * 0.23 },
+                { month: 'Mar', revenue: tenants.length * 0.35, mrr: tenants.length * 0.24 },
+                { month: 'Apr', revenue: tenants.length * 0.42, mrr: tenants.length * 0.26 },
+                { month: 'May', revenue: tenants.length * 0.45, mrr: tenants.length * 0.28 },
+                { month: 'Jun', revenue: tenants.length * 0.48, mrr: tenants.length * 0.30 },
+              ].map((d) => {
+                const maxRev = tenants.length * 0.48;
+                return (
+                  <View key={d.month} style={styles.chartCol}>
+                    <View style={styles.barContainer}>
+                      <View style={[styles.bar, { height: (d.revenue / maxRev) * 80, backgroundColor: ACCENT }]} />
+                      <View style={[styles.bar, { height: (d.mrr / maxRev) * 80, backgroundColor: ACCENT + '35' }]} />
+                    </View>
+                    <Text style={styles.chartLabel}>{d.month}</Text>
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: ACCENT }]} />
+                <Text style={styles.legendText}>Revenue</Text>
               </View>
-            );
-          })}
-        </View>
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: ACCENT }]} />
-            <Text style={styles.legendText}>Revenue</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: ACCENT + '35' }]} />
-            <Text style={styles.legendText}>MRR</Text>
-          </View>
-        </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: ACCENT + '35' }]} />
+                <Text style={styles.legendText}>MRR</Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.noData}>No data available</Text>
+        )}
       </AdminCard>
 
       {/* Quick Actions */}
@@ -121,11 +127,11 @@ export default function SuperAdminDashboard() {
               portal="superadmin"
               haptic="light"
               scaleTo={0.95}
-              onPress={() => router.push(action.route as any)}
+              onPress={() => router.push(action.route as Href)}
               style={styles.quickAction}
             >
               <View style={[styles.quickIcon, { backgroundColor: action.color + '12' }]}>
-                <IconSymbol name={action.icon as any} size={20} color={action.color} />
+                <IconSymbol name={action.icon} size={20} color={action.color} />
               </View>
               <Text style={styles.quickLabel}>{action.label}</Text>
             </AnimatedPressable>
@@ -156,21 +162,23 @@ export default function SuperAdminDashboard() {
 
       {/* Plans Distribution — derived from tenant data */}
       <AdminCard title="Plan Distribution" style={styles.cardMargin}>
-        {[
-          { name: 'Enterprise', value: Math.max(0, Math.floor(tenants.length * 0.17)) || 4, color: PURPLE[700] },
-          { name: 'Pro', value: Math.max(0, Math.floor(tenants.length * 0.33)) || 8, color: BLUE[500] },
-          { name: 'Basic', value: Math.max(0, Math.floor(tenants.length * 0.33)) || 8, color: STATUS.activeGreen },
-          { name: 'Trial', value: Math.max(1, tenants.length - Math.floor(tenants.length * 0.83)) || 4, color: AMBER[500] },
+        {tenants.length > 0 ? [
+          { name: 'Enterprise', value: Math.floor(tenants.length * 0.17), color: PURPLE[700] },
+          { name: 'Pro', value: Math.floor(tenants.length * 0.33), color: BLUE[500] },
+          { name: 'Basic', value: Math.floor(tenants.length * 0.33), color: STATUS.activeGreen },
+          { name: 'Trial', value: Math.max(1, tenants.length - Math.floor(tenants.length * 0.83)), color: AMBER[500] },
         ].map((plan) => (
           <View key={plan.name} style={styles.planRow}>
             <View style={[styles.planDot, { backgroundColor: plan.color }]} />
             <Text style={styles.planName}>{plan.name}</Text>
             <View style={styles.planBarBg}>
-              <View style={[styles.planBar, { width: `${(plan.value / Math.max(tenants.length, 1)) * 100}%`, backgroundColor: plan.color }]} />
+              <View style={[styles.planBar, { width: `${(plan.value / tenants.length) * 100}%`, backgroundColor: plan.color }]} />
             </View>
             <Text style={styles.planValue}>{plan.value}</Text>
           </View>
-        ))}
+        )) : (
+          <Text style={styles.noData}>No data available</Text>
+        )}
       </AdminCard>
 
       {/* System Status */}
@@ -248,4 +256,5 @@ const styles = StyleSheet.create({
   activityDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
   activityAction: { fontSize: 13, color: SLATE[900], lineHeight: 18 },
   activityTime: { fontSize: 11, color: SLATE[400], marginTop: 3 },
+  noData: { fontSize: 13, color: SLATE[400], textAlign: 'center', paddingVertical: 20 },
 });

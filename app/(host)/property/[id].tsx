@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, router, type Href } from 'expo-router';
+import { safeGoBack } from '@/lib/utils';import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHost } from '@/lib/context/host-context';
 import { isApiPropertyId } from '@/lib/context/host-utils';
@@ -64,7 +64,7 @@ export default function PropertyHub() {
     <View style={{ flex: 1, backgroundColor: GRAY[50] }}>
       <View style={[styles.bar, { paddingTop: insets.top + 12 }]}>
         <View style={styles.row}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color={SRS.navy} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -91,7 +91,7 @@ export default function PropertyHub() {
               key={s.key}
               style={styles.card}
               activeOpacity={0.8}
-              onPress={() => router.push(`/(host)/property/${id}/${s.key}` as any)}
+              onPress={() => router.push(`/(host)/property/${id}/${s.key}` as Href)}
             >
               <View style={styles.iconWrap}>
                 <Ionicons name={s.icon} size={22} color={ACCENT} />

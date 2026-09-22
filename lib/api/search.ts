@@ -1,7 +1,5 @@
-import { Platform } from 'react-native';
 import { API_ENDPOINTS, toDateParam } from '@/constants/api-config';
 import type { Hotel } from '@/types/api';
-import { MOCK_PROPERTIES, searchHotels } from '@/lib/mock/properties';
 import { normalizePropertyType } from '@/lib/mock/landing-data';
 import { markEnd, markStart } from '@/lib/utils/perf';
 import { api } from './client';
@@ -58,7 +56,7 @@ export interface SearchHotelsResult {
   total?: number;
 }
 
-function mapSearchItemToHotel(item: BackendSearchItem, fallbackHotel?: Hotel): Hotel {
+function mapSearchItemToHotel(item: BackendSearchItem): Hotel {
   const amenities = normalizeAmenities(item.amenities);
   return {
     id: item.property_id,
@@ -67,36 +65,34 @@ function mapSearchItemToHotel(item: BackendSearchItem, fallbackHotel?: Hotel): H
     city: item.city,
     country: item.country,
     address: item.address,
-    rating: fallbackHotel?.rating ?? 4.5,
-    review_count: fallbackHotel?.review_count ?? 0,
-    starRating: fallbackHotel?.starRating ?? 4,
-    price: item.total_price && item.nights ? Math.round(item.total_price / item.nights) : (fallbackHotel?.price ?? 0),
-    currency: (item.currency || fallbackHotel?.currency) ?? 'NPR',
-    description: (item.description || fallbackHotel?.description) ?? `${item.name} in ${item.city}, ${item.country}.`,
-    shortDescription: (item.description || fallbackHotel?.shortDescription) ?? item.name,
-    images: item.cover_photo ? [item.cover_photo] : fallbackHotel?.images ?? [
-      'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&h=600&fit=crop',
-    ],
+    rating: 4.5,
+    review_count: 0,
+    starRating: 4,
+    price: item.total_price && item.nights ? Math.round(item.total_price / item.nights) : 0,
+    currency: item.currency ?? 'NPR',
+    description: item.description ?? `${item.name} in ${item.city}, ${item.country}.`,
+    shortDescription: item.description ?? item.name,
+    images: item.cover_photo ? [item.cover_photo] : [],
     amenities,
-    roomTypes: fallbackHotel?.roomTypes ?? [],
-    reviews: fallbackHotel?.reviews ?? [],
-    cancellationPolicy: fallbackHotel?.cancellationPolicy ?? 'Free cancellation up to 24 hours before check-in.',
-    checkInTime: fallbackHotel?.checkInTime ?? '14:00',
-    checkOutTime: fallbackHotel?.checkOutTime ?? '11:00',
-    phone: fallbackHotel?.phone ?? '',
-    email: fallbackHotel?.email ?? '',
-    coordinates: fallbackHotel?.coordinates,
-    availableRooms: fallbackHotel?.availableRooms ?? 5,
+    roomTypes: [],
+    reviews: [],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    phone: '',
+    email: '',
+    coordinates: undefined,
+    availableRooms: 0,
     tags: amenities.slice(0, 4).map(a => a.name),
-    brandColor: fallbackHotel?.brandColor,
-    logoUrl: fallbackHotel?.logoUrl,
-    isSuperhost: fallbackHotel?.isSuperhost,
-    category: item.type || fallbackHotel?.category,
-    property_type: normalizePropertyType(item.type || fallbackHotel?.property_type),
-    hostName: fallbackHotel?.hostName,
-    hostAvatar: fallbackHotel?.hostAvatar,
-    hostJoined: fallbackHotel?.hostJoined,
-    hostReviews: fallbackHotel?.hostReviews,
+    brandColor: undefined,
+    logoUrl: undefined,
+    isSuperhost: undefined,
+    category: item.type,
+    property_type: normalizePropertyType(item.type),
+    hostName: undefined,
+    hostAvatar: undefined,
+    hostJoined: undefined,
+    hostReviews: undefined,
   };
 }
 
@@ -127,6 +123,11 @@ export async function searchHotelsApi(params: {
   rooms?: number;
   limit?: number;
   skip?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  roomTypeIds?: string[];
+  bedTypeIds?: string[];
+  amenityIds?: string[];
 }): Promise<SearchHotelsResult> {
   // Trim the destination — a trailing space (common from autocomplete or
   // keyboard input) makes the backend reject the query with HTTP 400.
@@ -134,7 +135,7 @@ export async function searchHotelsApi(params: {
 
   // Dedup: if an identical query is already in-flight, return the same promise
   // instead of firing a second network request.
-  const key = dedupKey({ destination, checkIn: params.checkIn, checkOut: params.checkOut, adults: params.adults, children: params.children, rooms: params.rooms, limit: params.limit, skip: params.skip });
+  const key = dedupKey({ destination, checkIn: params.checkIn, checkOut: params.checkOut, adults: params.adults, children: params.children, rooms: params.rooms, limit: params.limit, skip: params.skip, minPrice: params.minPrice, maxPrice: params.maxPrice, roomTypeIds: params.roomTypeIds, bedTypeIds: params.bedTypeIds, amenityIds: params.amenityIds });
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -153,58 +154,36 @@ async function _searchHotelsApiInner(params: {
   rooms?: number;
   limit?: number;
   skip?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  roomTypeIds?: string[];
+  bedTypeIds?: string[];
+  amenityIds?: string[];
 }): Promise<SearchHotelsResult> {
   const { destination } = params;
   markStart(`searchHotels:${destination}`);
 
-  // The live backend sends no CORS headers, so every web fetch is doomed to
-  // fail — and the browser preflight only rejects after the cold Render
-  // instance boots (~10-13s). Fail fast to mocks on web so the UI never waits.
-  if (Platform.OS === 'web') {
-    markEnd(`searchHotels:${destination} (web → mock)`);
-    const mockResults = searchHotels({
-      location: destination,
-      checkIn: params.checkIn,
-      checkOut: params.checkOut,
-      guests: (params.adults ?? 1) + (params.children ?? 0),
-    });
-    return { hotels: paginate(mockResults, params.skip, params.limit), fromApi: false, total: mockResults.length };
-  }
-
-  // No destination = "browse all" (e.g. Browse-by-property-type). The backend
-  // requires a non-empty destination (min_length=2), so skip the call and
-  // return mock + host-created properties instead of logging a failed fetch.
-  // Short destinations (< 2 chars, e.g. a single letter) are ALSO rejected by
-  // the backend with HTTP 422 — a guaranteed validation failure — so skip the
-  // API call for those too instead of burning a cold-start round-trip that
-  // can take ~25s only to fall back to mock anyway.
+  // The backend requires a non-empty destination (min_length=2). Short
+  // destinations (< 2 chars, e.g. a single letter) are rejected with HTTP
+  // 422 — skip the round-trip and return host-created properties only.
   // Count code points (spread), not UTF-16 code units, to mirror FastAPI's
   // Python `min_length` semantics (a single emoji is 1 char to the backend).
   if (!destination || [...destination].length < 2) {
-    markEnd(`searchHotels:${destination} (browse/short → mock)`);
-    const mockResults = searchHotels({
-      location: destination,
-      checkIn: params.checkIn,
-      checkOut: params.checkOut,
-      guests: (params.adults ?? 1) + (params.children ?? 0),
-    });
+    markEnd(`searchHotels:${destination} (browse/short)`);
+    let hostProps: Hotel[] = [];
     try {
-      const seen = new Set(mockResults.map(h => h.id));
-      const hostProps = await tryFetchHostProperties();
-      for (const hp of hostProps) {
-        if (seen.has(hp.id)) continue;
-        if (destination && !destinationMatch(destination, hp)) continue;
-        mockResults.push(hp);
-        seen.add(hp.id);
+      hostProps = await tryFetchHostProperties();
+      if (destination) {
+        hostProps = hostProps.filter(hp => destinationMatch(destination, hp));
       }
     } catch (e) {
       console.warn('Host property fetch failed during search:', e);
     }
-    return { hotels: paginate(mockResults, params.skip, params.limit), fromApi: false, total: mockResults.length };
+    return { hotels: paginate(hostProps, params.skip, params.limit), fromApi: false, total: hostProps.length };
   }
 
   try {
-    const queryParams: Record<string, string | number> = {
+    const queryParams: Record<string, string | number | Array<string | number>> = {
       destination,
       // Backend expects exact YYYY-MM-DD dates — normalize any ISO datetime
       // to the LOCAL date (UTC slicing shifts it backward in +offset zones).
@@ -216,15 +195,20 @@ async function _searchHotelsApiInner(params: {
     if (params.rooms) queryParams.rooms = params.rooms;
     if (params.limit) queryParams.limit = params.limit;
     if (params.skip) queryParams.skip = params.skip;
+    if (params.minPrice != null) queryParams.min_price = params.minPrice;
+    if (params.maxPrice != null) queryParams.max_price = params.maxPrice;
+    if (params.roomTypeIds?.length) queryParams.room_type_ids = params.roomTypeIds;
+    if (params.bedTypeIds?.length) queryParams.bed_type_ids = params.bedTypeIds;
+    if (params.amenityIds?.length) queryParams.amenity_ids = params.amenityIds;
 
     const response = await api.get(API_ENDPOINTS.SEARCH.SEARCH_HOTELS, { params: queryParams, timeout: SEARCH_FETCH_TIMEOUT });
     if (!response.ok) {
-      console.warn(`[api] searchHotelsApi got HTTP ${response.status}, falling back to mock`);
+      console.warn(`[api] searchHotelsApi got HTTP ${response.status}`);
       throw new Error(`HTTP ${response.status}`);
     }
   const contentType = response.headers?.get?.('content-type') || '';
     if (!contentType.includes('application/json')) {
-      console.warn(`[api] searchHotelsApi got non-JSON content-type "${contentType}", falling back to mock`);
+      console.warn(`[api] searchHotelsApi got non-JSON content-type "${contentType}"`);
       throw new Error('Non-JSON response');
     }
     const json = await response.json();
@@ -235,12 +219,7 @@ async function _searchHotelsApiInner(params: {
     // count across all pages (used for "Page X of Y").
     const meta: BackendSearchMeta = json.meta ?? {};
 
-    const enriched = results.map(item => {
-      const fallback = MOCK_PROPERTIES.find(
-        m => m.id === item.property_id || m.name.toLowerCase() === item.name.toLowerCase()
-      );
-      return mapSearchItemToHotel(item, fallback);
-    });
+    const enriched = results.map(item => mapSearchItemToHotel(item));
 
     const seen = new Set(enriched.map(h => h.id));
     const hostProps = await tryFetchHostProperties();
@@ -257,20 +236,9 @@ async function _searchHotelsApiInner(params: {
 
     markEnd(`searchHotels:${destination}`);
     return { hotels: enriched, fromApi: true, total };    } catch (err) {
-    markEnd(`searchHotels:${destination} (mock fallback)`);
-    console.warn(`[api] searchHotelsApi for "${destination}" failed, using mock data:`, err);
-    try {
-      const mockResults = searchHotels({
-        location: destination,
-        checkIn: params.checkIn,
-        checkOut: params.checkOut,
-        guests: (params.adults ?? 1) + (params.children ?? 0),
-      });
-      // Mirror the backend's server-side pagination so mock pages differ too
-      return { hotels: paginate(mockResults, params.skip, params.limit), fromApi: false, total: mockResults.length };
-    } catch {
-      return { hotels: [], fromApi: false };
-    }
+    markEnd(`searchHotels:${destination} (failed)`);
+    console.warn(`[api] searchHotelsApi for "${destination}" failed:`, err);
+    return { hotels: [], fromApi: false };
   }
 }
 
@@ -290,7 +258,7 @@ interface BackendNearbyItem {
   amenities?: string[];
 }
 
-function mapNearbyToHotel(item: BackendNearbyItem, fallbackHotel?: Hotel): Hotel {
+function mapNearbyToHotel(item: BackendNearbyItem): Hotel {
   const amenities = normalizeAmenities(item.amenities);
   return {
     id: item.property_id,
@@ -299,37 +267,35 @@ function mapNearbyToHotel(item: BackendNearbyItem, fallbackHotel?: Hotel): Hotel
     city: item.city || '',
     country: item.country || '',
     address: item.address || '',
-    rating: fallbackHotel?.rating ?? 4.5,
-    review_count: fallbackHotel?.review_count ?? 0,
-    starRating: fallbackHotel?.starRating ?? 4,
-    price: item.lowest_rate ?? (fallbackHotel?.price ?? 0),
-    currency: (item.currency || fallbackHotel?.currency) ?? 'NPR',
-    description: (item.description || fallbackHotel?.description) ?? `${item.name} in ${item.city}, ${item.country}.`,
-    shortDescription: (item.description || fallbackHotel?.shortDescription) ?? item.name,
-    images: item.cover_photo ? [item.cover_photo] : fallbackHotel?.images ?? [
-      'https://images.unsplash.com/photo-1540541338287-41700207dee6?w=800&h=600&fit=crop',
-    ],
+    rating: 4.5,
+    review_count: 0,
+    starRating: 4,
+    price: item.lowest_rate ?? 0,
+    currency: item.currency ?? 'NPR',
+    description: item.description ?? `${item.name} in ${item.city}, ${item.country}.`,
+    shortDescription: item.description ?? item.name,
+    images: item.cover_photo ? [item.cover_photo] : [],
     amenities,
-    roomTypes: fallbackHotel?.roomTypes ?? [],
-    reviews: fallbackHotel?.reviews ?? [],
-    cancellationPolicy: fallbackHotel?.cancellationPolicy ?? 'Free cancellation up to 24 hours before check-in.',
-    checkInTime: fallbackHotel?.checkInTime ?? '14:00',
-    checkOutTime: fallbackHotel?.checkOutTime ?? '11:00',
-    phone: fallbackHotel?.phone ?? '',
-    email: fallbackHotel?.email ?? '',
-    coordinates: fallbackHotel?.coordinates,
-    distance_km: item.distance_km ?? fallbackHotel?.distance_km,
-    availableRooms: fallbackHotel?.availableRooms ?? 5,
+    roomTypes: [],
+    reviews: [],
+    cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    phone: '',
+    email: '',
+    coordinates: undefined,
+    distance_km: item.distance_km,
+    availableRooms: 0,
     tags: amenities.slice(0, 4).map(a => a.name),
-    brandColor: fallbackHotel?.brandColor,
-    logoUrl: fallbackHotel?.logoUrl,
-    isSuperhost: fallbackHotel?.isSuperhost,
-    category: item.type || fallbackHotel?.category,
-    property_type: normalizePropertyType(item.type || fallbackHotel?.property_type),
-    hostName: fallbackHotel?.hostName,
-    hostAvatar: fallbackHotel?.hostAvatar,
-    hostJoined: fallbackHotel?.hostJoined,
-    hostReviews: fallbackHotel?.hostReviews,
+    brandColor: undefined,
+    logoUrl: undefined,
+    isSuperhost: undefined,
+    category: item.type,
+    property_type: normalizePropertyType(item.type),
+    hostName: undefined,
+    hostAvatar: undefined,
+    hostJoined: undefined,
+    hostReviews: undefined,
   };
 }
 
@@ -354,15 +320,37 @@ export async function searchNearbyApi(params: {
     const data: BackendNearbyItem[] | BackendSearchResponse = json.data ?? json;
     const results: BackendNearbyItem[] = Array.isArray(data) ? data : (data.results ?? []);
 
-    const enriched = results.map(item => {
-      const fallback = MOCK_PROPERTIES.find(
-        m => m.id === item.property_id || m.name.toLowerCase() === item.name.toLowerCase()
-      );
-      return mapNearbyToHotel(item, fallback);
-    });
+    const enriched = results.map(item => mapNearbyToHotel(item));
 
     return { hotels: enriched, fromApi: true };
   } catch {
     return { hotels: [], fromApi: false };
   }
+}
+
+type SystemItem = { id: string; name: string };
+
+async function fetchSystemList(endpoint: string, nameKey: 'name' | 'bed_name' | 'room_type_name'): Promise<SystemItem[]> {
+  try {
+    const response = await api.get(endpoint, { timeout: SEARCH_FETCH_TIMEOUT });
+    if (!response.ok) return [];
+    const json = await response.json();
+    const data: Array<Record<string, unknown>> = json.data ?? json;
+    if (!Array.isArray(data)) return [];
+    return data
+      .map(item => ({ id: String(item.id), name: String(item[nameKey] ?? '') }))
+      .filter(item => item.id && item.name);
+  } catch {
+    return [];
+  }
+}
+
+/** Backend system amenity list — for mapping filter names → UUID amenity_ids. */
+export function fetchSystemAmenities(): Promise<SystemItem[]> {
+  return fetchSystemList(API_ENDPOINTS.SEARCH.SYSTEM_AMENITIES, 'name');
+}
+
+/** Backend system bed-type list — for mapping filter names → UUID bed_type_ids. */
+export function fetchSystemBedTypes(): Promise<SystemItem[]> {
+  return fetchSystemList(API_ENDPOINTS.SEARCH.SYSTEM_BED_TYPES, 'bed_name');
 }

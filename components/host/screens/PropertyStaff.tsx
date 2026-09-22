@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, StyleSheet, Alert, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import type { Property, StaffMember, StaffRole, StaffPhotos } from '@/types/api';
 import { useHost } from '@/lib/context/host-context';
 import { isApiPropertyId } from '@/lib/context/host-utils';
-import { hostApi } from '@/lib/api/host-api';
+import { hostApi, imageFormFile } from '@/lib/api/host-api';
 import { GRAY, TYPOGRAPHY, RADIUS, SPACING, SHADOWS } from '@/constants/portal-theme';
 import { STATUS, BG, BLUE, TEAL, PURPLE, AMBER, ORANGE, RED } from '@/lib/constants/figma-tokens';
 import { StaffCreatedEmailModal } from '@/components/operations/StaffCreatedEmailModal';
 import { ImagePickerOverlay } from '@/components/host/ImagePickerOverlay';
 import { PropertySyncBanner } from '@/components/host/PropertySyncBanner';
+import { ShiftCoverageView } from '@/components/host/screens/ShiftCoverageView';
+import { StaffPerformanceView } from '@/components/host/screens/StaffPerformanceView';
 
 interface Props { property: Property }
 
 const ACCENT = TEAL[600];
+
+type StaffTab = 'list' | 'coverage' | 'performance';
+
+const TABS: { key: StaffTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'list', label: 'Staff List', icon: 'people' },
+  { key: 'coverage', label: 'Shift Coverage', icon: 'calendar' },
+  { key: 'performance', label: 'Performance', icon: 'trending-up' },
+];
 
 type PhotoSlotKey = keyof StaffPhotos;
 
@@ -59,6 +69,7 @@ export function PropertyStaff({ property }: Props) {
   const { getFilteredStaff, addStaff, updateStaff, removeStaff } = useHost();
   const staffList = getFilteredStaff(property.id);
 
+  const [activeTab, setActiveTab] = useState<StaffTab>('list');
   const [showForm, setShowForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -94,13 +105,13 @@ export function PropertyStaff({ property }: Props) {
     setEditingStaff(null);
   };
 
-  const handleJoiningDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+  // v9.1 API: onValueChange fires only on an actual selection; onDismiss fires
+  // when the picker is closed without selecting (Android closes on either).
+  const handleJoiningDateSelect = (_event: DateTimePickerChangeEvent, date: Date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    setJoiningDate(d);
     if (Platform.OS === 'android') setShowJoiningPicker(false);
-    if (event.type === 'set' && selectedDate) {
-      const d = new Date(selectedDate);
-      d.setHours(0, 0, 0, 0);
-      setJoiningDate(d);
-    }
   };
 
   const handlePhotoPicked = async (slot: PhotoSlotKey, uri: string) => {
@@ -110,7 +121,7 @@ export function PropertyStaff({ property }: Props) {
       let uploadedUrl: string | null = null;
       if (isApiPropertyId(property.id)) {
         const formData = new FormData();
-        formData.append('image', { uri, type: 'image/jpeg', name: `staff_${slot}_${Date.now()}.jpg` } as any);
+        formData.append('image', imageFormFile(uri, `staff_${slot}_${Date.now()}.jpg`));
         const res = await hostApi.uploadStaffImage(property.id, formData);
         uploadedUrl = typeof res === 'string' ? res : (res?.data ?? null);
       }
@@ -235,62 +246,84 @@ export function PropertyStaff({ property }: Props) {
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
-        {/* Header row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: GRAY[900] }}>
-            {staffList.length} {staffList.length === 1 ? 'Member' : 'Members'}
-          </Text>
+      {/* Tab Bar */}
+      <View style={styles.tabBar}>
+        {TABS.map(tab => (
           <TouchableOpacity
-            onPress={() => setShowForm(true)}
-            style={styles.addBtn}
-            activeOpacity={0.7}
+            key={tab.key}
+            onPress={() => setActiveTab(tab.key)}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
           >
-            <Ionicons name="person-add" size={16} color={BG.white} />
-            <Text style={styles.addBtnText}>Add Staff</Text>
+            <Ionicons name={tab.icon} size={14} color={activeTab === tab.key ? TEAL[600] : GRAY[400]} />
+            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+              {tab.label}
+            </Text>
           </TouchableOpacity>
-        </View>
+        ))}
+      </View>
 
-        {!isApiPropertyId(property.id) && <PropertySyncBanner property={property} />}
-
-        {staffList.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingTop: 40, paddingBottom: 20 }}>
-            <Ionicons name="briefcase-outline" size={48} color={GRAY[300]} />
-            <Text style={{ marginTop: 12, fontSize: 15, color: GRAY[500] }}>No staff assigned</Text>
-            <Text style={{ marginTop: 4, fontSize: 13, color: GRAY[400] }}>Invite your first staff member</Text>
+      {/* Tab Content */}
+      {activeTab === 'list' && (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+          {/* Header row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <Text style={{ ...TYPOGRAPHY.subtitle, fontWeight: '700', color: GRAY[900] }}>
+              {staffList.length} {staffList.length === 1 ? 'Member' : 'Members'}
+            </Text>
             <TouchableOpacity
               onPress={() => setShowForm(true)}
-              style={[styles.addBtn, { marginTop: 16 }]}
+              style={styles.addBtn}
               activeOpacity={0.7}
             >
               <Ionicons name="person-add" size={16} color={BG.white} />
               <Text style={styles.addBtnText}>Add Staff</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          staffList.map(s => (
-            <View key={s.id} style={styles.card}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{s.first_name?.[0] || s.email[0]}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{s.first_name} {s.last_name}</Text>
-                  <Text style={styles.role}>{ROLE_LABELS[s.role] || s.role.replace('_', ' ')}</Text>
-                  <Text style={styles.email}>{s.email}</Text>
-                </View>
-                <TouchableOpacity onPress={() => startEdit(s)} hitSlop={8} style={{ padding: 6 }}>
-                  <Ionicons name="pencil" size={18} color={GRAY[500]} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDeleteStaff(s)} hitSlop={8} style={{ padding: 6 }}>
-                  <Ionicons name="trash-outline" size={18} color={RED[500]} />
-                </TouchableOpacity>
-                <View style={[styles.activeDot, { backgroundColor: s.is_active ? STATUS.activeGreen : GRAY[300] }]} />
-              </View>
+
+          {!isApiPropertyId(property.id) && <PropertySyncBanner property={property} />}
+
+          {staffList.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingTop: 40, paddingBottom: 20 }}>
+              <Ionicons name="briefcase-outline" size={48} color={GRAY[300]} />
+              <Text style={{ marginTop: 12, fontSize: 15, color: GRAY[500] }}>No staff assigned</Text>
+              <Text style={{ marginTop: 4, fontSize: 13, color: GRAY[400] }}>Invite your first staff member</Text>
+              <TouchableOpacity
+                onPress={() => setShowForm(true)}
+                style={[styles.addBtn, { marginTop: 16 }]}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="person-add" size={16} color={BG.white} />
+                <Text style={styles.addBtnText}>Add Staff</Text>
+              </TouchableOpacity>
             </View>
-          ))
-        )}
-      </ScrollView>
+          ) : (
+            staffList.map(s => (
+              <View key={s.id} style={styles.card}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{s.first_name?.[0] || s.email[0]}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{s.first_name} {s.last_name}</Text>
+                    <Text style={styles.role}>{ROLE_LABELS[s.role] || s.role.replace('_', ' ')}</Text>
+                    <Text style={styles.email}>{s.email}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => startEdit(s)} hitSlop={8} style={{ padding: 6 }}>
+                    <Ionicons name="pencil" size={18} color={GRAY[500]} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeleteStaff(s)} hitSlop={8} style={{ padding: 6 }}>
+                    <Ionicons name="trash-outline" size={18} color={RED[500]} />
+                  </TouchableOpacity>
+                  <View style={[styles.activeDot, { backgroundColor: s.is_active ? STATUS.activeGreen : GRAY[300] }]} />
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
+
+      {activeTab === 'coverage' && <ShiftCoverageView property={property} />}
+      {activeTab === 'performance' && <StaffPerformanceView property={property} />}
 
       {/* Add / Edit Staff Modal */}
       <Modal visible={showForm} transparent animationType="slide" onRequestClose={() => setShowForm(false)}>
@@ -372,7 +405,7 @@ export function PropertyStaff({ property }: Props) {
                       mode="date"
                       display="spinner"
                       maximumDate={new Date()}
-                      onChange={handleJoiningDateChange}
+                      onValueChange={handleJoiningDateSelect}
                     />
                     <TouchableOpacity
                       onPress={() => setShowJoiningPicker(false)}
@@ -389,7 +422,8 @@ export function PropertyStaff({ property }: Props) {
                   value={joiningDate}
                   mode="date"
                   maximumDate={new Date()}
-                  onChange={handleJoiningDateChange}
+                  onValueChange={handleJoiningDateSelect}
+                  onDismiss={() => setShowJoiningPicker(false)}
                 />
               )}
 
@@ -477,6 +511,35 @@ export function PropertyStaff({ property }: Props) {
 }
 
 const styles = StyleSheet.create({
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: GRAY[100],
+    backgroundColor: BG.white,
+    paddingHorizontal: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: TEAL[600],
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: GRAY[400],
+  },
+  tabTextActive: {
+    fontWeight: '700',
+    color: TEAL[600],
+  },
   card: { backgroundColor: BG.white, borderRadius: RADIUS.card + 6, padding: 14, marginBottom: 10 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: BLUE.tint, alignItems: 'center', justifyContent: 'center' },
   avatarText: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: ACCENT },

@@ -58,11 +58,11 @@ export function Skeleton({
     <Animated.View
       style={[
         {
-          width: typeof width === 'string' ? width : width,
-          height: typeof height === 'number' ? height : height,
+          width: width as any,
+          height: height as any,
           borderRadius,
           backgroundColor: colors.border,
-        } as any,
+        },
         animatedStyle,
       ]}
       {...props}

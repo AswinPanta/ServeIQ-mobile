@@ -496,9 +496,9 @@ export function HostProperties() {
 
                                   {/* Extra Charges */}
                                   <Text className="text-xs text-muted mb-2">Extra Charges</Text>
-                                  {(rt as any).extra_charges && (rt as any).extra_charges.length > 0 ? (
+                                   {(rt.extra_charges?.length ?? 0) > 0 ? (
                                     <View style={{ gap: 8, marginBottom: 8 }}>
-                                      {(rt as any).extra_charges.map((ec: any) => (
+                                      {rt.extra_charges.map((ec) => (
                                         <View key={ec.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.border + '40' }}>
                                           <View style={{ flex: 1 }}>
                                             <Text style={{ fontSize: 12, fontWeight: '600', color: colors.foreground }}>{ec.name}</Text>

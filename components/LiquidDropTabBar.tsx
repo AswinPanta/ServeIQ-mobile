@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path, Circle, Ellipse } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CORAL, SLATE, BG } from '@/lib/constants/figma-tokens';
+import { SLATE, BG, SRS, BRAND } from '@/lib/constants/figma-tokens';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 interface Tab {
@@ -243,12 +243,12 @@ export function LiquidDropTabBar({ tabs, activeIndex, onTabPress }: LiquidDropTa
       <View style={styles.pill} onLayout={onBarLayout}>
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Svg width="100%" height="100%">
-            <AnimatedEllipse animatedProps={glowProps} cy={ICON_CY + 8} ry={13} fill={CORAL[500]} />
-            <AnimatedPath animatedProps={blobProps} fill={CORAL[500]} />
+            <AnimatedEllipse animatedProps={glowProps} cy={ICON_CY + 8} ry={13} fill={SRS.teal} />
+            <AnimatedPath animatedProps={blobProps} fill={SRS.teal} />
             <AnimatedEllipse animatedProps={highlightProps} cy={ICON_CY - 18} ry={5} fill="#FFFFFF" opacity={0.22} />
             <AnimatedCircle animatedProps={glossProps} r={3} fill="#FFFFFF" />
-            <AnimatedPath animatedProps={tailProps} fill="#D92F40" />
-            <AnimatedCircle animatedProps={dropletProps} fill="#D92F40" />
+            <AnimatedPath animatedProps={tailProps} fill={BRAND.tealDark} />
+            <AnimatedCircle animatedProps={dropletProps} fill={BRAND.tealDark} />
           </Svg>
         </View>
 
@@ -322,6 +322,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   labelOn: {
-    color: CORAL[500],
+    color: SRS.teal,
   },
 });

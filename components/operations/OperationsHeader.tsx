@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useAuth } from '@/lib/context/auth-context';
 import { useColors } from '@/hooks/use-colors';
 import { SyncIndicator } from '@/components/operations/SyncIndicator';
@@ -64,7 +64,7 @@ export function OperationsHeader() {
             <Text style={{ fontSize: 10, color: colors.muted }}>{dateStr}</Text>
           </View>
 
-          <NotificationBell />
+          <NotificationBell href={'/(operations)/notifications' as Href} />
           <TouchableOpacity
             onPress={() => setShowMenu(!showMenu)}
             style={{

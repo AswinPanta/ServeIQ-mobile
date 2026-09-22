@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { safeGoBack } from '@/lib/utils';import { Ionicons } from '@expo/vector-icons';
 import { FONTS, SRS, RADIUS, SHADOWS, FIGMA_COLORS, GRAY } from '@/constants/portal-theme';
 import { BG } from '@/lib/constants/figma-tokens';
 import { getAvailableRoomsApi, type AvailableRoom } from '@/lib/api';
@@ -166,7 +166,7 @@ export default function RoomSelectScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={BG.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Rooms</Text>

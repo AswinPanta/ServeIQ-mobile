@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, usePathname } from 'expo-router';
+import { router, usePathname, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SRS, BG, SLATE } from '@/lib/constants/figma-tokens';
 
@@ -12,14 +12,22 @@ const TABS = [
   { key: 'more', label: 'More', icon: 'grid-outline' as const, activeIcon: 'grid' as const, href: '/(operations)/more' },
 ];
 
-
-
 export function BottomTabBar() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const isActive = (href: string) => {
+
+  const isTabActive = (href: string) => {
     if (href === '/(operations)') return pathname === '/(operations)' || pathname === '/(operations)/';
     return pathname.startsWith(href);
+  };
+
+  const lastNavRef = React.useRef(0);
+  const handleTabPress = (href: string) => {
+    if (isTabActive(href)) return;
+    const now = Date.now();
+    if (now - lastNavRef.current < 300) return;
+    lastNavRef.current = now;
+    router.replace(href as Href);
   };
 
   return (
@@ -36,16 +44,16 @@ export function BottomTabBar() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            onPress={() => router.push(tab.href as any)}
+            onPress={() => handleTabPress(tab.href)}
             style={s.tabItem}
             activeOpacity={0.7}
           >
             <Ionicons
-              name={isActive(tab.href) ? tab.activeIcon : tab.icon}
+              name={isTabActive(tab.href) ? tab.activeIcon : tab.icon}
               size={20}
-              color={isActive(tab.href) ? SRS.teal : SLATE[400]}
+              color={isTabActive(tab.href) ? SRS.teal : SLATE[400]}
             />
-            <Text style={[s.tabLabel, { color: isActive(tab.href) ? SRS.teal : SLATE[400] }]}>
+            <Text style={[s.tabLabel, { color: isTabActive(tab.href) ? SRS.teal : SLATE[400] }]}>
               {tab.label}
             </Text>
           </TouchableOpacity>

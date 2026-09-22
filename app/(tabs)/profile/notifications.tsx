@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { useNotifications } from '@/lib/context/notification-context';
 import { FONTS } from '@/constants/portal-theme';
@@ -69,7 +69,7 @@ export default function NotificationsScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={BRAND.navyLight} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.notifications.title')}</Text>

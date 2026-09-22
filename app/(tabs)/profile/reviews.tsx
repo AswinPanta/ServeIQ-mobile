@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
 import { CORAL as CORALTokens, GRAY, BRAND, NEUTRAL, BG, SLATE } from '@/lib/constants/figma-tokens';
@@ -83,7 +83,7 @@ export default function ReviewsScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={BRAND.navyLight} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.reviews.title')}</Text>

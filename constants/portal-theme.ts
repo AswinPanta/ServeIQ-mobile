@@ -179,6 +179,9 @@ export const FIGMA_COLORS = {
 
 export const ACCENT = PORTAL_ACCENTS.operations;
 
+// ponytail: demo manager code until backend exposes a manager-approval endpoint
+export const MANAGER_CODE = '1234';
+
 export function getAccentColor(alpha?: number): string {
   if (alpha === undefined) return ACCENT;
   const hex = ACCENT.replace('#', '');

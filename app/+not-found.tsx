@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, Link } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { safeGoBack } from '@/lib/utils';import { Ionicons } from '@expo/vector-icons';
 import { BRAND, CORAL, SLATE, BG, NEUTRAL, GRAY } from '@/lib/constants/figma-tokens';
 
 const NAVY = BRAND.navyLight;
@@ -32,7 +32,7 @@ export default function NotFoundPage() {
         <TouchableOpacity
           style={[s.btn, s.btnSecondary]}
           activeOpacity={0.85}
-          onPress={() => router.back()}
+          onPress={() => safeGoBack()}
         >
           <Ionicons name="arrow-back-outline" size={16} color={NAVY} />
           <Text style={s.btnSecondaryText}>Go Back</Text>

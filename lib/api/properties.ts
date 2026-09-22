@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { API_BASE_URL, API_ENDPOINTS, getPortalStorageKeys, toDateParam } from '@/constants/api-config';
 import type { Hotel } from '@/types/api';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import { normalizePropertyType } from '@/lib/mock/landing-data';
 import { api } from './client';
 import { normalizeAmenities } from './mappers';
@@ -56,6 +55,8 @@ interface BackendPropertyResponse {
   brand_logo_url: string | null;
   brand_color: string | null;
   is_active: boolean;
+  /** Owner/tenant name returned by the public property endpoint. */
+  owner_name?: string | null;
   system_amenities: { id: string; name: string; icon?: string }[];
   custom_amenities: { name: string }[];
   photos: { cover?: string | null; gallery?: string[] } | null;
@@ -101,6 +102,7 @@ export function mapPropertyToHotel(p: BackendPropertyResponse): Hotel {
     brandColor: p.brand_color || undefined,
     logoUrl: p.brand_logo_url || undefined,
     property_type: normalizePropertyType(p.type),
+    hostName: p.owner_name || undefined,
   };
 }
 
@@ -128,53 +130,14 @@ export async function tryFetchHostProperties(): Promise<Hotel[]> {
   }
 }
 
-// Mock/local property ids ('1', '11', 'prop-1', …) don't exist on the backend
-// (its path params require real UUIDs and reject them with 422). The booking
-// flow's room step must never show "No rooms available" for these — map the
-// property's mock RoomTypes into the AvailableRoom shape instead.
-function mockRoomsForProperty(propertyId: string): AvailableRoom[] {
-  const mock = MOCK_PROPERTIES.find(h => h.id === propertyId);
-  if (!mock) return [];
-  return mock.roomTypes.map((r) => {
-    // Mock rooms only carry a single total guest capacity (occupancy /
-    // maxGuests), no adult/child split. The booking flow's capacity check
-    // enforces max_adults >= ceil(adults/roomCount) AND max_children >=
-    // ceil(children/roomCount), so granting the full capacity to both roles
-    // keeps valid family bookings flowing (slight overstatement is fine for
-    // demo/mock data).
-    const capacity = r.maxGuests ?? r.occupancy ?? 2;
-    return {
-      id: r.id,
-      room_name: r.name,
-      room_type: r.name,
-      bed_type: r.bedType || r.bed || 'Queen',
-      base_rate: String(r.price),
-      max_adults: capacity,
-      max_children: capacity,
-      photos: r.image ? { cover: r.image } : undefined,
-      status: 'AVAILABLE',
-      floor_number: 1,
-      cancellation_policy: r.cancellationPolicy || 'FLEXIBLE',
-      cancellation_title: r.cancellationPolicy || 'Free cancellation',
-      cancellation_description: r.cancellationPolicy || 'Cancel up to 24 hours before check-in',
-      system_amenities: (r.amenities ?? []).map(name => ({ name })),
-    };
-  });
-}
-
 export async function getAvailableRoomsApi(
   propertyId: string,
   checkin: string,
   checkout: string,
 ): Promise<AvailableRoom[]> {
-  // Backend has no CORS headers — web fetches hang ~13s on cold start before
-  // failing. The backend can never answer on web, so fail fast to mock rooms
-  // instead of hanging (matches getPropertyById's web behavior).
-  if (Platform.OS === 'web') return mockRoomsForProperty(propertyId);
-
-  // Non-UUID (mock/local) property ids can't exist on the backend — skip the
-  // doomed request (it 422s on a non-UUID path param) and return mock rooms.
-  if (!UUID_RE.test(propertyId)) return mockRoomsForProperty(propertyId);
+  // Non-UUID (local) property ids can't exist on the backend — skip the
+  // doomed request (it 422s on a non-UUID path param).
+  if (!UUID_RE.test(propertyId)) return [];
 
   try {
     const response = await api.get(API_ENDPOINTS.AVAILABLE_ROOMS(propertyId, checkin, checkout), {
@@ -191,21 +154,15 @@ export async function getAvailableRoomsApi(
     return Array.isArray(data) ? data : [];
   } catch (err) {
     console.warn(`[api] getAvailableRoomsApi for "${propertyId}" failed:`, err);
-    return mockRoomsForProperty(propertyId);
+    return [];
   }
 }
 
 export async function getPropertyById(propertyId: string): Promise<Hotel | null> {
-  const mockHotel = MOCK_PROPERTIES.find(h => h.id === propertyId) || null;
-
-  // Same CORS cold-start hang as searchHotelsApi — web can never reach the
-  // backend, so return the mock immediately instead of waiting ~13s to fail.
-  if (Platform.OS === 'web') return mockHotel;
-
-  // Backend property ids are UUIDs. Mock/local ids ('11', 'prop-1', …) can't
+  // Backend property ids are UUIDs. Local ids ('11', 'prop-1', …) can't
   // exist on the backend — skip the pointless request (it 422s on a non-UUID
   // path param) instead of logging a misleading warning.
-  if (!UUID_RE.test(propertyId)) return mockHotel;
+  if (!UUID_RE.test(propertyId)) return null;
 
   try {
     // Try public endpoint first (no auth required — guests can browse).
@@ -216,12 +173,12 @@ export async function getPropertyById(propertyId: string): Promise<Hotel | null>
       timeout: ROOMS_FETCH_TIMEOUT,
     });
     if (!response.ok || !(response.headers?.get?.('content-type') || '').includes('application/json')) {
-      console.warn(`[api] getPropertyById got non-OK or non-JSON response (${response.status}), using mock`);
-      return mockHotel;
+      console.warn(`[api] getPropertyById got non-OK or non-JSON response (${response.status})`);
+      return null;
     }
     const json = await response.json();
     const data: BackendPropertyResponse = json.data ?? json;
-    if (!data || !data.id) return mockHotel;
+    if (!data || !data.id) return null;
 
     const allPhotos: string[] = [];
     if (data.photos) {
@@ -239,7 +196,7 @@ export async function getPropertyById(propertyId: string): Promise<Hotel | null>
     const amenities = Array.from(amenitiesMap.values());
 
     // Fetch rooms from backend
-    let roomTypes: Hotel['roomTypes'] = mockHotel?.roomTypes ?? [];
+    let roomTypes: Hotel['roomTypes'] = [];
     try {
       const today = toDateParam(new Date().toISOString());
       const nextWeek = toDateParam(new Date(Date.now() + 7 * 86400000).toISOString());
@@ -294,7 +251,7 @@ export async function getPropertyById(propertyId: string): Promise<Hotel | null>
         });
       }
     } catch (roomErr) {
-      // Rooms fetch failed — use mock data
+      // Rooms fetch failed — detail still renders with the property-level data
       console.warn(`[api] getAvailableRooms for property "${propertyId}" failed:`, roomErr);
     }
 
@@ -302,41 +259,41 @@ export async function getPropertyById(propertyId: string): Promise<Hotel | null>
       id: data.id,
       name: data.name,
       location: [data.city, data.state, data.country].filter(Boolean).join(', '),
-      city: data.city || mockHotel?.city || '',
-      country: data.country || mockHotel?.country || '',
-      address: data.address || mockHotel?.address || '',
-      rating: mockHotel?.rating ?? 4.5,
-      review_count: mockHotel?.review_count ?? 0,
-      starRating: mockHotel?.starRating ?? 4,
-      price: mockHotel?.price ?? 0,
-      currency: data.currency || mockHotel?.currency || 'NPR',
-      description: data.description || mockHotel?.description || '',
-      shortDescription: mockHotel?.shortDescription || data.description || data.name,
-      images: allPhotos.length > 0 ? allPhotos : (mockHotel?.images ?? []),
-      amenities: amenities.length > 0 ? amenities : (mockHotel?.amenities ?? []),
+      city: data.city || '',
+      country: data.country || '',
+      address: data.address || '',
+      rating: 4.5,
+      review_count: 0,
+      starRating: 4,
+      price: 0,
+      currency: data.currency || 'NPR',
+      description: data.description || '',
+      shortDescription: data.description || data.name,
+      images: allPhotos,
+      amenities,
       roomTypes,
-      reviews: mockHotel?.reviews ?? [],
-      cancellationPolicy: mockHotel?.cancellationPolicy ?? 'Free cancellation up to 24 hours before check-in.',
-      checkInTime: data.check_in_time || (mockHotel?.checkInTime ?? '14:00'),
-      checkOutTime: data.check_out_time || (mockHotel?.checkOutTime ?? '11:00'),
-      phone: data.phone_number || (mockHotel?.phone ?? ''),
-      email: data.email || (mockHotel?.email ?? ''),
+      reviews: [],
+      cancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
+      checkInTime: data.check_in_time || '14:00',
+      checkOutTime: data.check_out_time || '11:00',
+      phone: data.phone_number || '',
+      email: data.email || '',
       coordinates: (data.latitude && data.longitude)
         ? { lat: parseFloat(data.latitude) || 0, lng: parseFloat(data.longitude) || 0 }
-        : mockHotel?.coordinates,
-      availableRooms: data.total_rooms || (mockHotel?.availableRooms ?? 5),
+        : undefined,
+      availableRooms: data.total_rooms || 0,
       tags: amenities.slice(0, 4).map(a => a.name),
-      brandColor: data.brand_color || mockHotel?.brandColor,
-      logoUrl: data.brand_logo_url || mockHotel?.logoUrl,
-      isSuperhost: mockHotel?.isSuperhost,
-      category: mockHotel?.category,
-      hostName: mockHotel?.hostName,
-      hostAvatar: mockHotel?.hostAvatar,
-      hostJoined: mockHotel?.hostJoined,
-      hostReviews: mockHotel?.hostReviews,
+      brandColor: data.brand_color ?? undefined,
+      logoUrl: data.brand_logo_url ?? undefined,
+      isSuperhost: undefined,
+      category: undefined,
+      hostName: data.owner_name || undefined,
+      hostAvatar: undefined,
+      hostJoined: undefined,
+      hostReviews: undefined,
     };
   } catch (err) {
-    console.warn(`[api] getPropertyById for "${propertyId}" failed, using mock:`, err);
-    return mockHotel;
+    console.warn(`[api] getPropertyById for "${propertyId}" failed:`, err);
+    return null;
   }
 }

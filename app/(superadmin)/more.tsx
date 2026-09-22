@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
 import { StatusBadge } from '@/components/superadmin/StatusBadge';
@@ -37,7 +37,7 @@ const MORE_SECTIONS = [
 
 export default function MoreScreen() {
   const { user, logout } = useAuth();
-  const admin = user as any;
+  const admin = user as import('@/types/api').SuperAdminProfile | null;
 
   return (
     <ScrollView
@@ -75,11 +75,11 @@ export default function MoreScreen() {
                   portal="superadmin"
                   haptic="light"
                   scaleTo={0.97}
-                  onPress={() => router.push(item.route as any)}
+                  onPress={() => router.push(item.route as Href)}
                   style={[styles.menuItem, i < section.items.length - 1 && styles.menuItemBorder]}
                 >
                   <View style={[styles.menuIcon, { backgroundColor: item.color + '12' }]}>
-                    <IconSymbol name={item.icon as any} size={18} color={item.color} />
+                    <IconSymbol name={item.icon} size={18} color={item.color} />
                   </View>
                   <Text style={styles.menuLabel}>{item.label}</Text>
                   <IconSymbol name="arrow.forward" size={14} color={SLATE[300]} />

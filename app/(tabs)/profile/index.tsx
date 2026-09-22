@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert, StyleSheet } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, type Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
@@ -57,7 +57,9 @@ export default function ProfileScreen() {
               const profilePhoto = parsed?.profile_photo || parsed?.profile_image;
               if (profilePhoto) setPhotoData(profilePhoto);
             }
-          } catch {}
+            } catch (e) {
+              console.warn('Failed to refresh profile:', e);
+            }
         }
       };
       refreshUser();
@@ -67,8 +69,8 @@ export default function ProfileScreen() {
   // Sync photo from user object whenever it changes (e.g. after edit profile)
   useEffect(() => {
     let cancelled = false;
-    const bp = user && 'profile_image' in user ? (user as any).profile_image : undefined;
-    const bp2 = user && 'profile_photo' in user ? (user as any).profile_photo : undefined;
+    const bp = user && 'profile_image' in user ? (user as GuestProfile).profile_image : undefined;
+    const bp2 = user && 'profile_photo' in user ? (user as GuestProfile).profile_photo : undefined;
     const backendPhoto = bp || bp2;
     if (backendPhoto) {
       if (!cancelled) setPhotoData(backendPhoto);
@@ -80,13 +82,13 @@ export default function ProfileScreen() {
 
   const firstName = user?.name?.split(' ')[0] || '';
   const displayInitials = (firstName?.[0] || user?.email?.[0] || 'U').toUpperCase();
-  const loyaltyPoints = user && 'loyalty_points' in user ? (user as any).loyalty_points || 0 : 0;
+  const loyaltyPoints = user && 'loyalty_points' in user ? (user as GuestProfile).loyalty_points || 0 : 0;
   const tier = loyaltyPoints >= 5000 ? 'PLATINUM' : loyaltyPoints >= 2000 ? 'GOLD' : loyaltyPoints >= 500 ? 'SILVER' : 'BRONZE';
   const upcomingCount = bookings.filter(b => b.status === 'upcoming').length;
   const favoritesCount = favorites.size;
 
   const memberSince = user && 'created_at' in user
-    ? new Date((user as any).created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+    ? new Date((user as GuestProfile).created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
     : '2024';
 
   const hasPromptedLogin = useRef(false);
@@ -151,6 +153,8 @@ export default function ProfileScreen() {
       const uri = result.assets[0].uri;
       setPhotoData(uri);
       AsyncStorage.setItem(photoKey, uri);
+      // TODO: Upload photo to backend via API endpoint (e.g. POST /auth/guests/profile-photo)
+      // Currently only saved locally in AsyncStorage — not persisted server-side.
     }
   };
 
@@ -161,7 +165,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 40 }} contentInsetAdjustmentBehavior="automatic">
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 120 }} contentInsetAdjustmentBehavior="automatic">
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
@@ -219,7 +223,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               key={item.route}
               style={[s.menuItem, i < MENU_ITEMS.length - 1 && s.menuItemBorder]}
-              onPress={() => router.push(item.route as any)}
+              onPress={() => router.push(item.route as Href)}
               activeOpacity={0.7}
             >
               <View style={[s.menuIcon, { backgroundColor: item.color + '12' }]}>

@@ -5,7 +5,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { BRAND, PAYMENT, BG, SLATE, CORAL, NEUTRAL, GREEN } from '@/lib/constants/figma-tokens';
+import { BRAND, PAYMENT, BG, SLATE, CORAL, NEUTRAL, GREEN, AMBER } from '@/lib/constants/figma-tokens';
 import { BookingQrCode } from '@/components/feature/booking-qr-code';
 import { shareBookingReceipt } from '@/lib/utils/booking-receipt';
 
@@ -18,12 +18,11 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function formatCurrency(amount: number): string {
-  return 'NPR ' + amount.toLocaleString('en-IN');
-}
-
 export default function BookingConfirmationScreen() {
   const params = useLocalSearchParams();
+
+  const currency = (params.currency as string) || 'NPR';
+  const formatCurrency = (amount: number): string => `${currency} ` + amount.toLocaleString('en-IN');
 
   const hotelName = (params.hotelName as string) || 'Hotel';
   const hotelImage = (params.hotelImage as string) || '';
@@ -34,6 +33,7 @@ export default function BookingConfirmationScreen() {
   const nights = parseInt((params.nights as string) || '1', 10);
   const guests = parseInt((params.guests as string) || '2', 10);
   const totalPrice = parseInt((params.total as string) || '0', 10);
+  const amountPaid = parseInt((params.paid as string) || '0', 10);
   // Stable fallback code — computed once (never in render) so the react-compiler purity rule stays satisfied.
   const [confirmationCode] = React.useState(() => (params.confirmationCode as string) || 'BK' + Date.now());
   const subtotal = parseInt((params.subtotal as string) || '0', 10);
@@ -85,7 +85,7 @@ export default function BookingConfirmationScreen() {
       }],
       discount: discount > 0 ? discount : undefined,
       totalAmount: totalPrice,
-      currency: 'NPR',
+      currency,
       createdAt: new Date().toLocaleString(),
     });
   };
@@ -100,7 +100,7 @@ export default function BookingConfirmationScreen() {
             <Text style={styles.confirmedPillText}>Booking confirmed</Text>
           </View>
           <Text style={styles.bannerTitle}>Your stay is confirmed</Text>
-          <Text style={styles.bannerSubtitle}>A confirmation has been sent to {guestEmail}</Text>
+          <Text style={styles.bannerSubtitle}>Keep your confirmation code ready for check-in</Text>
         </View>
       </View>
 
@@ -250,12 +250,14 @@ export default function BookingConfirmationScreen() {
               )}
               <View style={styles.priceDivider} />
               <View style={styles.priceRow}>
-                <Text style={styles.priceTotalLabel}>Total paid</Text>
-                <Text style={styles.priceTotalValue}>{formatCurrency(totalPrice)}</Text>
+                <Text style={styles.priceTotalLabel}>{amountPaid > 0 ? 'Total paid' : 'Due at arrival'}</Text>
+                <Text style={styles.priceTotalValue}>{formatCurrency(amountPaid > 0 ? amountPaid : totalPrice)}</Text>
               </View>
-              <View style={styles.paidBadge}>
-                <View style={styles.paidDot} />
-                <Text style={styles.paidText}>Paid</Text>
+              <View style={[styles.paidBadge, amountPaid === 0 && styles.unpaidBadge]}>
+                <View style={[styles.paidDot, amountPaid === 0 && styles.unpaidDot]} />
+                <Text style={[styles.paidText, amountPaid === 0 && styles.unpaidText]}>
+                  {amountPaid > 0 ? 'Paid' : 'Pay at arrival'}
+                </Text>
               </View>
 
               <View style={styles.summaryDivider} />
@@ -377,6 +379,9 @@ const styles = StyleSheet.create({
   paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   paidDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: TEAL },
   paidText: { fontSize: 12, fontWeight: '600', color: TEAL },
+  unpaidBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  unpaidDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: AMBER[500] },
+  unpaidText: { fontSize: 12, fontWeight: '600', color: AMBER[500] },
 
   // Actions
   actions: { flexDirection: 'row', gap: 8 },

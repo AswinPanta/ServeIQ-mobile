@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/lib/context/auth-context';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, type Href } from 'expo-router';
 import { useColors } from '@/hooks/use-colors';
 import type { PortalType } from '@/types/api';
 
@@ -41,9 +41,9 @@ export function AuthGuard({ portal, children }: AuthGuardProps) {
     if (isLoading) return;
 
     if (!hasSession && !isOnLoginScreen && isOnPortalGroup) {
-      router.replace(PORTAL_LOGIN_MAP[portal] as any);
+      router.replace(PORTAL_LOGIN_MAP[portal] as Href);
     } else if (hasSession && isOnLoginScreen && isOnPortalGroup) {
-      router.replace(PORTAL_HOME_MAP[portal] as any);
+      router.replace(PORTAL_HOME_MAP[portal] as Href);
     }
   }, [isLoading, hasSession, isOnLoginScreen, isOnPortalGroup]);
 

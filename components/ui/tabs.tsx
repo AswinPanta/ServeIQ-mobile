@@ -88,7 +88,7 @@ export function Tabs({ tabs, active, onChange, variant = 'underline', className 
         </View>
       </ScrollView>
       <Animated.View
-        style={[indicatorStyle, { bottom: 0, height: 2, backgroundColor: BLUE.ios, position: 'absolute' } as any]}
+        style={[indicatorStyle, { bottom: 0, height: 2, backgroundColor: BLUE.ios, position: 'absolute' }]}
       />
     </View>
   );

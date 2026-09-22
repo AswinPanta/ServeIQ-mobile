@@ -37,19 +37,18 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FAFAFA",
-          "image": "./assets/Splash.animation/preview/landmarks.png",
-          "imageWidth": 280,
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/serveiq-logo.png",
+          "imageWidth": 240,
           "resizeMode": "contain",
           "android": {
-            "image": "./assets/Splash.animation/preview/landmarks.png",
-            "imageWidth": 280,
+            "image": "./assets/images/serveiq-logo.png",
+            "imageWidth": 240,
             "resizeMode": "contain"
           }
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-video",
       "expo-dev-client",
       [
         "@stripe/stripe-react-native",
@@ -57,13 +56,22 @@
           "merchantIdentifier": "merchant.com.serveiq",
           "enableGooglePay": true
         }
-      ]
+      ],
+      "expo-image",
+      "expo-secure-store",
+      "expo-video"
     ],
     "updates": {
       "enabled": false
     },
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "32009d99-6d08-48eb-8c38-d4cc992c0b23"
+      }
     }
   }
 }

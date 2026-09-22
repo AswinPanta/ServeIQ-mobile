@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { safeGoBack } from '@/lib/utils';import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHost } from '@/lib/context/host-context';
 import { SRS, GRAY, RADIUS, TYPOGRAPHY } from '@/constants/portal-theme';
@@ -45,7 +45,7 @@ export function PropertySectionScreen({ title, icon, children }: Props) {
     <View style={{ flex: 1, backgroundColor: GRAY[50] }}>
       <View style={[styles.bar, { paddingTop: insets.top + 12 }]}>
         <View style={styles.row}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color={SRS.navy} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>

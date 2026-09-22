@@ -22,7 +22,7 @@ export {
   type AvailableRoom,
 } from './api/properties';
 
-export { searchHotelsApi, searchNearbyApi } from './api/search';
+export { fetchSystemAmenities, fetchSystemBedTypes, searchHotelsApi, searchNearbyApi } from './api/search';
 
 export {
   createTenant,

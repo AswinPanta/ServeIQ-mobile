@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { safeGoBack } from '@/lib/utils';import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
 import { setGuestMustChange } from '@/lib/context/host-utils';
@@ -24,15 +24,20 @@ export default function ForgotPasswordScreen() {
       const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.FORGOT_PASSWORD}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        // The backend resolves the account by role (USER or GUEST) and silently
+        // no-ops when the email isn't found in that table. Without an explicit
+        // role it defaults to USER, so guest resets would never be processed.
+        body: JSON.stringify({ email: email.trim(), role: 'GUEST' }),
       });
-      if (res.ok || res.status === 202) {
+      const data = await res.json().catch(() => ({}));
+      const failed = (res.ok ? data.success === false : true);
+      if (res.ok && !failed) {
         // Track this email so the next login forces a password change
         await setGuestMustChange(email.trim());
         setSent(true);
       } else {
-        const data = await res.json().catch(() => ({}));
-        Alert.alert('Error', data.detail || data.message || 'Something went wrong. Please try again.');
+        // Backend error bodies are { success: false, error: <msg> }.
+        Alert.alert('Error', (typeof data.error === 'string' && data.error) || data.message || data.detail || 'Something went wrong. Please try again.');
       }
     } catch {
       Alert.alert('Error', 'Network error. Please check your connection and try again.');
@@ -44,7 +49,7 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.inner}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={TEXT.heading} />
         </TouchableOpacity>
 

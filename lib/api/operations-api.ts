@@ -1,45 +1,18 @@
 import { api, handleResponse, isDemoMode, getActiveToken } from '@/lib/api';
 import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
 import type {
-  OperationRoom, OperationBooking, Folio, FolioCharge,
-  HousekeepingTask, TableItem, MenuItem,
-  Order, KdsTicket,
   BackendMyTask, TaskStatusUpdateRequest,
   BackendCleaningSubmission, SupervisorReviewRequest,
   BackendLeaveRequest, CreateLeaveRequest,
   BackendShiftSwap, CreateSwapRequest,
   BackendMaintenanceReport,
   BackendScheduleEntry, BackendWorkHistoryStats,
+  BackendRoomStatusItem, BackendRoomStatusSummary,
 } from '@/types/api';
 
 // ─── Operations API ─────────────────────────────────────────────────────────
-// POS, KDS, Folio endpoints are mock-only (backend has no /pms/*, /pos/*, /kds/*).
-// Housekeeping endpoints use the REAL backend.
-const OPS_ENDPOINTS = {
-  ROOMS: '/pms/rooms',
-  ROOM_BY_ID: (id: string) => `/pms/rooms/${id}`,
-  ROOM_STATUS: (id: string) => `/pms/rooms/${id}/status`,
-  BOOKINGS: '/pms/bookings',
-  BOOKING_BY_ID: (id: string) => `/pms/bookings/${id}`,
-  CHECK_IN: '/pms/check-in',
-  CHECK_OUT: '/pms/check-out',
-  FOLIO: (ref: string) => `/pms/folios/${ref}`,
-  FOLIO_CHARGE: (ref: string) => `/pms/folios/${ref}/charges`,
-  HK_TASKS: '/pms/housekeeping/tasks',
-  HK_TASK: (id: string) => `/pms/housekeeping/tasks/${id}`,
-  MENU: '/pos/menu',
-  MENU_CATEGORIES: '/pos/menu/categories',
-  TABLES: '/pos/tables',
-  TABLE: (id: string) => `/pos/tables/${id}`,
-  ORDERS: '/pos/orders',
-  ORDER: (id: string) => `/pos/orders/${id}`,
-  KDS_TICKETS: '/kds/tickets',
-  KDS_TICKET: (id: string) => `/kds/tickets/${id}`,
-  PAYMENTS: '/pos/payments',
-  STAFF: '/pms/staff',
-  ACTIVITIES: '/pms/activities',
-  SHIFT: '/pms/shift',
-};
+// Housekeeping endpoints use the REAL backend (/properties/{id}/housekeeping/*).
+// Front-desk check-in/out + folio now go through staffApi (host-api.ts).
 
 function buildQuery(params?: Record<string, string | number | undefined | null>): string {
   if (!params) return '';
@@ -108,53 +81,6 @@ async function apiPostFormData<T>(endpoint: string, formData: FormData, fallback
 }
 
 export const operationsApi = {
-  // ─── Mock-only endpoints (no backend) ──────────────────────────
-  getRooms: (fallback: () => OperationRoom[]) =>
-    apiGet<OperationRoom[]>(OPS_ENDPOINTS.ROOMS, fallback),
-
-  updateRoomStatus: (id: string, status: string, fallback: () => any) =>
-    apiPatch(OPS_ENDPOINTS.ROOM_STATUS(id), { status }, fallback),
-
-  getBookings: (fallback: () => OperationBooking[]) =>
-    apiGet<OperationBooking[]>(OPS_ENDPOINTS.BOOKINGS, fallback),
-
-  checkIn: (data: { booking_ref: string; room_number: string }, fallback: () => any) =>
-    apiPost(OPS_ENDPOINTS.CHECK_IN, data, fallback),
-
-  checkOut: (data: { booking_ref: string; payment_method: string }, fallback: () => any) =>
-    apiPost(OPS_ENDPOINTS.CHECK_OUT, data, fallback),
-
-  getFolio: (ref: string, fallback: () => Folio) =>
-    apiGet<Folio>(OPS_ENDPOINTS.FOLIO(ref), fallback),
-
-  addFolioCharge: (ref: string, data: Partial<FolioCharge>, fallback: () => any) =>
-    apiPost(OPS_ENDPOINTS.FOLIO_CHARGE(ref), data, fallback),
-
-  // Legacy mock HK — kept for backward compat, prefer getMyTasks()
-  getHkTasks: (fallback: () => HousekeepingTask[]) =>
-    apiGet<HousekeepingTask[]>(OPS_ENDPOINTS.HK_TASKS, fallback),
-
-  updateHkTask: (id: string, data: Partial<HousekeepingTask>, fallback: () => any) =>
-    apiPatch(OPS_ENDPOINTS.HK_TASK(id), data, fallback),
-
-  getMenu: (fallback: () => MenuItem[]) =>
-    apiGet<MenuItem[]>(OPS_ENDPOINTS.MENU, fallback),
-
-  getTables: (fallback: () => TableItem[]) =>
-    apiGet<TableItem[]>(OPS_ENDPOINTS.TABLES, fallback),
-
-  getOrders: (fallback: () => Order[]) =>
-    apiGet<Order[]>(OPS_ENDPOINTS.ORDERS, fallback),
-
-  createOrder: (data: Partial<Order>, fallback: () => Order) =>
-    apiPost<Order, Partial<Order>>(OPS_ENDPOINTS.ORDERS, data, fallback),
-
-  getKdsTickets: (fallback: () => KdsTicket[]) =>
-    apiGet<KdsTicket[]>(OPS_ENDPOINTS.KDS_TICKETS, fallback),
-
-  updateKdsTicket: (id: string, data: Partial<KdsTicket>, fallback: () => any) =>
-    apiPatch(OPS_ENDPOINTS.KDS_TICKET(id), data, fallback),
-
   // ─── Housekeeping Mobile (real backend) ────────────────────────
 
   /** Get staff member's own tasks */
@@ -224,6 +150,14 @@ export const operationsApi = {
   getMyMaintenanceReports: (propertyId: string, params?: { skip?: number; limit?: number }, fallback: () => BackendMaintenanceReport[] = () => []) =>
     apiGet<BackendMaintenanceReport[]>(`${API_ENDPOINTS.PROPERTIES.HK_GET_MAINTENANCE(propertyId)}${buildQuery(params)}`, fallback),
 
+  // ─── Room Status ─────────────────────────────────────────────
+
+  getRoomStatus: (propertyId: string, fallback: () => BackendRoomStatusItem[] = () => []) =>
+    apiGet<BackendRoomStatusItem[]>(API_ENDPOINTS.PROPERTIES.GET_ROOMS_STATUS(propertyId), fallback),
+
+  getRoomStatusSummary: (propertyId: string, fallback: () => BackendRoomStatusSummary = () => ({ total_rooms: 0, available_rooms: 0, occupied_rooms: 0, dirty_rooms: 0, in_progress_rooms: 0, cleaning_rooms: 0, inspected_rooms: 0, blocked_rooms: 0, booked_rooms: 0, out_of_service_rooms: 0, maintenance_rooms: 0 })) =>
+    apiGet<BackendRoomStatusSummary>(API_ENDPOINTS.PROPERTIES.GET_ROOMS_STATUS_SUMMARY(propertyId), fallback),
+
   // ─── Schedule ──────────────────────────────────────────────────
 
   getTodaySchedule: (propertyId: string, fallback: () => BackendScheduleEntry) =>
@@ -237,4 +171,18 @@ export const operationsApi = {
 
   getScheduleHistory: (propertyId: string, params?: { skip?: number; limit?: number }, fallback: () => BackendScheduleEntry[] = () => []) =>
     apiGet<BackendScheduleEntry[]>(`${API_ENDPOINTS.PROPERTIES.HK_GET_SCHEDULE_HISTORY(propertyId)}${buildQuery(params)}`, fallback),
+
+  // ─── Tasks (richer /tasks endpoint) ──────────────────────────
+
+  /** List all tasks (richer than /housekeeping/tasks — includes assigned_staff_id, room_name, etc.) */
+  listAllTasks: (propertyId: string, params?: { skip?: number; limit?: number }, fallback: () => any[] = () => []) =>
+    apiGet<any[]>(`${API_ENDPOINTS.PROPERTIES.GET_TASKS(propertyId)}${buildQuery(params)}`, fallback),
+
+  /** Get all rooms for task assignment [{id, name, status}] */
+  getTaskRooms: (propertyId: string, fallback: () => any[] = () => []) =>
+    apiGet<any[]>(API_ENDPOINTS.PROPERTIES.GET_TASK_ROOMS(propertyId), fallback),
+
+  /** Update a task (PATCH /tasks/{task_id}) — status, notes, etc. */
+  updateTask: (propertyId: string, taskId: string, data: Record<string, any>, fallback: () => any) =>
+    apiPatch<any, Record<string, any>>(`${API_ENDPOINTS.PROPERTIES.GET_TASKS(propertyId)}/${taskId}`, data, fallback),
 };

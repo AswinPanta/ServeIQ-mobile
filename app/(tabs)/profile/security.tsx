@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ChangePasswordForm } from '@/components/auth/ChangePasswordForm';
 import { FONTS } from '@/constants/portal-theme';
 import { CORAL as CORALTokens, BRAND, NEUTRAL, BG, SLATE } from '@/lib/constants/figma-tokens';
@@ -12,7 +12,7 @@ export default function ProfileSecurityScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
         <Text style={s.title}>Security</Text>
@@ -20,7 +20,7 @@ export default function ProfileSecurityScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.body}>
-        <ChangePasswordForm accent={CORAL} onSuccess={() => router.back()} />
+        <ChangePasswordForm accent={CORAL} onSuccess={() => safeGoBack()} />
       </ScrollView>
     </View>
   );

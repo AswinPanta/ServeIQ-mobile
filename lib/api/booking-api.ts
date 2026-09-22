@@ -46,6 +46,17 @@ export const bookingApi = {
   getBookingByRef: (ref: string, fallback: () => BookingReservationResponse | null) =>
     apiGet<BookingReservationResponse | null>(API_ENDPOINTS.BOOKINGS.GET_BY_REF(ref), fallback),
 
+  /** Strict intent — throws with the server's message (Stripe key missing,
+   *  Razorpay currency rejection, Khalti return-url rejection…) so the guest
+   *  sees the REAL gateway error instead of a mock intent that quietly breaks
+   *  every downstream SDK checkout. */
+  createPaymentIntentStrict: async (ref: string, data: PaymentIntentRequest): Promise<PaymentIntentResponse> => {
+    if (await isDemoMode()) return { ref_number: ref, payment_gateway: '', amount: 0, currency: 'NPR' };
+    const response = await api.post(API_ENDPOINTS.BOOKINGS.PAYMENT_INTENT(ref), data);
+    const json = await handleResponse<{ success?: boolean; data?: PaymentIntentResponse }>(response);
+    return (json.success !== false && json.data !== undefined) ? json.data : (json as unknown as PaymentIntentResponse);
+  },
+
   createPaymentIntent: (ref: string, data: PaymentIntentRequest, fallback: () => PaymentIntentResponse) =>
     apiPost<PaymentIntentResponse, PaymentIntentRequest>(API_ENDPOINTS.BOOKINGS.PAYMENT_INTENT(ref), data, fallback),
 
@@ -55,8 +66,6 @@ export const bookingApi = {
   /** Strict confirm — throws on failure so the flow can retry (reference behavior). */
   confirmPaymentStrict: async (ref: string, data: ConfirmPaymentRequest): Promise<ConfirmPaymentResponse> => {
     if (await isDemoMode()) return { status: 'confirmed', ref_number: ref };
-    const isDummy = !data.gateway_payload || Object.keys(data.gateway_payload).length === 0;
-    if (isDummy) return { status: 'confirmed', ref_number: ref };
     const response = await api.post(API_ENDPOINTS.BOOKINGS.CONFIRM_PAYMENT(ref), data);
     const json = await handleResponse<{ success?: boolean; data?: ConfirmPaymentResponse }>(response);
     return (json.success !== false && json.data !== undefined) ? json.data : (json as unknown as ConfirmPaymentResponse);
@@ -73,8 +82,10 @@ export const bookingApi = {
     }
   },
 
-  /** Pay remaining balance on a booking. */
-  payRemaining: (ref: string, data: { payment_method: string; gateway_payload?: Record<string, unknown> }, fallback: () => ConfirmPaymentResponse) =>
+  /** Pay remaining balance on a booking.
+   *  Backend PayRemainingRequest requires { idempotency_key, payment_gateway }
+   *  (verified via OpenAPI) — payment_method is NOT accepted there. */
+  payRemaining: (ref: string, data: { idempotency_key: string; payment_gateway: string; return_url?: string | null; gateway_payload?: Record<string, unknown> }, fallback: () => ConfirmPaymentResponse) =>
     apiPost<ConfirmPaymentResponse, typeof data>(API_ENDPOINTS.BOOKINGS.PAY_REMAINING(ref), data, fallback),
 
   /** Record a staff-assigned payment (e.g. pay at front desk). */
@@ -91,9 +102,29 @@ export const bookingApi = {
     }
   },
 
-  /** Backend has no DELETE for bookings — gracefully return false. */
-  cancelBooking: async (_ref: string): Promise<boolean> => {
-    console.warn('[booking-api] cancelBooking: backend has no DELETE endpoint for bookings');
-    return false;
+  /** Cancel a booking server-side: POST /bookings/{ref}/cancel */
+  cancelBooking: async (ref: string): Promise<boolean> => {
+    try {
+      const response = await api.post(API_ENDPOINTS.BOOKINGS.CANCEL(ref));
+      if (!response.ok) return false;
+      const json = await response.json();
+      return json?.success !== false;
+    } catch (err) {
+      console.warn(`[booking-api] cancelBooking failed for ${ref}:`, err);
+      return false;
+    }
+  },
+
+  /** Expire a stale (unpaid, soft-locked) booking server-side: POST /bookings/{ref}/expire */
+  expireBooking: async (ref: string): Promise<boolean> => {
+    try {
+      const response = await api.post(API_ENDPOINTS.BOOKINGS.EXPIRE(ref));
+      if (!response.ok) return false;
+      const json = await response.json();
+      return json?.success !== false;
+    } catch (err) {
+      console.warn(`[booking-api] expireBooking failed for ${ref}:`, err);
+      return false;
+    }
   },
 };

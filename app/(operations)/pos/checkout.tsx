@@ -1,15 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Share } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Share, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTableStore } from '@/stores/useTableStore';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { useAuth } from '@/lib/context/auth-context';
-import { useActivityStore } from '@/stores/useActivityStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useGuestStore } from '@/stores/useGuestStore';
 import { useFolioStore } from '@/stores/useFolioStore';
 import type { CompletedOrder } from '@/stores/useOrderStore';
-import { ACCENT, STATUS_COLORS, getAccentColor } from '@/constants/portal-theme';
+import { ACCENT, STATUS_COLORS, getAccentColor, MANAGER_CODE } from '@/constants/portal-theme';
 import { safeGoBack } from "@/lib/utils";
 import { TEAL, PURPLE, AMBER, SLATE, BG, TEXT, RED } from '@/lib/constants/figma-tokens';
 ;
@@ -63,6 +62,8 @@ export default function POSCheckoutScreen() {
   const [appliedPointsDiscount, setAppliedPointsDiscount] = useState(0);
 
   const [receipt, setReceipt] = useState<CompletedOrder | null>(null);
+  const [managerCode, setManagerCode] = useState('');
+  const [showManagerPrompt, setShowManagerPrompt] = useState(false);
 
   const subtotal = cart.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const discountAmount = discountType === 'percentage'
@@ -190,6 +191,41 @@ export default function POSCheckoutScreen() {
     }
   };
 
+  const proceedWithPayment = () => {
+    if (useLoyalty && appliedPointsDiscount > 0 && lpGuest) {
+      const { redeemPoints } = useGuestStore.getState();
+      const success = redeemPoints(lpGuest.id, parseInt(pointsToRedeem || '0'));
+      if (!success) {
+        Alert.alert('Error', 'Could not redeem points');
+        return;
+      }
+    }
+
+    const { completePayment } = useOrderStore.getState();
+    const { addNotification } = useNotificationStore.getState();
+
+    const discount = {
+      type: discountType,
+      value: discountType === 'none' ? 0 : parseFloat(discountValue || '0'),
+    } as { type: 'none' | 'percentage' | 'fixed'; value: number };
+
+    const completed = completePayment(tableId, discount, paymentMethod, 'Waiter', 'Staff');
+    useTableStore.getState().updateTableStatus(tableId, 'available');
+
+    if (paymentMethod === 'room_charge' && selectedGuest) {
+      const { addCharge } = useFolioStore.getState();
+      addCharge(selectedGuest.bookingRef, {
+        description: 'Restaurant Bill',
+        amount: completed.total,
+        category: 'restaurant',
+      });
+    }
+
+    addNotification({ type: 'payment', title: 'Payment Completed', message: `Table ${table?.number || tableId} — ₹${completed.total.toLocaleString()}`, data: { tableId } });
+
+    setReceipt(completed);
+  };
+
   const handlePayment = () => {
     if (!paymentMethod) {
       Alert.alert('Select Method', 'Please select a payment method');
@@ -207,73 +243,20 @@ export default function POSCheckoutScreen() {
     const needsManagerApproval = discountType === 'percentage' && parseFloat(discountValue || '0') > 10;
     const needsManagerApprovalFixed = discountType === 'fixed' && parseInt(discountValue || '0') > 500;
 
-    const proceedWithPayment = () => {
-      if (useLoyalty && appliedPointsDiscount > 0 && lpGuest) {
-        const { redeemPoints } = useGuestStore.getState();
-        const success = redeemPoints(lpGuest.id, parseInt(pointsToRedeem || '0'));
-        if (!success) {
-          Alert.alert('Error', 'Could not redeem points');
-          return;
-        }
-      }
-
-      const { completePayment } = useOrderStore.getState();
-      const { addActivity } = useActivityStore.getState();
-      const { addNotification } = useNotificationStore.getState();
-
-      const discount = {
-        type: discountType,
-        value: discountType === 'none' ? 0 : parseFloat(discountValue || '0'),
-      } as { type: 'none' | 'percentage' | 'fixed'; value: number };
-
-      const completed = completePayment(tableId, discount, paymentMethod, 'Waiter', 'Staff');
-      useTableStore.getState().updateTableStatus(tableId, 'available');
-
-    if (paymentMethod === 'room_charge' && selectedGuest) {
-      const { addCharge } = useFolioStore.getState();
-      addCharge(selectedGuest.bookingRef, {
-        description: 'Restaurant Bill',
-        amount: completed.total,
-        category: 'restaurant',
-      });
-    }
-
-    addActivity({ type: 'payment', title: `Payment received — Table ${table?.number || tableId}`, description: `₹${completed.total.toLocaleString()} via ${paymentMethod}`, icon: '💳', color: AMBER[500], property_id: operator?.property_id || 'prop-1' });
-    addNotification({ type: 'payment', title: 'Payment Completed', message: `Table ${table?.number || tableId} — ₹${completed.total.toLocaleString()}`, data: { tableId } });
-
-    setReceipt(completed);
-    };
-
     if (needsManagerApproval || needsManagerApprovalFixed) {
-      Alert.alert(
-        'Manager Approval Required',
-        'This discount exceeds your limit. Please confirm with manager.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Enter Manager Code',
-            onPress: () => {
-              const promptCode = '1234';
-              Alert.prompt
-                ? Alert.prompt(
-                    'Manager Code',
-                    'Enter manager code to approve this discount',
-                    (code) => {
-                      if (code === promptCode) {
-                        proceedWithPayment();
-                      } else {
-                        Alert.alert('Access Denied', 'Incorrect manager code. Discount not applied.');
-                      }
-                    },
-                    'secure-text'
-                  )
-                : proceedWithPayment();
-            },
-          },
-        ]
-      );
-    } else {
+      setManagerCode('');
+      setShowManagerPrompt(true);
+      return;
+    }
+    proceedWithPayment();
+  };
+
+  const confirmManagerCode = () => {
+    if (managerCode === MANAGER_CODE) {
+      setShowManagerPrompt(false);
       proceedWithPayment();
+    } else {
+      Alert.alert('Access Denied', 'Incorrect manager code. Discount not applied.');
     }
   };
 
@@ -669,6 +652,35 @@ export default function POSCheckoutScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal visible={showManagerPrompt} transparent animationType="fade" onRequestClose={() => setShowManagerPrompt(false)}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 24 }}>
+          <View style={{ width: '100%', borderRadius: 16, backgroundColor: BG.white, padding: 24, gap: 12 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: SLATE[800] }}>Manager Approval Required</Text>
+            <Text style={{ fontSize: 13, color: SLATE[500] }}>This discount exceeds your limit. Enter the manager code to approve it.</Text>
+            <TextInput
+              value={managerCode}
+              onChangeText={setManagerCode}
+              keyboardType="number-pad"
+              maxLength={4}
+              secureTextEntry
+              placeholder="Enter 4-digit code"
+              placeholderTextColor={SLATE[400]}
+              style={{ borderWidth: 1, borderColor: SLATE[200], borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, color: SLATE[800], textAlign: 'center', letterSpacing: 8 }}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity onPress={() => setShowManagerPrompt(false)}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: SLATE[200], alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: SLATE[600] }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={confirmManagerCode}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: ACCENT, alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: BG.white }}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

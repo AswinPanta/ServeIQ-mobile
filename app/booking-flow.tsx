@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { safeGoBack } from '@/lib/utils';
 import { PaymentCheckoutModal } from '@/components/feature/payment-checkout-modal';
+import { EsewaFormCheckout } from '@/components/feature/esewa-form-checkout';
 import { EsewaMockCheckout } from '@/components/feature/esewa-mock-checkout';
 import { SdkPaymentCheckout } from '@/components/feature/sdk-payment-checkout';
 import { useBookingFlow } from '@/hooks/use-booking-flow';
@@ -71,6 +72,10 @@ export default function BookingFlowScreen() {
           checkIn={flow.checkIn}
           paymentMethod={flow.paymentMethod}
           onSelectPaymentMethod={flow.onSelectPaymentMethod}
+          paymentMode={flow.paymentMode}
+          onSelectPaymentMode={flow.onSelectPaymentMode}
+          advanceAmount={flow.advanceAmount}
+          onChangeAdvanceAmount={flow.onChangeAdvanceAmount}
         />
       )}
 
@@ -97,9 +102,9 @@ export default function BookingFlowScreen() {
         />
       )}
 
-      {/* eSewa sandbox checkout — the backend returns no hosted payment_url for
-          eSewa, so (like the reference web app) we simulate the wallet flow
-          locally; the confirm step still verifies server-side. */}
+      {/* eSewa sandbox checkout — only when the backend returns no live form
+          (merchant credentials absent); mimics the wallet flow locally while
+          confirm still verifies server-side. */}
       {flow.checkout && !flow.checkout.url && flow.checkout.gateway === 'eSewa' && (
         <EsewaMockCheckout
           visible
@@ -107,6 +112,20 @@ export default function BookingFlowScreen() {
           currency={flow.currency}
           onComplete={flow.handleCheckoutComplete}
           onCancel={flow.handleCheckoutCancel}
+        />
+      )}
+
+      {/* eSewa live form checkout — the backend returned an HMAC-signed
+          form_url + form_fields, so we auto-POST them in a WebView and hand
+          the redirect's `data` back to confirm. */}
+      {flow.esewaCheckout && (
+        <EsewaFormCheckout
+          visible
+          formUrl={flow.esewaCheckout.formUrl}
+          formFields={flow.esewaCheckout.formFields}
+          returnUrlPrefix={flow.returnUrlPrefix}
+          onComplete={flow.handleEsewaComplete}
+          onCancel={flow.handleEsewaCancel}
         />
       )}
 

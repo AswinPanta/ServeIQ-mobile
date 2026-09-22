@@ -9,10 +9,11 @@ import { BRAND, CORAL, SLATE, STATUS, RED, BG } from '@/lib/constants/figma-toke
 
 const NAVY = BRAND.navyLight;
 
+// Mirrors the backend's password policy (min 8 + digit + special char).
 const REQUIREMENTS = (newPassword: string, confirmPassword: string) => [
   { label: 'At least 8 characters', met: newPassword.length >= 8 },
   { label: 'Contains a number', met: /\d/.test(newPassword) },
-  { label: 'Contains uppercase & lowercase', met: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
+  { label: 'Contains a special character', met: /[^A-Za-z0-9]/.test(newPassword) },
   { label: 'Passwords match', met: newPassword === confirmPassword && newPassword.length > 0 },
 ];
 

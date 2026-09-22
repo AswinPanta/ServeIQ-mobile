@@ -28,6 +28,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
+  const [rooms, setRooms] = useState(1);
 
   const totalGuests = adults + children;
 
@@ -51,6 +52,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
         guests: String(totalGuests),
         adults: String(adults),
         children: String(children),
+        rooms: String(rooms),
       },
     });
   };
@@ -118,6 +120,8 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
                     <StepperRow label="Adults" value={adults} min={1} max={10} onChange={setAdults} />
                     <View style={{ height: 1, backgroundColor: '#E5E7EB' }} />
                     <StepperRow label="Children" value={children} min={0} max={6} onChange={setChildren} />
+                    <View style={{ height: 1, backgroundColor: '#E5E7EB' }} />
+                    <StepperRow label="Rooms" value={rooms} min={1} max={10} onChange={setRooms} />
                   </View>
 
                   <Text style={s.guestCount}>
@@ -135,6 +139,7 @@ export function SearchModal({ visible, onClose }: SearchModalProps) {
                     setCheckOut(null);
                     setAdults(2);
                     setChildren(0);
+                    setRooms(1);
                   }}>
                     <Text style={s.clearBtn}>Clear all</Text>
                   </TouchableOpacity>

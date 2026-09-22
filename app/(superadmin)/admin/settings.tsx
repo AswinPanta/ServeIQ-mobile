@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, Alert, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useSuperAdmin } from '@/lib/context/superadmin-context';
 import { AdminCard } from '@/components/superadmin/AdminCard';
 import { PURPLE, BLUE, SLATE, RED, BG, STATUS, AMBER, NEUTRAL, EMERALD } from '@/lib/constants/figma-tokens';
@@ -53,7 +52,7 @@ export default function SettingsScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
           <IconSymbol name="arrow.back" size={18} color={ACCENT} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Platform Settings</Text>
@@ -100,57 +99,13 @@ export default function SettingsScreen() {
             placeholderTextColor={SLATE[400]}
           />
 
-          {/* Danger Zone */}
+          {/* Account deletion */}
           <View style={styles.dangerZone}>
             <View style={styles.dangerHeader}>
               <IconSymbol name="warning" size={16} color={RED[500]} />
-              <Text style={styles.dangerTitle}>Danger Zone</Text>
+              <Text style={styles.dangerTitle}>Account Deletion</Text>
             </View>
-            <Text style={styles.dangerDesc}>Permanently delete your account and all associated data. This action cannot be undone.</Text>
-            <TouchableOpacity
-              style={styles.deleteBtn}
-              activeOpacity={0.8}
-              onPress={() => {
-                Alert.alert(
-                  'Delete Account',
-                  'WARNING: This will permanently delete your account, all properties, bookings, reviews, and personal data from the database.\n\nThis action is IRREVERSIBLE. Are you absolutely sure?',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Delete Permanently',
-                      style: 'destructive',
-                      onPress: () => {
-                        Alert.alert(
-                          'Final Confirmation',
-                          'Type "DELETE" to confirm permanent deletion of all data.',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Confirm Delete',
-                              style: 'destructive',
-                              onPress: async () => {
-                                try {
-                                  const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-                                  await AsyncStorage.clear();
-                                  Alert.alert('Account Deleted', 'All data has been permanently removed.', [
-                                    { text: 'OK', onPress: () => router.replace('/') },
-                                  ]);
-                                } catch {
-                                  Alert.alert('Error', 'Failed to delete account data.');
-                                }
-                              },
-                            },
-                          ]
-                        );
-                      },
-                    },
-                  ]
-                );
-              }}
-            >
-              <IconSymbol name="cancel" size={16} color={BG.white} />
-              <Text style={styles.deleteBtnText}>Delete Account Permanently</Text>
-            </TouchableOpacity>
+            <Text style={styles.dangerDesc}>Contact ServeIQ support to delete your account and associated data. In-app deletion is not yet supported by the backend, and local-only "deletion" would not remove your data from the server.</Text>
           </View>
         </AdminCard>
       )}

@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { BottomTabBar } from '@/components/operations/BottomTabBar';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import { SRS, SLATE, BG, BLUE, EMERALD, RED, AMBER } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY } from '@/constants/portal-theme';
 
@@ -39,6 +40,8 @@ import { PURPLE } from '@/lib/constants/figma-tokens';
 
 export default function ReservationsScreen() {
   const { bookings } = useFrontDesk();
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = notifications.filter(n => !n.read).length;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('today');
 
@@ -106,9 +109,11 @@ export default function ReservationsScreen() {
             </View>
             <Text style={s.headerTitle}>Reservations</Text>
             <View style={{ flex: 1 }} />
-            <TouchableOpacity style={s.headerIconBtn}>
+            <TouchableOpacity style={s.headerIconBtn} onPress={() => router.push('/(operations)/notifications')}>
               <Ionicons name="notifications-outline" size={22} color={DARK} />
-              <View style={s.notifBadge}><Text style={s.notifBadgeText}>3</Text></View>
+              {unreadCount > 0 && (
+                <View style={s.notifBadge}><Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>
+              )}
             </TouchableOpacity>
             <View style={s.avatarContainer}>
               <Ionicons name="person" size={18} color={SLATE[400]} />

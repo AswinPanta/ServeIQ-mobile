@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { BottomTabBar } from '@/components/operations/BottomTabBar';
+import { useNotificationStore } from '@/stores/useNotificationStore';
 import { SRS, SLATE, BG, RED, BLUE, EMERALD, AMBER, PURPLE, ORANGE } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY } from '@/constants/portal-theme';
 
@@ -21,10 +22,14 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
     title: 'Operations',
     items: [
       { icon: 'grid-outline', label: 'Room Plan', href: '/(operations)/room-plan', color: BLUE[600] },
+      { icon: 'bed-outline', label: 'Room Status', href: '/(operations)/front-desk/room-status', color: SRS.teal },
       { icon: 'sparkles-outline', label: 'Housekeeping', href: '/(operations)/housekeeping', color: EMERALD[500] },
       { icon: 'construct-outline', label: 'Maintenance', href: '/(operations)/housekeeping', color: SRS.orange },
+      { icon: 'checkbox-outline', label: 'Desk Tasks', href: '/(operations)/front-desk/tasks', color: AMBER[500] },
+      { icon: 'card-outline', label: 'Payments', href: '/(operations)/front-desk/payments', color: BLUE[600] },
       { icon: 'moon-outline', label: 'Night Audit', color: SLATE[600] },
       { icon: 'people-circle-outline', label: 'Guest CRM', href: '/(operations)/front-desk/guest-crm', color: PURPLE[500] },
+      { icon: 'notifications-outline', label: 'Desk Inbox', href: '/(operations)/front-desk/notifications', color: RED[500] },
     ],
   },
   {
@@ -67,6 +72,8 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
 ];
 
 export default function MoreScreen() {
+  const notifications = useNotificationStore(s => s.notifications);
+  const unreadCount = notifications.filter(n => !n.read).length;
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -78,9 +85,11 @@ export default function MoreScreen() {
             </View>
             <Text style={s.headerTitle}>More</Text>
             <View style={{ flex: 1 }} />
-            <TouchableOpacity style={s.headerIconBtn}>
+            <TouchableOpacity style={s.headerIconBtn} onPress={() => router.push('/(operations)/notifications')}>
               <Ionicons name="notifications-outline" size={22} color={DARK} />
-              <View style={s.notifBadge}><Text style={s.notifBadgeText}>3</Text></View>
+              {unreadCount > 0 && (
+                <View style={s.notifBadge}><Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>
+              )}
             </TouchableOpacity>
             <View style={s.avatarContainer}>
               <Ionicons name="person" size={18} color={SLATE[400]} />
@@ -96,7 +105,7 @@ export default function MoreScreen() {
               {section.items.map(item => (
                 <TouchableOpacity
                   key={item.label}
-                  onPress={() => item.href && router.push(item.href as any)}
+                  onPress={() => item.href && router.push(item.href as Href)}
                   style={s.menuCard}
                   activeOpacity={0.7}
                 >

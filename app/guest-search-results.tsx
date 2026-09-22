@@ -3,8 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, StyleSheet, 
 import { router, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import type { Hotel } from '@/types/api';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
-import { searchHotelsApi } from '@/lib/api';
+import { searchHotelsApi, fetchSystemAmenities, fetchSystemBedTypes } from '@/lib/api';
 import { safeGoBack } from '@/lib/utils';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { StickySearchHeader } from '@/components/StickySearchHeader';
@@ -22,13 +21,13 @@ const BED_TYPE_FILTERS = ['King bed', 'Queen bed', 'Single bed', 'Sofa bed'];
 const GUEST_RATINGS = ['Any', '4.0+', '4.5+', '5.0'];
 
 export default function GuestSearchResults() {
-  const { location, checkIn, checkOut, guests, adults, children, rooms, filter: quickFilter, type: typeParam, vibe: vibeParam } = useLocalSearchParams();
+  const { location, checkIn, checkOut, guests, adults, children, rooms, filter: quickFilter, type: typeParam } = useLocalSearchParams();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
 
   const typeKey = normalizePropertyType(typeParam ? String(typeParam) : undefined);
   const typeLabel = typeParam ? PROPERTY_TYPE_LABELS[typeKey] || null : null;
 
-  const [allHotels, setAllHotels] = useState<Hotel[]>(MOCK_PROPERTIES);
+  const [allHotels, setAllHotels] = useState<Hotel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [fromApi, setFromApi] = useState(false);
@@ -45,7 +44,31 @@ export default function GuestSearchResults() {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedBeds, setSelectedBeds] = useState<string[]>([]);
   const [guestRating, setGuestRating] = useState('Any');
-  const [vibe, setVibe] = useState<string | null>(vibeParam ? String(vibeParam) : null);
+
+  // Backend name→id maps for amenity/bed filters (only UUIDs are accepted server-side).
+  const [amenityIdMap, setAmenityIdMap] = useState<Record<string, string>>({});
+  const [bedIdMap, setBedIdMap] = useState<Record<string, string>>({});
+  // Filters committed on Apply — hits the backend /search params so pagination
+  // totals reflect them. Live filter edits still recompute client-side instantly.
+  const [appliedFilters, setAppliedFilters] = useState<{
+    minPrice: number;
+    maxPrice: number;
+    amenityIds: string[];
+    bedTypeIds: string[];
+  }>({ minPrice: 0, maxPrice: 500, amenityIds: [], bedTypeIds: [] });
+
+  useEffect(() => {
+    fetchSystemAmenities().then(items => {
+      const m: Record<string, string> = {};
+      items.forEach(i => { m[i.name.toLowerCase()] = i.id; });
+      setAmenityIdMap(m);
+    });
+    fetchSystemBedTypes().then(items => {
+      const m: Record<string, string> = {};
+      items.forEach(i => { m[i.name.toLowerCase()] = i.id; });
+      setBedIdMap(m);
+    });
+  }, []);
 
   const scrollRef = useRef<ScrollView>(null);
   const routeKey = '/guest-search-results';
@@ -59,6 +82,10 @@ export default function GuestSearchResults() {
       case 'rated': setGuestRating('4.5+'); setSortBy('Rating'); break;
       case 'nearby': setSortBy('Recommended'); break;
     }
+    if (quickFilter === 'budget' || quickFilter === 'luxury') {
+      const next: [number, number] = quickFilter === 'budget' ? [0, 150] : [250, 500];
+      setAppliedFilters(prev => ({ ...prev, minPrice: next[0], maxPrice: next[1] }));
+    }
   }, [quickFilter]);
 
   const fetchResults = useCallback(async (pageNum: number) => {
@@ -71,13 +98,15 @@ export default function GuestSearchResults() {
       rooms: rooms ? Number(rooms) : 1,
       limit: PAGE_SIZE,
       skip: pageNum * PAGE_SIZE,
+      minPrice: appliedFilters.minPrice,
+      maxPrice: appliedFilters.maxPrice,
+      amenityIds: appliedFilters.amenityIds,
+      bedTypeIds: appliedFilters.bedTypeIds,
     });
     if (result.hotels.length < PAGE_SIZE) setHasMore(false);
     else setHasMore(true);
-    // Only seed the list from MOCK_PROPERTIES on the FIRST page — an empty
-    // later page just means "no more results", never a full mock swap-in.
     if (pageNum === 0) {
-      setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
+      setAllHotels(result.hotels);
       // Seed the total from the backend meta on the first page
       setTotalResults(result.total ?? (result.hotels.length > 0 ? undefined : 0));
     } else if (result.hotels.length > 0) {
@@ -85,7 +114,7 @@ export default function GuestSearchResults() {
     }
     setFromApi(result.fromApi);
     return result;
-  }, [location, checkIn, checkOut, guests, adults, children, rooms]);
+  }, [location, checkIn, checkOut, guests, adults, children, rooms, appliedFilters]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,12 +157,6 @@ export default function GuestSearchResults() {
       const hotelAmenityNames = hotel.amenities.map(a => a.name.toLowerCase());
       if (!selectedAmenities.every(a => hotelAmenityNames.some(ha => ha.includes(a.toLowerCase())))) return false;
     }
-    // Vibe filtering: match hotel name, description, or city against the vibe keyword
-    if (vibe) {
-      const vibeLower = vibe.toLowerCase();
-      const haystack = `${hotel.name} ${hotel.description || ''} ${hotel.city} ${hotel.property_type || ''}`.toLowerCase();
-      if (!haystack.includes(vibeLower)) return false;
-    }
     return true;
   }).sort((a, b) => {
     if (sortBy === 'Price low to high') return a.price - b.price;
@@ -156,11 +179,25 @@ export default function GuestSearchResults() {
   const clearAll = () => {
     setPriceRange([0, 500]); setSelectedTypes(['All types']); setSelectedAmenities([]);
     setSelectedBeds([]); setGuestRating('Any');
+    setAppliedFilters({ minPrice: 0, maxPrice: 500, amenityIds: [], bedTypeIds: [] });
+  };
+
+  const commitFilters = () => {
+    setAppliedFilters({
+      minPrice: priceRange[0],
+      maxPrice: priceRange[1],
+      amenityIds: selectedAmenities
+        .map(a => amenityIdMap[a.toLowerCase()])
+        .filter(Boolean) as string[],
+      bedTypeIds: selectedBeds
+        .map(b => bedIdMap[b.toLowerCase()])
+        .filter(Boolean) as string[],
+    });
   };
 
   const handleHotelPress = (hotelId: string) => {
     router.push({
-      pathname: '/guest-hotel-detail/[id]',
+      pathname: '/[id]',
       params: {
         id: hotelId,
         checkIn: checkIn || '',
@@ -235,7 +272,7 @@ export default function GuestSearchResults() {
             >
               {/* Image */}
               <View style={s.hotelImageWrap}>
-                {hotel.images[0] ? (
+                {hotel.images?.[0] ? (
                   <Image source={{ uri: hotel.images[0] }} style={s.hotelImage} />
                 ) : (
                   <View style={s.hotelImagePlaceholder}>
@@ -372,7 +409,7 @@ export default function GuestSearchResults() {
                 ))}
               </View>
             </ScrollView>
-            <TouchableOpacity onPress={() => setShowFilters(false)} style={s.applyBtn}>
+            <TouchableOpacity onPress={() => { commitFilters(); setShowFilters(false); }} style={s.applyBtn}>
               <Text style={s.applyBtnText}>Show {filteredHotels.length} results</Text>
             </TouchableOpacity>
           </View>

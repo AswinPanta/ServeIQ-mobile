@@ -178,19 +178,19 @@ export const reservationMachine = createStateMachine<ReservationStatus>({
   actions: {
     'confirmed→guaranteed': (ctx) => {
       // TODO: wire to audit store — create TimelineEvent with type 'payment_added'
-      console.log(`[Audit] Deposit received for booking by ${ctx.performedBy}`);
+      if (__DEV__) console.log(`[Audit] Deposit received for booking by ${ctx.performedBy}`);
     },
     'guaranteed→checked_in': (ctx) => {
       // TODO: wire to audit store — create TimelineEvent with type 'checked_in'
-      console.log(`[Audit] Guest checked in to Room ${ctx.data?.roomNumber} by ${ctx.performedBy}`);
+      if (__DEV__) console.log(`[Audit] Guest checked in to Room ${ctx.data?.roomNumber} by ${ctx.performedBy}`);
     },
     'checked_in→checked_out': (ctx) => {
       // TODO: wire to audit store — create TimelineEvent with type 'checked_out'
-      console.log(`[Audit] Guest checked out from Room ${ctx.data?.roomNumber} by ${ctx.performedBy}`);
+      if (__DEV__) console.log(`[Audit] Guest checked out from Room ${ctx.data?.roomNumber} by ${ctx.performedBy}`);
     },
     'checked_out→completed': (ctx) => {
       // TODO: wire to audit store — create TimelineEvent with type 'completed'
-      console.log(`[Audit] Booking completed — loyalty points awarded`);
+      if (__DEV__) console.log(`[Audit] Booking completed — loyalty points awarded`);
     },
   },
 });
@@ -233,15 +233,15 @@ export const roomMachine = createStateMachine<RoomStatus>({
   actions: {
     'available→occupied': (ctx) => {
       // TODO: wire to audit store — log room assignment
-      console.log(`[Room] Room occupied by ${ctx.data?.guestName || 'guest'}`);
+      if (__DEV__) console.log(`[Room] Room occupied by ${ctx.data?.guestName || 'guest'}`);
     },
     'occupied→dirty': (ctx) => {
       // TODO: wire to housekeeping context — auto-create HK task
-      console.log(`[Room] Housekeeping task created for Room ${ctx.data?.roomNumber}`);
+      if (__DEV__) console.log(`[Room] Housekeeping task created for Room ${ctx.data?.roomNumber}`);
     },
     'inspected→available': (ctx) => {
       // TODO: wire to audit store — log room returned to inventory
-      console.log(`[Room] Room available again`);
+      if (__DEV__) console.log(`[Room] Room available again`);
     },
   },
 });
@@ -270,19 +270,19 @@ export const housekeepingMachine = createStateMachine<HousekeepingStatus>({
   actions: {
     'dirty→in_progress': (ctx) => {
       // TODO: wire to audit store — log cleaning started
-      console.log(`[HK] Cleaning started by ${ctx.performedBy}`);
+      if (__DEV__) console.log(`[HK] Cleaning started by ${ctx.performedBy}`);
     },
     'in_progress→cleaned': (ctx) => {
       // TODO: wire to audit store — log cleaning completed
-      console.log(`[HK] Cleaning completed — awaiting inspection`);
+      if (__DEV__) console.log(`[HK] Cleaning completed — awaiting inspection`);
     },
     'cleaned→inspected': (ctx) => {
       // TODO: wire to audit store + update room status to 'available'
-      console.log(`[HK] Inspection passed — room ready`);
+      if (__DEV__) console.log(`[HK] Inspection passed — room ready`);
     },
     'cleaned→dirty': (ctx) => {
       // TODO: wire to audit store — log inspection failure
-      console.log(`[HK] Inspection failed — room needs re-cleaning`);
+      if (__DEV__) console.log(`[HK] Inspection failed — room needs re-cleaning`);
     },
   },
 });
@@ -308,11 +308,11 @@ export const paymentMachine = createStateMachine<PaymentStatus>({
   actions: {
     'pending→completed': (ctx) => {
       // TODO: wire to payment store — record transaction
-      console.log(`[Payment] Payment of ${ctx.data?.amount} completed via ${ctx.data?.method}`);
+      if (__DEV__) console.log(`[Payment] Payment of ${ctx.data?.amount} completed via ${ctx.data?.method}`);
     },
     'completed→refunded': (ctx) => {
       // TODO: wire to payment store — record refund transaction
-      console.log(`[Payment] Refund of ${ctx.data?.amount} processed by ${ctx.performedBy}`);
+      if (__DEV__) console.log(`[Payment] Refund of ${ctx.data?.amount} processed by ${ctx.performedBy}`);
     },
   },
 });
@@ -336,11 +336,11 @@ export const orderMachine = createStateMachine<OrderStatus>({
   actions: {
     'open→submitted': (ctx) => {
       // TODO: wire to restaurant context — create KDS ticket
-      console.log(`[POS] Order ${ctx.data?.orderId} submitted to kitchen`);
+      if (__DEV__) console.log(`[POS] Order ${ctx.data?.orderId} submitted to kitchen`);
     },
     'served→paid': (ctx) => {
       // TODO: wire to restaurant context — complete payment
-      console.log(`[POS] Order ${ctx.data?.orderId} paid — ${ctx.data?.paymentMethod}`);
+      if (__DEV__) console.log(`[POS] Order ${ctx.data?.orderId} paid — ${ctx.data?.paymentMethod}`);
     },
   },
 });
@@ -357,11 +357,11 @@ export const kdsTicketMachine = createStateMachine<KdsTicketStatus>({
   actions: {
     'pending→in_progress': (ctx) => {
       // TODO: wire to restaurant context — update ticket status
-      console.log(`[KDS] Ticket ${ctx.data?.ticketId} — preparation started`);
+      if (__DEV__) console.log(`[KDS] Ticket ${ctx.data?.ticketId} — preparation started`);
     },
     'in_progress→ready': (ctx) => {
       // TODO: wire to restaurant context — update ticket status
-      console.log(`[KDS] Ticket ${ctx.data?.ticketId} — ready for pickup`);
+      if (__DEV__) console.log(`[KDS] Ticket ${ctx.data?.ticketId} — ready for pickup`);
     },
   },
 });
@@ -389,11 +389,11 @@ export const approvalMachine = createStateMachine<ApprovalStatus>({
   actions: {
     'pending→approved': (ctx) => {
       // TODO: wire to approval store — record decision
-      console.log(`[Approval] Request ${ctx.data?.approvalId} approved by ${ctx.performedBy}`);
+      if (__DEV__) console.log(`[Approval] Request ${ctx.data?.approvalId} approved by ${ctx.performedBy}`);
     },
     'pending→rejected': (ctx) => {
       // TODO: wire to approval store — record decision
-      console.log(`[Approval] Request ${ctx.data?.approvalId} rejected by ${ctx.performedBy} — ${ctx.data?.reason}`);
+      if (__DEV__) console.log(`[Approval] Request ${ctx.data?.approvalId} rejected by ${ctx.performedBy} — ${ctx.data?.reason}`);
     },
   },
 });
@@ -417,15 +417,15 @@ export const shiftMachine = createStateMachine<ShiftStatus>({
   actions: {
     'scheduled→clocked_in': (ctx) => {
       // TODO: wire to shift store — record clock-in time
-      console.log(`[Shift] ${ctx.performedBy} clocked in at ${ctx.data?.time}`);
+      if (__DEV__) console.log(`[Shift] ${ctx.performedBy} clocked in at ${ctx.data?.time}`);
     },
     'clocked_in→clocked_out': (ctx) => {
       // TODO: wire to shift store — record clock-out time
-      console.log(`[Shift] ${ctx.performedBy} clocked out at ${ctx.data?.time}`);
+      if (__DEV__) console.log(`[Shift] ${ctx.performedBy} clocked out at ${ctx.data?.time}`);
     },
     'scheduled→absent': (ctx) => {
       // TODO: wire to shift store — mark absence
-      console.log(`[Shift] ${ctx.data?.staffName} marked absent by ${ctx.performedBy}`);
+      if (__DEV__) console.log(`[Shift] ${ctx.data?.staffName} marked absent by ${ctx.performedBy}`);
     },
   },
 });

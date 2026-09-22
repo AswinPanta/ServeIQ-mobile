@@ -57,7 +57,7 @@ type ResponseInterceptor = (response: Response) => Response | Promise<Response>;
 
 interface RequestConfig extends Omit<RequestInit, 'headers'> {
   headers: Record<string, string>;
-  params?: Record<string, string | number | boolean | undefined>;
+  params?: Record<string, string | number | boolean | undefined | Array<string | number>>;
   timeout?: number;
   retries?: number;
 }
@@ -66,7 +66,13 @@ function buildUrl(base: string, endpoint: string, params?: RequestConfig['params
   const url = new URL(`${base.replace(/\/$/, '')}${endpoint}`, base);
   if (params) {
     Object.entries(params).forEach(([key, val]) => {
-      if (val !== undefined) url.searchParams.set(key, String(val));
+      if (val === undefined) return;
+      if (Array.isArray(val)) {
+        // FastAPI List[...] query params are repeated keys — one entry per id.
+        val.forEach(v => url.searchParams.append(key, String(v)));
+      } else {
+        url.searchParams.set(key, String(val));
+      }
     });
   }
   return url.toString();
@@ -134,7 +140,11 @@ function createApiClient(baseUrl: string = API_BASE_URL) {
           return processedResponse;
         } catch (error) {
           clearTimeout(timeoutId);
-          if (attempt < retries) {
+          // Never retry a timeout: the attempt already consumed the full budget,
+          // so a retry doubles the worst-case wait (e.g. 45s search → 90s+).
+          // Retries remain for fast failures (connection reset, DNS blip).
+          const isTimeout = error instanceof Error && error.name === 'AbortError';
+          if (attempt < retries && !isTimeout) {
             await new Promise((r) => setTimeout(r, API_CONFIG.RETRY_DELAY * (attempt + 1)));
             return doFetch(attempt + 1);
           }

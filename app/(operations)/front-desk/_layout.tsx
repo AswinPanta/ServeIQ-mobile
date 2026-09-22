@@ -18,6 +18,10 @@ export default function FrontDeskLayout() {
         <Stack.Screen name="check-in" />
         <Stack.Screen name="check-out" />
         <Stack.Screen name="guest-crm" />
+        <Stack.Screen name="payments" />
+        <Stack.Screen name="room-status" />
+        <Stack.Screen name="tasks" />
+        <Stack.Screen name="notifications" />
         <Stack.Screen name="folio" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </RoleGuard>

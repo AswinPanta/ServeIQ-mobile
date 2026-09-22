@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { MOCK_PROPERTIES } from '@/lib/mock/properties';
@@ -32,7 +32,7 @@ function FavoriteCard({ hotel }: { hotel: ApiHotel }) {
   return (
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={() => router.push({ pathname: '/guest-hotel-detail/[id]', params: { id: hotel.id } })}
+      onPress={() => router.push({ pathname: '/[id]', params: { id: hotel.id } })}
       style={s.card}
     >
       <View style={s.imagePlaceholder}>
@@ -66,7 +66,7 @@ export default function FavoritesScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.favorites.title')}</Text>

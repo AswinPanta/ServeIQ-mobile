@@ -3,8 +3,13 @@ import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
 import type {
   Property, AdminRoom, AdminDiscountCode, SpecialOffer,
   BackendStaff, CreateStaffRequest, UpdateStaffRequest, CancellationPolicy,
-  BackendTask, CreateTaskRequestBE, UpdateTaskRequestBE, BulkAssignTaskItem,
-  BackendStaffWorkSummary, BackendTaskTypeOption,
+  BackendTask, CreateTaskRequestBE, UpdateTaskRequestBE,
+  FrontDeskSummaryResponse, FrontDeskBookingResponse,
+  StaffCancelBookingRequest, ModifyBookingRequest,
+  BackendActivityLog, BackendStaffOption, BackendRoomOption,
+  BackendFolioDetail, BackendFolioListResponse, BackendFolioCharge,
+  BackendRoomCalendarResponse, BackendCitizenshipPhotos,
+  AnalyticsOverview, AnalyticsTrendPoint, AnalyticsRoomTypeRevenue, AnalyticsBookingPoint,
 } from '@/types/api';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -282,26 +287,62 @@ async function apiDelete(endpoint: string, params?: Record<string, string>): Pro
   }
 }
 
+/**
+ * React Native FormData file descriptor for a local image URI (from
+ * expo-image-picker). RN's fetch sets the multipart Content-Type from the
+ * descriptor's `type` — appending a Blob instead sends application/octet-stream,
+ * which the backend rejects (content_type must start with "image/").
+ */
+export function imageFormFile(uri: string, name: string): any {
+  const ext = (name.split('.').pop() || 'jpg').toLowerCase();
+  const type =
+    ext === 'png' ? 'image/png'
+    : ext === 'webp' ? 'image/webp'
+    : ext === 'gif' ? 'image/gif'
+    : ext === 'heic' ? 'image/heic'
+    : ext === 'heif' ? 'image/heif'
+    : 'image/jpeg';
+  return { uri, name, type };
+}
+
+/**
+ * Multipart upload transport. Uses XMLHttpRequest — NOT the global fetch —
+ * because in Expo SDK 54+ the global fetch is Expo's WinterCG fetch, which
+ * rejects React Native's `{ uri, name, type }` FormDataPart file descriptors
+ * with "Unsupported FormDataPart implementation". RN's XMLHttpRequest natively
+ * serializes them to multipart on both platforms.
+ */
 async function apiUploadFormData(endpoint: string, formData: FormData): Promise<any> {
   if (await isDemoMode()) return null;
-  try {
-    const token = await getActiveToken();
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      console.warn(`[host-api] Upload failed ${response.status}: ${errText}`);
-      return null;
-    }
-    const json = await response.json().catch(() => ({}));
-    return json?.data ?? json;
-  } catch (e) {
-    console.warn('[host-api] Upload error:', e);
-    return null;
-  }
+  const token = await getActiveToken();
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE_URL}${endpoint}`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.timeout = 30000;
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        console.warn(`[host-api] Upload failed ${xhr.status}: ${xhr.responseText?.slice(0, 300)}`);
+        resolve(null);
+        return;
+      }
+      try {
+        const json = JSON.parse(xhr.responseText || '{}');
+        resolve(json?.data ?? json);
+      } catch {
+        resolve(null);
+      }
+    };
+    xhr.onerror = () => {
+      console.warn('[host-api] Upload error: network failure');
+      resolve(null);
+    };
+    xhr.ontimeout = () => {
+      console.warn('[host-api] Upload timed out');
+      resolve(null);
+    };
+    xhr.send(formData);
+  });
 }
 
 // Cache keyed by the active token so we only probe/create the tenant once per
@@ -427,10 +468,10 @@ export const hostApi = {
       },
       location: {
         country: 'Nepal',
-        state: '',
-        city: '',
-        zip_code: '00000',
-        address: '',
+        state: 'Bagmati',
+        city: 'Kathmandu',
+        zip_code: '44600',
+        address: 'Kathmandu',
       },
       localization: {
         currency: 'NPR',
@@ -542,13 +583,71 @@ export const hostApi = {
     apiDelete(API_ENDPOINTS.PROPERTIES.DELETE_SPECIAL_OFFER(propertyId, offerId)),
 
   // ─── Property Bookings ───────────────────────────────────────
-  getPropertyBookings: (propertyId: string, fallback: () => any[]) =>
-    apiGet<any[]>(API_ENDPOINTS.PROPERTIES.GET_PROPERTY_BOOKINGS(propertyId), fallback),
+  /**
+   * All bookings for a property. GET /properties/{id}/bookings returns
+   * {success, data, meta} with a hard server cap of limit=50 (default 10),
+   * so this paginates with skip/limit + meta.has_more until drained.
+   * apiGet unwraps `data` — what's left here is meta handling.
+   */
+  getPropertyBookings: async (propertyId: string, fallback: () => any[]): Promise<any[]> => {
+    if (!isValidUuid(propertyId)) return fallback();
+    if (await isDemoMode()) return fallback();
+    try {
+      const all: any[] = [];
+      let skip = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const response = await api.get(
+          `${API_ENDPOINTS.PROPERTIES.GET_PROPERTY_BOOKINGS(propertyId)}${buildQuery({ skip, limit: 50 })}`,
+        );
+        const json = await handleResponse<{ success?: boolean; data?: any[]; meta?: { has_more?: boolean } }>(response);
+        const page = (json.success !== false && json.data !== undefined) ? json.data : (json as unknown as any[]);
+        if (!Array.isArray(page) || page.length === 0) break;
+        all.push(...page);
+        hasMore = !!json.meta?.has_more && page.length >= 50;
+        skip += 50;
+      }
+      return all;
+    } catch {
+      return fallback();
+    }
+  },
+
+  // ─── Property Analytics (live; amounts are decimal strings) ──
+
+  /** Dashboard overview: total_revenue, arr, occupancy_rate, bookings_today, top_channels. */
+  getAnalyticsOverview: (propertyId: string, fallback: () => AnalyticsOverview | null = () => null) =>
+    isValidUuid(propertyId)
+      ? apiGet<AnalyticsOverview | null>(API_ENDPOINTS.PROPERTIES.GET_ANALYTICS_OVERVIEW(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  /** Daily revenue points [{date, revenue}]. Optional `days` window (server default). */
+  getAnalyticsRevenueTrend: (propertyId: string, days?: number, fallback: () => AnalyticsTrendPoint[] = () => []) =>
+    isValidUuid(propertyId)
+      ? apiGet<AnalyticsTrendPoint[]>(`${API_ENDPOINTS.PROPERTIES.GET_ANALYTICS_REVENUE_TREND(propertyId)}${buildQuery({ days })}`, fallback)
+      : Promise.resolve(fallback()),
+
+  /** Revenue per room type [{room_type_name, revenue, booking_count}]. */
+  getAnalyticsRevenueByRoomType: (propertyId: string, days?: number, fallback: () => AnalyticsRoomTypeRevenue[] = () => []) =>
+    isValidUuid(propertyId)
+      ? apiGet<AnalyticsRoomTypeRevenue[]>(`${API_ENDPOINTS.PROPERTIES.GET_ANALYTICS_REVENUE_BY_ROOM_TYPE(propertyId)}${buildQuery({ days })}`, fallback)
+      : Promise.resolve(fallback()),
+
+  /** Daily booking counts [{date, booking_count}]. */
+  getAnalyticsBookingTrend: (propertyId: string, days?: number, fallback: () => AnalyticsBookingPoint[] = () => []) =>
+    isValidUuid(propertyId)
+      ? apiGet<AnalyticsBookingPoint[]>(`${API_ENDPOINTS.PROPERTIES.GET_ANALYTICS_BOOKING_TREND(propertyId)}${buildQuery({ days })}`, fallback)
+      : Promise.resolve(fallback()),
 
   // ─── Staff ───────────────────────────────────────────────────
   getStaff: (propertyId: string, fallback: () => BackendStaff[]) =>
     isValidUuid(propertyId)
       ? apiGet<BackendStaff[]>(API_ENDPOINTS.PROPERTIES.GET_STAFF(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  getStaffSummary: (propertyId: string, fallback: () => any) =>
+    isValidUuid(propertyId)
+      ? apiGet<any>(API_ENDPOINTS.PROPERTIES.GET_STAFF_SUMMARY(propertyId), fallback)
       : Promise.resolve(fallback()),
 
   createStaff: (propertyId: string, data: CreateStaffRequest, fallback: () => BackendStaff) =>
@@ -586,11 +685,6 @@ export const hostApi = {
       ? apiGet<BackendTask[]>(`${API_ENDPOINTS.PROPERTIES.GET_TASKS(propertyId)}${buildQuery(params)}`, fallback)
       : Promise.resolve(fallback()),
 
-  getTask: (propertyId: string, taskId: string, fallback: () => BackendTask) =>
-    isValidUuid(propertyId)
-      ? apiGet<BackendTask>(API_ENDPOINTS.PROPERTIES.GET_TASK(propertyId, taskId), fallback)
-      : Promise.resolve(fallback()),
-
   createTaskBE: (propertyId: string, data: CreateTaskRequestBE, fallback: () => BackendTask) =>
     isValidUuid(propertyId)
       ? apiPost<BackendTask, CreateTaskRequestBE>(API_ENDPOINTS.PROPERTIES.CREATE_TASK(propertyId), data, fallback, { rethrowOnServerError: true })
@@ -601,34 +695,31 @@ export const hostApi = {
       ? apiPatch<BackendTask, UpdateTaskRequestBE>(API_ENDPOINTS.PROPERTIES.UPDATE_TASK(propertyId, taskId), data, fallback)
       : Promise.resolve(fallback()),
 
-  deleteTask: (propertyId: string, taskId: string) =>
-    isValidUuid(propertyId)
-      ? apiDelete(API_ENDPOINTS.PROPERTIES.DELETE_TASK(propertyId, taskId))
-      : Promise.resolve(true),
-
-  completeTask: (propertyId: string, taskId: string, fallback: () => BackendTask) =>
-    isValidUuid(propertyId)
-      ? apiPatch<BackendTask, Record<string, never>>(API_ENDPOINTS.PROPERTIES.COMPLETE_TASK(propertyId, taskId), {}, fallback)
-      : Promise.resolve(fallback()),
-
-  bulkAssignTasks: (propertyId: string, tasks: BulkAssignTaskItem[], fallback: () => { created_count: number; tasks: BackendTask[] }) =>
-    isValidUuid(propertyId)
-      ? apiPost<{ created_count: number; tasks: BackendTask[] }, { tasks: BulkAssignTaskItem[] }>(API_ENDPOINTS.PROPERTIES.BULK_ASSIGN_TASKS(propertyId), { tasks }, fallback, { rethrowOnServerError: true })
-      : Promise.resolve(fallback()),
-
   getHKStaff: (propertyId: string, fallback: () => BackendStaff[]) =>
     isValidUuid(propertyId)
       ? apiGet<BackendStaff[]>(API_ENDPOINTS.PROPERTIES.GET_HK_STAFF(propertyId), fallback)
       : Promise.resolve(fallback()),
 
-  getStaffWorkSummary: (propertyId: string, fallback: () => BackendStaffWorkSummary[]) =>
-    isValidUuid(propertyId)
-      ? apiGet<BackendStaffWorkSummary[]>(API_ENDPOINTS.PROPERTIES.GET_STAFF_WORK_SUMMARY(propertyId), fallback)
-      : Promise.resolve(fallback()),
+  // Picker options scoped to the tasks module (id + name), so task creation
+  // sends real UUIDs (CreateTaskRequest requires room_id + assigned_staff_id).
+  // FALLBACK: the tasks-module endpoint currently 500s when the property HAS
+  // housekeeping staff (live backend bug, verified 2026-09-10), so fall back
+  // to the staff-module housekeeping-staffs list (same people, full shape).
+  getTaskHKStaffOptions: async (propertyId: string, fallback: () => BackendStaffOption[] = () => []): Promise<BackendStaffOption[]> => {
+    if (!isValidUuid(propertyId)) return fallback();
+    try {
+      const options = await apiGet<BackendStaffOption[]>(API_ENDPOINTS.PROPERTIES.GET_TASK_HK_STAFF(propertyId), () => []);
+      if (options.length > 0) return options;
+    } catch {
+      // fall through to staff-module endpoint
+    }
+    const full = await apiGet<BackendStaff[]>(API_ENDPOINTS.PROPERTIES.GET_HK_STAFF(propertyId), () => []);
+    return full.map(s => ({ id: s.id, name: s.full_name, cover_photo: s.photos?.profile ?? null }));
+  },
 
-  getTaskTypes: (propertyId: string, fallback: () => BackendTaskTypeOption[]) =>
+  getTaskRoomOptions: (propertyId: string, fallback: () => BackendRoomOption[] = () => []) =>
     isValidUuid(propertyId)
-      ? apiGet<BackendTaskTypeOption[]>(API_ENDPOINTS.PROPERTIES.GET_TASK_TYPES(propertyId), fallback)
+      ? apiGet<BackendRoomOption[]>(API_ENDPOINTS.PROPERTIES.GET_TASK_ROOMS(propertyId), fallback)
       : Promise.resolve(fallback()),
 
   // ─── Room Status ────────────────────────────────────────────
@@ -643,15 +734,31 @@ export const hostApi = {
       : Promise.resolve(fallback()),
 
   // ─── Room Images (cleaning/maintenance) ─────────────────────
-  uploadCleaningStatusImages: (propertyId: string, roomId: string, formData: FormData) =>
-    isValidUuid(propertyId)
-      ? apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_CLEANING_STATUS_IMAGES(propertyId, roomId), formData)
-      : Promise.resolve(null),
+  // The live backend registered these routes with a missing slash
+  // (`/properties{property_id}/...`), so the well-formed path 404s today.
+  // Try the well-formed path first; if it 404s, fall back to the malformed
+  // path the backend actually serves — uploads survive either backend state.
+  uploadCleaningStatusImages: async (propertyId: string, roomId: string, formData: FormData) => {
+    if (!isValidUuid(propertyId)) return null;
+    const wellFormed = await apiUploadFormData(
+      API_ENDPOINTS.PROPERTIES.UPLOAD_CLEANING_STATUS_IMAGES(propertyId, roomId), formData
+    );
+    if (wellFormed !== null) return wellFormed;
+    return apiUploadFormData(
+      API_ENDPOINTS.PROPERTIES.UPLOAD_CLEANING_STATUS_IMAGES_LEGACY(propertyId, roomId), formData
+    );
+  },
 
-  uploadMaintenanceImages: (propertyId: string, roomId: string, formData: FormData) =>
-    isValidUuid(propertyId)
-      ? apiUploadFormData(API_ENDPOINTS.PROPERTIES.UPLOAD_MAINTENANCE_IMAGES(propertyId, roomId), formData)
-      : Promise.resolve(null),
+  uploadMaintenanceImages: async (propertyId: string, roomId: string, formData: FormData) => {
+    if (!isValidUuid(propertyId)) return null;
+    const wellFormed = await apiUploadFormData(
+      API_ENDPOINTS.PROPERTIES.UPLOAD_MAINTENANCE_IMAGES(propertyId, roomId), formData
+    );
+    if (wellFormed !== null) return wellFormed;
+    return apiUploadFormData(
+      API_ENDPOINTS.PROPERTIES.UPLOAD_MAINTENANCE_IMAGES_LEGACY(propertyId, roomId), formData
+    );
+  },
 
   // ─── Reviews ────────────────────────────────────────────────
   getReviews: (propertyId: string, fallback: () => any[]) =>
@@ -673,15 +780,173 @@ export const hostApi = {
 // ─── Staff Portal API ───────────────────────────────────────────────────────
 // These endpoints are for staff at the front desk (check-in/out, modify bookings).
 export const staffApi = {
-  getBookingByRef: (ref: string, fallback: () => any) =>
-    apiGet<any>(API_ENDPOINTS.STAFF.GET_BOOKING(ref), fallback),
-
-  checkIn: (ref: string, data: { room_number?: string }, fallback: () => any) =>
+  checkIn: (ref: string, data: { amount?: number | string; payment_gateway?: string } = {}, fallback: () => any) =>
     apiPost<any, typeof data>(API_ENDPOINTS.STAFF.CHECK_IN(ref), data, fallback),
 
-  checkOut: (ref: string, data: { payment_method?: string }, fallback: () => any) =>
+  checkOut: (ref: string, data: { amount: number | string; payment_gateway?: string }, fallback: () => any) =>
     apiPost<any, typeof data>(API_ENDPOINTS.STAFF.CHECK_OUT(ref), data, fallback),
 
-  modifyBooking: (ref: string, data: Record<string, unknown>, fallback: () => any) =>
-    apiPatch<any, Record<string, unknown>>(API_ENDPOINTS.STAFF.MODIFY_BOOKING(ref), data, fallback),
+  // Front-desk walk-in booking: carries guest identity + room ids + payment.
+  // (Matches POST /staff/create-walkin-booking — the guest-less /bookings/
+  //  endpoint is only for the authenticated guest portal flow.)
+  // Rethrows server errors (422 validation, 409 availability race) so the
+  // front desk sees WHY a walk-in didn't land instead of a silent mock.
+  createWalkinBooking: async (data: {
+    idempotency_key: string;
+    property_id: string;
+    room_ids: string[];
+    check_in: string;
+    check_out: string;
+    adults: number;
+    children?: number;
+    guest_full_name: string;
+    guest_email: string;
+    guest_phone?: string;
+    guest_nationality?: string;
+    coupon_code?: string;
+    payment_method?: 'ONLINE' | 'ADVANCE' | 'PAY_ON_ARRIVAL';
+    payment_gateway?: 'KHALTI' | 'ESEWA' | 'BANK_TRANSFER' | 'CASH' | 'CARD' | null;
+    amount_paid?: number | string;
+    advance_amount?: number | string | null;
+    special_requests?: string;
+  }, fallback: () => any) => {
+    // Backend expects multipart/form-data with room_ids as a JSON string,
+    // not application/json with an array.
+    if (await isDemoMode()) return fallback();
+    try {
+      const token = await getActiveToken();
+      if (!token) return fallback();
+      const fd = new FormData();
+      fd.append('idempotency_key', data.idempotency_key);
+      fd.append('property_id', data.property_id);
+      fd.append('room_ids', JSON.stringify(data.room_ids));
+      fd.append('check_in', data.check_in);
+      fd.append('check_out', data.check_out);
+      fd.append('adults', String(data.adults));
+      if (data.children != null) fd.append('children', String(data.children));
+      fd.append('guest_full_name', data.guest_full_name);
+      fd.append('guest_email', data.guest_email);
+      if (data.guest_phone) fd.append('guest_phone', data.guest_phone);
+      if (data.guest_nationality) fd.append('guest_nationality', data.guest_nationality);
+      if (data.coupon_code) fd.append('coupon_code', data.coupon_code);
+      fd.append('payment_method', data.payment_method || 'PAY_ON_ARRIVAL');
+      if (data.payment_gateway) fd.append('payment_gateway', data.payment_gateway);
+      if (data.amount_paid != null) fd.append('amount_paid', String(data.amount_paid));
+      if (data.advance_amount != null) fd.append('advance_amount', String(data.advance_amount));
+      if (data.special_requests) fd.append('special_requests', data.special_requests);
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.STAFF.CREATE_WALKIN}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const json = await handleResponse<{ success?: boolean; data?: any }>(response);
+      return (json.success !== false && json.data !== undefined) ? json.data : (json as any);
+    } catch (error) {
+      if ((error as { isServerError?: boolean }).isServerError) throw error;
+      return fallback();
+    }
+  },
+
+  // Create a server-side folio for a booking so the charge/ledger exists
+  // outside the local store. Fire-and-forget with graceful fallback.
+  createFolio: (propertyId: string, ref: string, fallback: () => any) =>
+    apiPost<any, Record<string, never>>(API_ENDPOINTS.STAFF.CREATE_FOLIO(propertyId, ref), {}, fallback),
+
+  // Front-desk summary + today's arrivals/departures
+  getFrontDeskSummary: (propertyId: string, fallback: () => any) =>
+    isValidUuid(propertyId)
+      ? apiGet<FrontDeskSummaryResponse>(API_ENDPOINTS.STAFF.FRONT_DESK_SUMMARY(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  getTodayArrivals: (propertyId: string, fallback: () => FrontDeskBookingResponse[]) =>
+    isValidUuid(propertyId)
+      ? apiGet<FrontDeskBookingResponse[]>(API_ENDPOINTS.STAFF.TODAY_ARRIVALS(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  getTodayDepartures: (propertyId: string, fallback: () => FrontDeskBookingResponse[]) =>
+    isValidUuid(propertyId)
+      ? apiGet<FrontDeskBookingResponse[]>(API_ENDPOINTS.STAFF.TODAY_DEPARTURES(propertyId), fallback)
+      : Promise.resolve(fallback()),
+
+  // Staff cancel with reason
+  cancelBooking: (ref: string, data: StaffCancelBookingRequest, fallback: () => any) =>
+    apiPost<any, StaffCancelBookingRequest>(API_ENDPOINTS.STAFF.CANCEL_BOOKING(ref), data, fallback),
+
+  // ─── Booking guests + calendar + citizenship + modify ───────
+  getBookingGuests: (propertyId: string, params?: { skip?: number; limit?: number }, fallback: () => FrontDeskBookingResponse[] = () => []) =>
+    isValidUuid(propertyId)
+      ? apiGet<FrontDeskBookingResponse[]>(`${API_ENDPOINTS.STAFF.BOOKING_GUESTS(propertyId)}${buildQuery(params)}`, fallback)
+      : Promise.resolve(fallback()),
+
+  getRoomCalendar: (propertyId: string, params?: { start_date?: string; end_date?: string; floor_number?: number; room_status?: string }, fallback: () => BackendRoomCalendarResponse = () => ({ start_date: '', end_date: '', rooms: [] })) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendRoomCalendarResponse>(`${API_ENDPOINTS.STAFF.ROOM_CALENDAR(propertyId)}${buildQuery(params)}`, fallback)
+      : Promise.resolve(fallback()),
+
+  uploadCitizenshipPhotos: async (ref: string, formData: FormData, fallback: () => BackendCitizenshipPhotos): Promise<BackendCitizenshipPhotos> => {
+    const result = await apiUploadFormData(API_ENDPOINTS.STAFF.CITIZENSHIP_PHOTOS(ref), formData);
+    return result ?? fallback();
+  },
+
+  // Backend exposes booking-modify as PATCH /staff/{ref}/booking-modify (not POST).
+  modifyBooking: (ref: string, data: ModifyBookingRequest, fallback: () => any) =>
+    apiPatch<any, ModifyBookingRequest>(API_ENDPOINTS.STAFF.MODIFY_BOOKING(ref), data, fallback),
+
+  getBookingGuestFolio: (propertyId: string, ref: string, fallback: () => any) =>
+    apiGet<any>(API_ENDPOINTS.STAFF.BOOKING_GUEST_FOLIO(propertyId, ref), fallback),
+
+  // ─── Folio ledger ──────────────────────────────────────────
+  listFolios: (propertyId: string, params?: { skip?: number; limit?: number }, fallback: () => BackendFolioListResponse = () => ({ folios: [], total: 0, skip: 0, limit: 20, has_more: false })) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendFolioListResponse>(`${API_ENDPOINTS.STAFF.FOLIO_LIST(propertyId)}${buildQuery(params)}`, fallback)
+      : Promise.resolve(fallback()),
+
+  getFolio: (folioId: string, fallback: () => BackendFolioDetail) =>
+    apiGet<BackendFolioDetail>(API_ENDPOINTS.STAFF.FOLIO_GET(folioId), fallback),
+
+  updateFolio: (folioId: string, data: { tax?: string; discount?: string }, fallback: () => any) =>
+    apiPatch<any, typeof data>(API_ENDPOINTS.STAFF.FOLIO_UPDATE(folioId), data, fallback),
+
+  addFolioCharge: (folioId: string, data: { description: string; amount: number | string; category: string }, fallback: () => any) =>
+    apiPost<any, typeof data>(API_ENDPOINTS.STAFF.FOLIO_CHARGE_ADD(folioId), data, fallback),
+
+  listFolioCharges: (folioId: string, fallback: () => BackendFolioCharge[] = () => []) =>
+    apiGet<BackendFolioCharge[]>(API_ENDPOINTS.STAFF.FOLIO_CHARGES(folioId), fallback),
+
+  updateFolioCharge: (folioId: string, chargeId: string, data: { description?: string; amount?: number | string; category?: string }, fallback: () => any) =>
+    apiPatch<any, typeof data>(API_ENDPOINTS.STAFF.FOLIO_CHARGE_UPDATE(folioId, chargeId), data, fallback),
+
+  deleteFolioCharge: (folioId: string, chargeId: string) =>
+    apiDelete(API_ENDPOINTS.STAFF.FOLIO_CHARGE_DELETE(folioId, chargeId)),
+
+  settleFolio: (folioId: string, fallback: () => any) =>
+    apiPost<any, Record<string, never>>(API_ENDPOINTS.STAFF.FOLIO_SETTLE(folioId), {}, fallback),
+
+  waiveFolio: (folioId: string, fallback: () => any) =>
+    apiPost<any, Record<string, never>>(API_ENDPOINTS.STAFF.FOLIO_WAIVE(folioId), {}, fallback),
+
+  // ─── Enum lookup ────────────────────────────────────────────────────
+  // kinds: booking-statuses | booking-types | payment-gateways | payment-methods | payment-statuses
+  getEnums: async (kind: string): Promise<{ value: string; label: string }[]> => {
+    try {
+      const response = await api.get(API_ENDPOINTS.STAFF.GET_ENUM(kind));
+      const json = await handleResponse<{ success?: boolean; data?: any }>(response);
+      return Array.isArray(json.data) ? json.data : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // ─── Activity log feeds (booking + housekeeping staff actions) ──────
+  // Both return StandardResponse[List[ActivityLogResponse]] with skip/limit
+  // pagination; used for the operations dashboard Recent Activity feed.
+  getBookingActivities: (propertyId: string, params?: { skip?: number; limit?: number }, fallback: () => BackendActivityLog[] = () => []) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendActivityLog[]>(`${API_ENDPOINTS.STAFF.ACTIVITY_BOOKING(propertyId)}${buildQuery(params)}`, fallback)
+      : Promise.resolve(fallback()),
+
+  getHousekeepingActivities: (propertyId: string, params?: { skip?: number; limit?: number }, fallback: () => BackendActivityLog[] = () => []) =>
+    isValidUuid(propertyId)
+      ? apiGet<BackendActivityLog[]>(`${API_ENDPOINTS.STAFF.ACTIVITY_HOUSEKEEPING(propertyId)}${buildQuery(params)}`, fallback)
+      : Promise.resolve(fallback()),
 };

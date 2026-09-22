@@ -1,14 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { useFrontDesk, type BookingSource } from '@/lib/context/frontdesk-context';
 import { useBookingStore } from '@/stores/useBookingStore';
 import { useFolioStore } from '@/stores/useFolioStore';
 import { useGuestStore } from '@/stores/useGuestStore';
-import { useActivityStore } from '@/stores/useActivityStore';
 import { safeGoBack } from "@/lib/utils";
+import { staffApi } from "@/lib/api/host-api";
 import { BG } from '@/lib/constants/figma-tokens';
 import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
 
@@ -32,10 +32,10 @@ const BOOKING_SOURCES: { id: BookingSource; label: string; icon: string; desc: s
   { id: 'agent', label: 'Agent', icon: 'group', desc: 'Travel agent booking' },
 ];
 
-const ROOM_TYPES = [
-  { id: 'Standard' as const, label: 'Standard', price: 2499, desc: 'Comfortable single/double room', capacity: 2 },
-  { id: 'Deluxe' as const, label: 'Deluxe', price: 4999, desc: 'Spacious with premium amenities', capacity: 3 },
-  { id: 'Suite' as const, label: 'Suite', price: 8999, desc: 'Luxury suite with living area', capacity: 5 },
+const ROOM_TYPE_DEFAULTS: { id: 'Standard' | 'Deluxe' | 'Suite'; label: string; fallbackPrice: number; desc: string; capacity: number }[] = [
+  { id: 'Standard', label: 'Standard', fallbackPrice: 2499, desc: 'Comfortable single/double room', capacity: 2 },
+  { id: 'Deluxe', label: 'Deluxe', fallbackPrice: 4999, desc: 'Spacious with premium amenities', capacity: 3 },
+  { id: 'Suite', label: 'Suite', fallbackPrice: 8999, desc: 'Luxury suite with living area', capacity: 5 },
 ];
 
 const ADDON_SERVICES = [
@@ -49,7 +49,24 @@ const ADDON_SERVICES = [
 
 export default function NewBookingScreen() {
   const frontDesk = useFrontDesk();
-  const { rooms } = frontDesk;
+  const { rooms, getAvailableRoomsForDates } = frontDesk;
+
+  // Derive room type prices from backend rooms (lowest base_rate per type)
+  const ROOM_TYPES = useMemo(() => {
+    const pricesByType = new Map<string, number>();
+    const occupancyByType = new Map<string, number>();
+    rooms.forEach(r => {
+      if (!r.room_type || !r.base_rate) return;
+      const existing = pricesByType.get(r.room_type);
+      if (!existing || r.base_rate < existing) pricesByType.set(r.room_type, r.base_rate);
+      if (r.max_occupancy) occupancyByType.set(r.room_type, Math.max(occupancyByType.get(r.room_type) || 0, r.max_occupancy));
+    });
+    return ROOM_TYPE_DEFAULTS.map(d => ({
+      ...d,
+      price: pricesByType.get(d.id) || pricesByType.get(d.label) || d.fallbackPrice,
+      capacity: occupancyByType.get(d.id) || occupancyByType.get(d.label) || d.capacity,
+    }));
+  }, [rooms]);
 
   // Step 0: Source
   const [source, setSource] = useState<BookingSource | null>(null);
@@ -128,7 +145,20 @@ export default function NewBookingScreen() {
   const [roomType, setRoomType] = useState<string>('');
   const [selectedRoomNumber, setSelectedRoomNumber] = useState('');
 
-  const availableRooms = useMemo(() => rooms.filter(r => r.status === 'available'), [rooms]);
+  /** Use room-calendar for date-range availability when dates are set, else fall back to current status */
+  const availableRoomNames = useMemo(() => {
+    if (checkin && checkout) {
+      const calendarRooms = getAvailableRoomsForDates(checkin, checkout);
+      if (calendarRooms.length > 0) return new Set(calendarRooms);
+    }
+    return null;
+  }, [checkin, checkout, getAvailableRoomsForDates]);
+
+  const availableRooms = useMemo(() =>
+    availableRoomNames
+      ? rooms.filter(r => r.status === 'available' || availableRoomNames.has(r.room_number))
+      : rooms.filter(r => r.status === 'available'),
+  [rooms, availableRoomNames]);
   const suggestedRooms = useMemo(() => {
     if (!roomType) return [];
     return availableRooms.filter(r => r.room_type === roomType);
@@ -144,6 +174,31 @@ export default function NewBookingScreen() {
   // Step 4: Services
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [specialRequests, setSpecialRequests] = useState('');
+
+  // Payment (review step): walk-ins typically pay at the desk — record what's
+  // collected now so the backend books it against the reservation.
+  const [paymentMethod, setPaymentMethod] = useState<'PAY_ON_ARRIVAL' | 'ADVANCE'>('PAY_ON_ARRIVAL');
+  const [paymentGateway, setPaymentGateway] = useState<string>('CASH');
+  const [amountPaidInput, setAmountPaidInput] = useState('');
+  const [paymentGateways, setPaymentGateways] = useState<string[]>(['CASH', 'CARD', 'KHALTI', 'ESEWA', 'BANK_TRANSFER']);
+
+  // Augment the gateway list from the backend's /staff/enums/payment-gateways.
+  // Offline (empty result) → keep the hardcoded defaults.
+  useEffect(() => {
+    staffApi.getEnums('payment-gateways')
+      .then(enums => {
+        if (!enums.length) return;
+        setPaymentGateways(prev => {
+          const merged = [...prev];
+          enums.forEach(e => {
+            const value = e.value.toUpperCase();
+            if (!merged.includes(value)) merged.push(value);
+          });
+          return merged;
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleService = (id: string) => {
     setSelectedServices(prev =>
@@ -193,99 +248,125 @@ export default function NewBookingScreen() {
     else safeGoBack();
   };
 
-  const handleSubmit = () => {
+  const submittingRef = useRef(false);
+
+  const handleSubmit = async () => {
+    if (submittingRef.current) return;
     if (!source || !guestName || !email || !phone || !roomType || !selectedRoomNumber) {
       Alert.alert('Incomplete', 'Please complete all required fields');
       return;
     }
+    if (paymentMethod === 'ADVANCE' && amountPaid <= 0) {
+      Alert.alert('Incomplete', 'Enter the amount collected for an advance payment');
+      return;
+    }
+    submittingRef.current = true;
 
-    // Create booking via context
-    frontDesk.createBooking({
-      guestName, email, phone, nationality,
-      roomType: roomType as 'Standard' | 'Deluxe' | 'Suite',
-      checkIn: checkin, checkOut: checkout,
-      adults, children, specialRequests,
-      source: source,
-      company: source === 'corporate' ? company : undefined,
-      otaRef: source === 'ota' ? otaRef : undefined,
-      idNumber,
-    });
+    try {
+      // Create booking via context (awaits the backend; throws on 422/409)
+      const newBooking = await frontDesk.createBooking({
+        guestName, email, phone, nationality,
+        roomType: roomType as 'Standard' | 'Deluxe' | 'Suite',
+        roomNumber: selectedRoomNumber,
+        checkIn: checkin, checkOut: checkout,
+        adults, children, specialRequests,
+        source: source,
+        company: source === 'corporate' ? company : undefined,
+        otaRef: source === 'ota' ? otaRef : undefined,
+        idNumber,
+        paymentMethod,
+        paymentGateway: paymentMethod === 'ADVANCE' ? (paymentGateway as 'KHALTI' | 'ESEWA' | 'BANK_TRANSFER' | 'CASH' | 'CARD' | null) : null,
+        amountPaid,
+      });
 
-    // Store in booking store
-    const newBooking = useBookingStore.getState().createBooking({
-      guestName, email, phone, roomType,
-      checkin, checkout, adults, children,
-      specialRequests, paymentMethod: balanceDue > 0 ? 'unpaid' : 'paid',
-    } as any);
+      // Store in booking store
+      useBookingStore.getState().createBooking({
+        guestName, email, phone, roomType,
+        checkin, checkout, adults, children,
+        specialRequests, paymentMethod: amountPaid >= pricing.grandTotal ? 'paid' : 'unpaid',
+      });
 
-    // Create folio
-    useFolioStore.getState().createFolio(newBooking.ref, guestName, selectedRoomNumber);
+      // Create folio — keyed by the SAME ref the front-desk context carries
+      // (the backend's ref_number when the booking landed server-side), so
+      // check-out can find it by booking ref.
+      useFolioStore.getState().createFolio(newBooking.ref, guestName, selectedRoomNumber);
 
-    // Add charges for selected services
-    selectedServices.forEach(svcId => {
-      const svc = ADDON_SERVICES.find(s => s.id === svcId);
-      if (svc) {
+      // Record any money collected now as a folio credit (negative charge)
+      if (amountPaid > 0) {
         useFolioStore.getState().addCharge(newBooking.ref, {
-          description: svc.label,
-          amount: svc.price * (svcId === 'breakfast' ? nights : 1),
-          category: 'service',
+          description: `${paymentMethod === 'ADVANCE' ? 'Advance' : 'Payment'} collected (${paymentGateway})`,
+          amount: -amountPaid,
+          category: 'other',
         });
       }
-    });
 
-    // Add guest to guest store if new
-    const existingGuests = guestStore.findGuest(guestName);
-    if (existingGuests.length === 0) {
-      guestStore.addGuest({
-        name: guestName, email, phone, nationality,
-        documentType: 'Passport', documentNumber: idNumber || '',
-        notes: specialRequests,
+      // Add charges for selected services
+      selectedServices.forEach(svcId => {
+        const svc = ADDON_SERVICES.find(s => s.id === svcId);
+        if (svc) {
+          useFolioStore.getState().addCharge(newBooking.ref, {
+            description: svc.label,
+            amount: svc.price * (svcId === 'breakfast' ? nights : 1),
+            category: 'service',
+          });
+        }
       });
+
+      // Add guest to guest store if new
+      const existingGuests = guestStore.findGuest(guestName);
+      if (existingGuests.length === 0) {
+        guestStore.addGuest({
+          name: guestName, email, phone, nationality,
+          documentType: 'Passport', documentNumber: idNumber || '',
+          notes: specialRequests,
+        });
+      }
+
+      // Confirm — the ref here is the backend's authoritative ref_number when
+      // the booking landed server-side.
+      const balance = pricing.grandTotal - amountPaid;
+      const balanceMessage = balance > 0 ? `\nBalance due: NPR ${balance.toLocaleString()}` : '\nFully paid';
+      const paidMessage = amountPaid > 0 ? `\nCollected now: NPR ${amountPaid.toLocaleString()} (${paymentGateway})` : '';
+
+      Alert.alert(
+        'Booking Created',
+        `Reservation confirmed for ${guestName}\n${roomType} — Room ${selectedRoomNumber}\n${checkin} → ${checkout} (${nights} night${nights > 1 ? 's' : ''})\nReference: ${newBooking.ref}${paidMessage}${balanceMessage}\nSource: ${source.toUpperCase()}`,
+        [{ text: 'OK', onPress: () => safeGoBack() }]
+      );
+    } catch (e: any) {
+      Alert.alert('Booking Failed', e?.message || 'Could not create the booking. Please try again.');
+    } finally {
+      submittingRef.current = false;
     }
-
-    // Record activity
-    useActivityStore.getState().addActivity({
-      type: 'booking',
-      title: `New booking — ${guestName}`,
-      description: `${roomType} · ${checkin} → ${checkout} · ${source}`,
-      icon: '🔄',
-      color: SRS.teal,
-    });
-
-    // Confirm
-    const balance = pricing.grandTotal;
-    const balanceMessage = balance > 0 ? `\nBalance due: NPR ${balance.toLocaleString()}` : '\nFully paid';
-
-    Alert.alert(
-      'Booking Created',
-      `Reservation confirmed for ${guestName}\n${roomType} — Room ${selectedRoomNumber}\n${checkin} → ${checkout} (${nights} night${nights > 1 ? 's' : ''})\nReference: ${newBooking.ref}${balanceMessage}\nSource: ${source.toUpperCase()}`,
-      [{ text: 'OK', onPress: () => safeGoBack() }]
-    );
   };
 
   const balanceDue = pricing.grandTotal;
+  /** Money collected at the desk now (0 unless collecting an advance). */
+  const amountPaid = paymentMethod === 'ADVANCE' ? Math.max(0, parseFloat(amountPaidInput) || 0) : 0;
 
   const renderStepIndicator = () => (
-    <View style={s.stepBar}>
-      {STEPS.map((step, i) => (
-        <View key={step.key} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <TouchableOpacity
-            onPress={() => i <= currentStep && setCurrentStep(i)}
-            style={[s.stepDot, {
-              backgroundColor: i <= currentStep ? SRS.teal : GRAY[200],
-              opacity: i <= currentStep ? 1 : 0.5,
-            }]}
-          >
-            {i < currentStep ? (
-              <IconSymbol name="check" size={12} color={BG.white} />
-            ) : (
-              <Text style={[s.stepNum, { color: i === currentStep ? BG.white : GRAY[500] }]}>{i + 1}</Text>
-            )}
-          </TouchableOpacity>
-          <Text style={[s.stepLabel, { color: i === currentStep ? SRS.navy : GRAY[400] }]}>{step.label}</Text>
-          {i < STEPS.length - 1 && <View style={[s.stepLine, { backgroundColor: i < currentStep ? SRS.teal : GRAY[200] }]} />}
-        </View>
-      ))}
+    <View style={s.stepBarWrap}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.stepBar}>
+        {STEPS.map((step, i) => (
+          <View key={step.key} style={s.stepItem}>
+            <TouchableOpacity
+              onPress={() => i <= currentStep && setCurrentStep(i)}
+              style={[s.stepDot, {
+                backgroundColor: i <= currentStep ? SRS.teal : GRAY[200],
+                opacity: i <= currentStep ? 1 : 0.5,
+              }]}
+            >
+              {i < currentStep ? (
+                <IconSymbol name="check" size={12} color={BG.white} />
+              ) : (
+                <Text style={[s.stepNum, { color: i === currentStep ? BG.white : GRAY[500] }]}>{i + 1}</Text>
+              )}
+            </TouchableOpacity>
+            <Text numberOfLines={1} style={[s.stepLabel, { color: i === currentStep ? SRS.navy : GRAY[400] }]}>{step.label}</Text>
+            {i < STEPS.length - 1 && <View style={[s.stepLine, { backgroundColor: i < currentStep ? SRS.teal : GRAY[200] }]} />}
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 
@@ -614,6 +695,62 @@ export default function NewBookingScreen() {
               )}
             </View>
 
+            {/* Payment Card */}
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Payment</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                {(['PAY_ON_ARRIVAL', 'ADVANCE'] as const).map(pm => (
+                  <TouchableOpacity
+                    key={pm}
+                    onPress={() => setPaymentMethod(pm)}
+                    style={{
+                      flex: 1, paddingVertical: 10, borderRadius: RADIUS.card, alignItems: 'center',
+                      backgroundColor: paymentMethod === pm ? SRS.teal : BG.white,
+                      borderWidth: 1, borderColor: paymentMethod === pm ? SRS.teal : GRAY[200],
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: paymentMethod === pm ? BG.white : GRAY[600] }}>
+                      {pm === 'PAY_ON_ARRIVAL' ? 'Pay at Arrival' : 'Collect Advance'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {paymentMethod === 'ADVANCE' && (
+                <View style={{ gap: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {paymentGateways.map(gw => (
+                      <TouchableOpacity
+                        key={gw}
+                        onPress={() => setPaymentGateway(gw)}
+                        style={{
+                          paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+                          backgroundColor: paymentGateway === gw ? SRS.teal : GRAY[100],
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: paymentGateway === gw ? BG.white : GRAY[600] }}>{gw}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View>
+                    <Text style={s.fieldLabel}>Amount collected now (NPR)</Text>
+                    <TextInput
+                      placeholder="0"
+                      placeholderTextColor={GRAY[400]}
+                      value={amountPaidInput}
+                      onChangeText={setAmountPaidInput}
+                      keyboardType="numeric"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+              )}
+              <Text style={{ fontSize: 12, color: GRAY[500] }}>
+                {paymentMethod === 'PAY_ON_ARRIVAL'
+                  ? 'Booking confirms immediately; balance settles at check-out.'
+                  : 'Booking confirms with the advance recorded against it.'}
+              </Text>
+            </View>
+
             {/* Pricing Card */}
             <View style={[s.card, { backgroundColor: SRS.teal + '06', borderWidth: 1, borderColor: SRS.teal + '20' }]}>
               <Text style={s.cardTitle}>Price Breakdown</Text>
@@ -635,16 +772,20 @@ export default function NewBookingScreen() {
                 <Text style={s.priceLabel}>Service Fee (8%)</Text>
                 <Text style={s.priceValue}>NPR {pricing.serviceFee.toLocaleString()}</Text>
               </View>
+              <View style={s.priceRow}>
+                <Text style={s.priceLabel}>Collected now</Text>
+                <Text style={s.priceValue}>− NPR {amountPaid.toLocaleString()}</Text>
+              </View>
               <View style={s.totalRow}>
                 <Text style={s.totalLabel}>Balance Due</Text>
-                <Text style={s.totalValue}>NPR {pricing.grandTotal.toLocaleString()}</Text>
+                <Text style={s.totalValue}>NPR {(pricing.grandTotal - amountPaid).toLocaleString()}</Text>
               </View>
             </View>
 
             {/* Confirm */}
-            <TouchableOpacity onPress={handleSubmit} style={s.submitBtn} activeOpacity={0.85}>
+            <TouchableOpacity onPress={handleSubmit} style={[s.submitBtn, submittingRef.current && { opacity: 0.6 }]} activeOpacity={0.85} disabled={submittingRef.current}>
               <IconSymbol name="check" size={18} color={BG.white} />
-              <Text style={s.submitText}>Confirm Reservation</Text>
+              <Text style={s.submitText}>{submittingRef.current ? 'Creating…' : 'Confirm Reservation'}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -676,11 +817,13 @@ const s = StyleSheet.create({
   sub: { ...TYPOGRAPHY.small, color: GRAY[500], marginTop: 2 },
   body: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.lg },
 
-  stepBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md },
+  stepBarWrap: { paddingVertical: SPACING.md },
+  stepBar: { paddingHorizontal: SPACING.lg, gap: 4 },
+  stepItem: { flexDirection: 'row', alignItems: 'center', marginRight: 4 },
   stepDot: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   stepNum: { fontSize: 10, fontWeight: '700' },
-  stepLabel: { ...TYPOGRAPHY.caption, fontWeight: '600', marginLeft: 4, flex: 1 },
-  stepLine: { flex: 1, height: 2, borderRadius: 1, marginHorizontal: 4 },
+  stepLabel: { ...TYPOGRAPHY.caption, fontWeight: '600', marginLeft: 4 },
+  stepLine: { width: 20, height: 2, borderRadius: 1, marginHorizontal: 4 },
 
   card: { backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.lg, borderWidth: 1, borderColor: GRAY[100] },
   cardTitle: { ...TYPOGRAPHY.subtitle, fontWeight: '700', color: SRS.navy, marginBottom: SPACING.md },

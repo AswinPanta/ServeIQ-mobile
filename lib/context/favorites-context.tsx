@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './auth-context';
 import { useToast } from '@/components/ui/toast';
 import { API_ENDPOINTS, API_BASE_URL, getPortalStorageKeys, STORAGE_KEYS } from '@/constants/api-config';
-import type { Hotel } from '@/types/api';
+import type { Hotel, PortalType } from '@/types/api';
 
 interface FavoritesContextValue {
   favorites: Set<number | string>;
@@ -25,7 +25,7 @@ async function getToken(): Promise<string | null> {
   try {
     const activePortal = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_PORTAL);
     if (!activePortal) return null;
-    const keys = getPortalStorageKeys(activePortal as any);
+    const keys = getPortalStorageKeys(activePortal as PortalType);
     return AsyncStorage.getItem(keys.AUTH_TOKEN);
   } catch { return null; }
 }

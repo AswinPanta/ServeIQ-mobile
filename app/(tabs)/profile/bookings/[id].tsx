@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, Share, Alert, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as Clipboard from 'expo-clipboard';
+import { safeGoBack } from '@/lib/utils';import * as Clipboard from 'expo-clipboard';
 import { useBookings, mapReservationToBooking, type Booking } from '@/lib/context/booking-context';
 import { bookingApi } from '@/lib/api/booking-api';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
@@ -16,6 +16,7 @@ const STATUS_COLORS = {
   upcoming: { bg: CORAL + '14', text: CORAL, label: 'Upcoming', icon: 'calendar' as const },
   completed: { bg: GREEN[50], text: STATUS.activeGreenDark, label: 'Completed', icon: 'confirm' as const },
   cancelled: { bg: RED[50], text: RED[600], label: 'Cancelled', icon: 'cancel' as const },
+  expired: { bg: SLATE[200], text: SLATE[500], label: 'Expired', icon: 'clock' as const },
 };
 
 const PAYMENT_STATUS_COLORS = {
@@ -26,9 +27,10 @@ const PAYMENT_STATUS_COLORS = {
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { bookings } = useBookings();
+  const { bookings, cancelBooking } = useBookings();
   const [remoteBooking, setRemoteBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
   const localBooking = bookings.find(b => b.id === id || b.refNumber === id);
   const ref = localBooking?.refNumber || id;
@@ -63,7 +65,7 @@ export default function BookingDetailScreen() {
       <View style={s.center}>
         <IconSymbol name="warning" size={48} color={SLATE[200]} />
         <Text style={s.errorText}>{loading ? 'Loading booking...' : 'Booking not found'}</Text>
-        <TouchableOpacity onPress={() => router.back()} style={s.retryBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.retryBtn}>
           <Text style={s.retryBtnText}>Go back</Text>
         </TouchableOpacity>
       </View>
@@ -75,7 +77,15 @@ export default function BookingDetailScreen() {
   const roomPrice = booking.subtotal ?? booking.totalPrice;
   const taxesAndFees = Math.max(0, booking.totalPrice - roomPrice);
   const isPaid = booking.status === 'upcoming' || booking.status === 'completed';
-  const paymentStatus = isPaid ? 'paid' : booking.status === 'cancelled' ? 'refunded' : 'pending';
+  const paymentStatus: 'paid' | 'pending' | 'refunded' = (() => {
+    const ps = booking.paymentStatus?.toUpperCase();
+    if (ps) {
+      if (ps === 'PAID' || ps === 'COMPLETED' || ps === 'SUCCEEDED') return 'paid';
+      if (ps === 'REFUNDED') return 'refunded';
+      return 'pending';
+    }
+    return isPaid ? 'paid' : booking.status === 'cancelled' ? 'refunded' : 'pending';
+  })();
   const paymentStatusInfo = PAYMENT_STATUS_COLORS[paymentStatus];
 
   const formatDateTime = (iso: string) => {
@@ -135,13 +145,38 @@ export default function BookingDetailScreen() {
     });
   };
 
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel this booking?',
+      'Your booking will be cancelled and any refund per the policy will be processed. This cannot be undone.',
+      [
+        { text: 'Keep booking', style: 'cancel' },
+        {
+          text: 'Cancel booking',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              const result = await cancelBooking(booking.id || booking.refNumber || id);
+              Alert.alert('Booking cancelled', result.policy);
+            } catch {
+              Alert.alert('Try again', 'We could not cancel your booking right now. Please try again.');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const checkinDT = formatDateTime(booking.checkIn);
   const checkoutDT = formatDateTime(booking.checkOut);
 
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.headerBackBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.headerBackBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Booking Details</Text>
@@ -304,6 +339,12 @@ export default function BookingDetailScreen() {
         {/* ── Actions ── */}
         <View style={s.sectionCard}>
           <View style={s.actionsRow}>
+            {booking.status === 'upcoming' && (
+              <TouchableOpacity style={s.cancelBtn} onPress={handleCancel} disabled={cancelling}>
+                <IconSymbol name="cancel" size={16} color={RED[600]} />
+                <Text style={s.cancelBtnText}>{cancelling ? 'Cancelling...' : 'Cancel'}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={s.actionBtn} onPress={handleCopyCode}>
               <IconSymbol name="checkmark" size={16} color={NAVY} />
               <Text style={s.actionBtnText}>Copy</Text>
@@ -421,6 +462,11 @@ const s = StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: SLATE[200], backgroundColor: BG.white,
   },
+  cancelBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: RED[200], backgroundColor: RED[50],
+  },
+  cancelBtnText: { fontSize: 13, fontWeight: '600', color: RED[600] },
   actionBtnText: { fontSize: 13, fontWeight: '600', color: NAVY },
 
   // ── Contact ──

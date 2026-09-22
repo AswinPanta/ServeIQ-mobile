@@ -12,6 +12,8 @@ export interface FrontDeskRoom {
   floor: number;
   status: RoomStatus;
   room_type?: string;
+  base_rate?: number;
+  max_occupancy?: number;
   guest_name?: string;
   booking_ref?: string;
 }
@@ -72,8 +74,8 @@ interface FrontDeskContextValue {
   departingToday: FrontDeskBooking[];
   getBooking: (id: string) => FrontDeskBooking | undefined;
   searchReservations: (query: string, filters?: { status?: string; date?: string; roomType?: string }) => FrontDeskBooking[];
-  checkIn: (guest: FrontDeskBooking, roomNumber: string) => void;
-  checkOut: (guestId: string, roomNumber: string, amount?: number) => void;
+  checkIn: (guest: FrontDeskBooking, roomNumber: string, payment?: { amount?: number; payment_gateway?: string }) => void;
+  checkOut: (guestId: string, roomNumber: string, amount?: number, paymentGateway?: string) => void;
   createBooking: (data: {
     guestName: string;
     email: string;
@@ -122,6 +124,8 @@ function mapBackendRoomToFD(r: AdminRoom): FrontDeskRoom {
     floor: r.floor_number,
     status: statusMap[r.status] || 'available',
     room_type: r.room_type_name || r.room_name,
+    base_rate: r.base_rate,
+    max_occupancy: r.max_occupancy,
   };
 }
 
@@ -309,14 +313,14 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
     return results;
   }, [bookings]);
 
-  const checkIn = useCallback((guest: FrontDeskBooking, roomNumber: string) => {
+  const checkIn = useCallback((guest: FrontDeskBooking, roomNumber: string, payment?: { amount?: number; payment_gateway?: string }) => {
     const pid = activePropertyId.current;
     if (isValidUuid(pid)) {
       const backendRoom = backendRoomsRef.current.get(roomNumber);
       if (backendRoom) {
         hostApi.updateRoom(pid, backendRoom.id, { status: 'OCCUPIED' as any }, () => backendRoom);
       }
-      staffApi.checkIn(guest.ref, {}, () => null);
+      staffApi.checkIn(guest.ref, { amount: payment?.amount, payment_gateway: payment?.payment_gateway }, () => null);
     }
     setRooms(prev => prev.map(r =>
       r.room_number === roomNumber ? { ...r, status: 'occupied' as RoomStatus, guest_name: guest.guest_name, booking_ref: guest.ref } : r
@@ -334,7 +338,7 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
     });
   }, [addTimelineEvent]);
 
-  const checkOut = useCallback((guestId: string, roomNumber: string, amount?: number) => {
+  const checkOut = useCallback((guestId: string, roomNumber: string, amount?: number, paymentGateway?: string) => {
     const pid = activePropertyId.current;
     const booking = bookings.find(b => b.id === guestId);
     if (isValidUuid(pid)) {
@@ -343,7 +347,7 @@ export function FrontDeskProvider({ children, propertyId: propPropertyId }: { ch
         hostApi.updateRoom(pid, backendRoom.id, { status: 'DIRTY' as any }, () => backendRoom);
       }
       if (booking) {
-        staffApi.checkOut(booking.ref, { amount: amount ?? 0 }, () => null);
+        staffApi.checkOut(booking.ref, { amount: amount ?? 0, payment_gateway: paymentGateway || undefined }, () => null);
       }
     }
     setRooms(prev => prev.map(r =>

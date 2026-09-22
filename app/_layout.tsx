@@ -2,10 +2,10 @@ import "@/global.css";
 
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { Component, type ReactNode, useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform, View } from "react-native";
+import { Platform, View, Animated, Image, Dimensions, Text, TouchableOpacity } from "react-native";
 import { ThemeProvider } from "@/lib/theme-provider";
 
 import { useFonts } from "expo-font";
@@ -63,6 +63,34 @@ console.warn = (...args: unknown[]) => {
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
+class RootErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "#fff" }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8, color: "#111" }}>Something went wrong</Text>
+          <Text style={{ fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20 }}>
+            {String(this.state.error?.message || this.state.error)}
+          </Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ error: null })}
+            style={{ paddingHorizontal: 28, paddingVertical: 12, borderRadius: 999, backgroundColor: "#2563EB" }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "600" }}>Reload</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export const unstable_settings = {
   anchor: "(tabs)",
 };
@@ -88,7 +116,7 @@ function RootNavigator() {
   // The Stack is always mounted so the index splash plays continuously
   // through auth initialization — no restart, no spinner.
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 400 }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(auth)" />
@@ -162,7 +190,9 @@ export default function RootLayout() {
                 <CouponProvider>
                     <PreferencesProvider>
                       <CRMProvider>
+                        <RootErrorBoundary>
                           <RootNavigator />
+                        </RootErrorBoundary>
                       </CRMProvider>
                     </PreferencesProvider>
                   <PushNotificationInit />
@@ -177,14 +207,19 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 
-  // While fonts load, keep the screen #FAFAFA (the Journey Across Nepal
-  // splash background) so the native splash blends seamlessly into the
-  // animated splash (which mounts once, in the index route).
+  // While fonts load, show the splash animation immediately (no blank screen).
   if (!fontsLoaded) {
+    const { width: W } = Dimensions.get('window');
     return (
       <ThemeProvider>
         <SafeAreaProvider initialMetrics={providerInitialMetrics}>
-          <View style={{ flex: 1, backgroundColor: NEUTRAL[50] }} />
+          <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+            <Image
+              source={require('@/assets/images/serveiq-logo.png')}
+              style={{ width: W * 0.65, height: W * 0.65, maxWidth: 320, maxHeight: 320 }}
+              resizeMode="contain"
+            />
+          </View>
         </SafeAreaProvider>
       </ThemeProvider>
     );

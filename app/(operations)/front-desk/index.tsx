@@ -1,23 +1,60 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, STATUS_COLORS, TYPOGRAPHY, SPACING, RADIUS, SHADOWS, GRAY } from '@/constants/portal-theme';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
 import { useShiftStore } from '@/stores/useShiftStore';
-import { useActivityStore } from '@/stores/useActivityStore';
+import { useAuth } from '@/lib/context/auth-context';
+import { staffApi } from '@/lib/api/host-api';
+import type { BackendActivityLog } from '@/types/api';
 import { SystemFlowBar } from '@/components/operations/SystemFlowBar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { STATUS_COLORS as STATUS_COLORSTokens, SRS as SRSTokens, PURPLE, BRAND, ORANGE, AMBER, BLUE, EMERALD, BG, RED, FLAT, UI } from '@/lib/constants/figma-tokens';
-;
-;
+import { STATUS_COLORS as STATUS_COLORSTokens, SRS as SRSTokens, PURPLE, BRAND, ORANGE, AMBER, BLUE, EMERALD, BG, RED, FLAT, UI, SLATE } from '@/lib/constants/figma-tokens';
 
 const QUICK_ACTIONS = [
   { id: 'new-booking', label: 'New Booking', icon: 'booking' as const, desc: 'Walk-in or phone', href: 'new-booking' as const, color: STATUS_COLORSTokens.occupied },
   { id: 'check-in', label: 'Check-in', icon: 'checkin' as const, desc: 'Process arrival', href: 'check-in' as const, color: SRSTokens.green },
   { id: 'check-out', label: 'Check-out', icon: 'checkout' as const, desc: 'Process departure', href: 'check-out' as const, color: SRSTokens.orange },
   { id: 'guest-crm', label: 'Guest CRM', icon: 'person.fill' as const, desc: 'Guest profiles', href: 'guest-crm' as const, color: PURPLE[700] },
+  { id: 'room-status', label: 'Room Status', icon: 'rooms' as const, desc: 'Live grid', href: 'room-status' as const, color: BLUE[500] },
+  { id: 'payments', label: 'Payments', icon: 'payment' as const, desc: 'History & refunds', href: 'payments' as const, color: EMERALD[600] },
+  { id: 'tasks', label: 'Tasks', icon: 'tasks' as const, desc: 'HK & requests', href: 'tasks' as const, color: AMBER[700] },
+  { id: 'notifications', label: 'Inbox', icon: 'bell' as const, desc: 'Alerts', href: 'notifications' as const, color: RED[500] },
 ];
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function activityIcon(type: string): string {
+  const t = type.toUpperCase();
+  if (t.includes('CHECK_IN')) return 'checkin';
+  if (t.includes('CHECK_OUT')) return 'checkout';
+  if (t.includes('CANCEL')) return 'close';
+  if (t.includes('CLEAN') || t.includes('INSPECT')) return 'cleaning';
+  if (t.includes('MAINTENANCE')) return 'room.maintenance';
+  return 'receipt';
+}
+
+function activityColor(type: string): string {
+  const t = type.toUpperCase();
+  if (t.includes('CHECK_IN')) return SRSTokens.green;
+  if (t.includes('CHECK_OUT')) return SRSTokens.orange;
+  if (t.includes('CANCEL')) return RED[500];
+  if (t.includes('CLEAN') || t.includes('INSPECT')) return SRS.teal;
+  if (t.includes('MAINTENANCE')) return SRSTokens.orange;
+  return STATUS_COLORSTokens.occupied;
+}
+
+function relTime(iso: string): string {
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return '';
+  const mins = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 const ROOM_STATUSES = ['available', 'occupied', 'dirty', 'maintenance'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -37,19 +74,55 @@ export default function FrontDeskDashboard() {
   const {
     rooms, bookings, arrivingGuests, checkedInGuests, departingToday,
     summaryStats, occupancySnapshot, updateRoomStatus, searchReservations,
-    timeline, cancelBooking,
+    timeline, cancelBooking, bookingGuestsData,
   } = useFrontDesk();
+  const { user } = useAuth();
   const shiftCheckIns = useShiftStore((s) => s.checkIns);
+  const [activities, setActivities] = useState<BackendActivityLog[]>([]);
+
+  // Fetch real-time activity feeds from backend
+  useEffect(() => {
+    const propId = (user as { property_id?: string } | null)?.property_id;
+    if (!propId || !UUID_RE.test(propId)) return;
+    let cancelled = false;
+    Promise.all([
+      staffApi.getBookingActivities(propId, { skip: 0, limit: 10 }),
+      staffApi.getHousekeepingActivities(propId, { skip: 0, limit: 10 }),
+    ])
+      .then(([booking, hk]) => {
+        if (cancelled) return;
+        const merged = [...booking, ...hk]
+          .sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0))
+          .slice(0, 8);
+        setActivities(merged);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user]);
   const bookingTotal = useMemo(() => bookings.length, [bookings]);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'arrivals' | 'inhouse' | 'departures'>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const navRef = useRef(false);
+  const safeNav = useCallback((href: any) => {
+    if (navRef.current) return;
+    navRef.current = true;
+    router.push(href);
+    setTimeout(() => { navRef.current = false; }, 400);
+  }, []);
 
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     return searchReservations(searchQuery);
   }, [searchQuery, searchReservations]);
+
+  /** Quick lookup: ref_number → rich guest data from booking-guests endpoint */
+  const guestLookup = useMemo(() => {
+    const map = new Map<string, typeof bookingGuestsData[0]>();
+    bookingGuestsData.forEach(g => map.set(g.ref_number, g));
+    return map;
+  }, [bookingGuestsData]);
 
   const showStatusMenu = useCallback((room: typeof rooms[0]) => {
     const isMaintenance = room.status === 'maintenance';
@@ -107,6 +180,7 @@ export default function FrontDeskDashboard() {
     const today = new Date().toISOString().slice(0, 10);
     const isDeparting = b.status === 'checked_in' && b.checkout === today;
     const bgColor = isDeparting ? AMBER[100] : isArriving ? BLUE[50] : isInHouse ? EMERALD[50] : BG.white;
+    const guestData = guestLookup.get(b.ref);
 
     return (
       <TouchableOpacity
@@ -114,7 +188,7 @@ export default function FrontDeskDashboard() {
         onPress={() => {
           Alert.alert(
             `${b.guest_name}`,
-            `Ref: ${b.ref}\nRoom: ${b.room_number || 'Not assigned'}\n${b.room_type}\n${b.checkin} → ${b.checkout}\n${b.source ? `Source: ${sourceInfo?.label || b.source}` : ''}${b.company ? `\nCompany: ${b.company}` : ''}${b.ota_ref ? `\nOTA Ref: ${b.ota_ref}` : ''}\nBalance: NPR ${(b.balance || 0).toLocaleString()}`,
+            `Ref: ${b.ref}\nRoom: ${b.room_number || 'Not assigned'}\n${b.room_type}\n${b.checkin} → ${b.checkout}\n${guestData ? `Adults: ${guestData.number_of_adults}${guestData.number_of_children ? `, Children: ${guestData.number_of_children}` : ''}\nPayment: ${guestData.payment_status || '—'}\nTotal: NPR ${(guestData.total_amount || 0).toLocaleString()}\n` : ''}${b.source ? `Source: ${sourceInfo?.label || b.source}` : ''}${b.company ? `\nCompany: ${b.company}` : ''}${b.ota_ref ? `\nOTA Ref: ${b.ota_ref}` : ''}\nBalance: NPR ${(b.balance || 0).toLocaleString()}`,
             [
               { text: 'Close', style: 'cancel' },
               ...(isArriving ? [{ text: 'Cancel Booking', style: 'destructive' as const, onPress: () => handleCancelBooking(b.id, b.guest_name) }] : []),
@@ -136,6 +210,11 @@ export default function FrontDeskDashboard() {
           </View>
           <Text style={s.bookingMeta}>{b.room_type} · {b.ref}</Text>
           <Text style={s.bookingDate}>{b.checkin} → {b.checkout}</Text>
+          {guestData?.payment_status && (
+            <Text style={[s.bookingMeta, { color: guestData.payment_status === 'PAID' ? '#10B981' : guestData.payment_status === 'UNPAID' ? '#EF4444' : '#F59E0B', marginTop: 2 }]}>
+              {guestData.payment_status === 'PAID' ? '● Paid' : guestData.payment_status === 'UNPAID' ? '● Unpaid' : `● ${guestData.payment_status}`}
+            </Text>
+          )}
         </View>
         <View style={{ alignItems: 'flex-end', gap: 4 }}>
           {isDeparting && (
@@ -145,7 +224,7 @@ export default function FrontDeskDashboard() {
           )}
           {isArriving && (
             <TouchableOpacity
-              onPress={() => router.push({ pathname: '/(operations)/front-desk/check-in', params: { bookingRef: b.ref } })}
+              onPress={() => safeNav({ pathname: '/(operations)/front-desk/check-in', params: { bookingRef: b.ref } })}
               style={s.quickCheckinBtn}
             >
               <Text style={s.quickCheckinText}>Check-in</Text>
@@ -300,18 +379,19 @@ export default function FrontDeskDashboard() {
               <Text style={s.sectionTitle}>Quick Actions</Text>
               <View style={s.actionsRow}>
                 {QUICK_ACTIONS.map(a => (
-                  <TouchableOpacity
-                    key={a.id}
-                    onPress={() => router.push(`/(operations)/front-desk/${a.href}`)}
-                    style={[s.actionCard, SHADOWS.card]}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[s.actionIcon, { backgroundColor: a.color + '14' }]}>
-                      <IconSymbol name={a.icon} size={22} color={a.color} />
-                    </View>
-                    <Text style={s.actionLabel}>{a.label}</Text>
-                    <Text style={s.actionDesc}>{a.desc}</Text>
-                  </TouchableOpacity>
+                  <View key={a.id} style={s.actionCardWrap}>
+                    <TouchableOpacity
+                      onPress={() => safeNav(`/(operations)/front-desk/${a.href}`)}
+                      style={[s.actionCard, SHADOWS.card]}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[s.actionIcon, { backgroundColor: a.color + '14' }]}>
+                        <IconSymbol name={a.icon} size={22} color={a.color} />
+                      </View>
+                      <Text style={s.actionLabel}>{a.label}</Text>
+                      <Text style={s.actionDesc}>{a.desc}</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </View>
 
@@ -369,17 +449,17 @@ export default function FrontDeskDashboard() {
                 })}
               </View>
 
-              {/* Timeline */}
-              {timeline.length > 0 && (
+              {/* Recent Activity (server feed) */}
+              {activities.length > 0 && (
                 <View style={{ marginTop: SPACING.lg }}>
-                  <Text style={s.sectionTitle}>Recent Timeline</Text>
-                  {timeline.slice(0, 6).map(event => (
-                    <View key={event.id} style={s.timelineRow}>
-                      <View style={s.timelineDot} />
+                  <Text style={s.sectionTitle}>Recent Activity</Text>
+                  {activities.map((a, i) => (
+                    <View key={a.id} style={[s.timelineRow, i < activities.length - 1 && { borderBottomWidth: 1, borderBottomColor: GRAY[100] }]}>
+                      <View style={[s.timelineDot, { backgroundColor: activityColor(a.activity_type) }]} />
                       <View style={s.timelineContent}>
-                        <Text style={s.timelineText}>{event.description}</Text>
+                        <Text style={s.timelineText} numberOfLines={1}>{a.description}</Text>
                         <Text style={s.timelineMeta}>
-                          {new Date(event.timestamp).toLocaleTimeString()} · {event.performedBy}
+                          {a.staff_name}{a.staff_name ? ' · ' : ''}{relTime(a.created_at)}
                         </Text>
                       </View>
                     </View>
@@ -397,7 +477,7 @@ export default function FrontDeskDashboard() {
               </Text>
               {arrivingGuests.length === 0 ? renderEmpty('No arrivals today') : arrivingGuests.map(renderBookingCard)}
               <TouchableOpacity
-                onPress={() => router.push('/(operations)/front-desk/new-booking')}
+                onPress={() => safeNav('/(operations)/front-desk/new-booking')}
                 style={s.quickAddBtn}
               >
                 <IconSymbol name="add" size={16} color={BG.white} />
@@ -430,7 +510,7 @@ export default function FrontDeskDashboard() {
                 : departingToday.map(b => (
                     <TouchableOpacity
                       key={b.id}
-                      onPress={() => router.push({ pathname: '/(operations)/front-desk/check-out', params: { bookingRef: b.ref } })}
+                      onPress={() => safeNav({ pathname: '/(operations)/front-desk/check-out', params: { bookingRef: b.ref } })}
                       style={[s.bookingCard, { backgroundColor: AMBER[100] }]}
                       activeOpacity={0.7}
                     >
@@ -443,7 +523,7 @@ export default function FrontDeskDashboard() {
                         <Text style={s.bookingDate}>Check-out today</Text>
                       </View>
                       <TouchableOpacity
-                        onPress={() => router.push({ pathname: '/(operations)/front-desk/check-out', params: { bookingRef: b.ref } })}
+                        onPress={() => safeNav({ pathname: '/(operations)/front-desk/check-out', params: { bookingRef: b.ref } })}
                         style={s.departBtn}
                       >
                         <Text style={s.departBtnText}>Check-out</Text>
@@ -483,7 +563,7 @@ const s = StyleSheet.create({
   kpiRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, gap: SPACING.sm },
   kpiCard: { flex: 1, backgroundColor: BG.white, borderRadius: RADIUS.card, padding: SPACING.md, alignItems: 'center', gap: 4 },
   kpiIcon: { width: 30, height: 30, borderRadius: RADIUS.button, alignItems: 'center', justifyContent: 'center' },
-  kpiValue: { fontSize: 18, fontWeight: '800', color: SRS.navy, fontVariant: ['tabular-nums'] as any },
+  kpiValue: { fontSize: 18, fontWeight: '800', color: SRS.navy, fontVariant: ['tabular-nums'] },
   kpiLabel: { ...TYPOGRAPHY.caption, color: GRAY[500], textTransform: 'uppercase', letterSpacing: 0.3 },
   tabRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, gap: SPACING.sm, marginBottom: SPACING.md },
   tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[200] },
@@ -516,7 +596,8 @@ const s = StyleSheet.create({
   roomType: { ...TYPOGRAPHY.caption, color: GRAY[500], marginTop: 2 },
   roomDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
 
-  actionsRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.lg },
+  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, marginBottom: SPACING.lg },
+  actionCardWrap: { width: '23.5%', minWidth: 76 },
   actionCard: { flex: 1, padding: SPACING.md, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', gap: 4 },
   actionIcon: { width: 40, height: 40, borderRadius: RADIUS.card, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   actionLabel: { ...TYPOGRAPHY.caption, fontWeight: '700', color: SRS.navy, fontSize: 11 },

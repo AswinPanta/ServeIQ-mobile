@@ -1,16 +1,16 @@
 import { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import { useBookings } from '@/lib/context/booking-context';
 import { useAuth } from '@/lib/context/auth-context';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FONTS } from '@/constants/portal-theme';
 import { CORAL as CORALTokens, BRAND, SRS, SLATE, NEUTRAL, BG, TEXT, FLAT, UI } from '@/lib/constants/figma-tokens';
 
-type BookingTab = 'upcoming' | 'completed' | 'cancelled';
+type BookingTab = 'upcoming' | 'completed' | 'cancelled' | 'expired';
 
-const TABS: BookingTab[] = ['upcoming', 'completed', 'cancelled'];
+const TABS: BookingTab[] = ['upcoming', 'completed', 'cancelled', 'expired'];
 
 const CORAL = CORALTokens[500];
 const NAVY = BRAND.navyLight;
@@ -19,6 +19,7 @@ const STATUS_BADGE = {
   upcoming: { bg: CORAL + '14', text: CORAL },
   completed: { bg: FLAT.green + '14', text: SRS.green },
   cancelled: { bg: UI.error + '14', text: SRS.red },
+  expired: { bg: SLATE[200], text: SLATE[500] },
 } as const;
 
 export default function BookingsScreen() {
@@ -109,7 +110,7 @@ export default function BookingsScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.bookings.title')}</Text>

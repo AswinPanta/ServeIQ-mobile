@@ -70,7 +70,7 @@ export default function HostRegisterScreen() {
                 <TextInput
                   placeholder={field === 'firstName' ? 'John' : 'Doe'}
                   placeholderTextColor={GRAY[400]}
-                  value={(form as any)[field]}
+                  value={(form as Record<string, string>)[field]}
                   onChangeText={(t) => updateField(field, t)}
                   style={s.input}
                 />
@@ -89,7 +89,7 @@ export default function HostRegisterScreen() {
               <TextInput
                 placeholder={field === 'email' ? 'your@email.com' : '+977-98xxxxxxxx'}
                 placeholderTextColor={GRAY[400]}
-                value={(form as any)[field]}
+                value={(form as Record<string, string>)[field]}
                 onChangeText={(t) => updateField(field, t)}
                 keyboardType={field === 'email' ? 'email-address' : 'phone-pad'}
                 autoCapitalize="none"
@@ -109,7 +109,7 @@ export default function HostRegisterScreen() {
               <TextInput
                 placeholder="••••••••"
                 placeholderTextColor={GRAY[400]}
-                value={(form as any)[field]}
+                value={(form as Record<string, string>)[field]}
                 onChangeText={(t) => updateField(field, t)}
                 secureTextEntry
                 autoCapitalize="none"

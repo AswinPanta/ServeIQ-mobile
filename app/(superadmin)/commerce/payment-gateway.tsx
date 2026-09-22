@@ -117,8 +117,8 @@ export default function PaymentGatewayScreen() {
                   <View key={f.key} style={s.field}>
                     <Text style={s.fieldLabel}>{f.label}</Text>
                     <TextInput
-                      value={(gw as any)[f.key]}
-                      onChangeText={t => update(gw.id, { [f.key]: t } as any)}
+                      value={gw[f.key as keyof GatewayConfig] as string}
+                      onChangeText={t => update(gw.id, { [f.key]: t } as Partial<GatewayConfig>)}
                       placeholder={f.placeholder}
                       placeholderTextColor={SLATE[400]}
                       secureTextEntry={f.secure}

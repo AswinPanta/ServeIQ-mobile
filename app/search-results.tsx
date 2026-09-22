@@ -17,7 +17,6 @@ import { StickySearchHeader } from '@/components/StickySearchHeader';
 import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
 import { searchHotelsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS } from '@/lib/constants/figma-tokens';
 
@@ -30,7 +29,7 @@ export default function SearchResultsScreen() {
   }>();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
 
-  const [allHotels, setAllHotels] = useState<Hotel[]>(MOCK_PROPERTIES);
+  const [allHotels, setAllHotels] = useState<Hotel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [fromApi, setFromApi] = useState(false);
@@ -69,14 +68,14 @@ export default function SearchResultsScreen() {
       if (append) {
         setAllHotels(prev => [...prev, ...result.hotels]);
       } else {
-        setAllHotels(result.hotels.length > 0 ? result.hotels : MOCK_PROPERTIES);
+        setAllHotels(result.hotels);
       }
       setFromApi(result.fromApi);
     } catch (e) {
       console.warn('Search failed:', e);
-      setSearchError('Search failed. Showing saved results.');
+      setSearchError('Search failed. Please try again.');
       if (!append) {
-        setAllHotels(MOCK_PROPERTIES);
+        setAllHotels([]);
       }
     }
   }, [location, checkIn, checkOut, guests, adults, children, rooms]);
@@ -131,7 +130,7 @@ export default function SearchResultsScreen() {
 
   const handleHotelPress = (hotelId: string) => {
     router.push({
-      pathname: '/hotel-detail-full/[id]',
+      pathname: '/[id]',
       params: { id: hotelId },
     });
   };
@@ -148,7 +147,7 @@ export default function SearchResultsScreen() {
     setActiveFilters(filters);
   };
 
-  const sortOptions = [
+  const sortOptions: { id: 'price' | 'rating' | 'distance'; label: string }[] = [
     { id: 'price', label: 'Price: Low to High' },
     { id: 'rating', label: 'Rating: High to Low' },
     { id: 'distance', label: 'Distance: Nearest' },
@@ -179,7 +178,7 @@ export default function SearchResultsScreen() {
           {sortOptions.map((option) => (
             <TouchableOpacity
               key={option.id}
-              onPress={() => setSortBy(option.id as any)}
+              onPress={() => setSortBy(option.id)}
               className={cn(
                 'px-3 py-2 rounded-full border',
                 sortBy === option.id
@@ -238,7 +237,7 @@ export default function SearchResultsScreen() {
                   check_in_time: item.checkInTime,
                   check_out_time: item.checkOutTime,
                   cancellation_policy: item.cancellationPolicy,
-                  photos: item.images.map((url: string, idx: number) => ({ url, caption: '', id: String(idx), order: idx })),
+                  photos: (item.images || []).map((url: string, idx: number) => ({ url, caption: '', id: String(idx), order: idx })),
                   amenities: item.amenities.map((a: any) => ({ id: a.name, name: a.name, icon: a.icon, category: 'other' as const })),
                   created_at: new Date().toISOString(),
                   updated_at: new Date().toISOString(),

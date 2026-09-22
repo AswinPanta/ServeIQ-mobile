@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { getTenantById, updateTenant, deleteTenantApi } from '@/lib/api';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { safeGoBack } from '@/lib/utils';import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getTenantById } from '@/lib/api';
 import { AdminCard } from '@/components/superadmin/AdminCard';
 import { StatCard } from '@/components/superadmin/StatCard';
 import { StatusBadge } from '@/components/superadmin/StatusBadge';
-import { PURPLE, BLUE, STATUS, AMBER, PINK, RED, SLATE, BG, GREEN, TEXT } from '@/lib/constants/figma-tokens';
+import { PURPLE, BLUE, STATUS, AMBER, PINK, RED, SLATE, BG, TEXT } from '@/lib/constants/figma-tokens';
 
 const ACCENT = PURPLE[700];
 
@@ -90,46 +90,6 @@ export default function TenantDetailScreen() {
 
   useEffect(() => { fetchTenant(); }, [fetchTenant]);
 
-  const handleSuspendToggle = () => {
-    if (!tenant) return;
-    Alert.alert(
-      isActive ? 'Suspend Tenant' : 'Activate Tenant',
-      isActive ? `Are you sure you want to suspend ${tenant.company}?` : `Reactivate ${tenant.company}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: isActive ? 'Suspend' : 'Activate',
-          style: isActive ? 'destructive' : 'default',
-          onPress: async () => {
-            const ok = await updateTenant(tenant.id, { is_active: !isActive });
-            if (ok) {
-              setIsActive(!isActive);
-              setTenant((prev: any) => ({ ...prev, status: isActive ? 'Suspended' : 'Active' }));
-            } else {
-              Alert.alert('Error', 'Failed to update tenant status. The backend may not support this action yet.');
-            }
-          },
-        },
-      ]);
-  };
-
-  const handleDelete = () => {
-    if (!tenant) return;
-    Alert.alert('Delete Tenant', `Permanently delete ${tenant.company}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          const ok = await deleteTenantApi(tenant.id);
-          if (ok) {
-            router.back();
-          } else {
-            Alert.alert('Error', 'Failed to delete tenant. The backend may not support this action yet.');
-          }
-        }
-      },
-    ]);
-  };
-
   if (loading) {
     return (
       <View style={styles.container}>
@@ -146,7 +106,7 @@ export default function TenantDetailScreen() {
       <View style={styles.container}>
         <View style={styles.loadingWrap}>
           <Text style={styles.loadingText}>Tenant not found.</Text>
-          <TouchableOpacity onPress={() => router.back()} style={[styles.upgradeBtn, { marginTop: 16 }]}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={[styles.upgradeBtn, { marginTop: 16 }]}>
             <Text style={styles.upgradeText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -163,7 +123,7 @@ export default function TenantDetailScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
             <IconSymbol name="arrow.back" size={18} color={ACCENT} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Tenant Details</Text>
@@ -231,20 +191,11 @@ export default function TenantDetailScreen() {
 
         {/* Actions */}
         <AdminCard title="Actions">
-          <TouchableOpacity
-            onPress={handleSuspendToggle}
-            style={[styles.actionBtn, { backgroundColor: isActive ? RED[50] : GREEN[50] }]}
-            activeOpacity={0.7}
-          >
-            <IconSymbol name={isActive ? 'close' : 'check'} size={18} color={isActive ? RED[500] : STATUS.activeGreen} />
-            <Text style={[styles.actionText, { color: isActive ? RED[500] : STATUS.activeGreen }]}>
-              {isActive ? 'Suspend Tenant' : 'Activate Tenant'}
+          <View style={styles.planRow}>
+            <Text style={styles.actionText}>
+              Suspending, activating, deleting, or upgrading tenants is unavailable until the backend exposes these operations (live PATCH /tenants accepts only "name", and DELETE removes the caller's own tenant).
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={[styles.actionBtn, styles.deleteBtn]} activeOpacity={0.7}>
-            <IconSymbol name="delete" size={18} color={RED[500]} />
-            <Text style={[styles.actionText, { color: RED[500] }]}>Delete Tenant</Text>
-          </TouchableOpacity>
+          </View>
         </AdminCard>
 
         {/* Recent Activity */}

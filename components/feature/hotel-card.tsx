@@ -30,7 +30,7 @@ export function HotelCard({
     ? { uri: mainImage }
     : mainImage;
 
-  const minPrice = 'price' in hotel ? (hotel as any).price : 5000;
+  const minPrice = hotel.price || 5000;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>

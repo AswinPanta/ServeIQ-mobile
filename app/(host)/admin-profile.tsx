@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { safeGoBack } from '@/lib/utils';import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/context/auth-context';
 import { SRS, GRAY, RADIUS, SHADOWS } from '@/constants/portal-theme';
@@ -54,7 +54,7 @@ export default function AdminProfileScreen() {
     <View style={[s.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="arrow-back" size={20} color={NAVY} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Admin Profile</Text>
@@ -76,7 +76,7 @@ export default function AdminProfileScreen() {
         <View style={s.tabRow}>
           {TABS.map((t) => (
             <TouchableOpacity key={t.id} onPress={() => setTab(t.id)} style={[s.tabBtn, tab === t.id && s.tabActive]}>
-              <Ionicons name={t.icon as any} size={16} color={tab === t.id ? '#fff' : GRAY[500]} />
+              <Ionicons name={t.icon} size={16} color={tab === t.id ? '#fff' : GRAY[500]} />
               <Text style={[s.tabLabel, tab === t.id && s.tabLabelActive]}>{t.label}</Text>
             </TouchableOpacity>
           ))}

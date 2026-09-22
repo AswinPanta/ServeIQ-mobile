@@ -1,316 +1,408 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  Alert,
-  Linking,
+  View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Share, StyleSheet,
 } from 'react-native';
-import { useAuth } from '@/lib/context/auth-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScreenContainer } from '@/components/screen-container';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { ReviewModal } from '@/components/feature/review-modal';
+import { ReviewList, type Review } from '@/components/feature/review-list';
+import { DatePickerCalendar } from '@/components/ui/date-picker-calendar';
+import { ImageGallery } from '@/components/guest/property/ImageGallery';
+import { HotelHeader } from '@/components/guest/property/HotelHeader';
+import { HostInfo } from '@/components/guest/property/HostInfo';
+import { AmenitiesSection } from '@/components/guest/property/AmenitiesSection';
+import { RoomSelectionPanel } from '@/components/guest/property/RoomSelectionPanel';
+import { ThingsToKnow } from '@/components/guest/property/ThingsToKnow';
+import { RoomDetailModal } from '@/components/guest/property/RoomDetailModal';
+import { useAuth } from '@/lib/context/auth-context';
+import { RecommendedRooms } from '@/components/guest/property/RecommendedRooms';
+import { ContactSection } from '@/components/guest/property/ContactSection';
+import { PriceSummary } from '@/components/guest/property/PriceSummary';
 import { useFavorites } from '@/lib/context/favorites-context';
-import { useColors } from '@/hooks/use-colors';
-import { cn } from '@/lib/utils';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
-import { CORAL } from '@/lib/constants/figma-tokens';
-import { validateEmail, validatePhone } from '@/lib/utils/validation';
+import { getPropertyById } from '@/lib/api';
+import { hostApi } from '@/lib/api/host-api';
+import { safeGoBack } from "@/lib/utils";
+import type { Hotel } from '@/types/api';
+import { BG, SRS, NEUTRAL, SLATE, BRAND } from '@/lib/constants/figma-tokens';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { OSMMap } from '@/components/feature/osm-map';
 
-export default function HotelDetailScreen() {
-  const colors = useColors();
-  const { id } = useLocalSearchParams<{ id: string }>();
+export default function GuestHotelDetail() {
+  const {
+    id,
+    checkIn: urlCheckIn,
+    checkOut: urlCheckOut,
+    guests: urlGuests,
+    adults: urlAdults,
+    children: urlChildren,
+  } = useLocalSearchParams();
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
-
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  const hotel = useMemo(() => MOCK_PROPERTIES.find(h => h.id === id) || MOCK_PROPERTIES[0], [id]);
-
-  const relatedHotels = useMemo(
-    () => MOCK_PROPERTIES.filter(h => h.city === hotel.city && h.id !== hotel.id).slice(0, 3),
-    [hotel]
-  );
-
   const { user } = useAuth();
 
-  const handleBooking = (room: { id: string; name: string; price: number }) => {
-    if (!user) {
-      Alert.alert('Login Required', 'Please login to book this property.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => router.push('/(auth)/login') },
-      ]);
-      return;
-    }
-    router.push({
-      pathname: '/booking-flow',
-      params: {
-        hotelName: hotel.name,
-        propertyId: id,
-        checkIn: '',
-        checkOut: '',
-        guests: '1',
-        roomId: room.id,
-        roomName: room.name,
-        roomPrice: String(room.price),
-      },
-    });
-  };
+  // No fallback data — the backend fetch decides; on failure we show a retry
+  // state rather than any placeholder property.
+  const [hotel, setHotel] = useState<Hotel | null>(null);
+  const [isFetching, setIsFetching] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const toggleFavorite = () => {
-    if (isFavorite(hotel.id)) {
-      removeFavorite(hotel.id);
-    } else {
-      addFavorite(hotel.id, hotel);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsFetching(true);
+      // Reset to a fresh state when navigating between properties so the
+      // previous property is never shown while the new one loads.
+      setHotel(null);
+      const result = await getPropertyById(id as string);
+      if (cancelled) return;
+      if (result) setHotel(result);
+      setIsFetching(false);
+    })();
+    return () => { cancelled = true; };
+  }, [id, reloadKey]);
+
+  const getRoomAvailability = useCallback((roomName: string): number => {
+    const mt = (hotel?.roomTypes ?? []).find(r => r.name === roomName);
+    if (mt && mt.available != null) return mt.available;
+    return 3;
+  }, [hotel]);
+
+  // Related-properties rail needs a backend source; without one it stays empty.
+  const relatedHotels: Hotel[] = [];
+
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
+  const [checkInDate, setCheckInDate] = useState<Date | null>(urlCheckIn ? new Date(urlCheckIn as string) : null);
+  const [checkOutDate, setCheckOutDate] = useState<Date | null>(urlCheckOut ? new Date(urlCheckOut as string) : null);
+  const [selectedRoom, setSelectedRoom] = useState<Hotel['roomTypes'][number] | null>(null);
+  // Guest split: the search modal / search results pass adults + children
+  // separately; fall back to the legacy single `guests` total (all adults) when
+  // only that is provided.
+  const [adultCount, setAdultCount] = useState(
+    Math.min(10, Math.max(1, parseInt((urlAdults as string) || (urlGuests as string) || '1', 10) || 1))
+  );
+  const [childCount, setChildCount] = useState(
+    Math.min(6, Math.max(0, parseInt((urlChildren as string) || '0', 10) || 0))
+  );
+  const guestCount = adultCount + childCount;
+  const [isLoading, setIsLoading] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [detailRoom, setDetailRoom] = useState<Hotel['roomTypes'][number] | null>(null);
+  const [showRoomDetail, setShowRoomDetail] = useState(false);
+  const [hotelReviews, setHotelReviews] = useState<Review[]>(
+    () => (hotel?.reviews ?? []).map(r => ({ id: r.id, author: r.author, rating: r.rating, date: r.date, title: '', comment: r.comment, verified: true }))
+  );
+
+  // Re-sync reviews when the loaded property changes (mock → backend or
+  // navigating between properties).
+  useEffect(() => {
+    setHotelReviews(
+      (hotel?.reviews ?? []).map(r => ({ id: r.id, author: r.author, rating: r.rating, date: r.date, title: '', comment: r.comment, verified: true }))
+    );
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (hotel && UUID_RE.test(hotel.id)) {
+      const hotelId = hotel.id;
+      hostApi.getReviews(hotelId, () => []).then((items: any[]) => {
+        if (Array.isArray(items) && items.length > 0) {
+          setHotelReviews(
+            items.map((r) => ({
+              id: r.id || '',
+              author: r.guest_name || r.author || 'Guest',
+              rating: Number(r.rating || 0),
+              date: r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Recent',
+              title: '',
+              comment: r.comment || '',
+              verified: true,
+            }))
+          );
+        }
+      });
     }
-  };
+  }, [hotel]);
+
+  const nights = useMemo(() => {
+    if (checkInDate && checkOutDate) return Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / 86400000));
+    return 1;
+  }, [checkInDate, checkOutDate]);
+
+  const roomPrice = selectedRoom?.price || hotel?.price || 0;
+
+  if (!hotel) {
+    return (
+      <View style={s.container}>
+        {isFetching ? (
+          <View style={s.centerBox}>
+            <ActivityIndicator size="large" color={ACCENT} />
+            <Text style={s.centerTitle}>Loading property…</Text>
+          </View>
+        ) : (
+          <View style={s.centerBox}>
+            <Text style={s.centerIcon}>🏨</Text>
+            <Text style={s.centerTitle}>Couldn&apos;t load this property</Text>
+            <Text style={s.centerText}>
+              It may be offline or no longer listed. Check your connection and try again.
+            </Text>
+            <TouchableOpacity style={s.retryBtn} onPress={() => setReloadKey(k => k + 1)} activeOpacity={0.85}>
+              <Text style={s.retryBtnText}>Try Again</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={() => safeGoBack()} activeOpacity={0.7}>
+              <Text style={s.backBtnText}>← Go back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  }
 
   return (
-    <ScreenContainer className="flex-1" containerClassName="bg-background">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Image Gallery */}
-        <View className="relative w-full h-72 bg-surface">
-          <Image
-            source={{ uri: hotel.images[currentImageIndex] }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
-          {hotel.logoUrl && (
-            <View style={{ position: 'absolute', bottom: 16, left: 16 }}>
-              <Image source={{ uri: hotel.logoUrl }} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.95)' }} resizeMode="contain" />
+    <View style={s.container}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} contentInsetAdjustmentBehavior="automatic">
+        <ImageGallery
+          images={hotel.images}
+          selectedImageIndex={selectedImageIndex}
+          onSelectImage={setSelectedImageIndex}
+          showAllPhotos={showAllPhotos}
+          onTogglePhotos={() => setShowAllPhotos(v => !v)}
+          onBack={() => safeGoBack()}
+          onShare={async () => { try { await Share.share({ message: `Check out ${hotel.name}!`, title: hotel.name }); } catch { /* user cancelled */ } }}
+          isFavorite={isFavorite(hotel.id)}
+          onToggleFavorite={() => isFavorite(hotel.id) ? removeFavorite(hotel.id) : addFavorite(hotel.id, hotel)}
+        />
+
+        {!showAllPhotos && (
+          <>
+            <HotelHeader hotel={hotel} />
+
+            <View style={s.section}>
+              <Text style={s.bodyText}>{hotel.description}</Text>
             </View>
-          )}
-          <View className="absolute top-4 right-4 bg-black/60 rounded-full px-3 py-1">
-            <Text className="text-white text-sm font-semibold">
-              {currentImageIndex + 1}/{hotel.images.length}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={toggleFavorite}
-            className="absolute top-4 left-4 w-12 h-12 rounded-full bg-white/90 items-center justify-center"
-          >
-            <Text className={cn('text-2xl', isFavorite(hotel.id) ? 'text-error' : 'text-muted')}>
-              {isFavorite(hotel.id) ? '❤️' : '🤍'}
-            </Text>
-          </TouchableOpacity>
-          {hotel.images.length > 1 && (
-            <View className="absolute bottom-4 left-0 right-0 flex-row items-center justify-center gap-2">
-              {hotel.images.map((_: string, index: number) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setCurrentImageIndex(index)}
-                  className={cn(
-                    'w-3 h-3 rounded-full',
-                    index === currentImageIndex ? 'bg-white w-8' : 'bg-white/50'
-                  )}
+
+            <View style={s.section}>
+              <HostInfo hotelName={hotel.name} hostName={hotel.hostName} />
+            </View>
+
+            <View style={s.section}>
+              <AmenitiesSection amenities={hotel.amenities} />
+            </View>
+
+            <View style={s.section}>
+              <TouchableOpacity onPress={() => setShowCalendar(true)} style={s.dateChip}>
+                <Text style={s.dateChipText}>
+                  {checkInDate && checkOutDate
+                    ? `${checkInDate.toLocaleDateString()} — ${checkOutDate.toLocaleDateString()}`
+                    : 'Tap to select dates'}
+                </Text>
+              </TouchableOpacity>
+              {checkInDate && checkOutDate && (
+                <Text style={s.nightsText}>{nights} night{nights > 1 ? 's' : ''}</Text>
+              )}
+            </View>
+
+            <DatePickerCalendar
+              visible={showCalendar}
+              onClose={() => setShowCalendar(false)}
+              onSelectDates={(inDate, outDate) => { setCheckInDate(inDate); setCheckOutDate(outDate); }}
+              initialCheckIn={checkInDate || undefined}
+              initialCheckOut={checkOutDate || undefined}
+            />
+
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Guests</Text>
+              <View style={s.guestRows}>
+                <View style={s.counterRow}>
+                  <Text style={s.guestLabel}>Adults</Text>
+                  <View style={s.counterControls}>
+                    <TouchableOpacity onPress={() => setAdultCount(Math.max(1, adultCount - 1))} style={s.counterBtn}>
+                      <Text style={s.counterVal}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={s.counterVal}>{adultCount}</Text>
+                    <TouchableOpacity onPress={() => setAdultCount(Math.min(10, adultCount + 1))} style={s.counterBtn}>
+                      <Text style={s.counterVal}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={s.counterRow}>
+                  <Text style={s.guestLabel}>Children</Text>
+                  <View style={s.counterControls}>
+                    <TouchableOpacity onPress={() => setChildCount(Math.max(0, childCount - 1))} style={s.counterBtn}>
+                      <Text style={s.counterVal}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={s.counterVal}>{childCount}</Text>
+                    <TouchableOpacity onPress={() => setChildCount(Math.min(6, childCount + 1))} style={s.counterBtn}>
+                      <Text style={s.counterVal}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+              <Text style={s.guestTotal}>
+                {adultCount} adult{adultCount > 1 ? 's' : ''}{childCount > 0 ? `, ${childCount} child${childCount > 1 ? 'ren' : ''}` : ''}
+              </Text>
+            </View>
+
+            <View style={s.section}>
+              {isFetching ? (
+                <View style={s.roomsLoading}>
+                  <ActivityIndicator size="small" color={ACCENT} />
+                  <Text style={s.roomsLoadingText}>Checking room availability…</Text>
+                </View>
+              ) : (
+                <RoomSelectionPanel
+                  roomTypes={hotel.roomTypes}
+                  guestCount={guestCount}
+                  selectedRoom={selectedRoom}
+                  onSelectRoom={setSelectedRoom}
+                  hotelCurrency={hotel.currency}
+                  getAvailability={getRoomAvailability}
                 />
-              ))}
+              )}
             </View>
-          )}
-        </View>
 
-        {/* Hotel Info */}
-        <View className="px-6 py-6 gap-5">
-          {/* Header */}
-          <View className="gap-2">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-2xl font-bold text-foreground">{hotel.name}</Text>
-                <Text className="text-sm text-muted">{hotel.city}, {hotel.country}</Text>
-              </View>
-              <View style={{ backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, flexDirection: 'row', alignItems: 'center' }}>
-                <Text className="text-yellow-300 font-bold">★</Text>
-                <Text className="text-white font-semibold">{hotel.rating}</Text>
-              </View>
+            <View style={s.section}>
+              <ThingsToKnow
+                checkInTime={hotel.checkInTime}
+                checkOutTime={hotel.checkOutTime}
+                cancellationPolicy={hotel.cancellationPolicy}
+                amenities={hotel.amenities}
+              />
             </View>
-            <Text className="text-xs text-muted">{hotel.review_count} reviews</Text>
-          </View>
 
-          {/* Description */}
-          <View className="gap-2">
-            <Text className="text-sm font-semibold text-foreground">About</Text>
-            <Text className="text-sm text-muted leading-relaxed">{hotel.description}</Text>
-          </View>
-
-          {/* Amenities */}
-          <View className="gap-2">
-            <Text className="text-sm font-semibold text-foreground">Amenities</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-6 px-6">
-              <View className="flex-row gap-2">
-                {hotel.amenities.map((amenity) => (
-                  <View key={amenity.name} className="bg-surface rounded-full px-3 py-2 flex-row items-center">
-                    <Text className="text-xs text-foreground" numberOfLines={1}>
-                      {amenity.icon}  {amenity.name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* Official Contact */}
-          {(hotel.phone || hotel.email) && (
-            <Card variant="outlined" padding="md">
-              <View className="gap-3">
-                <Text className="text-sm font-semibold text-foreground">Official Contact</Text>
-                {hotel.phone && !validatePhone(hotel.phone) ? (
-                  <>
-                    <TouchableOpacity
-                      onPress={() => Linking.openURL(`tel:${hotel.phone.replace(/[^+\d]/g, '')}`)}
-                      className="flex-row items-center gap-3"
-                    >
-                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: (hotel.brandColor || CORAL[500]) + '15', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontSize: 16 }}>📞</Text>
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-[11px] text-muted">Phone</Text>
-                        <Text className="text-sm text-foreground font-medium">{hotel.phone}</Text>
-                      </View>
-                      <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || CORAL[500] }}>Call →</Text>
-                    </TouchableOpacity>
-                    {hotel.email && !validateEmail(hotel.email) ? <View className="h-px bg-border" /> : null}
-                  </>
-                ) : null}
-                {hotel.email && !validateEmail(hotel.email) ? (
-                  <TouchableOpacity
-                    onPress={() => Linking.openURL(`mailto:${hotel.email}`)}
-                    className="flex-row items-center gap-3"
-                  >
-                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: (hotel.brandColor || CORAL[500]) + '15', alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 16 }}>✉️</Text>
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-[11px] text-muted">Email</Text>
-                      <Text className="text-sm text-foreground font-medium">{hotel.email}</Text>
-                    </View>
-                    <Text className="text-xs font-semibold" style={{ color: hotel.brandColor || CORAL[500] }}>Email →</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            </Card>
-          )}
-
-          {/* Cancellation Policy */}
-          <Card variant="outlined" padding="md">
-            <View className="gap-2">
-              <Text className="text-sm font-semibold text-foreground">Cancellation Policy</Text>
-              <Text className="text-sm text-muted">{hotel.cancellationPolicy}</Text>
-            </View>
-          </Card>
-
-          {/* Check-in/Check-out */}
-          <View className="flex-row gap-4">
-            <Card variant="default" padding="md" className="flex-1">
-              <View className="gap-1">
-                <Text className="text-xs text-muted">Check-in</Text>
-                <Text className="text-base font-semibold text-foreground">{hotel.checkInTime}</Text>
-              </View>
-            </Card>
-            <Card variant="default" padding="md" className="flex-1">
-              <View className="gap-1">
-                <Text className="text-xs text-muted">Check-out</Text>
-                <Text className="text-base font-semibold text-foreground">{hotel.checkOutTime}</Text>
-              </View>
-            </Card>
-          </View>
-
-          {/* Room Types */}
-          <View className="gap-3">
-            <Text className="text-lg font-bold text-foreground">Available Rooms</Text>
-            {hotel.roomTypes.map((room) => (
-              <Card key={room.id} variant="elevated" padding="md" className="gap-3">
-                <View className="flex-row items-start gap-3">
-                  <Image
-                    source={{ uri: room.image }}
-                    className="w-20 h-20 rounded-lg bg-surface"
-                    resizeMode="cover"
+            {(hotel.latitude || hotel.coordinates?.lat) && (
+              <View style={s.section}>
+                <Text style={s.sectionTitle}>Location</Text>
+                <View style={s.mapContainer}>
+                  <OSMMap
+                    latitude={hotel.latitude || hotel.coordinates?.lat || 27.7172}
+                    longitude={hotel.longitude || hotel.coordinates?.lng || 85.324}
+                    title={hotel.name}
                   />
-                  <View className="flex-1 gap-1">
-                    <Text className="text-base font-semibold text-foreground">{room.name}</Text>
-                    <Text className="text-xs text-muted">{room.description}</Text>
-                    <Text className="text-xs text-muted">
-                      {room.bed} • Up to {room.occupancy} guests
-                    </Text>
-                  </View>
                 </View>
-                <View className="flex-row items-center justify-between pt-2 border-t border-border">
-                  <View>
-                    <Text style={{ fontSize: 18, fontWeight: '700', color: hotel.brandColor || CORAL[500] }}>
-                      NPR {room.price.toLocaleString()}
-                    </Text>
-                    {room.available > 0 && room.available <= 3 && (
-                      <Text className="text-xs text-error font-semibold">
-                        Only {room.available} left
-                      </Text>
-                    )}
-                  </View>
-                  <TouchableOpacity onPress={() => handleBooking(room)}
-                    style={{ backgroundColor: hotel.brandColor || CORAL[500], paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 }}
-                  >
-                    <Text className="text-white font-semibold text-sm">Book Now</Text>
-                  </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <IconSymbol name="location" size={14} color={SRS.teal} />
+                  <Text style={{ fontSize: 13, color: SLATE[500], flex: 1 }}>
+                    {hotel.address || hotel.location}
+                  </Text>
                 </View>
-              </Card>
-            ))}
-          </View>
+              </View>
+            )}
 
-          {/* Reviews */}
-          {hotel.reviews.length > 0 && (
-            <View className="gap-3">
-              <Text className="text-lg font-bold text-foreground">Guest Reviews</Text>
-              {hotel.reviews.map((review) => (
-                <Card key={review.id} variant="default" padding="md" className="gap-2">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="font-semibold text-foreground">{review.author}</Text>
-                    <View className="flex-row items-center gap-1">
-                      <Text className="text-yellow-400">★</Text>
-                      <Text className="font-semibold text-foreground">{review.rating}</Text>
-                    </View>
-                  </View>
-                  <Text className="text-xs text-muted">{review.date}</Text>
-                  <Text className="text-sm text-muted">{review.comment}</Text>
-                </Card>
-              ))}
+            <View style={s.section}>
+              <PriceSummary
+                currency={hotel.currency}
+                roomPrice={roomPrice}
+                nights={nights}
+                rating={hotel.rating}
+                checkInSelected={!!checkInDate}
+                checkOutSelected={!!checkOutDate}
+                selectedRoomName={selectedRoom?.name}
+              />
             </View>
-          )}
 
-          {/* Related Hotels */}
-          {relatedHotels.length > 0 && (
-            <View className="gap-3">
-              <Text className="text-lg font-bold text-foreground">More in {hotel.city}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-6 px-6">
-                <View className="flex-row gap-3">
-                  {relatedHotels.map((h) => (
-                    <TouchableOpacity
-                      key={h.id}
-                      onPress={() => router.push({ pathname: '/[id]', params: { id: h.id } })}
-                      className="w-44 rounded-xl border border-border overflow-hidden bg-surface"
-                    >
-                      <Image
-                        source={{ uri: h.images[0] }}
-                        className="w-full h-28 bg-surface"
-                        resizeMode="cover"
-                      />
-                      <View className="p-3 gap-1">
-                        <Text className="text-sm font-semibold text-foreground" numberOfLines={1}>{h.name}</Text>
-                        <View className="flex-row items-center gap-1">
-                          <Text className="text-yellow-400 text-xs">★</Text>
-                          <Text className="text-xs text-muted">{h.rating} ({h.review_count})</Text>
-                        </View>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: h.brandColor || CORAL[500] }}>NPR {h.price.toLocaleString()} <Text className="text-[10px] font-normal text-muted">night</Text></Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
+            <View style={s.section}>
+              <ReviewList reviews={hotelReviews} onWriteReview={() => setShowReviewModal(true)} />
             </View>
-          )}
 
+            <View style={s.section}>
+              <ContactSection
+                phone={hotel.phone}
+                email={hotel.email}
+                checkInTime={hotel.checkInTime}
+                checkOutTime={hotel.checkOutTime}
+              />
+            </View>
 
-        </View>
+            <View style={s.section}>
+              <RecommendedRooms
+                hotels={relatedHotels}
+                city={hotel.city}
+                onHotelPress={(hid) => router.replace({ pathname: '/[id]', params: { id: hid } })}
+              />
+            </View>
+          </>
+        )}
       </ScrollView>
-    </ScreenContainer>
+
+      <View style={s.bottomBar}>
+        {checkInDate && checkOutDate && (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+            <View>
+              <Text style={s.bottomTotal}>{hotel.currency} {selectedRoom ? (roomPrice * nights).toLocaleString() : '—'}</Text>
+              <Text style={s.bottomMeta}>{nights} night{nights > 1 ? 's' : ''}{selectedRoom ? ` · ${selectedRoom.name}` : ' · Select a room'}</Text>
+            </View>
+            {selectedRoom && (
+              <Text style={s.bottomPerNight}>{hotel.currency} {Math.round(roomPrice * nights / nights)}/night</Text>
+            )}
+          </View>
+        )}
+        <TouchableOpacity onPress={() => {
+          if (!user) {
+            Alert.alert('Login Required', 'Please login to book this property.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Login', onPress: () => router.push('/(auth)/login') },
+            ]);
+            return;
+          }
+          if (!checkInDate || !checkOutDate) { Alert.alert('Select Dates', 'Please choose check-in and check-out dates'); return; }
+          if (!selectedRoom) { Alert.alert('Select Room', 'Please select a room type'); return; }
+          setIsLoading(true);
+          setTimeout(() => {
+            setIsLoading(false);
+            router.push({ pathname: '/booking-flow', params: { hotelName: hotel.name, propertyId: hotel.id, currency: hotel.currency || 'NPR', checkIn: checkInDate!.toISOString(), checkOut: checkOutDate!.toISOString(), guests: String(guestCount), adults: String(adultCount), children: String(childCount), roomId: selectedRoom!.id, roomName: selectedRoom!.name, roomPrice: String(selectedRoom!.price) } });
+          }, 500);
+        }} disabled={isLoading} style={[s.bookBtn, { opacity: isLoading ? 0.7 : 1 }]} activeOpacity={0.9}>
+          {isLoading ? <ActivityIndicator color={BG.white} /> : (
+            <Text style={s.bookBtnText}>{checkInDate && checkOutDate && selectedRoom ? 'Book Now' : 'Select dates to book'}</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      <RoomDetailModal
+        visible={showRoomDetail}
+        room={detailRoom}
+        hotelName={hotel.name}
+        onClose={() => { setShowRoomDetail(false); setDetailRoom(null); }}
+      />
+
+      <ReviewModal visible={showReviewModal} onClose={() => setShowReviewModal(false)} onSubmit={(review) => {
+        setHotelReviews(prev => [{ id: String(prev.length + 1), author: 'You', rating: review.rating, date: new Date().toLocaleDateString(), title: review.title, comment: review.comment, photos: review.photos, verified: true }, ...prev]);
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (UUID_RE.test(hotel.id)) hostApi.createReview(hotel.id, { rating: review.rating, comment: review.comment }, () => null);
+      }} hotelName={hotel.name} />
+    </View>
   );
 }
+
+const ACCENT = SRS.teal;
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: NEUTRAL[50] },
+  section: { padding: 16, backgroundColor: BG.white, borderBottomWidth: 1, borderBottomColor: SLATE[100] },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: BRAND.navyLight, marginBottom: 10, letterSpacing: -0.2 },
+  bodyText: { fontSize: 13, color: SLATE[500], lineHeight: 22 },
+  dateChip: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, backgroundColor: SLATE[50], borderWidth: 1, borderColor: SLATE[200] },
+  dateChipText: { fontSize: 13, fontWeight: '500', color: BRAND.navyLight, flex: 1 },
+  nightsText: { fontSize: 11, color: SLATE[400], marginTop: 4, marginLeft: 2 },
+  guestRows: { gap: 12 },
+  counterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  counterControls: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  counterBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: 'rgba(46,134,171,0.1)', alignItems: 'center', justifyContent: 'center' },
+  counterVal: { fontSize: 16, fontWeight: '700', color: BRAND.navyLight, minWidth: 24, textAlign: 'center' },
+  guestLabel: { fontSize: 13, color: SLATE[500] },
+  guestTotal: { fontSize: 12, color: SLATE[400], marginTop: 10 },
+  roomsLoading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 28 },
+  roomsLoadingText: { fontSize: 13, color: SLATE[500], fontWeight: '500' },
+  centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 8 },
+  centerIcon: { fontSize: 40, marginBottom: 4 },
+  centerTitle: { fontSize: 17, fontWeight: '700', color: BRAND.navyLight, marginTop: 8 },
+  centerText: { fontSize: 13, color: SLATE[500], textAlign: 'center', lineHeight: 20, marginTop: 4 },
+  retryBtn: { marginTop: 16, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT },
+  retryBtnText: { fontSize: 14, fontWeight: '700', color: BG.white },
+  backBtn: { marginTop: 14, padding: 6 },
+  backBtnText: { fontSize: 13, fontWeight: '600', color: SLATE[500] },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 36, backgroundColor: BG.white, borderTopWidth: 1, borderTopColor: SLATE[100] },
+  bottomTotal: { fontSize: 16, fontWeight: '700', color: ACCENT },
+  bottomMeta: { fontSize: 11, color: SLATE[400], marginTop: 1 },
+  bottomPerNight: { fontSize: 11, color: SLATE[400] },
+  bookBtn: { paddingVertical: 15, borderRadius: 12, backgroundColor: BRAND.navyLight, alignItems: 'center', shadowColor: BRAND.navyLight, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  bookBtnText: { fontSize: 14, fontWeight: '700', color: BG.white, letterSpacing: 0.3 },
+  mapContainer: { borderRadius: 12, overflow: 'hidden', height: 180 },
+  map: { width: '100%', height: '100%' },
+});

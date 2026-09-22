@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '@/constants/api-config';
-import type { Hotel } from '@/lib/mock/properties';
+import type { Hotel } from '@/types/api';
 
 // A stale-while-revalidate cache for "Stays nearby". Entries are valid for one
 // hour (CACHE_TTL_MS) — older snapshots are discarded on read so a stale list

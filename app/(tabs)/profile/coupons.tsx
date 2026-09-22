@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { View, Text, SectionList, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useCoupons } from '@/lib/context/coupon-context';
@@ -87,7 +87,7 @@ export default function CouponsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
           <IconSymbol name="arrow.back" size={22} color={NAVY} />
         </TouchableOpacity>
         <Text style={styles.title}>{t('profile.coupons.title')}</Text>

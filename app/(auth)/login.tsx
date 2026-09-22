@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image, Alert,
 } from 'react-native';
-import { router, usePathname, useLocalSearchParams } from 'expo-router';
+import { router, usePathname, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BRAND, SRS, BG, CLOUD, RED, SOCIAL, TEXT, NEUTRAL, SLATE } from '@/lib/constants/figma-tokens';
 import { loginSchema } from '@/lib/validation/schemas';
+import { STORAGE_KEYS } from '@/constants/api-config';
 
 const NAVY = BRAND.navyLight;
 const TEAL = SRS.teal;
 
 export default function LoginScreen() {
-  const { login, mustChangePassword } = useAuth();
+  const { login } = useAuth();
   const pathname = usePathname();
   const params = useLocalSearchParams<{ portal?: string; redirect?: string }>();
   const isHostRoute = pathname.includes('/host') || params.portal === 'host';
@@ -23,9 +25,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [subscribeNewsletter, setSubscribeNewsletter] = useState(false);
   // Only the "Become a Host" login offers an identity choice: the same email
   // can be a Host/Staff account AND a Guest (separate DB tables). The normal
   // guest login is always guest-only (no toggle).
@@ -33,18 +35,6 @@ export default function LoginScreen() {
   // True when a host/staff-mode login matched the guest account — we show an
   // explainer instead of silently routing to the guest portal.
   const [guestFallback, setGuestFallback] = useState(false);
-  // Track whether a login just completed so the mustChangePassword effect
-  // can redirect after the context updates.
-  const [loginCompleted, setLoginCompleted] = useState(false);
-
-  // After a successful login, if mustChangePassword becomes true (set
-  // asynchronously inside login()), redirect to the password change screen.
-  useEffect(() => {
-    if (loginCompleted && mustChangePassword) {
-      setLoginCompleted(false);
-      router.replace('/(auth)/create-new-password?mode=temp');
-    }
-  }, [loginCompleted, mustChangePassword]);
 
   const heading = isHostRoute ? t('auth.login.hostTitle') : t('auth.login.title');
   const subtitle = isHostRoute ? t('auth.login.hostSubtitle') : t('auth.login.subtitle');
@@ -65,34 +55,32 @@ export default function LoginScreen() {
     }
     setLoginLoading(true);
     try {
-      const portal = await login(email, password);
+      const { portal: detectedPortal, mustChangePassword: mustChangePw } = await login(email, password);
       // Host/Staff login: a guest-role result means the credentials matched the
       // guest account, not a host/staff one. Explain instead of silently
       // sending a would-be staff member into the guest portal — they need the
       // password from their host/staff account (invited staff: the password
       // from their invitation email).
-      if (isHostRoute && portal === 'guest') {
+      if (isHostRoute && detectedPortal === 'guest') {
         setGuestFallback(true);
         return;
       }
       // Temp password: the user forgot their password and logged in with the
       // temporary one. Force them to set a new password before anything else.
-      // Note: mustChangePassword is set asynchronously inside login() and may
-      // not be reflected yet. Mark login completed and let the useEffect above
-      // handle the redirect when the context updates.
-      if (mustChangePassword) {
+      if (mustChangePw) {
         router.replace('/(auth)/create-new-password?mode=temp');
         return;
       }
-      // Also set the flag so the useEffect catches it if mustChangePassword
-      // updates after this synchronous check.
-      setLoginCompleted(true);
+      // Save newsletter preference if opted in
+      if (subscribeNewsletter) {
+        await AsyncStorage.setItem(STORAGE_KEYS.NEWSLETTER_SUBSCRIBED, 'true');
+      }
       if (params.redirect) {
-        router.replace(params.redirect as any);
-      } else if (portal === 'host') router.replace('/(host)');
-      else if (portal === 'guest') router.replace('/(tabs)');
-      else if (portal === 'operations') router.replace('/(operations)');
-      else if (portal === 'superadmin') router.replace('/(superadmin)');
+        router.replace(params.redirect as Href);
+      } else if (detectedPortal === 'host') router.replace('/(host)');
+      else if (detectedPortal === 'guest') router.replace('/(tabs)');
+      else if (detectedPortal === 'operations') router.replace('/(operations)');
+      else if (detectedPortal === 'superadmin') router.replace('/(superadmin)');
       else router.replace('/(tabs)');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid email or password.');
@@ -142,7 +130,7 @@ export default function LoginScreen() {
               <Text style={[s.tab, s.tabActive]}>{t('auth.login.button')}</Text>
               <View style={s.tabLine} />
             </View>
-            <TouchableOpacity onPress={() => router.push(signupHref as any)}>
+            <TouchableOpacity onPress={() => router.push(signupHref as Href)}>
               <Text style={s.tab}>{t('auth.login.signup')}</Text>
             </TouchableOpacity>
           </View>
@@ -215,14 +203,17 @@ export default function LoginScreen() {
           </View>
 
           <View style={s.optionsRow}>
-            <TouchableOpacity style={s.rememberRow} onPress={() => setRemember(!remember)}>
-              <View style={[s.checkbox, remember && s.checkboxChecked]}>
-                {remember && <Ionicons name="checkmark" size={10} color={BG.white} />}
-              </View>
-              <Text style={s.rememberText}>{t('auth.login.remember')}</Text>
-            </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
               <Text style={s.forgotText}>{t('auth.login.forgot')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={s.checkboxSection}>
+            <TouchableOpacity style={s.termsRow} onPress={() => setSubscribeNewsletter(!subscribeNewsletter)}>
+              <View style={[s.checkbox, subscribeNewsletter && s.checkboxChecked]}>
+                {subscribeNewsletter && <Ionicons name="checkmark" size={10} color={BG.white} />}
+              </View>
+              <Text style={s.termsText}>Subscribe to our newsletter for updates and exclusive offers</Text>
             </TouchableOpacity>
           </View>
 
@@ -245,7 +236,7 @@ export default function LoginScreen() {
                     : ' Sign in with the password from your staff invitation email to open the staff dashboard'}
                   {' — or continue to the guest portal.'}
                 </Text>
-                <TouchableOpacity onPress={() => router.replace(params.redirect ? (params.redirect as any) : '/(tabs)')}>
+                <TouchableOpacity onPress={() => router.replace(params.redirect ? (params.redirect as Href) : '/(tabs)')}>
                   <Text style={s.fallbackLink}>Continue as Guest →</Text>
                 </TouchableOpacity>
               </View>
@@ -292,7 +283,7 @@ export default function LoginScreen() {
 
           <View style={s.footer}>
             <Text style={s.footerText}>{t('auth.login.noAccount')} </Text>
-            <TouchableOpacity onPress={() => router.push(signupHref as any)}>
+            <TouchableOpacity onPress={() => router.push(signupHref as Href)}>
               <Text style={s.footerLink}>{t('auth.login.signup')}</Text>
             </TouchableOpacity>
           </View>
@@ -396,6 +387,10 @@ const s = StyleSheet.create({
   checkboxChecked: { backgroundColor: NAVY, borderColor: NAVY },
   rememberText: { fontSize: 12, color: SLATE[500] },
   forgotText: { fontSize: 12, color: TEAL, fontWeight: '600' },
+
+  checkboxSection: { gap: 10, marginBottom: 20 },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  termsText: { fontSize: 12, color: SLATE[500], flex: 1, lineHeight: 18 },
 
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

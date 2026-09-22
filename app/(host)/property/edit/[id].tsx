@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { safeGoBack } from '@/lib/utils';import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useHost } from '@/lib/context/host-context';
 import { normalizeTime } from '@/lib/api/host-api';
@@ -124,9 +124,9 @@ export default function EditProperty() {
       brand_color: fields.brand_color,
       latitude: fields.latitude ? parseFloat(fields.latitude) : undefined,
       longitude: fields.longitude ? parseFloat(fields.longitude) : undefined,
-    } as any);
+    } as Partial<Property>);
     Alert.alert('Saved', 'Property updated successfully', [
-      { text: 'OK', onPress: () => router.back() },
+      { text: 'OK', onPress: () => safeGoBack() },
     ]);
   };
 
@@ -143,7 +143,7 @@ export default function EditProperty() {
     <View style={{ flex: 1, backgroundColor: GRAY[50] }}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color={NAVY} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Property</Text>

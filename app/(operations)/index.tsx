@@ -6,12 +6,46 @@ import { ScreenContainer } from '@/components/screen-container';
 import { BottomTabBar } from '@/components/operations/BottomTabBar';
 import { useAuth } from '@/lib/context/auth-context';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
+import { useHousekeepingStore } from '@/stores/useHousekeepingStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
-import type { OperatorProfile } from '@/types/api';
+import { staffApi } from '@/lib/api/host-api';
+import type { OperatorProfile, BackendActivityLog } from '@/types/api';
 import { SRS, BG, SLATE, BLUE, EMERALD, AMBER, RED } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY, SHADOWS } from '@/constants/portal-theme';
 
 const DARK = SLATE[900];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function activityIcon(type: string): string {
+  const t = type.toUpperCase();
+  if (t.includes('CHECK_IN')) return 'log-in-outline';
+  if (t.includes('CHECK_OUT')) return 'log-out-outline';
+  if (t.includes('CANCEL')) return 'close-circle-outline';
+  if (t.includes('CLEAN') || t.includes('INSPECT')) return 'sparkles-outline';
+  if (t.includes('MAINTENANCE')) return 'construct-outline';
+  return 'receipt-outline';
+}
+
+function activityColor(type: string): string {
+  const t = type.toUpperCase();
+  if (t.includes('CHECK_IN')) return SRS.green;
+  if (t.includes('CHECK_OUT')) return SRS.orange;
+  if (t.includes('CANCEL')) return RED[500];
+  if (t.includes('CLEAN') || t.includes('INSPECT')) return SRS.teal;
+  if (t.includes('MAINTENANCE')) return SRS.orange;
+  return BLUE[600];
+}
+
+function relTime(iso: string): string {
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return '';
+  const mins = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 function getFormattedDate(): string {
   return new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -31,12 +65,36 @@ export default function OperationsDashboard() {
     rooms, arrivingGuests, departingToday, checkedInGuests,
     summaryStats, occupancySnapshot,
   } = useFrontDesk();
+  const hkTasks = useHousekeepingStore((s) => s.tasks);
   const notifications = useNotificationStore((s) => s.notifications);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockStartTime, setClockStartTime] = useState<Date | null>(null);
   const [elapsedTick, setElapsedTick] = useState(0);
+  const [activities, setActivities] = useState<BackendActivityLog[]>([]);
+
+  // Recent activity: merged booking + housekeeping feeds from the backend
+  // (GET /staff/properties/{id}/activities/{booking,housekeeping}). Silent
+  // fallback to no section on failure so mock-driven dashboards stay intact.
+  useEffect(() => {
+    const pid = operator?.property_id;
+    if (!pid || !UUID_RE.test(pid)) return;
+    let cancelled = false;
+    Promise.all([
+      staffApi.getBookingActivities(pid, { skip: 0, limit: 10 }),
+      staffApi.getHousekeepingActivities(pid, { skip: 0, limit: 10 }),
+    ])
+      .then(([booking, hk]) => {
+        if (cancelled) return;
+        const merged = [...booking, ...hk]
+          .sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0))
+          .slice(0, 8);
+        setActivities(merged);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [operator?.property_id]);
 
   const handleClockToggle = () => {
     if (isClockedIn) {
@@ -48,12 +106,12 @@ export default function OperationsDashboard() {
     }
   };
 
-  // Update elapsed time every 30 seconds while clocked in
+  // Update elapsed time every second while clocked in
   useEffect(() => {
     if (!isClockedIn) return;
     const interval = setInterval(() => {
       setElapsedTick(t => t + 1);
-    }, 30000);
+    }, 1000);
     return () => clearInterval(interval);
   }, [isClockedIn]);
 
@@ -88,58 +146,25 @@ export default function OperationsDashboard() {
     return arrivingGuests.reduce((sum, b) => sum + (b.balance || 0), 0);
   }, [arrivingGuests]);
 
-  // Dynamic tasks derived from room and booking data
+  // Assigned tasks from housekeeping store
   const assignedTasks = useMemo(() => {
-    const tasks: { id: string; label: string; time: string; status: string; color: string }[] = [];
-    let taskId = 1;
-
-    // VIP arrivals as tasks
-    arrivingGuests.filter(b => b.vip).slice(0, 2).forEach(b => {
-      tasks.push({
-        id: String(taskId++),
-        label: `Welcome VIP Guest — ${b.guest_name}`,
-        time: '',
-        status: 'pending',
-        color: SRS.teal,
-      });
+    return hkTasks.slice(0, 5).map(t => {
+      const statusMap: Record<string, { label: string; color: string }> = {
+        Dirty: { label: 'Pending', color: SRS.orange },
+        'In Progress': { label: 'In Progress', color: SRS.teal },
+        Cleaned: { label: 'Cleaned', color: SRS.green },
+        Inspected: { label: 'Done', color: SRS.green },
+      };
+      const mapped = statusMap[t.status] || { label: t.status, color: SRS.teal };
+      return {
+        id: t.id,
+        label: `Room ${t.room} — ${t.taskType?.replace(/_/g, ' ') || 'Cleaning'}`,
+        time: t.cleaner !== 'Unassigned' ? t.cleaner : '',
+        status: t.status === 'Inspected' ? 'completed' : t.status === 'In Progress' ? 'in_progress' : 'pending',
+        color: mapped.color,
+      };
     });
-
-    // Dirty rooms need cleaning
-    rooms.filter(r => r.status === 'dirty').slice(0, 3).forEach(r => {
-      tasks.push({
-        id: String(taskId++),
-        label: `Clean Room ${r.room_number}`,
-        time: '',
-        status: 'in_progress',
-        color: SRS.orange,
-      });
-    });
-
-    // Pending balance follow-ups
-    const pendingCount = arrivingGuests.filter(b => (b.balance || 0) > 0).length;
-    if (pendingCount > 0) {
-      tasks.push({
-        id: String(taskId++),
-        label: `Follow Up — Pending Payment (${pendingCount})`,
-        time: '',
-        status: 'pending',
-        color: SRS.orange,
-      });
-    }
-
-    // Maintenance rooms
-    rooms.filter(r => r.status === 'maintenance').slice(0, 1).forEach(r => {
-      tasks.push({
-        id: String(taskId++),
-        label: `Room ${r.room_number} Inspection`,
-        time: '',
-        status: 'in_progress',
-        color: SRS.teal,
-      });
-    });
-
-    return tasks;
-  }, [arrivingGuests, rooms]);
+  }, [hkTasks]);
 
   // Room statuses for the floor display
   const floorStatuses = useMemo(() => {
@@ -155,28 +180,6 @@ export default function OperationsDashboard() {
     <ScreenContainer containerClassName="bg-background" className="flex-1">
       <StatusBar barStyle="dark-content" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* Header */}
-        <View style={s.header}>
-          <View style={s.headerRow}>
-            <View style={s.logoContainer}>
-              <Text style={s.logoText}>SE</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.headerTitle}>ServeIQ</Text>
-              <Text style={s.headerSub}>Front Desk</Text>
-            </View>
-            <TouchableOpacity style={s.headerIconBtn} onPress={() => router.push('/(tabs)/profile/notifications')}>
-              <Ionicons name="notifications-outline" size={22} color={DARK} />
-              {unreadCount > 0 && (
-                <View style={s.notifBadge}><Text style={s.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>
-              )}
-            </TouchableOpacity>
-            <View style={s.avatarContainer}>
-              <Ionicons name="person" size={18} color={SLATE[400]} />
-            </View>
-          </View>
-        </View>
-
         {/* Greeting */}
         <View style={s.greetingSection}>
           <Text style={s.greeting}>Welcome back, {operator?.name || 'staff'} 👋</Text>
@@ -326,7 +329,7 @@ export default function OperationsDashboard() {
         <View style={s.section}>
           <View style={s.sectionHeader}>
             <Text style={s.sectionTitle}>Room Status</Text>
-            <TouchableOpacity onPress={() => router.push('/(operations)/room-plan')}>
+            <TouchableOpacity onPress={() => router.push('/(operations)/front-desk/room-status')}>
               <Text style={s.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -346,20 +349,45 @@ export default function OperationsDashboard() {
           </View>
           {/* Room Grid */}
           <View style={s.roomGrid}>
-            {(roomsByFloor[3] || roomsByFloor[1] || []).slice(0, 12).map(room => {
-              const st = STATUS_STYLE[room.status] || STATUS_STYLE.available;
-              return (
-                <TouchableOpacity
-                  key={room.id}
-                  style={[s.roomTile, { backgroundColor: st.bg, borderColor: st.dot + '30' }]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.roomTileNumber, { color: st.text }]}>{room.room_number}</Text>
-                </TouchableOpacity>
-              );
-            })}
+            {Object.entries(roomsByFloor).sort(([a], [b]) => Number(a) - Number(b)).flatMap(([floor, floorRooms]) =>
+              floorRooms.slice(0, 6).map(room => {
+                const st = STATUS_STYLE[room.status] || STATUS_STYLE.available;
+                return (
+                  <TouchableOpacity
+                    key={room.id}
+                    style={[s.roomTile, { backgroundColor: st.bg, borderColor: st.dot + '30' }]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.roomTileNumber, { color: st.text }]}>{room.room_number}</Text>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         </View>
+
+        {/* Recent Activity (server feed) */}
+        {activities.length > 0 && (
+          <View style={s.section}>
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionTitle}>Recent Activity</Text>
+              <TouchableOpacity onPress={() => router.push('/(operations)/front-desk/tasks')}>
+                <Text style={s.viewAll}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={s.tasksCard}>
+              {activities.map((a, i) => (
+                <View key={a.id} style={[s.taskRow, i < activities.length - 1 && s.taskRowBorder]}>
+                  <Ionicons name={activityIcon(a.activity_type) as any} size={18} color={activityColor(a.activity_type)} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.taskLabel} numberOfLines={1}>{a.description}</Text>
+                    <Text style={s.taskTime}>{a.staff_name}{a.staff_name ? ' · ' : ''}{relTime(a.created_at)}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Assigned Tasks */}
         <View style={s.section}>
@@ -425,7 +453,7 @@ const s = StyleSheet.create({
   clockInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   clockLabel: { fontSize: 13, fontWeight: '700', color: DARK },
   clockSub: { fontSize: 11, color: SLATE[400], marginTop: 1 },
-  elapsed: { fontSize: 16, fontWeight: '800', color: SRS.teal, fontVariant: ['tabular-nums' as any] },
+  elapsed: { fontSize: 16, fontWeight: '800', color: SRS.teal, fontVariant: ['tabular-nums'] },
   clockBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, marginTop: 4,
@@ -440,13 +468,13 @@ const s = StyleSheet.create({
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   kpiCard: { width: '31%', padding: 12, borderRadius: 12, alignItems: 'center' },
   kpiIconWrap: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
-  kpiValue: { fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums' as any] },
+  kpiValue: { fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
   kpiLabel: { fontSize: 10, fontWeight: '600', color: SLATE[500], marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.3 },
 
   summaryRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginTop: 16 },
   summaryCard: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, alignItems: 'center' },
-  summaryLabel: { fontSize: 18, fontWeight: '800', color: SRS.teal, fontVariant: ['tabular-nums' as any] },
-  summaryValue: { fontSize: 18, fontWeight: '800', color: BLUE[600], fontVariant: ['tabular-nums' as any] },
+  summaryLabel: { fontSize: 18, fontWeight: '800', color: SRS.teal, fontVariant: ['tabular-nums'] },
+  summaryValue: { fontSize: 18, fontWeight: '800', color: BLUE[600], fontVariant: ['tabular-nums'] },
   summarySub: { fontSize: 11, fontWeight: '600', color: SLATE[500], marginTop: 2 },
 
   bookingCard: {

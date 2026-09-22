@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColors } from '@/hooks/use-colors';
 import { CORAL, TEXT } from '@/lib/constants/figma-tokens';
@@ -30,7 +30,7 @@ export function OtherHotels({ title: titleProp }: { title?: string } = {}) {
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 14 }}>
         {SIMILAR_PROPERTIES.map((p) => (
-          <TouchableOpacity key={p.id} onPress={() => router.push(`/${p.id}` as any)}
+          <TouchableOpacity key={p.id} onPress={() => router.push(`/${p.id}` as Href)}
             style={{
               width: 200, borderRadius: 20, backgroundColor: colors.surface,
               borderWidth: 1, borderColor: colors.border, overflow: 'hidden',

@@ -3,12 +3,14 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { router, usePathname, useLocalSearchParams } from 'expo-router';
+import { router, usePathname, useLocalSearchParams, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BRAND, SRS, SLATE, RED, AMBER, STATUS, BG, CLOUD, NEUTRAL, TEXT, BLUE } from '@/lib/constants/figma-tokens';
 import { registerSchema } from '@/lib/validation/schemas';
+import { STORAGE_KEYS } from '@/constants/api-config';
 
 const NAVY = BRAND.navyLight;
 const TEAL = SRS.teal;
@@ -31,6 +33,8 @@ export default function RegisterScreen() {
   const [resendTimer, setResendTimer] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [subscribeNewsletter, setSubscribeNewsletter] = useState(false);
 
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -54,6 +58,10 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setError('');
     if (registerLoading) return;
+    if (!agreeTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
     const result = registerSchema.safeParse({ ...form, confirmPassword: form.password });
     if (!result.success) {
       setError(result.error.issues[0].message);
@@ -78,14 +86,18 @@ export default function RegisterScreen() {
     try {
       await verifyOTP(form.email, otp, portal);
       setVerified(true);
+      // Save newsletter preference if opted in
+      if (subscribeNewsletter) {
+        await AsyncStorage.setItem(STORAGE_KEYS.NEWSLETTER_SUBSCRIBED, 'true');
+      }
       // OTP verified — now auto-login with the password the user just set
       try {
-        const loginResult = await login(form.email, form.password);
+        const { portal: loginPortal } = await login(form.email, form.password);
         setTimeout(() => {
           if (params.redirect) {
-            router.replace(params.redirect as any);
+            router.replace(params.redirect as Href);
           } else {
-            router.replace(loginResult === 'host' ? '/(host)' : '/(tabs)');
+            router.replace(loginPortal === 'host' ? '/(host)' : '/(tabs)');
           }
         }, 1000);
       } catch {
@@ -114,7 +126,13 @@ export default function RegisterScreen() {
     }
   };
 
-  const pwStrength = form.password.length === 0 ? 0 : form.password.length < 4 ? 1 : form.password.length < 8 ? 2 : 3;
+  // Strength mirrors the backend's actual policy: length + digit + special char.
+  // (Case is not enforced server-side, so don't score it here.)
+  const pwRulesMet =
+    (form.password.length >= 8 ? 1 : 0) +
+    (/\d/.test(form.password) ? 1 : 0) +
+    (/[^A-Za-z0-9]/.test(form.password) ? 1 : 0);
+  const pwStrength = form.password.length === 0 ? 0 : pwRulesMet === 0 ? 1 : pwRulesMet === 1 ? 1 : pwRulesMet === 2 ? 2 : 3;
   const pwColors = [SLATE[200], RED[500], AMBER[500], STATUS.activeGreen];
   const pwLabels = ['', 'Weak', 'Fair', 'Strong'];
 
@@ -149,7 +167,7 @@ export default function RegisterScreen() {
         {/* Form card */}
         <View style={s.card}>
           <View style={s.tabRow}>
-            <TouchableOpacity onPress={() => router.push(loginHref as any)}>
+            <TouchableOpacity onPress={() => router.push(loginHref as Href)}>
               <Text style={s.tab}>{t('auth.register.login')}</Text>
             </TouchableOpacity>
             <View>
@@ -177,7 +195,7 @@ export default function RegisterScreen() {
                         field === 'email' ? t('auth.register.emailPlaceholder') : t('auth.register.passwordPlaceholder')
                       }
                       placeholderTextColor={CLOUD.silver}
-                      value={(form as any)[field]}
+                      value={(form as Record<string, string>)[field]}
                       onChangeText={(t) => updateField(field, t)}
                       secureTextEntry={field === 'password' && !showPw}
                       keyboardType={field === 'email' ? 'email-address' : field === 'phone' ? 'phone-pad' : 'default'}
@@ -204,7 +222,24 @@ export default function RegisterScreen() {
                 </View>
               ))}
 
-              <Text style={s.hint}>Min 8 characters — your password will be used to sign in later.</Text>
+              <Text style={s.hint}>Min 8 characters with at least one number and one special character (e.g. #, !, @) — your password will be used to sign in later.</Text>
+
+              <View style={s.checkboxSection}>
+                <TouchableOpacity style={s.termsRow} onPress={() => setAgreeTerms(!agreeTerms)}>
+                  <View style={[s.checkbox, agreeTerms && s.checkboxChecked]}>
+                    {agreeTerms && <Ionicons name="checkmark" size={10} color={BG.white} />}
+                  </View>
+                  <Text style={s.termsText}>
+                    I agree to the <Text style={s.termsLink}>Terms of Service</Text> and <Text style={s.termsLink}>Privacy Policy</Text>
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.termsRow} onPress={() => setSubscribeNewsletter(!subscribeNewsletter)}>
+                  <View style={[s.checkbox, subscribeNewsletter && s.checkboxChecked]}>
+                    {subscribeNewsletter && <Ionicons name="checkmark" size={10} color={BG.white} />}
+                  </View>
+                  <Text style={s.termsText}>Subscribe to our newsletter for updates and exclusive offers</Text>
+                </TouchableOpacity>
+              </View>
 
               {error ? (
                 <View style={s.errorBox}>
@@ -228,7 +263,7 @@ export default function RegisterScreen() {
 
               <View style={s.footer}>
                 <Text style={s.footerText}>{t('auth.register.hasAccount')} </Text>
-                <TouchableOpacity onPress={() => router.push(loginHref as any)}>
+                <TouchableOpacity onPress={() => router.push(loginHref as Href)}>
                   <Text style={s.footerLink}>{t('auth.register.login')}</Text>
                 </TouchableOpacity>
               </View>
@@ -383,6 +418,18 @@ const s = StyleSheet.create({
   pwStrengthText: { fontSize: 11, fontWeight: '600' },
 
   hint: { fontSize: 11, color: SLATE[400], marginBottom: 20, lineHeight: 16 },
+
+  checkboxSection: { gap: 10, marginBottom: 20 },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  termsText: { fontSize: 12, color: SLATE[500], flex: 1, lineHeight: 18 },
+  termsLink: { color: TEAL, fontWeight: '600' },
+  checkbox: {
+    width: 18, height: 18, borderRadius: 4,
+    borderWidth: 1.5, borderColor: CLOUD.haze,
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: { backgroundColor: NAVY, borderColor: NAVY },
 
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

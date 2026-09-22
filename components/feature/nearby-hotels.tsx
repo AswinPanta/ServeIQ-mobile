@@ -87,7 +87,7 @@ export function NearbyHotels({ hotels, userLocation, loading }: NearbyHotelsProp
           <TouchableOpacity
             key={hotel.id}
             onPress={() => router.push({
-              pathname: '/guest-hotel-detail/[id]',
+              pathname: '/[id]',
               params: { id: hotel.id },
             })}
             activeOpacity={0.7}

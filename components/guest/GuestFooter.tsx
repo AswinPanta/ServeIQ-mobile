@@ -1,46 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
 import { useAppLanguage } from '@/hooks/use-app-language';
-import { NEUTRAL, SLATE, SRS, BRAND, BG, TEXT, CORAL } from '@/lib/constants/figma-tokens';
-
-const FOOTER_LINKS = {
-  Support: ['Help Center', 'AirCover', 'Safety information', 'Supporting people with disabilities', 'Cancellation options'],
-  Hosting: ['Try hosting', 'AirCover for Hosts', 'Explore hosting resources', 'Visit our community forum', 'Responsible hosting'],
-  ServeIQ: ['Newsroom', 'Features', 'Careers', 'Investors', 'Pricing & Plans'],
-  Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Sitemap', 'Company details'],
-};
+import { useAppCurrency } from '@/hooks/use-app-currency';
+import { NEUTRAL, SLATE, BRAND, BG, TEXT, CORAL } from '@/lib/constants/figma-tokens';
 
 export function GuestFooter() {
   const { language, setLanguage, availableLanguages } = useAppLanguage();
+  const { currency, setCurrency, availableCurrencies } = useAppCurrency();
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showCurrPicker, setShowCurrPicker] = useState(false);
+  const currencySymbol = (code: string) =>
+    availableCurrencies.find(c => c.code === code)?.label.match(/\((.+)\)/)?.[1] ?? '';
 
   return (
     <View style={s.container}>
-      {/* Brand */}
-      <View style={s.brandRow}>
-        <Image source={require('@/assets/images/serveiq-logo.png')} style={s.logoImage} />
-        <Text style={s.brandName}>
-          Serve<Text style={s.brandAccent}>IQ</Text>
-        </Text>
-      </View>
-
-      {/* Tagline */}
-      <Text style={s.tagline}>Service with Intelligence and Quality</Text>
-
-      {/* Links Grid */}
-      <View style={s.linksGrid}>
-        {Object.entries(FOOTER_LINKS).map(([section, links]) => (
-          <View key={section} style={s.linkColumn}>
-            <Text style={s.sectionTitle}>{section}</Text>
-            {links.map((link) => (
-              <TouchableOpacity key={link} style={s.linkItem}>
-                <Text style={s.linkText}>{link}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ))}
-      </View>
-
       {/* Divider */}
       <View style={s.divider} />
 
@@ -54,9 +27,9 @@ export function GuestFooter() {
               {availableLanguages.find(l => l.code === language)?.label ?? 'English'}
             </Text>
           </Pressable>
-          <TouchableOpacity style={s.actionBtn}>
-            <Text style={s.actionText}>$ USD</Text>
-          </TouchableOpacity>
+          <Pressable style={s.actionBtn} onPress={() => setShowCurrPicker(true)}>
+            <Text style={s.actionText}>{currencySymbol(currency)} {currency}</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -85,6 +58,32 @@ export function GuestFooter() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Currency Picker Modal */}
+      <Modal visible={showCurrPicker} transparent animationType="slide" onRequestClose={() => setShowCurrPicker(false)}>
+        <Pressable style={s.modalOverlay} onPress={() => setShowCurrPicker(false)}>
+          <Pressable style={s.modalCard} onPress={e => e.stopPropagation()}>
+            <Text style={s.modalTitle}>Select Currency</Text>
+            <ScrollView>
+              {availableCurrencies.map(c => (
+                <Pressable
+                  key={c.code}
+                  style={s.langRow}
+                  onPress={() => {
+                    setCurrency(c.code);
+                    setShowCurrPicker(false);
+                  }}
+                >
+                  <Text style={[s.langLabel, currency === c.code && s.langLabelActive]}>
+                    {c.label}
+                  </Text>
+                  {currency === c.code && <Text style={s.langCheck}>✓</Text>}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -97,55 +96,6 @@ const s = StyleSheet.create({
     backgroundColor: NEUTRAL[50],
     borderTopWidth: 1,
     borderTopColor: SLATE[100],
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 24,
-  },
-  logoImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-  },
-  brandName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: BRAND.navyLight,
-    letterSpacing: -0.5,
-  },
-  brandAccent: {
-    color: SRS.teal,
-  },
-  tagline: {
-    fontSize: 12,
-    color: SLATE[400],
-    marginBottom: 24,
-    fontStyle: 'italic',
-  },
-  linksGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-    marginBottom: 24,
-  },
-  linkColumn: {
-    width: '45%',
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: BRAND.navyLight,
-    marginBottom: 4,
-  },
-  linkItem: {
-    paddingVertical: 2,
-  },
-  linkText: {
-    fontSize: 12,
-    color: SLATE[500],
   },
   divider: {
     height: 1,

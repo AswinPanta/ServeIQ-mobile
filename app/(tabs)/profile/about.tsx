@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, Alert, TextInput, StyleSheet, Modal, FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useTranslation } from 'react-i18next';
+import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
 import { PHONE_CODES } from '@/lib/mock/phone-codes';
@@ -41,7 +41,7 @@ export default function AboutScreen() {
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <IconSymbol name="chevron.left" size={20} color={NAVY} />
         </TouchableOpacity>
         <Text style={s.title}>{t('profile.about.title')}</Text>

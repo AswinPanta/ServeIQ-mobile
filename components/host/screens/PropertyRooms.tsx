@@ -10,17 +10,42 @@ import { BG, SLATE } from '@/lib/constants/figma-tokens';
 
 const ACCENT = SRS.teal;
 
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isRoomBookedToday(room: AdminRoom, bookings: any[]): boolean {
+  const today = todayISO();
+  return bookings.some(b => {
+    const status = (b.status || '').toLowerCase();
+    if (status === 'cancelled' || status === 'checked_out' || status === 'completed') return false;
+    if (!b.check_in || !b.check_out) return false;
+    const checkIn = b.check_in.slice(0, 10);
+    const checkOut = b.check_out.slice(0, 10);
+    if (today < checkIn || today >= checkOut) return false;
+    const names = String(b.room_name || '').split(',').map((n: string) => n.trim()).filter(Boolean);
+    return names.includes(room.room_name) || Boolean(room.room_type_name && names.includes(room.room_type_name));
+  });
+}
+
 interface Props { property: Property }
 
 export function PropertyRooms({ property }: Props) {
-  const { getFilteredRooms, addRoom, syncLocalRoomsToServer } = useHost();
+  const { getFilteredRooms, getFilteredBookings, addRoom, syncLocalRoomsToServer } = useHost();
   const rooms = getFilteredRooms(property.id);
+  const bookings = getFilteredBookings(property.id);
   const [filter, setFilter] = React.useState<string>('all');
   const [editingRoom, setEditingRoom] = React.useState<AdminRoom | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ synced: number; errors: string[] } | null>(null);
 
-  const filtered = filter === 'all' ? rooms : rooms.filter(r => r.status === filter);
+  // A room with an active booking covering today is unavailable even if its
+  // status field was never flipped — show it as OCCUPIED and let filters honor it.
+  const effectiveRooms = rooms.map(r =>
+    isRoomBookedToday(r, bookings) ? { ...r, status: 'OCCUPIED' as const } : r,
+  );
+  const filtered = filter === 'all' ? effectiveRooms : effectiveRooms.filter(r => r.status === filter);
 
   // Rooms with non-UUID IDs were created locally but never persisted
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

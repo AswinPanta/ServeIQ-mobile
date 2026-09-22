@@ -1,12 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ScreenContainer } from '@/components/screen-container';
+import { safeGoBack } from '@/lib/utils';import { ScreenContainer } from '@/components/screen-container';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
 import { useHotelAnalyticsStore } from '@/stores/useHotelAnalyticsStore';
 import { SRS, SLATE, BG, BLUE, RED } from '@/lib/constants/figma-tokens';
 import { RADIUS } from '@/constants/portal-theme';
+import { useAuth } from '@/lib/context/auth-context';
+import { API_BASE_URL, API_ENDPOINTS } from '@/constants/api-config';
+import { api, handleResponse } from '@/lib/api';
 
 const DARK = SLATE[900];
 
@@ -23,6 +26,32 @@ export default function ReportsScreen() {
   const { rooms, occupancySnapshot } = useFrontDesk();
   const analyticsData = useHotelAnalyticsStore((s) => s.data);
   const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const { user } = useAuth();
+  const operator = user as { property_id?: string } | null;
+  const propertyId = operator?.property_id || '';
+
+  const [bookingTrend, setBookingTrend] = useState<any[]>([]);
+  const [revenueTrend, setRevenueTrend] = useState<any[]>([]);
+  const [revenueByRoomType, setRevenueByRoomType] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    (async () => {
+      try {
+        const [bt, rt, rrt] = await Promise.all([
+          api.get(`${API_ENDPOINTS.PROPERTIES.GET_BY_ID(propertyId)}/analytics/booking-trend`),
+          api.get(`${API_ENDPOINTS.PROPERTIES.GET_BY_ID(propertyId)}/analytics/revenue-trend`),
+          api.get(`${API_ENDPOINTS.PROPERTIES.GET_BY_ID(propertyId)}/analytics/revenue-by-room-type`),
+        ]);
+        const bJson = await handleResponse<{ data?: any[] }>(bt);
+        const rJson = await handleResponse<{ data?: any[] }>(rt);
+        const rrJson = await handleResponse<{ data?: any[] }>(rrt);
+        if (bJson.data) setBookingTrend(bJson.data);
+        if (rJson.data) setRevenueTrend(rJson.data);
+        if (rrJson.data) setRevenueByRoomType(rrJson.data);
+      } catch {}
+    })();
+  }, [propertyId]);
 
   const today = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -49,7 +78,7 @@ export default function ReportsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
             <Ionicons name="arrow-back" size={20} color={DARK} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Reports</Text>
@@ -84,37 +113,61 @@ export default function ReportsScreen() {
               <View style={s.summaryCard}>
                 <Text style={s.summaryLabel}>Total Revenue</Text>
                 <Text style={[s.summaryValue, { color: DARK }]}>NPR {summaryStats.totalRevenue.toLocaleString()}</Text>
-                <Text style={[s.summaryChange, { color: SRS.green }]}>↑ 12% vs yesterday</Text>
               </View>
               <View style={s.summaryCard}>
                 <Text style={s.summaryLabel}>ADR</Text>
                 <Text style={[s.summaryValue, { color: DARK }]}>NPR {summaryStats.adr.toLocaleString()}</Text>
-                <Text style={[s.summaryChange, { color: SRS.green }]}>↑ 8% vs yesterday</Text>
               </View>
             </View>
             <View style={s.cardGrid}>
               <View style={s.summaryCard}>
                 <Text style={s.summaryLabel}>RevPAR</Text>
                 <Text style={[s.summaryValue, { color: BLUE[600] }]}>NPR {summaryStats.revpar.toLocaleString()}</Text>
-                <Text style={[s.summaryChange, { color: SRS.green }]}>↑ 10% vs yesterday</Text>
               </View>
               <View style={s.summaryCard}>
                 <Text style={s.summaryLabel}>Occupancy</Text>
                 <Text style={[s.summaryValue, { color: DARK }]}>{summaryStats.occupancy}%</Text>
-                <Text style={[s.summaryChange, { color: SRS.green }]}>↑ 5% vs yesterday</Text>
               </View>
             </View>
 
             {/* Revenue Trend */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>Revenue Trend</Text>
-              <View style={s.chartPlaceholder}>
-                <Text style={s.chartPlaceholderText}>NPR</Text>
-                {[40, 65, 45, 80, 55, 70, 90].map((h, i) => (
-                  <View key={i} style={[s.chartBar, { height: h }]} />
+              {revenueTrend.length > 0 ? (
+                <View style={s.chartPlaceholder}>
+                  <Text style={s.chartPlaceholderText}>NPR</Text>
+                  {revenueTrend.slice(-7).map((d: any, i: number) => {
+                    const val = parseFloat(d.revenue || '0');
+                    const maxVal = Math.max(...revenueTrend.slice(-7).map((x: any) => parseFloat(x.revenue || '0')), 1);
+                    const h = Math.max((val / maxVal) * 80, 4);
+                    return <View key={i} style={[s.chartBar, { height: h }]} />;
+                  })}
+                </View>
+              ) : (
+                <View style={s.chartPlaceholder}>
+                  <Text style={s.chartPlaceholderText}>NPR</Text>
+                  {[40, 65, 45, 80, 55, 70, 90].map((h, i) => (
+                    <View key={i} style={[s.chartBar, { height: h }]} />
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Revenue by Room Type */}
+            {revenueByRoomType.length > 0 && (
+              <View style={s.section}>
+                <Text style={s.sectionTitle}>Revenue by Room Type</Text>
+                {revenueByRoomType.map((rt: any, i: number) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: SLATE[100] }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: DARK }}>{rt.room_type_name}</Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: DARK }}>NPR {parseFloat(rt.revenue || '0').toLocaleString()}</Text>
+                      <Text style={{ fontSize: 10, color: SLATE[500] }}>{rt.booking_count} bookings</Text>
+                    </View>
+                  </View>
                 ))}
               </View>
-            </View>
+            )}
 
             {/* Room Status */}
             <View style={s.section}>
@@ -173,7 +226,7 @@ const s = StyleSheet.create({
   cardGrid: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginBottom: 12 },
   summaryCard: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: BG.white, borderWidth: 1, borderColor: SLATE[100] },
   summaryLabel: { fontSize: 11, fontWeight: '600', color: SLATE[500], marginBottom: 4 },
-  summaryValue: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums' as any] },
+  summaryValue: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
   summaryChange: { fontSize: 10, fontWeight: '600', marginTop: 4 },
 
   section: { paddingHorizontal: 16, marginTop: 16 },

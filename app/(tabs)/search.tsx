@@ -56,6 +56,7 @@ export default function SearchScreen() {
       style={s.container}
       contentContainerStyle={{ paddingBottom: 120 }}
       contentInsetAdjustmentBehavior="automatic"
+      keyboardDismissMode="on-drag"
     >
       {/* Header */}
       <View style={s.headerSection}>

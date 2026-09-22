@@ -23,6 +23,7 @@ const BACKEND_TYPE_TO_KEY: Record<string, string> = {
   GUESTHOUSE: 'others',
   GUEST_HOUSE: 'others',
   RESTURANT: 'others',
+  RESTAURANT: 'others', // backend enum is misspelled RESTURANT; accept the fixed spelling too
   BOUTIQUE: 'others',
   COTTAGE: 'others',
   OTHER: 'others',

@@ -121,7 +121,9 @@ export const useDraftStore = create<DraftStore>((set, get) => ({
       if (data) {
         set({ drafts: JSON.parse(data) });
       }
-    } catch {}
+    } catch (e) {
+      console.warn('Failed to load drafts:', e);
+    }
   },
 
   restoreDraft: (id) => {

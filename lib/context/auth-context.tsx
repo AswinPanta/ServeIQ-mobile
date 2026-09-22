@@ -37,7 +37,7 @@ interface AuthContextType {
     accessToken: string | null;
     refreshToken: string | null;
   };
-  login: (email: string, password: string) => Promise<PortalType>;
+  login: (email: string, password: string) => Promise<{ portal: PortalType; mustChangePassword: boolean }>;
   demoLogin: (role: string) => Promise<PortalType>;
   register: (email: string, phone: string, name: string, password: string, portal?: PortalType) => Promise<RegistrationResult>;
   verifyOTP: (email: string, otp: string, portal?: PortalType) => Promise<void>;
@@ -75,7 +75,7 @@ const OPS_ROLES = [
  * persists the last-selected property in these keys — reuse them so an invited
  * staff member lands on their hotel's front desk on the same device.
  */
-async function resolveOpsPropertyContext() {
+async function resolveOpsPropertyContext(token?: string) {
   try {
     const [pid, name] = await Promise.all([
       AsyncStorage.getItem(OPS_DEFAULT_PROPERTY_ID_KEY),
@@ -83,9 +83,25 @@ async function resolveOpsPropertyContext() {
     ]);
     if (pid) return { property_id: pid, property_name: name || '' };
   } catch {
-    // Non-fatal — the profile falls back to the default ops property (prop-1).
+    // Non-fatal — fall through to backend resolution.
   }
-  return null;
+  // No stored property (fresh ops/staff login) — resolve it from the backend.
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.PROPERTIES.GET_ALL}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const props = (json.success === true ? json.data?.properties : json.data) || json.properties || [];
+    const first = Array.isArray(props) ? props[0] : null;
+    if (!first) return null;
+    await AsyncStorage.setItem(OPS_DEFAULT_PROPERTY_ID_KEY, String(first.id));
+    await AsyncStorage.setItem(OPS_DEFAULT_PROPERTY_NAME_KEY, String(first.name || ''));
+    return { property_id: first.id, property_name: first.name || '' };
+  } catch {
+    return null;
+  }
 }
 
 function makeDemoUser(account: DemoAccount): PortalProfile {
@@ -299,7 +315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Unified login — tries demo accounts first, then backend.
    * Returns the portal type so the caller can route.
    */
-  const login = useCallback(async (email: string, password: string): Promise<PortalType> => {
+  const login = useCallback(async (email: string, password: string): Promise<{ portal: PortalType; mustChangePassword: boolean }> => {
     try {
       setIsLoading(true);
 
@@ -314,7 +330,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setOperatorRole(demoAccount.operatorRole || null);
         setTokens({ accessToken: demoToken, refreshToken: demoRefresh });
         setUser(demoUser);
-        return demoAccount.portal;
+        return { portal: demoAccount.portal, mustChangePassword: false };
       }
 
       // 2) Try backend API — unified /auth/login endpoint
@@ -380,7 +396,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 } else if (OPS_ROLES.includes(role)) {
                   detectedPortal = 'operations';
                   detectedOpRole = role as OperatorRole;
-                  const opsProp = await resolveOpsPropertyContext();
+                  const opsProp = await resolveOpsPropertyContext(token);
                   profile = {
                     ...pd,
                     name: pd.full_name || pd.name,
@@ -400,7 +416,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 } else if (OPS_ROLES.includes(jwtRole)) {
                   detectedPortal = 'operations';
                   detectedOpRole = jwtRole as OperatorRole;
-                  const opsProp = await resolveOpsPropertyContext();
+                  const opsProp = await resolveOpsPropertyContext(token);
                   profile = {
                     email,
                     name: email.split('@')[0],
@@ -423,13 +439,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setOperatorRole(detectedOpRole);
             setTokens({ accessToken: data.access_token, refreshToken: loginRefreshToken });
             setUser(profile);
-            // Check if this email has a pending temp-password flag
+            // The backend's Token response carries must_change_password (temp-
+            // password logins); the local map is a legacy fallback.
             const mustChangeMap = await getMustChangeGuestEmails();
-            if (mustChangeMap[email.toLowerCase()]) {
+            const mustChangePw = data.must_change_password === true || !!mustChangeMap[email.toLowerCase()];
+            if (mustChangePw) {
               setMustChangePassword(true);
               setTempPassword(password);
             }
-            return detectedPortal;
+            return { portal: detectedPortal, mustChangePassword: mustChangePw };
           }
         } else {
           if (loginRes.status === 502 || loginRes.status === 503) {
@@ -486,7 +504,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (email: string, phone: string, name: string, password: string, portal?: PortalType): Promise<RegistrationResult> => {
     try {
       const body: Record<string, string> = { full_name: name, email, password };
-      if (phone) body.phone = phone;
+      // Backend GuestCreate/UserCreate: phone is optional but, when present,
+      // must be EXACTLY 10 digits (min_length=10, max_length=10). Strip any
+      // formatting and omit the field entirely for anything else.
+      const digits = (phone || '').replace(/\D/g, '');
+      if (digits.length === 10) body.phone = digits;
       const endpoint = portal === 'host' ? API_ENDPOINTS.AUTH.USER_REGISTER : API_ENDPOINTS.AUTH.GUEST_REGISTER;
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',

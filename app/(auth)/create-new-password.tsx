@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { safeGoBack } from '@/lib/utils';import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/lib/context/auth-context';
 import { clearGuestMustChange } from '@/lib/context/host-utils';
@@ -16,6 +16,14 @@ export default function CreateNewPasswordScreen() {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const isTempMode = mode === 'temp';
   const { user, changePassword, clearMustChangePassword, logout, tempPassword } = useAuth();
+
+  useEffect(() => {
+    if (mode !== 'temp') {
+      Alert.alert('Reset Password', 'Please use the Forgot Password flow to reset your password.', [
+        { text: 'OK', onPress: () => safeGoBack('/(auth)/forgot-password') },
+      ]);
+    }
+  }, [mode]);
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -85,7 +93,7 @@ export default function CreateNewPasswordScreen() {
   return (
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.inner}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack()} style={s.backBtn}>
           <Ionicons name="arrow-back" size={22} color={TEXT.heading} />
         </TouchableOpacity>
 

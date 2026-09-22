@@ -7,16 +7,18 @@ const ACCENT = SRS.teal;
 
 interface HostInfoProps {
   hotelName: string;
+  hostName?: string;
 }
 
-export function HostInfo({ hotelName }: HostInfoProps) {
+export function HostInfo({ hotelName, hostName }: HostInfoProps) {
+  const displayName = hostName || hotelName.split(' ')[0];
   return (
     <View style={s.container}>
       <View style={s.avatar}>
         <IconSymbol name="person.fill" size={20} color={ACCENT} />
       </View>
       <View style={s.info}>
-        <Text style={s.name}>Hosted by {hotelName.split(' ')[0]}</Text>
+        <Text style={s.name}>Hosted by {displayName}</Text>
         <Text style={s.meta}>2 years hosting · Verified</Text>
       </View>
       <View style={s.badge}>

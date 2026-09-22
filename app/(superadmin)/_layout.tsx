@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stack, useSegments, useRouter, usePathname } from 'expo-router';
+import { Stack, useSegments, useRouter, usePathname, type Href } from 'expo-router';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { GRAY } from '@/constants/portal-theme';
 import { useAuth } from '@/lib/context/auth-context';
@@ -43,7 +43,11 @@ function BottomTabBar() {
           return (
             <TouchableOpacity
               key={tab.key}
-              onPress={() => router.push(tab.route as any)}
+              onPress={() => {
+                // Prevent navigation if tab is already active (avoids reload/remount)
+                if (isActive) return;
+                router.push(tab.route as Href);
+              }}
               style={tabStyles.tab}
               activeOpacity={0.7}
             >

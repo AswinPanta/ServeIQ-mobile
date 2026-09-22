@@ -221,7 +221,7 @@ const SEED_PROPERTIES: SeedProperty[] = [
 ];
 
 function logProgress(onProgress: ((msg: string) => void) | undefined, msg: string) {
-  console.log(`[seed] ${msg}`);
+  if (__DEV__) console.log(`[seed] ${msg}`);
   onProgress?.(msg);
 }
 
@@ -235,7 +235,7 @@ export async function seedSampleProperties(
 
   for (const prop of SEED_PROPERTIES) {
     onProgress?.(`Creating "${prop.general.name}"...`);
-    console.log(`\n[seed] === ${prop.general.name} ===`);
+    if (__DEV__) console.log(`\n[seed] === ${prop.general.name} ===`);
 
     try {
       // Step1: Create general info via hostApi
@@ -263,7 +263,7 @@ export async function seedSampleProperties(
       logProgress(onProgress, `Created "${prop.general.name}" (${propertyId})`);
     } catch (err: any) {
       errors.push(`${prop.general.name}: ${err.message}`);
-      console.error(`[seed] Error creating ${prop.general.name}:`, err);
+      if (__DEV__) console.error(`[seed] Error creating ${prop.general.name}:`, err);
     }
   }
 
