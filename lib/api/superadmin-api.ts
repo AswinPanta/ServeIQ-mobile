@@ -15,7 +15,39 @@ export interface AdminAccount {
   name: string;
   role: string;
   is_active: boolean;
+  tenant_id?: string | null;
   created_at: string;
+}
+
+// Raw backend admin shape (GET /superadmin/admins → { admins, total }).
+interface BackendAdmin {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  tenant_id?: string | null;
+  created_at: string;
+}
+
+function toUiAdmin(a: BackendAdmin): AdminAccount {
+  return {
+    id: a.id,
+    email: a.email,
+    name: a.full_name,
+    role: a.role,
+    is_active: a.is_active,
+    tenant_id: a.tenant_id,
+    created_at: a.created_at,
+  };
+}
+
+// POST /superadmin/admins/{id}/impersonate
+export interface ImpersonateResult {
+  access_token: string;
+  expires_in: number;
+  impersonated_admin_id: string;
+  impersonated_admin_email: string;
 }
 
 export interface SubscriptionPlan {
@@ -110,9 +142,11 @@ export const superadminApi = {
   getMe: async () =>
     handleResponse<{ data: SuperAdminProfile }>(await api.get(EP.ME)),
 
-  // Admins
-  listAdmins: async () =>
-    handleResponse<{ data: AdminAccount[] }>(await api.get(EP.ADMINS.LIST)),
+  // Admins (backend: { data: { admins, total } }, name field is full_name)
+  listAdmins: async () => {
+    const res = handleResponse<{ data: { admins: BackendAdmin[] } }>(await api.get(EP.ADMINS.LIST));
+    return { data: (await res).data.admins.map(toUiAdmin) };
+  },
   createAdmin: async (data: { email: string; name: string; role: string }) =>
     handleResponse<{ data: AdminAccount }>(await api.post(EP.ADMINS.CREATE, data)),
   getAdmin: async (id: string) =>
@@ -123,10 +157,16 @@ export const superadminApi = {
     api.delete(EP.ADMINS.DELETE(id)),
   getAuditTrail: async (id: string) =>
     handleResponse<{ data: any[] }>(await api.get(EP.ADMINS.AUDIT(id))),
-  impersonate: async (id: string) =>
-    handleResponse<{ data: { token: string } }>(await api.post(EP.ADMINS.IMPERSONATE(id))),
-  getAuditLogs: async () =>
-    handleResponse<{ data: any[] }>(await api.get(EP.AUDIT_LOGS)),
+  // Backend accepts no body today; reason is sent best-effort for audit detail.
+  impersonate: async (id: string, reason?: string) =>
+    handleResponse<{ data: ImpersonateResult }>(
+      await api.post(EP.ADMINS.IMPERSONATE(id), reason ? { reason } : {})
+    ),
+  // Backend: { data: { logs, total } }
+  getAuditLogs: async () => {
+    const res = handleResponse<{ data: { logs: any[] } }>(await api.get(EP.AUDIT_LOGS));
+    return { data: (await res).data.logs };
+  },
 
   // Plans (backend: { data: { plans, total } }, snake_case fields)
   listPlans: async () => {
@@ -189,9 +229,11 @@ export const superadminApi = {
   deleteFeatureFlag: (id: string) =>
     api.delete(EP.FEATURE_FLAGS.DELETE(id)),
 
-  // Announcements
-  listAnnouncements: async () =>
-    handleResponse<{ data: Announcement[] }>(await api.get(EP.ANNOUNCEMENTS.LIST)),
+  // Announcements (backend: { data: { announcements, total } })
+  listAnnouncements: async () => {
+    const res = handleResponse<{ data: { announcements: Announcement[] } }>(await api.get(EP.ANNOUNCEMENTS.LIST));
+    return { data: (await res).data.announcements };
+  },
   createAnnouncement: async (data: Omit<Announcement, 'id' | 'created_at'>) =>
     handleResponse<{ data: Announcement }>(await api.post(EP.ANNOUNCEMENTS.CREATE, data)),
   deleteAnnouncement: (id: string) =>

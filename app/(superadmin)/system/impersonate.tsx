@@ -2,48 +2,64 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { safeGoBack } from "@/lib/utils";
+import { useSuperAdmin } from '@/lib/context/superadmin-context';
+import { superadminApi, type AdminAccount } from '@/lib/api/superadmin-api';
 import { PURPLE, RED, SLATE, STATUS, BG } from '@/lib/constants/figma-tokens';
-;
-;
 
 const ACCENT = PURPLE[700];
 
-const MOCK_ADMINS = [
-  { id: 'adm-1', tenant: 'Himalayan Heights Hotels', adminName: 'Rajesh Hamal', email: 'rajesh@himalayanhotels.com', plan: 'Enterprise', status: 'Active', lastActive: '2 min ago' },
-  { id: 'adm-2', tenant: 'Pokhara Lake Resort', adminName: 'Anita Thapa', email: 'anita@pokharalake.com', plan: 'Pro', status: 'Active', lastActive: '15 min ago' },
-  { id: 'adm-3', tenant: 'Everest Base Camp Lodges', adminName: 'Mingma Sherpa', email: 'mingma@ebclodges.com', plan: 'Enterprise', status: 'Active', lastActive: '1 hour ago' },
-  { id: 'adm-4', tenant: 'Chitwan Safari Lodge', adminName: 'Kumar Gurung', email: 'kumar@safarilodge.com', plan: 'Basic', status: 'Suspended', lastActive: '3 days ago' },
-  { id: 'adm-5', tenant: 'Buddha B&B Chain', adminName: 'Sunita Rai', email: 'sunita@buddhabnb.com', plan: 'Basic', status: 'Active', lastActive: '1 hour ago' },
-  { id: 'adm-6', tenant: 'Mountain View Inn', adminName: 'Prakash Adhikari', email: 'prakash@mountainview.com', plan: 'Trial', status: 'Active', lastActive: '2 days ago' },
-  { id: 'adm-7', tenant: 'Lumbini Garden Hotel', adminName: 'Deepa Shah', email: 'deepa@lumbinihotel.com', plan: 'Pro', status: 'Active', lastActive: '5 hours ago' },
-  { id: 'adm-8', tenant: 'Annapurna Base Camp', adminName: 'Nima Dorje', email: 'nima@annapurnabc.com', plan: 'Basic', status: 'Active', lastActive: '30 min ago' },
-];
-
-const RECENT_IMPERSONATIONS = [
-  { admin: 'Rajesh Hamal', tenant: 'Himalayan Heights Hotels', duration: '12 min', reason: 'Payment gateway issue', time: '2026-07-08 10:23' },
-  { admin: 'Anita Thapa', tenant: 'Pokhara Lake Resort', duration: '5 min', reason: 'Booking setup help', time: '2026-07-07 14:45' },
-  { admin: 'Mingma Sherpa', tenant: 'Everest Base Camp Lodges', duration: '8 min', reason: 'Staff permission error', time: '2026-07-06 16:30' },
-];
+function formatDate(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 export default function ImpersonateScreen() {
+  const { admins, auditLogs } = useSuperAdmin();
   const [search, setSearch] = useState('');
   const [reason, setReason] = useState('');
-  const filtered = MOCK_ADMINS.filter(a =>
-    a.tenant.toLowerCase().includes(search.toLowerCase()) ||
-    a.adminName.toLowerCase().includes(search.toLowerCase()) ||
-    a.email.toLowerCase().includes(search.toLowerCase())
+  const [busy, setBusy] = useState(false);
+
+  const filtered = admins.filter(a =>
+    a.name.toLowerCase().includes(search.toLowerCase()) ||
+    a.email.toLowerCase().includes(search.toLowerCase()) ||
+    a.role.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleImpersonate = (admin: typeof MOCK_ADMINS[0]) => {
+  const recent = auditLogs
+    .filter(l => String(l.action || '').toLowerCase().includes('impersonat'))
+    .slice(0, 5);
+
+  const runImpersonation = async (admin: AdminAccount) => {
+    setBusy(true);
+    try {
+      const res = await superadminApi.impersonate(admin.id, reason.trim());
+      const session = res.data;
+      const minutes = Math.max(1, Math.round((session.expires_in || 0) / 60));
+      setReason('');
+      Alert.alert(
+        'Impersonation Active',
+        `You are now viewing as ${session.impersonated_admin_email}.\n\nSession valid for ${minutes} min. All actions are being logged.`,
+        [{ text: 'Enter Dashboard', onPress: () => safeGoBack() }]
+      );
+    } catch (e: any) {
+      Alert.alert('Impersonation failed', e?.message || 'Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImpersonate = (admin: AdminAccount) => {
+    if (!admin.is_active) {
+      Alert.alert('Admin Inactive', `${admin.name} cannot be impersonated while deactivated.`);
+      return;
+    }
     if (!reason.trim()) { Alert.alert('Reason Required', 'Please enter a reason for impersonation.'); return; }
-    Alert.alert('Confirm Impersonation', `You are about to impersonate ${admin.adminName} (${admin.tenant}).\n\nReason: ${reason}\n\nThis action will be logged.`,
+    Alert.alert('Confirm Impersonation', `You are about to impersonate ${admin.name} (${admin.email}).\n\nReason: ${reason}\n\nThis action will be logged.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Impersonate', style: 'destructive', onPress: () => {
-            Alert.alert('Impersonation Active', `You are now viewing as ${admin.adminName}.\n\nAll actions are being logged.`, [{ text: 'Enter Dashboard', onPress: () => safeGoBack() }]);
-          },
-        },
+        { text: 'Impersonate', style: 'destructive', onPress: () => void runImpersonation(admin) },
       ]);
   };
 
@@ -73,25 +89,27 @@ export default function ImpersonateScreen() {
 
         <View style={s.searchBox}>
           <IconSymbol name="search" size={16} color={SLATE[400]} />
-          <TextInput placeholder="Search by tenant, admin name, or email..." placeholderTextColor={SLATE[400]}
+          <TextInput placeholder="Search by name, email, or role..." placeholderTextColor={SLATE[400]}
             value={search} onChangeText={setSearch} style={s.searchInput} />
         </View>
 
         {filtered.map(admin => (
-          <TouchableOpacity key={admin.id} onPress={() => handleImpersonate(admin)}
-            style={[s.adminCard, { borderLeftColor: admin.status === 'Active' ? STATUS.activeGreen : RED[500] }]}>
+          <TouchableOpacity key={admin.id} disabled={busy} onPress={() => handleImpersonate(admin)}
+            style={[s.adminCard, { borderLeftColor: admin.is_active ? STATUS.activeGreen : RED[500] }]}>
             <View style={{ flex: 1 }}>
-              <Text style={s.adminTenant}>{admin.tenant}</Text>
-              <Text style={s.adminName}>{admin.adminName} · {admin.email}</Text>
+              <Text style={s.adminTenant}>{admin.name}</Text>
+              <Text style={s.adminName}>{admin.email}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                 <View style={[s.badge, { backgroundColor: ACCENT + '12' }]}>
-                  <Text style={[s.badgeText, { color: ACCENT }]}>{admin.plan}</Text>
+                  <Text style={[s.badgeText, { color: ACCENT }]}>{admin.role}</Text>
                 </View>
-                <Text style={{ fontSize: 12, color: SLATE[500] }}>Active {admin.lastActive}</Text>
+                <Text style={{ fontSize: 12, color: SLATE[500] }}>
+                  {admin.is_active ? 'Active' : 'Inactive'} · since {formatDate(admin.created_at)}
+                </Text>
               </View>
             </View>
-            <View style={[s.impersonateBadge, { backgroundColor: ACCENT + '12' }]}>
-              <Text style={[s.impersonateText, { color: ACCENT }]}>Impersonate</Text>
+            <View style={[s.impersonateBadge, { backgroundColor: (admin.is_active ? ACCENT : SLATE[300]) + '12' }]}>
+              <Text style={[s.impersonateText, { color: admin.is_active ? ACCENT : SLATE[400] }]}>Impersonate</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -103,20 +121,20 @@ export default function ImpersonateScreen() {
           </View>
         )}
 
-        <View style={s.recentSection}>
-          <Text style={s.sectionTitle}>Recent Impersonations</Text>
-          {RECENT_IMPERSONATIONS.map((imp, i) => (
-            <View key={i} style={s.recentCard}>
-              <View style={s.recentHead}>
-                <Text style={s.recentAdmin}>{imp.admin}</Text>
-                <Text style={{ fontSize: 12, color: SLATE[500] }}>{imp.duration}</Text>
+        {recent.length > 0 && (
+          <View style={s.recentSection}>
+            <Text style={s.sectionTitle}>Recent Impersonations</Text>
+            {recent.map(log => (
+              <View key={log.id} style={s.recentCard}>
+                <View style={s.recentHead}>
+                  <Text style={s.recentAdmin}>{log.actor_email}</Text>
+                  <Text style={{ fontSize: 12, color: SLATE[500] }}>{formatDate(log.created_at)}</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: SLATE[500], marginTop: 3 }}>{log.action}</Text>
               </View>
-              <Text style={{ fontSize: 13, color: SLATE[500] }}>{imp.tenant}</Text>
-              <Text style={{ fontSize: 12, color: SLATE[500], marginTop: 3 }}>Reason: {imp.reason}</Text>
-              <Text style={{ fontSize: 11, color: SLATE[400], marginTop: 3 }}>{imp.time}</Text>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );

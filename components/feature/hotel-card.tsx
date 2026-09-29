@@ -31,8 +31,6 @@ export function HotelCard({
     ? { uri: mainImage }
     : mainImage;
 
-  const minPrice = hotel.price || 5000;
-
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
       <Card variant="elevated" padding="none" className="overflow-hidden">
@@ -44,11 +42,13 @@ export function HotelCard({
             resizeMode="cover"
           />
 
-          {/* Rating Badge */}
-          <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
-            <Text className="text-yellow-300 font-bold">★</Text>
-            <Text className="text-white font-semibold text-sm">{hotel.rating.toFixed(1)}</Text>
-          </View>
+          {/* Rating Badge — hidden when the source has no rating yet */}
+          {hotel.rating > 0 && (
+            <View style={{ position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+              <Text className="text-yellow-300 font-bold">★</Text>
+              <Text className="text-white font-semibold text-sm">{hotel.rating.toFixed(1)}</Text>
+            </View>
+          )}
 
           {/* Favorite Button */}
           <TouchableOpacity
@@ -60,12 +60,14 @@ export function HotelCard({
             </Text>
           </TouchableOpacity>
 
-          {/* Price Badge */}
-          <View style={{ position: 'absolute', bottom: 12, right: 12, backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
-            <Text className="text-white font-bold text-sm">
-              {hotel.currency} {minPrice.toLocaleString()}+
-            </Text>
-          </View>
+          {/* Price Badge — PropertyResponse carries no rate, so don't invent one */}
+          {hotel.price > 0 && (
+            <View style={{ position: 'absolute', bottom: 12, right: 12, backgroundColor: (hotel.brandColor || CORAL[500]) + 'E6', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 }}>
+              <Text className="text-white font-bold text-sm">
+                {hotel.currency} {hotel.price.toLocaleString()}+
+              </Text>
+            </View>
+          )}
 
           {/* Low-inventory urgency badge (BK-007) — renders only when ≤3 left */}
           <ScarcityBadge count={hotel.availableRooms ?? 0} />
@@ -94,9 +96,11 @@ export function HotelCard({
           ) : null}
 
           {/* Review Count */}
-          <Text className="text-xs text-muted">
-            {hotel.review_count} reviews
-          </Text>
+          {hotel.review_count > 0 && (
+            <Text className="text-xs text-muted">
+              {hotel.review_count} reviews
+            </Text>
+          )}
 
           {/* Amenities Preview */}
           {hotel.amenities && hotel.amenities.length > 0 && (

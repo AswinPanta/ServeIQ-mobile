@@ -5,62 +5,20 @@ import { ScreenContainer } from '@/components/screen-container';
 import type { Hotel } from '@/types/api';
 import { HotelCard } from '@/components/feature/hotel-card';
 import { useFavorites } from '@/lib/context/favorites-context';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useTranslation } from 'react-i18next';
 import { SLATE, BRAND } from '@/lib/constants/figma-tokens';
 
 /**
- * Merge favoritesData (backend Hotel objects) with MOCK_PROPERTIES by ID.
- * Backend data takes precedence so properties added via API show up even
- * if they're not in the mock dataset.
+ * Favorite IDs come from GET /favorites, which already returns full
+ * PropertyResponse objects — no second source of property data.
  */
 function useFavoriteHotels(): Hotel[] {
   const { favoritesList, favoritesData } = useFavorites();
-  return React.useMemo(() => {
-    const mockById = new Map(MOCK_PROPERTIES.map(m => [m.id, m]));
-    return favoritesList
-      .map(id => {
-        const key = String(id);
-        if (favoritesData[key]) return favoritesData[key];
-        const mock = mockById.get(key);
-        if (mock) {
-          // Convert mock Hotel to API Hotel shape
-          return {
-            id: mock.id,
-            name: mock.name,
-            location: mock.location,
-            city: mock.city,
-            country: mock.country,
-            address: mock.address,
-            rating: mock.rating,
-            review_count: mock.review_count,
-            starRating: mock.starRating,
-            price: mock.price,
-            currency: mock.currency,
-            property_type: mock.property_type ?? 'Hotel',
-            description: mock.description,
-            shortDescription: mock.shortDescription,
-            images: mock.images,
-            amenities: mock.amenities.map(a => ({ id: a.name, name: a.name, icon: a.icon, category: 'other' as const })),
-            roomTypes: mock.roomTypes as any[],
-            reviews: mock.reviews as any[],
-            cancellationPolicy: mock.cancellationPolicy,
-            checkInTime: mock.checkInTime,
-            checkOutTime: mock.checkOutTime,
-            phone: mock.phone,
-            email: mock.email,
-            website: mock.website,
-            coordinates: mock.coordinates,
-            availableRooms: mock.availableRooms,
-            tags: mock.tags,
-            photos: mock.images.map((url, idx) => ({ url, caption: '', id: String(idx), order: idx })),
-          } as Hotel;
-        }
-        return null;
-      })
-      .filter(Boolean) as Hotel[];
-  }, [favoritesList, favoritesData]);
+  return React.useMemo(
+    () => favoritesList.map(id => favoritesData[String(id)]).filter(Boolean) as Hotel[],
+    [favoritesList, favoritesData]
+  );
 }
 
 export default function FavoritesScreen() {

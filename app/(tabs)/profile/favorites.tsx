@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useFavorites } from '@/lib/context/favorites-context';
-import { MOCK_PROPERTIES } from '@/lib/mock/properties';
 import type { Hotel as ApiHotel } from '@/types/api';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
 import { CORAL as CORALTokens, BRAND, GRAY, SLATE, NEUTRAL, BG } from '@/lib/constants/figma-tokens';
@@ -40,8 +39,10 @@ function FavoriteCard({ hotel }: { hotel: ApiHotel }) {
       </View>
       <View style={s.cardBody}>
         <Text style={s.cardName} numberOfLines={1}>{hotel.name}</Text>
-        <StarRating rating={hotel.rating} />
-        <Text style={s.cardPrice}>NPR {hotel.price.toLocaleString()}<Text style={s.cardPerNight}> {t('profile.favorites.perNight')}</Text></Text>
+        {hotel.rating > 0 && <StarRating rating={hotel.rating} />}
+        {hotel.price > 0 && (
+          <Text style={s.cardPrice}>NPR {hotel.price.toLocaleString()}<Text style={s.cardPerNight}> {t('profile.favorites.perNight')}</Text></Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -51,10 +52,7 @@ export default function FavoritesScreen() {
   const { favorites, favoritesData } = useFavorites();
   const { t } = useTranslation();
   const favoriteHotels = React.useMemo(() => {
-    return [...favorites].map(id => {
-      if (favoritesData[String(id)]) return favoritesData[String(id)];
-      return MOCK_PROPERTIES.find(h => h.id === id) ?? null;
-    }).filter(Boolean) as ApiHotel[];
+    return [...favorites].map(id => favoritesData[String(id)]).filter(Boolean) as ApiHotel[];
   }, [favorites, favoritesData]);
   const [refreshing, setRefreshing] = useState(false);
 
