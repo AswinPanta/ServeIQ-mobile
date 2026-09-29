@@ -9,7 +9,7 @@ import type { OperatorRole } from '@/types/api';
  *  - Take table orders (POS)                                   → Waiter + Front Desk
  *  - View Kitchen Display (KDS)                                → Kitchen Staff + Manager
  *  - Access guest CRM                                          → Manager + Front Desk (limited)
- *  - Add/remove staff, approvals, shifts                       → Manager (Admin reserved)
+ *  - Add/remove staff, shifts                                 → Manager (Admin reserved)
  *  - Housekeeping tasks / maintenance                          → Housekeeping / Maintenance
  */
 export const MODULE_ROLES: Record<string, OperatorRole[]> = {
@@ -18,11 +18,10 @@ export const MODULE_ROLES: Record<string, OperatorRole[]> = {
   pos: ['manager', 'front_desk', 'waiter', 'pos'],
   kds: ['manager', 'kitchen', 'kds'],
   analytics: ['manager'],
-  // The whole admin group (staff / approvals / shifts) is manager-only today;
+  // The whole admin group (staff / shifts) is manager-only today;
   // guard the group with a single key so future role changes happen in one place.
   admin: ['manager'],
   'admin/staff': ['manager'],
-  'admin/approvals': ['manager'],
   'admin/shifts': ['manager'],
 };
 

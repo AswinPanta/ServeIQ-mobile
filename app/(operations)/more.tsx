@@ -38,7 +38,7 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
       { icon: 'people-outline', label: 'Users & Roles', href: '/(operations)/admin/staff', color: BLUE[600] },
       { icon: 'chatbubbles-outline', label: 'Messages', color: EMERALD[500] },
       { icon: 'finger-print-outline', label: 'Clock History', color: SLATE[600] },
-      { icon: 'calendar-outline', label: 'Shift Schedule', color: AMBER[500] },
+      { icon: 'calendar-outline', label: 'Shift Schedule', href: '/(operations)/admin/shifts', color: AMBER[500] },
       { icon: 'checkbox-outline', label: 'Assigned Tasks', color: PURPLE[500] },
       { icon: 'finger-print-outline', label: 'Attendance', color: SRS.teal },
     ],

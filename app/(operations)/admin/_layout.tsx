@@ -15,7 +15,6 @@ export default function AdminLayout() {
     <RoleGuard allowedRoles={MODULE_ROLES.admin}>
       <Stack screenOptions={screenOptions}>
         <Stack.Screen name="staff" />
-        <Stack.Screen name="approvals" />
         <Stack.Screen name="shifts" />
       </Stack>
     </RoleGuard>

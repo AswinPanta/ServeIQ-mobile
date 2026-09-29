@@ -67,10 +67,6 @@ export default function TabLayout() {
         name="dining-reservations"
         options={{ title: "Dining", href: null }}
       />
-      <Tabs.Screen
-        name="services"
-        options={{ title: "Services", href: null }}
-      />
     </Tabs>
   );
 }
