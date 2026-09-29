@@ -20,6 +20,7 @@ import { PriceSummary } from '@/components/guest/property/PriceSummary';
 import { useFavorites } from '@/lib/context/favorites-context';
 import { getPropertyById } from '@/lib/api';
 import { hostApi } from '@/lib/api/host-api';
+import { normalizePolicyKey } from '@/lib/constants/cancellation-policies';
 import { safeGoBack } from "@/lib/utils";
 import type { Hotel } from '@/types/api';
 import { BG, SRS, NEUTRAL, SLATE, BRAND } from '@/lib/constants/figma-tokens';
@@ -345,7 +346,7 @@ export default function GuestHotelDetail() {
           setIsLoading(true);
           setTimeout(() => {
             setIsLoading(false);
-            router.push({ pathname: '/booking-flow', params: { hotelName: hotel.name, propertyId: hotel.id, currency: hotel.currency || 'NPR', checkIn: checkInDate!.toISOString(), checkOut: checkOutDate!.toISOString(), guests: String(guestCount), adults: String(adultCount), children: String(childCount), roomId: selectedRoom!.id, roomName: selectedRoom!.name, roomPrice: String(selectedRoom!.price) } });
+            router.push({ pathname: '/booking-flow', params: { hotelName: hotel.name, propertyId: hotel.id, currency: hotel.currency || 'NPR', checkIn: checkInDate!.toISOString(), checkOut: checkOutDate!.toISOString(), guests: String(guestCount), adults: String(adultCount), children: String(childCount), roomId: selectedRoom!.id, roomName: selectedRoom!.name, roomPrice: String(selectedRoom!.price), policy: normalizePolicyKey(selectedRoom!.cancellation_title || selectedRoom!.cancellation || hotel.cancellationPolicy) } });
           }, 500);
         }} disabled={isLoading} style={[s.bookBtn, { opacity: isLoading ? 0.7 : 1 }]} activeOpacity={0.9}>
           {isLoading ? <ActivityIndicator color={BG.white} /> : (

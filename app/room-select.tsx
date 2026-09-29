@@ -14,6 +14,7 @@ import { safeGoBack } from '@/lib/utils';import { Ionicons } from '@expo/vector-
 import { FONTS, SRS, RADIUS, SHADOWS, FIGMA_COLORS, GRAY } from '@/constants/portal-theme';
 import { BG } from '@/lib/constants/figma-tokens';
 import { getAvailableRoomsApi, type AvailableRoom } from '@/lib/api';
+import { normalizePolicyKey } from '@/lib/constants/cancellation-policies';
 
 interface RoomCard extends AvailableRoom {
   maxQuantity: number;
@@ -153,6 +154,7 @@ export default function RoomSelectScreen() {
         currency,
         roomId: selected[0].id,
         roomIds: JSON.stringify(selected.map(r => ({ id: r.id, qty: selectedRooms[r.id] || 1 }))),
+        policy: normalizePolicyKey(selected[0].cancellation_title || selected[0].cancellation_policy),
       },
     });
   };

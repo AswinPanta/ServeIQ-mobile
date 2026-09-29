@@ -6,6 +6,7 @@ import { EsewaFormCheckout } from '@/components/feature/esewa-form-checkout';
 import { EsewaMockCheckout } from '@/components/feature/esewa-mock-checkout';
 import { SdkPaymentCheckout } from '@/components/feature/sdk-payment-checkout';
 import { useBookingFlow } from '@/hooks/use-booking-flow';
+import { CheckoutTimer } from '@/components/feature/checkout-timer';
 import { BookingHeader, ProgressHeader, StepRooms, StepDetails, StepPayment, BottomBar, LoginGate } from '@/components/booking/steps';
 import { styles } from '@/components/booking/styles';
 
@@ -30,6 +31,17 @@ export default function BookingFlowScreen() {
       <BookingHeader onBack={() => safeGoBack()} />
 
       <ProgressHeader stepLabels={flow.stepLabels} displayStep={flow.displayStep} />
+
+      {/* Soft-lock countdown (BK-011) — visible once the hold exists server-side */}
+      {flow.bookingResult && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+          <CheckoutTimer
+            key={flow.bookingResult.ref_number}
+            durationSeconds={flow.lockSeconds || 600}
+            onExpired={flow.onExpire}
+          />
+        </View>
+      )}
 
       {flow.step === 0 && (
         <StepRooms

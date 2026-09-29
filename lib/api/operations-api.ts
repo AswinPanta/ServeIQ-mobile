@@ -182,6 +182,10 @@ export const operationsApi = {
   getTaskRooms: (propertyId: string, fallback: () => any[] = () => []) =>
     apiGet<any[]>(API_ENDPOINTS.PROPERTIES.GET_TASK_ROOMS(propertyId), fallback),
 
+  /** Task-type picker options [{id, name}] for the create/assign form */
+  getTaskTypes: (propertyId: string, fallback: () => any[] = () => []) =>
+    apiGet<any[]>(API_ENDPOINTS.PROPERTIES.GET_TASK_TYPES(propertyId), fallback),
+
   /** Update a task (PATCH /tasks/{task_id}) — status, notes, etc. */
   updateTask: (propertyId: string, taskId: string, data: Record<string, any>, fallback: () => any) =>
     apiPatch<any, Record<string, any>>(`${API_ENDPOINTS.PROPERTIES.GET_TASKS(propertyId)}/${taskId}`, data, fallback),

@@ -4,24 +4,23 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
-import { getPortalStorageKeys } from '@/constants/api-config';
 import type { GuestProfile } from '@/types/api';
 import { safeGoBack } from '@/lib/utils';
 import { BG, SLATE, NEUTRAL, BRAND, SRS } from '@/lib/constants/figma-tokens';
 
 export default function ProfileEditScreen() {
   const { t } = useTranslation();
-  const { user: authUser, setUser, portal } = useAuth();
+  const { user: authUser, updateProfile } = useAuth();
   const user = authUser as GuestProfile | null;
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profile_photo || null);
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [nationality, setNationality] = useState(user?.nationality || '');
+  const [saving, setSaving] = useState(false);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -33,22 +32,33 @@ export default function ProfileEditScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     if (!name.trim() || !email.trim()) { Alert.alert(t('common.error'), t('profileEdit.nameEmailRequired')); return; }
     if (!user) { Alert.alert(t('common.error'), t('profileEdit.noUser')); return; }
+    setSaving(true);
     try {
-      const updatedUser: GuestProfile = {
-        ...user, name, email, phone, nationality,
+      // updateProfile PATCHes /auth/{guests|users}/me with the server and
+      // then refreshes both the auth state and the AsyncStorage profile
+      // cache. A local-only photo pick still persists via profile_photo.
+      const result = await updateProfile({
+        name,
+        email,
+        phone,
+        nationality,
         profile_photo: profilePhoto ?? undefined,
-      };
-      setUser(updatedUser);
-      if (portal) {
-        const keys = getPortalStorageKeys(portal);
-        await AsyncStorage.setItem(keys.USER_PROFILE, JSON.stringify(updatedUser));
+      });
+      if (result.success) {
+        Alert.alert(t('common.ok'), t('profileEdit.saved'), [
+          { text: t('common.ok'), onPress: () => safeGoBack() },
+        ]);
+      } else {
+        Alert.alert(t('common.error'), result.error || t('profileEdit.failedSave'));
       }
-      Alert.alert(t('common.ok'), t('profileEdit.saved'), [
-        { text: t('common.ok'), onPress: () => safeGoBack() },
-      ]);
-    } catch { Alert.alert(t('common.error'), t('profileEdit.failedSave')); }
+    } catch {
+      Alert.alert(t('common.error'), t('profileEdit.failedSave'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -59,8 +69,8 @@ export default function ProfileEditScreen() {
           <Text style={s.cancelText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>{t('profileEdit.title')}</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={s.saveText}>{t('profileEdit.save')}</Text>
+        <TouchableOpacity onPress={handleSave} disabled={saving}>
+          <Text style={[s.saveText, saving && { opacity: 0.5 }]}>{saving ? '…' : t('profileEdit.save')}</Text>
         </TouchableOpacity>
       </View>
 

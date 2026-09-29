@@ -37,9 +37,9 @@ export const bookingApi = {
   createBooking: (data: BookingCreateRequest, fallback: () => BookingReservationResponse) =>
     apiPost<BookingReservationResponse, BookingCreateRequest>(API_ENDPOINTS.BOOKINGS.CREATE, data, fallback),
 
-  getMyBookings: (fallback: () => PaginatedBookingsResponse, page = 1, limit = 20) =>
+  getMyBookings: (fallback: () => PaginatedBookingsResponse, page = 1, limit = 20, status?: string) =>
     apiGet<PaginatedBookingsResponse>(
-      `${API_ENDPOINTS.BOOKINGS.MY_BOOKINGS}?skip=${(page - 1) * limit}&limit=${limit}`,
+      `${API_ENDPOINTS.BOOKINGS.MY_BOOKINGS}?skip=${(page - 1) * limit}&limit=${limit}${status ? `&status=${encodeURIComponent(status)}` : ''}`,
       fallback,
     ),
 

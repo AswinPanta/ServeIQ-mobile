@@ -72,13 +72,17 @@ export const API_ENDPOINTS = {
   },
 
   // ─── Tenants (SuperAdmin) ──────────────────────────────────────
-  TENANTS: {
-    // No trailing slash — the live backend 307-redirects "/tenants/" to "/tenants",
+  TENANTS: {    // No trailing slash — the live backend 307-redirects "/tenants/" to "/tenants",
     // an extra round-trip that can drop POST/PATCH/DELETE bodies.
     GET: '/tenants',
     CREATE: '/tenants',
     UPDATE: '/tenants',         // PATCH — JWT-scoped, no query param
     DELETE: '/tenants',         // DELETE — JWT-scoped, no query param
+  },
+
+  // ─── Subscription (tenant self-view) ─────────────────────────
+  SUBSCRIPTION: {
+    ME: '/subscription/me',
   },
 
   // ─── Properties / PMS ─────────────────────────────────────────
@@ -147,6 +151,7 @@ export const API_ENDPOINTS = {
     // Picker options scoped to the tasks module (id + name [+ status])
     GET_TASK_HK_STAFF: (id: string) => `/properties/${id}/tasks/housekeeping-staff`,
     GET_TASK_ROOMS: (id: string) => `/properties/${id}/tasks/rooms`,
+    GET_TASK_TYPES: (id: string) => `/properties/${id}/tasks/task-types`,
     GET_HK_STAFF: (id: string) => `/properties/${id}/staffs/housekeeping-staffs`,
 
     // Housekeeping mobile (staff-facing)
@@ -222,8 +227,9 @@ export const API_ENDPOINTS = {
     FOLIO_CHARGE_ADD: (folioId: string) => `/staff/folios/${folioId}/charges`,
     FOLIO_CHARGE_UPDATE: (folioId: string, chargeId: string) => `/staff/folios/${folioId}/charges/${chargeId}`,
     FOLIO_CHARGE_DELETE: (folioId: string, chargeId: string) => `/staff/folios/${folioId}/charges/${chargeId}`,
-    FOLIO_SETTLE: (folioId: string) => `/staff/folios/${folioId}/settle`,
-    FOLIO_WAIVE: (folioId: string) => `/staff/folios/${folioId}/waive`,
+    // Record a payment against a folio (verified in live spec; replaces the
+    // non-existent /settle and /waive routes). Waive = 100% discount via PATCH.
+    FOLIO_PAYMENTS: (folioId: string) => `/staff/folios/${folioId}/payments`,
     // Activity log feeds (booking + housekeeping staff actions)
     ACTIVITY_BOOKING: (propertyId: string) => `/staff/properties/${propertyId}/activities/booking`,
     ACTIVITY_HOUSEKEEPING: (propertyId: string) => `/staff/properties/${propertyId}/activities/housekeeping`,

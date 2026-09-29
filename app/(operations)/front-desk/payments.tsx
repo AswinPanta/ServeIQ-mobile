@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SRS, TYPOGRAPHY, SPACING, RADIUS, GRAY } from '@/constants/portal-theme';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
+import { staffApi } from '@/lib/api/host-api';
 import { safeGoBack } from '@/lib/utils';
+import { exportCsv, type CsvColumn } from '@/lib/utils/csv-export';
 import { BG, SRS as SRSTokens, AMBER, EMERALD, RED, BLUE, FLAT, SLATE } from '@/lib/constants/figma-tokens';
 import type { FrontDeskBookingResponse } from '@/types/api';
 
@@ -49,11 +51,41 @@ const STATUS_STYLES: Record<string, { color: string; label: string }> = {
 
 const STATUS_FILTERS = ['PAID', 'PARTIAL', 'UNPAID', 'REFUNDED'] as const;
 
+type StatusFilter = { value: string; label: string };
+
+const DEFAULT_STATUS_FILTERS: StatusFilter[] = STATUS_FILTERS.map(value => ({
+  value,
+  label: STATUS_STYLES[value]?.label || value,
+}));
+
+
 export default function PaymentsScreen() {
   const { bookingGuestsData, bookings } = useFrontDesk();
   const [tab, setTab] = useState<'all' | 'refunds'>('all');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilters, setStatusFilters] = useState<StatusFilter[]>(DEFAULT_STATUS_FILTERS);
+
+  // Augment the chip list with the backend's canonical /staff/enums/payment-statuses
+  // (same pattern as check-out's payment-methods). Offline → keep the defaults.
+  useEffect(() => {
+    staffApi.getEnums('payment-statuses')
+      .then(enums => {
+        if (!enums.length) return;
+          setStatusFilters(prev => {
+            const merged = [...prev];
+            enums.forEach(e => {
+              // Transaction statuses are uppercased above, so chips must match.
+              const value = e.value.toUpperCase();
+              if (!merged.some(f => f.value === value)) {
+                merged.push({ value, label: e.label || e.value });
+              }
+            });
+            return merged;
+          });
+      })
+      .catch(() => {});
+  }, []);
 
   const transactions = useMemo<Transaction[]>(() => {
     // bookingGuestsData is authoritative for payment fields; context bookings fill gaps.
@@ -107,6 +139,25 @@ export default function PaymentsScreen() {
 
   const totalAmount = useMemo(() => filtered.reduce((sum, t) => sum + t.amount_paid, 0), [filtered]);
 
+  const handleExport = async () => {
+    const columns: CsvColumn<Transaction>[] = [
+      { header: 'Ref', value: (t) => t.ref },
+      { header: 'Guest', value: (t) => t.guest_name },
+      { header: 'Room', value: (t) => t.room_number },
+      { header: 'Method', value: (t) => t.method },
+      { header: 'Total', value: (t) => t.amount },
+      { header: 'Paid', value: (t) => t.amount_paid },
+      { header: 'Due', value: (t) => t.amount_due },
+      { header: 'Status', value: (t) => t.status },
+      { header: 'Date', value: (t) => t.created_at },
+    ];
+    try {
+      await exportCsv(filtered, columns, `payments-${new Date().toISOString().slice(0, 10)}`);
+    } catch {
+      Alert.alert('Export failed', 'Could not export the payments list.');
+    }
+  };
+
   const showDetails = (t: Transaction) => {
     Alert.alert(
       t.ref,
@@ -125,6 +176,9 @@ export default function PaymentsScreen() {
           <Text style={s.title}>Payment History</Text>
           <Text style={s.sub}>Track guest payments, refunds, and receipts</Text>
         </View>
+        <TouchableOpacity onPress={handleExport} style={s.exportBtn}>
+          <IconSymbol name="export" size={18} color={SRS.teal} />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -162,17 +216,17 @@ export default function PaymentsScreen() {
 
       {/* Status filter chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipScroll} contentContainerStyle={{ gap: SPACING.sm }}>
-        {STATUS_FILTERS.map(status => {
-          const active = statusFilter === status;
-          const color = STATUS_STYLES[status]?.color || GRAY[400];
+        {statusFilters.map(({ value, label }) => {
+          const active = statusFilter === value;
+          const color = STATUS_STYLES[value]?.color || GRAY[400];
           return (
             <TouchableOpacity
-              key={status}
-              onPress={() => setStatusFilter(active ? null : status)}
+              key={value}
+              onPress={() => setStatusFilter(active ? null : value)}
               style={[s.chip, { backgroundColor: active ? color : color + '15' }]}
             >
               <Text style={[s.chipText, { color: active ? BG.white : color }]}>
-                {STATUS_STYLES[status]?.label || status}
+                {label}
               </Text>
             </TouchableOpacity>
           );
@@ -236,6 +290,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: GRAY[50] },
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.md, flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md },
   backBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center' },
+  exportBtn: { width: 36, height: 36, borderRadius: RADIUS.card, backgroundColor: BG.white, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   title: { ...TYPOGRAPHY.h2, color: SRS.navy },
   sub: { ...TYPOGRAPHY.small, color: GRAY[500], marginTop: 2 },
 

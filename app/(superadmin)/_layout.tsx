@@ -20,6 +20,20 @@ const TABS = [
   { key: 'more', label: 'More', icon: 'menu' as const, route: '/(superadmin)/more' },
 ];
 
+// usePathname() strips route groups, so strip them from the tab routes too —
+// otherwise no tab ever matches and Dashboard stays highlighted everywhere.
+export function activeTabKey(
+  tabs: { key: string; route: string }[],
+  pathname: string
+): string {
+  const current = pathname.replace(/\/index$/, '');
+  return tabs.find(t => {
+    const path = t.route.replace(/\([^)]*\)/g, '').replace(/\/+/g, '/') || '/';
+    if (t.key === 'index') return current === path;
+    return pathname.startsWith(path);
+  })?.key || 'index';
+}
+
 function BottomTabBar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -30,10 +44,7 @@ function BottomTabBar() {
 
   if (!isSignedIn || portal !== 'superadmin' || isSubScreen) return null;
 
-  const activeTab = TABS.find(t => {
-    if (t.key === 'index') return pathname === '/(superadmin)' || pathname === '/(superadmin)/index';
-    return pathname.startsWith(`/(superadmin)/${t.key}`);
-  })?.key || 'index';
+  const activeTab = activeTabKey(TABS, pathname);
 
   return (
     <View style={tabStyles.container}>

@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Image, Alert, StyleSheet, Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ReviewModal } from '@/components/feature/review-modal';
 import { useBookings } from '@/lib/context/booking-context';
 import { useAuth } from '@/lib/context/auth-context';
+import { hostApi } from '@/lib/api/host-api';
 import { FONTS } from '@/constants/portal-theme';
 import { safeGoBack } from '@/lib/utils';
 import type { GuestProfile } from '@/types/api';
@@ -14,21 +16,92 @@ import { SRS, BRAND, SLATE, STATUS, BG, STATUS_COLORS, NEUTRAL } from '@/lib/con
 
 const ACCENT = SRS.teal;
 
+const REVIEWS_STORAGE_KEY = 'guest_submitted_reviews';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 interface ReviewEntry {
   bookingId: string;
+  hotelId?: string;
   hotelName: string;
   rating: number;
   title: string;
   comment: string;
   photos: string[];
   createdAt: string;
+  synced?: boolean;
+}
+
+/** Load submitted reviews from local storage so they survive app restarts. */
+async function loadStoredReviews(): Promise<ReviewEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(REVIEWS_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as ReviewEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Persist the full review list locally (source of truth when offline). */
+async function storeReviews(reviews: ReviewEntry[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(REVIEWS_STORAGE_KEY, JSON.stringify(reviews));
+  } catch {
+    // Storage full/unavailable — reviews stay in memory for this session.
+  }
+}
+
+/**
+ * Push a review to the backend (POST /properties/{id}/reviews).
+ * Returns true when the server accepted it; the entry keeps synced=false
+ * otherwise so a future retry can pick it up.
+ */
+async function syncReview(entry: ReviewEntry): Promise<boolean> {
+  if (!entry.hotelId || !UUID_RE.test(entry.hotelId)) return false;
+  try {
+    await hostApi.createReview(entry.hotelId, { rating: entry.rating, comment: entry.comment }, () => null);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export default function PostStayReviewScreen() {
   const { bookings } = useBookings();
   const { user } = useAuth();
   const [reviews, setReviews] = useState<ReviewEntry[]>([]);
-  const [reviewTarget, setReviewTarget] = useState<{ bookingId: string; hotelName: string } | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{ bookingId: string; hotelName: string; hotelId?: string } | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Load persisted reviews once on mount.
+  useEffect(() => {
+    loadStoredReviews()
+      .then(setReviews)
+      .finally(() => setHydrated(true));
+  }, []);
+
+  // Retry any reviews that failed to reach the backend earlier.
+  useEffect(() => {
+    if (!hydrated) return;
+    const unsynced = reviews.filter((r) => !r.synced);
+    if (unsynced.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(
+        unsynced.map(async (r) => ({ id: r.bookingId + r.createdAt, ok: await syncReview(r) })),
+      );
+      if (cancelled) return;
+      const okIds = new Set(results.filter((x) => x.ok).map((x) => x.id));
+      if (okIds.size === 0) return;
+      setReviews((prev) => {
+        const next = prev.map((r) =>
+          okIds.has(r.bookingId + r.createdAt) ? { ...r, synced: true } : r,
+        );
+        void storeReviews(next);
+        return next;
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [hydrated, reviews]);
 
   const userName = user ? ((user as GuestProfile).name || (user as GuestProfile).full_name || 'Guest') : 'Guest';
 
@@ -46,14 +119,34 @@ export default function PostStayReviewScreen() {
 
   const handleSubmitReview = (review: { rating: number; title: string; comment: string; photos: string[] }) => {
     if (!reviewTarget) return;
-    setReviews(prev => [...prev, {
+    const entry: ReviewEntry = {
       bookingId: reviewTarget.bookingId,
+      hotelId: reviewTarget.hotelId,
       hotelName: reviewTarget.hotelName,
       ...review,
       createdAt: new Date().toISOString(),
-    }]);
+      synced: false,
+    };
+    setReviews((prev) => {
+      const next = [...prev, entry];
+      void storeReviews(next);
+      return next;
+    });
     setReviewTarget(null);
-    Alert.alert('Thank You!', 'Your review has been submitted successfully.');
+    void syncReview(entry).then((ok) => {
+      if (ok) {
+        setReviews((prev) => {
+          const next = prev.map((r) =>
+            r.bookingId === entry.bookingId && r.createdAt === entry.createdAt ? { ...r, synced: true } : r,
+          );
+          void storeReviews(next);
+          return next;
+        });
+        Alert.alert('Thank You!', 'Your review has been submitted successfully.');
+      } else {
+        Alert.alert('Saved', 'Your review was saved and will be sent when you are back online.');
+      }
+    });
   };
 
   return (
@@ -84,7 +177,7 @@ export default function PostStayReviewScreen() {
             {pendingReviews.map(booking => (
               <TouchableOpacity
                 key={booking.id}
-                onPress={() => setReviewTarget({ bookingId: booking.id, hotelName: booking.hotelName })}
+                onPress={() => setReviewTarget({ bookingId: booking.id, hotelName: booking.hotelName, hotelId: (booking as { hotelId?: string }).hotelId })}
                 style={s.reviewPromptCard}
                 activeOpacity={0.7}
               >
@@ -154,6 +247,11 @@ export default function PostStayReviewScreen() {
                 </View>
                 {rev.title ? <Text style={s.submittedTitle}>{rev.title}</Text> : null}
                 <Text style={s.submittedComment} numberOfLines={3}>{rev.comment}</Text>
+                {!rev.synced && (
+                  <Text style={{ ...s.submittedDate, color: SRS.orange, marginTop: 2 }}>
+                      Pending sync — will send automatically
+                  </Text>
+                )}
                 <View style={s.submittedStarRow}>
                   {[1, 2, 3, 4, 5].map(star => (
                     <IconSymbol

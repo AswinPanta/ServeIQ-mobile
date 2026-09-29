@@ -46,6 +46,7 @@ export default function SearchScreen() {
         guests: (adults + children).toString(),
         adults: adults.toString(),
         children: children.toString(),
+        rooms: rooms.toString(),
         filter: activeFilter || '',
       },
     });

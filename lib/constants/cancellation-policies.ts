@@ -26,3 +26,13 @@ export const CANCELLATION_OPTIONS: { label: string; value: CancellationPolicy; d
   { label: CANCELLATION_POLICY_DEFAULTS.NON_REFUNDABLE.title, value: 'NON_REFUNDABLE', description: CANCELLATION_POLICY_DEFAULTS.NON_REFUNDABLE.description },
   { label: 'Custom', value: 'CUSTOM', description: 'Define your own cancellation terms' },
 ];
+
+/** Map free-text room policy labels ("Free cancellation", …) — or an
+ *  already-normalized key — to a policy key. */
+export function normalizePolicyKey(raw?: string): Exclude<CancellationPolicy, 'CUSTOM'> {
+  const t = (raw || '').toLowerCase().replace(/_/g, ' ');
+  if (t.includes('non-refund') || t.includes('non refund')) return 'NON_REFUNDABLE';
+  if (t.includes('strict')) return 'STRICT';
+  if (t.includes('moderate')) return 'MODERATE';
+  return 'FLEXIBLE';
+}

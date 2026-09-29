@@ -8,6 +8,7 @@ import * as Clipboard from 'expo-clipboard';
 import { BRAND, PAYMENT, BG, SLATE, CORAL, NEUTRAL, GREEN, AMBER } from '@/lib/constants/figma-tokens';
 import { BookingQrCode } from '@/components/feature/booking-qr-code';
 import { shareBookingReceipt } from '@/lib/utils/booking-receipt';
+import { CANCELLATION_POLICY_DEFAULTS, normalizePolicyKey } from '@/lib/constants/cancellation-policies';
 
 const NAVY = BRAND.navyLight;
 const TEAL = PAYMENT.success;
@@ -25,6 +26,7 @@ export default function BookingConfirmationScreen() {
   const formatCurrency = (amount: number): string => `${currency} ` + amount.toLocaleString('en-IN');
 
   const hotelName = (params.hotelName as string) || 'Hotel';
+  const propertyId = (params.propertyId as string) || '';
   const hotelImage = (params.hotelImage as string) || '';
   const hotelCity = (params.hotelCity as string) || '';
   const roomType = (params.roomType as string) || params.rooms as string || '';
@@ -45,6 +47,8 @@ export default function BookingConfirmationScreen() {
   const guestCountry = (params.guestCountry as string) || '';
   const bedTypes = (params.bedTypes as string) || 'Queen';
   const pricePerNight = nights > 0 ? Math.round(subtotal / nights) : subtotal;
+  // Dynamic cancellation policy (BK-020) — threaded from the booked room type.
+  const policy = CANCELLATION_POLICY_DEFAULTS[normalizePolicyKey(params.policy as string | undefined)];
 
   const initials = hotelName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
@@ -181,8 +185,8 @@ export default function BookingConfirmationScreen() {
               <View style={styles.cancelRow}>
                 <Ionicons name="shield-checkmark-outline" size={18} color={TEAL} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cancelTitle}>Free cancellation</Text>
-                  <Text style={styles.cancelDesc}>Cancel before {formatDate(checkIn)} for a full refund</Text>
+                  <Text style={styles.cancelTitle}>{policy.title}</Text>
+                  <Text style={styles.cancelDesc}>{policy.description}</Text>
                 </View>
               </View>
             </View>
@@ -284,6 +288,22 @@ export default function BookingConfirmationScreen() {
               <Text style={styles.qrTitle}>Booking QR Code</Text>
               <BookingQrCode value={confirmationCode} size={180} hint="Show this QR code at check-in" />
             </View>
+
+            {/* Book Again */}
+            {propertyId ? (
+              <View style={styles.bookAgainCard}>
+                <Text style={styles.bookAgainTitle}>Book Again</Text>
+                <Text style={styles.bookAgainDesc}>Love this property?</Text>
+                <TouchableOpacity
+                  style={styles.bookAgainBtn}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({ pathname: '/[id]', params: { id: propertyId, checkIn, checkOut } })}
+                >
+                  <Ionicons name="heart-outline" size={16} color={BG.white} />
+                  <Text style={styles.bookAgainBtnText}>Book Again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         </View>
       </ScrollView>
@@ -392,6 +412,13 @@ const styles = StyleSheet.create({
   qrCard: { backgroundColor: BG.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: SLATE[200], alignItems: 'center' },
   qrTitle: { fontSize: 14, fontWeight: '700', color: NAVY, marginBottom: 12, alignSelf: 'flex-start' },
   qrHint: { fontSize: 12, color: SLATE[400] },
+
+  // Book Again
+  bookAgainCard: { backgroundColor: BG.white, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: SLATE[200] },
+  bookAgainTitle: { fontSize: 14, fontWeight: '700', color: NAVY },
+  bookAgainDesc: { fontSize: 12, color: SLATE[500], marginTop: 2, marginBottom: 12 },
+  bookAgainBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 10, backgroundColor: NAVY },
+  bookAgainBtnText: { fontSize: 13, fontWeight: '700', color: BG.white },
 
   // Bottom Bar
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: Platform.OS === 'ios' ? 36 : 16, backgroundColor: BG.white, borderTopWidth: 1, borderTopColor: SLATE[200] },

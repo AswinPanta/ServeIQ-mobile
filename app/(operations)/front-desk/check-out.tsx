@@ -15,6 +15,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { safeGoBack } from "@/lib/utils";
 import { bookingApi } from '@/lib/api/booking-api';
 import { staffApi } from '@/lib/api/host-api';
+import { buildInvoiceHtml, printHtml, sharePdf } from '@/lib/utils/invoice';
 import { BLUE, PURPLE, STATUS_COLORS, PINK, BG, FLAT } from '@/lib/constants/figma-tokens';
 
 const STEPS = [
@@ -103,6 +104,30 @@ export default function CheckOutScreen() {
 
   const completingRef = useRef(false);
 
+  const receiptHtml = () =>
+    buildInvoiceHtml({
+      title: 'Check-out Receipt',
+      subtitle: 'ServeIQ Hotel',
+      guestName: selectedBooking?.guest_name,
+      roomNumber: selectedBooking?.room_number,
+      ref: selectedBooking?.ref,
+      charges: Object.entries(categoryGroups).flatMap(([cat, list]) =>
+        list.map((c) => ({ category: CATEGORY_LABELS[cat] || cat, description: c.description, amount: c.amount })),
+      ),
+      subtotal: effectiveFolio?.subtotal,
+      tax: effectiveFolio?.tax,
+      total: effectiveFolio?.total,
+      paymentMethod: paymentMethod.toUpperCase(),
+    });
+
+  const handlePrintReceipt = async () => {
+    try { await printHtml(receiptHtml()); } catch { Alert.alert('Print failed', 'Could not open the print dialog.'); }
+  };
+
+  const handleShareReceipt = async () => {
+    try { await sharePdf(receiptHtml(), `receipt-${selectedBooking?.ref || 'checkout'}`); } catch { Alert.alert('Share failed', 'Could not share the receipt.'); }
+  };
+
   const handleComplete = () => {
     if (completingRef.current) return;
     if (!selectedBooking || !paymentMethod) return;
@@ -122,8 +147,8 @@ export default function CheckOutScreen() {
     // remains the screen's source of truth). POST /staff/properties/{pid}/bookings/{ref}/folio
     const propId = operator?.property_id;
     if (propId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(propId) && effectiveFolio) {
-      // Sync the local charges to the server ledger, then settle it. All
-      // best-effort: createFolio + addFolioCharge + settleFolio fall back
+      // Sync the local charges to the server ledger, then record payment. All
+      // best-effort: createFolio + addFolioCharge + recordFolioPayment fall back
       // silently when offline, leaving the local store authoritative.
       staffApi.createFolio(propId, selectedBooking.ref, () => null)
         .then((created: any) => {
@@ -136,7 +161,15 @@ export default function CheckOutScreen() {
               category: FOLIO_CATEGORY_SERVER[c.category] || c.category.toUpperCase(),
             }, () => null),
           );
-          staffApi.settleFolio(folioId, () => null);
+          // The folio endpoint only accepts its canonical gateways — UPI runs
+          // over bank rails; anything else (e.g. generic wallet) stays local-only.
+          const folioGateway = ({ upi: 'BANK_TRANSFER' } as Record<string, string>)[paymentMethod.toLowerCase()] || paymentMethod.toUpperCase();
+          if (['CASH', 'CARD', 'STRIPE', 'RAZORPAY', 'KHALTI', 'ESEWA', 'BANK_TRANSFER'].includes(folioGateway)) {
+            staffApi.recordFolioPayment(folioId, {
+              amount: effectiveFolio.total,
+              payment_gateway: folioGateway,
+            }, () => null);
+          }
         })
         .catch(() => {});
     }
@@ -290,6 +323,10 @@ export default function CheckOutScreen() {
               <IconSymbol name="cleaning" size={18} color={SRS.orange} />
               <View style={{ flex: 1 }}><Text style={{ ...TYPOGRAPHY.small, fontWeight: '600', color: SRS.navy }}>Housekeeping Notified</Text><Text style={{ ...TYPOGRAPHY.caption, color: GRAY[500] }}>Room {selectedBooking.room_number} marked for cleaning</Text></View>
             </View>
+            <View style={{ flexDirection: 'row', gap: SPACING.md, width: '100%', marginBottom: SPACING.lg }}>
+              <TouchableOpacity onPress={handlePrintReceipt} style={[doneStyles.shareBtn, { backgroundColor: GRAY[100] }]}><Text style={[doneStyles.shareBtnText, { color: GRAY[700] }]}>Print</Text></TouchableOpacity>
+              <TouchableOpacity onPress={handleShareReceipt} style={[doneStyles.shareBtn, { backgroundColor: SRS.teal + '12', borderWidth: 1, borderColor: SRS.teal + '30' }]}><Text style={[doneStyles.shareBtnText, { color: SRS.teal }]}>Share PDF</Text></TouchableOpacity>
+            </View>
             <TouchableOpacity onPress={() => safeGoBack()} style={doneStyles.doneBtn}><Text style={doneStyles.doneBtnText}>Done</Text></TouchableOpacity>
           </View>
         )}
@@ -333,6 +370,8 @@ const doneStyles = StyleSheet.create({
   receiptLabel: { ...TYPOGRAPHY.caption, color: GRAY[500] },
   receiptValue: { ...TYPOGRAPHY.body, fontWeight: '600', color: SRS.navy },
   hkBanner: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, padding: 14, borderRadius: RADIUS.card, backgroundColor: SRS.orange + '10', borderWidth: 1, borderColor: SRS.orange + '20', width: '100%', marginBottom: SPACING.lg },
+  shareBtn: { flex: 1, paddingVertical: 12, borderRadius: RADIUS.card, alignItems: 'center' },
+  shareBtnText: { fontSize: 14, fontWeight: '700' },
   doneBtn: { paddingVertical: 14, paddingHorizontal: 48, borderRadius: RADIUS.card, backgroundColor: SRS.teal, alignItems: 'center' },
   doneBtnText: { fontSize: 15, fontWeight: '700', color: BG.white },
 });

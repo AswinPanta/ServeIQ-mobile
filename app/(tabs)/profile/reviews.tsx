@@ -1,44 +1,15 @@
-import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SkeletonList } from '@/components/ui/skeleton-loader';
 import { FONTS, SHADOWS } from '@/constants/portal-theme';
 import { CORAL as CORALTokens, GRAY, BRAND, NEUTRAL, BG, SLATE } from '@/lib/constants/figma-tokens';
+import { hostApi, GuestReview } from '@/lib/api/host-api';
+import { ReviewModal } from '@/components/feature/review-modal';
 
 const CORAL = CORALTokens[500];
-
-interface MockReview {
-  id: string;
-  hotelName: string;
-  rating: number;
-  date: string;
-  comment: string;
-}
-
-const MOCK_REVIEWS: MockReview[] = [
-  {
-    id: 'r1',
-    hotelName: 'Hyatt Regency Kathmandu',
-    rating: 5,
-    date: '2026-05-12',
-    comment: 'Amazing stay! The staff was incredibly helpful and the room had a stunning view of the Himalayas.',
-  },
-  {
-    id: 'r2',
-    hotelName: 'Taj Mahal Palace Pokhara',
-    rating: 4,
-    date: '2026-03-28',
-    comment: 'Beautiful property with excellent amenities. The lakeside location was perfect for evening walks.',
-  },
-  {
-    id: 'r3',
-    hotelName: 'The Everest Boutique Hotel',
-    rating: 5,
-    date: '2026-01-15',
-    comment: 'A hidden gem in the heart of the city. The rooftop restaurant served the best local cuisine.',
-  },
-];
 
 function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -57,24 +28,37 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
 
 export default function ReviewsScreen() {
   const { t } = useTranslation();
-  const [reviews, setReviews] = useState<MockReview[]>([]);
+  const [reviews, setReviews] = useState<GuestReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<GuestReview | null>(null);
 
-  useEffect(() => {
-    // Fetch reviews from all user's properties
-    const fetchReviews = async () => {
-      try {
-        // For now, use mock data since we need property IDs to fetch reviews
-        // In production, this would fetch from the user's booking history
-        setReviews(MOCK_REVIEWS);
-      } catch {
-        setReviews(MOCK_REVIEWS);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReviews();
+  const load = useCallback(async () => {
+    try {
+      const res = await hostApi.getMyReviews();
+      setReviews(res.reviews ?? []);
+    } catch {
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const handleSubmitEdit = async (values: { rating: number; comment: string }) => {
+    if (!editing) return;
+    const ok = await hostApi.updateReview(editing.property.id, editing.id, values, () => null);
+    setEditing(null);
+    if (ok === null) {
+      Alert.alert(t('common.error'), t('profile.reviews.updateFailed', 'Could not update your review. Please try again.'));
+      return;
+    }
+    await load();
+  };
 
   return (
     <ScrollView
@@ -91,9 +75,8 @@ export default function ReviewsScreen() {
       </View>
 
       {loading ? (
-        <View style={{ padding: 40, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={CORAL} />
-          <Text style={{ marginTop: 12, color: SLATE[400] }}>Loading reviews...</Text>
+        <View style={{ paddingHorizontal: 16 }}>
+          <SkeletonList count={3} showImage={false} />
         </View>
       ) : reviews.length === 0 ? (
         <View style={s.emptyState}>
@@ -106,21 +89,38 @@ export default function ReviewsScreen() {
           {reviews.map(review => (
             <View key={review.id} style={s.reviewCard}>
               <View style={s.reviewHeader}>
-                <Text style={s.hotelName}>{review.hotelName}</Text>
+                <Text style={s.hotelName}>{review.property?.name ?? ''}</Text>
                 <Text style={s.reviewDate}>
-                  {new Date(review.date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {review.created_at
+                    ? new Date(review.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })
+                    : ''}
                 </Text>
               </View>
-              <StarRating rating={review.rating} />
-              <Text style={s.comment}>{review.comment}</Text>
+              <View style={s.ratingRow}>
+                <StarRating rating={review.rating} />
+                {review.is_edited ? <Text style={s.editedBadge}>{t('profile.reviews.edited', 'Edited')}</Text> : null}
+              </View>
+              <Text style={s.comment}>{review.comment ?? ''}</Text>
+              <TouchableOpacity style={s.editBtn} onPress={() => setEditing(review)} activeOpacity={0.7}>
+                <IconSymbol name="edit" size={14} color={BRAND.navyLight} />
+                <Text style={s.editBtnText}>{t('profile.reviews.edit', 'Edit')}</Text>
+              </TouchableOpacity>
             </View>
           ))}
         </View>
       )}
+
+      <ReviewModal
+        visible={!!editing}
+        onClose={() => setEditing(null)}
+        onSubmit={handleSubmitEdit}
+        hotelName={editing?.property?.name ?? ''}
+        initial={editing ? { rating: editing.rating, comment: editing.comment ?? '' } : undefined}
+      />
     </ScrollView>
   );
 }
@@ -204,5 +204,33 @@ const s = StyleSheet.create({
     color: GRAY[600],
     lineHeight: 20,
     fontFamily: FONTS.inter.regular,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editedBadge: {
+    fontSize: 11,
+    color: SLATE[400],
+    fontStyle: 'italic',
+    fontFamily: FONTS.inter.regular,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: BRAND.navyLight + '10',
+    marginTop: 4,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: BRAND.navyLight,
+    fontFamily: FONTS.inter.semiBold,
   },
 });

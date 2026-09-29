@@ -14,7 +14,7 @@ const PLAN_COLORS: Record<string, string> = {
   Free: GRAY[500], Basic: BLUE[500], Pro: ACCENT, Enterprise: AMBER[500], Starter: STATUS.activeGreen,
 };
 
-const emptyPlan = { id: '', name: '', price: 0, billing_cycle: 'monthly' as BillingCycle, features: [] as string[], is_active: true };
+const emptyPlan = { id: '', name: '', price: 0, billing_cycle: 'monthly' as BillingCycle, features: [] as string[], is_active: true, status: 'Active' as PlanStatus };
 
 export default function PlansScreen() {
   const { plans: ctxPlans, createPlan, updatePlan, deletePlan } = useSuperAdmin();
@@ -29,13 +29,13 @@ export default function PlansScreen() {
   };
 
   const openEdit = (plan: typeof ctxPlans[0]) => {
-    setEditing({ ...plan, billing_cycle: 'monthly' });
+    setEditing({ ...plan, billing_cycle: 'monthly', status: (plan.is_active ? 'Active' : 'Inactive') as PlanStatus });
     setFeaturesText(plan.features.join('\n')); setIsEdit(true); setShowModal(true);
   };
 
   const save = async () => {
     const featureList = featuresText.split('\n').map(f => f.trim()).filter(Boolean);
-    const updated = { ...editing, features: featureList, is_active: editing.is_active ?? true };
+    const updated = { ...editing, features: featureList, is_active: editing.status === 'Active' };
     if (isEdit) {
       await updatePlan(editing.id, { name: updated.name, price: updated.price, features: updated.features, is_active: updated.is_active });
     } else {

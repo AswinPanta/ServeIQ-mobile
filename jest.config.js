@@ -12,7 +12,9 @@ module.exports = {
     '/dist/',
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|nativewind|tailwind-merge|react-native-reanimated|react-native-gesture-handler|react-native-worklets))',
+    // `standard-navigation` ships untranspiled ESM and is pulled in by
+    // expo-router's src entry — without it, router tests fail to parse.
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|nativewind|tailwind-merge|react-native-reanimated|react-native-gesture-handler|react-native-worklets|standard-navigation))',
   ],
   resolver: 'react-native-worklets/jest/resolver.js',
   // Node 22 on macOS occasionally leaks open handles from the reanimated mock;

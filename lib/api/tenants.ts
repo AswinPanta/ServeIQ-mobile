@@ -55,6 +55,18 @@ export async function getTenants(): Promise<any[]> {
   }
 }
 
+/** Current tenant's own subscription + usage (GET /subscription/me). */
+export async function getMySubscription(): Promise<any | null> {
+  if (await isDemoMode()) return null;
+  try {
+    const response = await api.get(API_ENDPOINTS.SUBSCRIPTION.ME);
+    const json = await handleResponse<{ success: boolean; data: any }>(response);
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Fetch a single tenant by id (from list or fresh GET). */
 export async function getTenantById(id: string): Promise<any | null> {
   if (await isDemoMode()) return null;

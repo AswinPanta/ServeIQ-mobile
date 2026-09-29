@@ -18,14 +18,34 @@ interface ReviewModalProps {
   onClose: () => void;
   onSubmit: (review: { rating: number; title: string; comment: string; photos: string[] }) => void;
   hotelName: string;
+  /** When provided the modal opens in edit mode, prefilled from these values. */
+  initial?: { rating: number; title?: string; comment: string; photos?: string[] };
 }
 
-export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewModalProps) {
+export function ReviewModal({ visible, onClose, onSubmit, hotelName, initial }: ReviewModalProps) {
+  // Mounting the form only while open resets state from `initial` on every
+  // open without a setState-in-effect.
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      {visible ? (
+        <ReviewForm
+          onClose={onClose}
+          onSubmit={onSubmit}
+          hotelName={hotelName}
+          initial={initial}
+        />
+      ) : null}
+    </Modal>
+  );
+}
+
+function ReviewForm({ onClose, onSubmit, hotelName, initial }: Omit<ReviewModalProps, 'visible'>) {
   const colors = useColors();
-  const [rating, setRating] = useState(5);
-  const [title, setTitle] = useState('');
-  const [comment, setComment] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const isEdit = !!initial;
+  const [rating, setRating] = useState(initial?.rating ?? 5);
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [comment, setComment] = useState(initial?.comment ?? '');
+  const [photos, setPhotos] = useState<string[]>(initial?.photos ?? []);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddPhoto = () => {
@@ -38,7 +58,12 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
   };
 
   const handleSubmit = () => {
-    if (!title.trim() || !comment.trim()) {
+    if (isEdit) {
+      if (!comment.trim()) {
+        Alert.alert('Missing Information', 'Please add a comment');
+        return;
+      }
+    } else if (!title.trim() || !comment.trim()) {
       Alert.alert('Missing Information', 'Please fill in title and comment');
       return;
     }
@@ -47,24 +72,15 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
     setTimeout(() => {
       setIsSubmitting(false);
       onSubmit({ rating, title, comment, photos });
-      resetForm();
       onClose();
     }, 1000);
   };
 
-  const resetForm = () => {
-    setRating(5);
-    setTitle('');
-    setComment('');
-    setPhotos([]);
-  };
-
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50">
         <View className="flex-1 mt-auto bg-background rounded-t-3xl max-h-[95%]">
           <View className="flex-row items-center justify-between px-6 py-4 border-b border-border">
-            <Text className="text-xl font-bold text-foreground">Write a Review</Text>
+            <Text className="text-xl font-bold text-foreground">{isEdit ? 'Edit Review' : 'Write a Review'}</Text>
             <TouchableOpacity onPress={onClose} style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
               <Text className="text-2xl text-foreground">✕</Text>
             </TouchableOpacity>
@@ -89,6 +105,7 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
               <Text className="text-center text-sm text-muted mt-2">{rating} out of 5 stars</Text>
             </View>
 
+            {!isEdit && (
             <View className="mb-4">
               <Text className="text-sm font-semibold text-foreground mb-2">Review Title</Text>
               <TextInput
@@ -101,6 +118,7 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
               />
               <Text className="text-xs text-muted mt-1">{title.length}/100</Text>
             </View>
+            )}
 
             <View className="mb-4">
               <Text className="text-sm font-semibold text-foreground mb-2">Your Review</Text>
@@ -118,6 +136,7 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
               <Text className="text-xs text-muted mt-1">{comment.length}/500</Text>
             </View>
 
+            {!isEdit && (
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-sm font-semibold text-foreground">Add Photos</Text>
@@ -154,13 +173,15 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
                 Add photos to help other guests get a better idea of the hotel
               </Text>
             </View>
+            )}
 
+            {!isEdit && (
             <View className="bg-primary/10 rounded-lg p-3 mb-6">
               <Text className="text-xs text-primary font-semibold">
                 ℹ️ Your review will be published after moderation to ensure quality and authenticity.
               </Text>
             </View>
-          </ScrollView>
+            )}          </ScrollView>
 
           <View className="flex-row gap-3 px-6 py-4 border-t border-border">
             <TouchableOpacity
@@ -180,12 +201,11 @@ export function ReviewModal({ visible, onClose, onSubmit, hotelName }: ReviewMod
               {isSubmitting ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="text-base font-semibold text-white text-center">Submit Review</Text>
+                <Text className="text-base font-semibold text-white text-center">{isEdit ? 'Save Changes' : 'Submit Review'}</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
       </View>
-    </Modal>
   );
 }

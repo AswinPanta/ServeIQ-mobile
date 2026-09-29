@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import en from './locales/en.json';
 import hi from './locales/hi.json';
 import ne from './locales/ne.json';
@@ -48,5 +49,17 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
   returnObjects: true,
 });
+
+// A language chosen in Settings > Preferences overrides the device locale.
+// Read once at startup; the settings screen also calls changeLanguage() live.
+export const LANGUAGE_STORAGE_KEY = 'app_language';
+
+AsyncStorage.getItem(LANGUAGE_STORAGE_KEY)
+  .then((saved) => {
+    if (saved && saved !== i18n.language && i18n.hasResourceBundle(saved, 'translation')) {
+      void i18n.changeLanguage(saved);
+    }
+  })
+  .catch(() => {});
 
 export default i18n;

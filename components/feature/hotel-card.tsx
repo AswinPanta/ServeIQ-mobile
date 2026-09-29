@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { Card } from '@/components/ui/card';
+import { ScarcityBadge } from '@/components/feature/scarcity-badge';
 import { cn } from '@/lib/utils';
 import type { Hotel } from '@/types/api';
 import { CORAL } from '@/lib/constants/figma-tokens';
@@ -65,6 +66,9 @@ export function HotelCard({
               {hotel.currency} {minPrice.toLocaleString()}+
             </Text>
           </View>
+
+          {/* Low-inventory urgency badge (BK-007) — renders only when ≤3 left */}
+          <ScarcityBadge count={hotel.availableRooms ?? 0} />
         </View>
 
         {/* Content */}

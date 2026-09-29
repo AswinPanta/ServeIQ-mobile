@@ -44,6 +44,8 @@ interface AuthContextType {
   resendOTP: (email: string, portal?: PortalType) => Promise<void>;
   /** Returns false when the password changed but re-authentication with the new password failed. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  /** Persist profile fields to the backend (PATCH /auth/{guests|users}/me) and update local state. */
+  updateProfile: (data: Partial<GuestProfile>) => Promise<{ success: boolean; error?: string; user?: PortalProfile }>;
   logout: () => Promise<void>;
   switchPortal: (portal: PortalType) => Promise<void>;
   setUser: (user: PortalProfile | null) => void;
@@ -717,6 +719,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMustChangePassword(false);
   }, []);
 
+  /**
+   * Persist editable profile fields to the live backend, mirroring the web
+   * app's AuthContext.updateProfile: PATCH /auth/guests/me (guest portal) or
+   * PATCH /auth/users/me (host/ops/superadmin). On success the response
+   * profile replaces local state AND the AsyncStorage cache so the edit
+   * survives restarts and matches what the server has.
+   * Demo accounts carry local-only tokens, so we skip the network call and
+   * only update local state (same convention as changePassword).
+   */
+  const updateProfile = useCallback(async (data: Partial<GuestProfile>): Promise<{ success: boolean; error?: string; user?: PortalProfile }> => {
+    if (!portal) return { success: false, error: 'You are not signed in.' };
+
+    const accessToken = tokens.accessToken;
+    if (!accessToken || accessToken.startsWith('demo-')) {
+      // Offline/demo session — update local state + cache only.
+      if (user) {
+        const merged = { ...user, ...data } as PortalProfile;
+        setUser(merged);
+        try {
+          const keys = getPortalStorageKeys(portal);
+          await AsyncStorage.setItem(keys.USER_PROFILE, JSON.stringify(merged));
+        } catch {}
+        return { success: true, user: merged };
+      }
+      return { success: false, error: 'No profile to update.' };
+    }
+
+    const endpoint = portal === 'guest'
+      ? API_ENDPOINTS.AUTH.GUEST_ME
+      : API_ENDPOINTS.AUTH.USER_ME;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      const rawBody = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          return { success: false, error: 'Your session has expired. Please sign in again.' };
+        }
+        return { success: false, error: rawBody.error || rawBody.message || (Array.isArray(rawBody.detail) && rawBody.detail[0]?.msg) || 'Failed to update profile. Please try again.' };
+      }
+
+      const updated: GuestProfile = (rawBody.success === true && rawBody.data) ? rawBody.data : rawBody;
+      const merged = { ...(user as GuestProfile), ...data, ...updated } as PortalProfile;
+      setUser(merged);
+      try {
+        const keys = getPortalStorageKeys(portal);
+        await AsyncStorage.setItem(keys.USER_PROFILE, JSON.stringify(merged));
+      } catch {}
+      return { success: true, user: merged };
+    } catch (error) {
+      console.error('updateProfile error:', error);
+      return { success: false, error: 'Network error. Please check your connection and try again.' };
+    }
+  }, [portal, tokens.accessToken, user]);
+
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     try {
       if (!tokens.refreshToken || !portal) throw new Error('No refresh token available');
@@ -766,6 +831,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       verifyOTP,
       resendOTP,
       changePassword,
+      updateProfile,
       logout,
       switchPortal,
       setUser,
@@ -787,6 +853,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       verifyOTP,
       resendOTP,
       changePassword,
+      updateProfile,
       logout,
       switchPortal,
       setUser,

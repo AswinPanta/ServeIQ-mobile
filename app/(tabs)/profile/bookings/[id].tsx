@@ -4,6 +4,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { safeGoBack } from '@/lib/utils';import * as Clipboard from 'expo-clipboard';
 import { useBookings, mapReservationToBooking, type Booking } from '@/lib/context/booking-context';
 import { bookingApi } from '@/lib/api/booking-api';
+import { staffApi } from '@/lib/api/host-api';
+import { BookingModifyModal } from '@/components/feature/booking-modify-modal';
 import { IconSymbol, IconSymbolName } from '@/components/ui/icon-symbol';
 import { BookingQrCode } from '@/components/feature/booking-qr-code';
 import { shareBookingReceipt } from '@/lib/utils/booking-receipt';
@@ -31,6 +33,7 @@ export default function BookingDetailScreen() {
   const [remoteBooking, setRemoteBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [showModify, setShowModify] = useState(false);
 
   const localBooking = bookings.find(b => b.id === id || b.refNumber === id);
   const ref = localBooking?.refNumber || id;
@@ -143,6 +146,22 @@ export default function BookingDetailScreen() {
       currency: 'NPR',
       createdAt: new Date(booking.createdAt).toLocaleString(),
     });
+  };
+
+  // Guest date change (BK-016) — PATCH /staff/{ref}/booking-modify.
+  const handleModifySave = async (updated: { checkIn: string; checkOut: string }) => {
+    if (!ref) return;
+    try {
+      await staffApi.modifyBooking(ref, {
+        checkin_date: updated.checkIn.slice(0, 10),
+        checkout_date: updated.checkOut.slice(0, 10),
+        reason: 'Guest date change from app',
+      }, () => null);
+      const fresh = await bookingApi.getBookingByRef(ref, () => null);
+      if (fresh) setRemoteBooking(mapReservationToBooking(fresh));
+    } catch {
+      Alert.alert('Try again', 'We could not modify your booking right now. Please try again.');
+    }
   };
 
   const handleCancel = () => {
@@ -345,6 +364,12 @@ export default function BookingDetailScreen() {
                 <Text style={s.cancelBtnText}>{cancelling ? 'Cancelling...' : 'Cancel'}</Text>
               </TouchableOpacity>
             )}
+            {booking.status === 'upcoming' && (
+              <TouchableOpacity style={s.actionBtn} onPress={() => setShowModify(true)}>
+                <IconSymbol name="edit" size={16} color={NAVY} />
+                <Text style={s.actionBtnText}>Modify</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={s.actionBtn} onPress={handleCopyCode}>
               <IconSymbol name="checkmark" size={16} color={NAVY} />
               <Text style={s.actionBtnText}>Copy</Text>
@@ -375,6 +400,22 @@ export default function BookingDetailScreen() {
           <Text style={s.contactBtnText}>Contact Support</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ── Modify dates (BK-016) ── */}
+      <BookingModifyModal
+        visible={showModify}
+        onClose={() => setShowModify(false)}
+        booking={{
+          id: booking.id,
+          hotelName: booking.hotelName,
+          roomType: booking.roomTypeName,
+          checkIn: booking.checkIn.slice(0, 10),
+          checkOut: booking.checkOut.slice(0, 10),
+          nights,
+          totalPrice: booking.totalPrice,
+        }}
+        onSave={handleModifySave}
+      />
     </View>
   );
 }

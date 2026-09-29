@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ScreenContainer } from '@/components/screen-container';
 import { BottomTabBar } from '@/components/operations/BottomTabBar';
 import { useFrontDesk } from '@/lib/context/frontdesk-context';
+import { exportCsv, type CsvColumn } from '@/lib/utils/csv-export';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { SRS, SLATE, BG, BLUE, EMERALD, RED, AMBER } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY } from '@/constants/portal-theme';
@@ -98,6 +99,27 @@ export default function ReservationsScreen() {
     }
   };
 
+  const handleExport = async () => {
+    const columns: CsvColumn<typeof bookings[0]>[] = [
+      { header: 'Ref', value: (b) => b.ref },
+      { header: 'Guest', value: (b) => b.guest_name },
+      { header: 'Email', value: (b) => b.email },
+      { header: 'Phone', value: (b) => b.phone },
+      { header: 'Room Type', value: (b) => b.room_type },
+      { header: 'Room', value: (b) => b.room_number },
+      { header: 'Check-in', value: (b) => b.checkin },
+      { header: 'Check-out', value: (b) => b.checkout },
+      { header: 'Status', value: (b) => b.status },
+      { header: 'Adults', value: (b) => b.adults },
+      { header: 'Children', value: (b) => b.children },
+    ];
+    try {
+      await exportCsv(filteredBookings, columns, `reservations-${today}`);
+    } catch {
+      Alert.alert('Export failed', 'Could not export the reservations list.');
+    }
+  };
+
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1">
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -109,6 +131,9 @@ export default function ReservationsScreen() {
             </View>
             <Text style={s.headerTitle}>Reservations</Text>
             <View style={{ flex: 1 }} />
+            <TouchableOpacity style={s.headerIconBtn} onPress={handleExport}>
+              <Ionicons name="download-outline" size={20} color={DARK} />
+            </TouchableOpacity>
             <TouchableOpacity style={s.headerIconBtn} onPress={() => router.push('/(operations)/notifications')}>
               <Ionicons name="notifications-outline" size={22} color={DARK} />
               {unreadCount > 0 && (

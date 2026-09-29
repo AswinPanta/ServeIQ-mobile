@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FolioBreakdown, type FolioItem } from '@/components/feature/folio-breakdown';
+import { CANCELLATION_POLICY_DEFAULTS, normalizePolicyKey } from '@/lib/constants/cancellation-policies';
 import { safeGoBack } from '@/lib/utils';
 import { useAuth } from '@/lib/context/auth-context';
 import { SRS, BRAND, STATUS_COLORS, SLATE, BG, NEUTRAL, TEXT } from '@/lib/constants/figma-tokens';
@@ -26,6 +27,8 @@ export default function BookingSummaryScreen() {
   const grandTotal = parseInt((params.grandTotal as string) || '0', 10);
   const propertyId = (params.propertyId as string) || '';
   const roomId = params.roomId as string | undefined;
+  // Cancellation terms follow the room's policy (BK-020), not a static string.
+  const policy = CANCELLATION_POLICY_DEFAULTS[normalizePolicyKey(params.policy as string | undefined)];
 
   const { user } = useAuth();
 
@@ -48,6 +51,7 @@ export default function BookingSummaryScreen() {
         roomId: roomId || '',
         roomName: roomType,
         roomPrice: String(perNight),
+        policy: (params.policy as string) || 'FLEXIBLE',
       },
     });
   };
@@ -128,7 +132,7 @@ export default function BookingSummaryScreen() {
 
         {/* Terms */}
         <Text style={s.terms}>
-          {'By tapping "Book Now", you agree to our cancellation and refund policies.'}
+          {`${policy.title}: ${policy.description}`}
         </Text>
       </ScrollView>
 

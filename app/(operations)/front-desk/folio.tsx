@@ -6,6 +6,8 @@ import { SRS, SLATE, BG, BLUE, RED, EMERALD } from '@/lib/constants/figma-tokens
 import { RADIUS, GRAY, SPACING, TYPOGRAPHY } from '@/constants/portal-theme';
 import { staffApi } from '@/lib/api/host-api';
 import { safeGoBack } from '@/lib/utils';
+import { buildInvoiceHtml, printHtml, sharePdf } from '@/lib/utils/invoice';
+import { exportCsv, type CsvColumn } from '@/lib/utils/csv-export';
 import type { BackendFolioDetail } from '@/types/api';
 
 const CATEGORIES = [
@@ -49,10 +51,18 @@ export default function FolioScreen() {
       .catch(() => {});
   };
 
+  // All gateways the backend PayFolioRequest accepts.
+  const FOLIO_GATEWAYS = ['CASH', 'CARD', 'ESEWA', 'KHALTI', 'STRIPE', 'RAZORPAY', 'BANK_TRANSFER'];
+
   const handleSettle = () => {
-    Alert.alert('Settle Folio', 'Settle all charges on this folio?', [
+    const total = parseFloat(folio?.total || '0') || 0;
+    if (!folioId || total <= 0) return;
+    Alert.alert(`Settle Folio — ${total.toLocaleString()}`, 'Record payment via?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Settle', onPress: () => staffApi.settleFolio(folioId!, () => null).then(() => fetchFolio()).catch(() => {}) },
+      ...FOLIO_GATEWAYS.map((gw): { text: string; onPress: () => void } => ({
+        text: gw.charAt(0) + gw.slice(1).toLowerCase().replace('_', ' '),
+        onPress: () => staffApi.recordFolioPayment(folioId, { amount: total, payment_gateway: gw }, () => null).then(() => fetchFolio()).catch(() => {}),
+      })),
     ]);
   };
 
@@ -61,6 +71,46 @@ export default function FolioScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Waive', style: 'destructive', onPress: () => staffApi.waiveFolio(folioId!, () => null).then(() => fetchFolio()).catch(() => {}) },
     ]);
+  };
+
+  const invoiceHtml = () =>
+    buildInvoiceHtml({
+      title: 'Folio Invoice',
+      subtitle: bookingRef || undefined,
+      guestName: guestName || undefined,
+      charges: charges.map((c) => ({
+        category: CAT_MAP[c.category]?.label || c.category,
+        description: c.description,
+        amount: parseFloat(c.amount) || 0,
+      })),
+      subtotal,
+      tax,
+      discount,
+      total,
+      footer: settled ? 'Folio settled — thank you!' : waived ? 'Folio waived.' : undefined,
+    });
+
+  const handlePrint = async () => {
+    try { await printHtml(invoiceHtml()); } catch { Alert.alert('Print failed', 'Could not open the print dialog.'); }
+  };
+
+  const handleShare = async () => {
+    try { await sharePdf(invoiceHtml(), `folio-${bookingRef || folioId || 'invoice'}`); } catch { Alert.alert('Share failed', 'Could not share the invoice.'); }
+  };
+
+  const handleExportCharges = async () => {
+    const columns: CsvColumn<(typeof charges)[0]>[] = [
+      { header: 'Category', value: (c) => CAT_MAP[c.category]?.label || c.category },
+      { header: 'Description', value: (c) => c.description },
+      { header: 'Amount', value: (c) => parseFloat(c.amount) || 0 },
+      { header: 'Posted By', value: (c) => c.posted_by_name || c.posted_by },
+      { header: 'Posted At', value: (c) => c.posted_at },
+    ];
+    try {
+      await exportCsv(charges, columns, `folio-${bookingRef || folioId || 'charges'}`);
+    } catch {
+      Alert.alert('Export failed', 'Could not export the folio charges.');
+    }
   };
 
   const charges = folio?.charges || [];
@@ -151,6 +201,14 @@ export default function FolioScreen() {
             <TouchableOpacity onPress={handleWaive} style={s.waiveBtn}><Text style={s.waiveBtnText}>Waive All</Text></TouchableOpacity>
           </View>
         )}
+
+        {charges.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: SPACING.md }}>
+            <TouchableOpacity onPress={handlePrint} style={s.invoiceBtn}><Ionicons name="print" size={16} color={GRAY[600]} /><Text style={s.invoiceBtnText}>Print</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleShare} style={s.invoiceBtn}><Ionicons name="share-social" size={16} color={SRS.teal} /><Text style={[s.invoiceBtnText, { color: SRS.teal }]}>Share PDF</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleExportCharges} style={s.invoiceBtn}><Ionicons name="download" size={16} color={GRAY[600]} /><Text style={s.invoiceBtnText}>CSV</Text></TouchableOpacity>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -186,4 +244,6 @@ const s = StyleSheet.create({
   settleBtnText: { fontSize: 14, fontWeight: '700', color: BG.white },
   waiveBtn: { flex: 1, paddingVertical: 14, borderRadius: RADIUS.card, alignItems: 'center', borderWidth: 1.5, borderColor: RED[500] },
   waiveBtnText: { fontSize: 14, fontWeight: '700', color: RED[500] },
+  invoiceBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, paddingVertical: 12, borderRadius: RADIUS.card, backgroundColor: BG.white, borderWidth: 1, borderColor: GRAY[200] },
+  invoiceBtnText: { fontSize: 13, fontWeight: '700', color: GRAY[600] },
 });

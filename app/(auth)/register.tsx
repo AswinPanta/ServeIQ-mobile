@@ -54,6 +54,13 @@ export default function RegisterScreen() {
     : params.redirect
       ? `/(auth)/login?redirect=${encodeURIComponent(params.redirect)}`
       : '/(auth)/login';
+  // Where "Continue to Dashboard" sends a brand-new account: back to the screen
+  // that bounced them when there is one, otherwise the portal home.
+  const continueHref: Href = portal === 'host'
+    ? '/(host)'
+    : params.redirect
+      ? (params.redirect as Href)
+      : '/(tabs)';
 
   const handleRegister = async () => {
     setError('');
@@ -333,7 +340,7 @@ export default function RegisterScreen() {
 
               <TouchableOpacity
                 style={s.btn}
-                onPress={() => router.replace(portal === 'host' ? '/(host)' : '/(tabs)')}
+                onPress={() => router.replace(continueHref)}
                 activeOpacity={0.85}
               >
                 <Text style={s.btnText}>Continue to Dashboard</Text>

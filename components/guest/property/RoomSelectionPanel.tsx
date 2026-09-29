@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ScarcityBadge } from '@/components/feature/scarcity-badge';
 import { FONTS } from '@/constants/portal-theme';
 import type { Hotel } from '@/types/api';
 import { SRS, SLATE, BG, BRAND } from '@/lib/constants/figma-tokens';
@@ -63,6 +64,8 @@ export function RoomSelectionPanel({
               <Image source={{ uri: room.image }} style={s.cardImg} resizeMode="cover" />
               <View style={s.cardInfo}>
                 <Text style={[s.cardName, isDisabled && { color: SLATE[400] }]}>{room.name}</Text>
+                {/* Low-inventory urgency badge (BK-007) — inline under the name */}
+                <ScarcityBadge count={getAvailability(room.name)} position="relative" />
                 <Text style={s.cardMeta}>{room.bed} · Up to {room.occupancy} guests</Text>
                 {isDisabled && <Text style={s.disabledNote}>✕ Fits {room.occupancy} guests only</Text>}
                 <Text style={s.cardPrice}>

@@ -18,6 +18,7 @@ import { useScrollRestoration } from '@/hooks/use-scroll-restoration';
 import { searchHotelsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SkeletonList } from '@/components/ui/skeleton-loader';
 import { SRS } from '@/lib/constants/figma-tokens';
 
 const PAGE_SIZE = 20;
@@ -204,7 +205,9 @@ export default function SearchResultsScreen() {
         onChange={setSelectedCategory}
       />
 
-      {filteredHotels.length === 0 ? (
+      {isLoading && filteredHotels.length === 0 ? (
+        <SkeletonList count={4} className="px-6" />
+      ) : filteredHotels.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-2xl font-bold text-foreground mb-2">No Hotels Found</Text>
           <Text className="text-base text-muted text-center">

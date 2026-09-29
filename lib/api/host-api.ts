@@ -399,6 +399,16 @@ async function ensureHostTenant(propertyName?: string): Promise<string | null> {
   return tenantId;
 }
 
+export interface GuestReview {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  is_edited?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  property: { id: string; name: string; city?: string | null; country?: string | null };
+}
+
 export const hostApi = {
   // ─── Properties ───────────────────────────────────────────────
   getProperties: async (fallback: () => Property[]): Promise<Property[]> => {
@@ -587,9 +597,19 @@ export const hostApi = {
    * All bookings for a property. GET /properties/{id}/bookings returns
    * {success, data, meta} with a hard server cap of limit=50 (default 10),
    * so this paginates with skip/limit + meta.has_more until drained.
+   * Pass filters (search, date_from/date_to, status, payment_status,
+   * payment_method, payment_gateway, booking_type) to filter server-side.
    * apiGet unwraps `data` — what's left here is meta handling.
    */
-  getPropertyBookings: async (propertyId: string, fallback: () => any[]): Promise<any[]> => {
+  getPropertyBookings: async (
+    propertyId: string,
+    fallback: () => any[],
+    filters?: {
+      search?: string; date_from?: string; date_to?: string; status?: string;
+      payment_status?: string; payment_method?: string; payment_gateway?: string;
+      booking_type?: string;
+    },
+  ): Promise<any[]> => {
     if (!isValidUuid(propertyId)) return fallback();
     if (await isDemoMode()) return fallback();
     try {
@@ -598,7 +618,7 @@ export const hostApi = {
       let hasMore = true;
       while (hasMore) {
         const response = await api.get(
-          `${API_ENDPOINTS.PROPERTIES.GET_PROPERTY_BOOKINGS(propertyId)}${buildQuery({ skip, limit: 50 })}`,
+          `${API_ENDPOINTS.PROPERTIES.GET_PROPERTY_BOOKINGS(propertyId)}${buildQuery({ skip, limit: 50, ...filters })}`,
         );
         const json = await handleResponse<{ success?: boolean; data?: any[]; meta?: { has_more?: boolean } }>(response);
         const page = (json.success !== false && json.data !== undefined) ? json.data : (json as unknown as any[]);
@@ -776,8 +796,8 @@ export const hostApi = {
       ? apiPatch<any, typeof data>(API_ENDPOINTS.PROPERTIES.UPDATE_REVIEW(propertyId, reviewId), data, fallback)
       : Promise.resolve(fallback()),
 
-  getMyReviews: (fallback: () => any[]) =>
-    apiGet<any[]>(API_ENDPOINTS.REVIEWS.MY_REVIEWS, fallback),
+  getMyReviews: (fallback: () => { reviews: GuestReview[]; total: number } = () => ({ reviews: [], total: 0 })) =>
+    apiGet<{ reviews: GuestReview[]; total: number }>(API_ENDPOINTS.REVIEWS.MY_REVIEWS, fallback),
 
   // ─── Tasks (bulk) ──────────────────────────────────────────
   bulkAssignTasks: (propertyId: string, taskIds: string[], staffIds: string[], fallback: () => any) =>
@@ -935,11 +955,15 @@ export const staffApi = {
   deleteFolioCharge: (folioId: string, chargeId: string) =>
     apiDelete(API_ENDPOINTS.STAFF.FOLIO_CHARGE_DELETE(folioId, chargeId)),
 
-  settleFolio: (folioId: string, fallback: () => any) =>
-    apiPost<any, Record<string, never>>(API_ENDPOINTS.STAFF.FOLIO_SETTLE(folioId), {}, fallback),
+  // Record a payment against a folio — POST /staff/folios/{id}/payments
+  // { amount, payment_gateway: CASH | CARD | STRIPE | RAZORPAY | KHALTI | ESEWA | BANK_TRANSFER }.
+  // (The old /settle route never existed in the backend spec — this is the real settle path.)
+  recordFolioPayment: (folioId: string, data: { amount: number | string; payment_gateway: string }, fallback: () => any) =>
+    apiPost<any, typeof data>(API_ENDPOINTS.STAFF.FOLIO_PAYMENTS(folioId), data, fallback),
 
+  // Waive = 100% discount via PATCH /staff/folios/{id} (no /waive route exists).
   waiveFolio: (folioId: string, fallback: () => any) =>
-    apiPost<any, Record<string, never>>(API_ENDPOINTS.STAFF.FOLIO_WAIVE(folioId), {}, fallback),
+    apiPatch<any, { discount: number }>(API_ENDPOINTS.STAFF.FOLIO_UPDATE(folioId), { discount: 100 }, fallback),
 
   // ─── Enum lookup ────────────────────────────────────────────────────
   // kinds: booking-statuses | booking-types | payment-gateways | payment-methods | payment-statuses

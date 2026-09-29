@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, StyleSheet, ActivityIndicator, Dimensions, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, FlatList, StyleSheet, Dimensions, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SkeletonList } from '@/components/ui/skeleton-loader';
 import type { Hotel } from '@/types/api';
 import { searchHotelsApi, fetchSystemAmenities, fetchSystemBedTypes } from '@/lib/api';
 import { safeGoBack } from '@/lib/utils';
@@ -242,7 +243,7 @@ export default function GuestSearchResults() {
 
       {isLoading ? (
         <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color={SRS.teal} />
+          <SkeletonList count={4} className="w-full px-4" />
           <Text style={s.loadingText}>Searching properties...</Text>
         </View>
       ) : filteredHotels.length === 0 ? (

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Alert, Platform, type AlertButton } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBookings } from '@/lib/context/booking-context';
@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/context/auth-context';
 import type { GuestProfile } from '@/types/api';
 import { bookingApi } from '@/lib/api/booking-api';
 import { toDateParam, KHALTI_RETURN_URL_BASE } from '@/constants/api-config';
+import { normalizePolicyKey } from '@/lib/constants/cancellation-policies';
 import { searchHotelsApi, getAvailableRoomsApi, type AvailableRoom } from '@/lib/api';
 import type { BookingReservationResponse, ConfirmPaymentRequest, ConfirmPaymentResponse } from '@/types/api';
 import type {
@@ -33,6 +34,9 @@ export function useBookingFlow() {
   const adults = Math.max(1, parseInt((params.adults as string) || (params.guests as string) || '2', 10) || 1);
   const children = Math.max(0, parseInt((params.children as string) || '0', 10) || 0);
   const guests = adults + children;
+  // Explicit policy threaded from the entry screen ([id] / room-select /
+  // booking-summary). Falls back to the fetched room's own cancellation text.
+  const policyParam = (params.policy as string) || '';
   const preselectedRoomId = params.roomId as string | undefined;
   // Multiple rooms pre-selected from room-select page (JSON array of {id, qty})
   const preselectedRoomIds = useMemo(() => {
@@ -58,6 +62,7 @@ export function useBookingFlow() {
     q.set('guests', String(guests));
     q.set('adults', String(adults));
     q.set('children', String(children));
+    if (policyParam) q.set('policy', policyParam);
     if (preselectedRoomId) q.set('roomId', preselectedRoomId);
     return `/booking-flow?${q.toString()}`;
   };
@@ -86,6 +91,13 @@ export function useBookingFlow() {
   const [promoLoading, setPromoLoading] = useState(false);
 
   const [bookingResult, setBookingResult] = useState<BookingReservationResponse | null>(null);
+  const [lockSeconds, setLockSeconds] = useState(0);
+  // Computed in the event/async handler that stores the result — never in render.
+  const saveBookingResult = (r: BookingReservationResponse) => {
+    setBookingResult(r);
+    const expires = r.soft_lock_expires_at ? new Date(r.soft_lock_expires_at).getTime() : Date.now() + 600000;
+    setLockSeconds(Math.max(60, Math.round((expires - Date.now()) / 1000)));
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -362,7 +374,7 @@ export function useBookingFlow() {
           soft_lock_expires_at: new Date(Date.now() + 600000).toISOString(),
         }),
       );
-      setBookingResult(result);
+      saveBookingResult(result);
       return result;
     })().finally(() => {
       bookingPromiseRef.current = null;
@@ -394,7 +406,7 @@ export function useBookingFlow() {
       const created = await ensureBooking(pid);
       const updated = await bookingApi.applyDiscount(created.ref_number, code, () => created);
       setAppliedPromo({ code, discount: updated.coupon_discount || 0 });
-      setBookingResult(updated);
+      saveBookingResult(updated);
     } catch {
       Alert.alert('Invalid Code', 'This promo code is not valid or has expired');
     } finally {
@@ -417,6 +429,18 @@ export function useBookingFlow() {
     }
     throw lastError;
   };
+
+  // ── Soft-lock expiry (BK-011) — fires when the 10-min hold countdown
+  //    hits zero: release the hold server-side, then send the guest back.
+  const handleExpire = useCallback(async () => {
+    const ref = bookingResult?.ref_number;
+    if (ref) {
+      try { await bookingApi.expireBooking(ref); } catch { /* best-effort */ }
+    }
+    setBookingResult(null);
+    Alert.alert('Hold expired', 'Your 10-minute room hold expired. Please start a new search.');
+    router.back();
+  }, [bookingResult?.ref_number]);
 
   // ── Complete booking: create → apply-discount → payment-intent → confirm ──
   const handleComplete = async () => {
@@ -459,7 +483,7 @@ export function useBookingFlow() {
           finalBooking = updated;
           finalDiscount = updated.coupon_discount || 0;
           setAppliedPromo({ code: pendingPromo, discount: finalDiscount });
-          setBookingResult(updated);
+          saveBookingResult(updated);
         } catch {
           // Invalid code — continue without a discount
         }
@@ -764,6 +788,7 @@ export function useBookingFlow() {
           confirmationCode: ref,
           paid: String(paidAmount),
           currency,
+          propertyId: resolvedPropertyId || propertyId,
           hotelName,
           hotelImage: selectedRooms[0]?.image || '',
           hotelCity: finalBooking.property?.city || '',
@@ -782,6 +807,7 @@ export function useBookingFlow() {
           guestPhone: guestInfo.phone,
           guestCountry: guestInfo.country,
           bedTypes: selectedRooms.map(r => r.bedType).join(', '),
+          policy: policyParam || normalizePolicyKey(selectedRooms[0]?.cancellation),
         },
       });
     } catch (error: any) {
@@ -870,6 +896,7 @@ export function useBookingFlow() {
     promoDiscount, total, checkIn,
     isSubmitting, isProcessing,
     onBack, onNext: handleNext, onComplete: handleComplete,
+    bookingResult, lockSeconds, onExpire: handleExpire,
     checkout, sdkCheckout,
     handleCheckoutComplete, handleCheckoutCancel,
     handleSdkComplete, handleSdkCancel,
