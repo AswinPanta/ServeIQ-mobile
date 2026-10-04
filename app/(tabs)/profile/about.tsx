@@ -7,7 +7,8 @@ import { safeGoBack } from '@/lib/utils';import { useTranslation } from 'react-i
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
 import { PHONE_CODES } from '@/lib/mock/phone-codes';
-import { COUNTRIES } from '@/lib/mock/countries';
+import { COUNTRIES, getCountryByCode } from '@/lib/mock/countries';
+import { profileUpdateSchema, buildProfileUpdatePayload } from '@/lib/validation/schemas';
 import { FONTS } from '@/constants/portal-theme';
 import type { GuestProfile } from '@/types/api';
 import { CORAL as CORALTokens, BRAND, BLUE, BG, SLATE, NEUTRAL } from '@/lib/constants/figma-tokens';
@@ -16,7 +17,7 @@ const CORAL = CORALTokens[500];
 const NAVY = BRAND.navyLight;
 
 export default function AboutScreen() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateProfile } = useAuth();
   const { t } = useTranslation();
   const user = authUser as GuestProfile | null;
 
@@ -26,16 +27,42 @@ export default function AboutScreen() {
   const [email] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [selectedDial, setSelectedDial] = useState('+977');
-  const [dob, setDob] = useState('');
   const [nationality, setNationality] = useState(user?.nationality || '');
-  const [bio, setBio] = useState('');
+  const [saving, setSaving] = useState(false);
   const [showPhonePicker, setShowPhonePicker] = useState(false);
   const [showNationalityPicker, setShowNationalityPicker] = useState(false);
 
   const phoneNumber = phone.replace(selectedDial, '');
 
-  const handleSave = () => {
-    Alert.alert(t('profile.about.saved'), t('profile.about.savedMessage'));
+  // Nationality is stored as the ISO code ("NP") because the backend
+  // validates it with str.isalpha() — country NAMES like "United States"
+  // contain a space and would be rejected with a 422.
+  const nationalityLabel = getCountryByCode(nationality)?.name ?? nationality;
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const parsed = profileUpdateSchema.safeParse({
+        full_name: name,
+        phone,
+        nationality,
+      });
+      if (!parsed.success) {
+        Alert.alert(t('common.error'), parsed.error.issues[0].message);
+        return;
+      }
+      const result = await updateProfile(buildProfileUpdatePayload(parsed.data));
+      if (result.success) {
+        Alert.alert(t('profile.about.saved'), t('profile.about.savedMessage'));
+      } else {
+        Alert.alert(t('common.error'), result.error || t('profileEdit.failedSave'));
+      }
+    } catch {
+      Alert.alert(t('common.error'), t('profileEdit.failedSave'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -103,49 +130,21 @@ export default function AboutScreen() {
                 style={[s.input, s.phoneInput]}
               />
             </View>
-          </View>
-
-          <View style={s.field}>
-            <Text style={s.fieldLabel}>{t('profile.about.dob')}</Text>
-            <TextInput
-              value={dob}
-              onChangeText={setDob}
-              placeholder={t('profile.about.dobPlaceholder')}
-              placeholderTextColor={SLATE[400]}
-              style={s.input}
-            />
-          </View>
-
-          <View style={s.field}>
+          </View>          <View style={s.field}>
             <Text style={s.fieldLabel}>{t('profile.about.nationality')}</Text>
             <TouchableOpacity style={s.pickerBtn} onPress={() => setShowNationalityPicker(true)}>
               <Text style={[s.pickerText, !nationality && s.pickerPlaceholder]}>
-                {nationality || t('profile.about.nationalityPlaceholder')}
+                {nationalityLabel || t('profile.about.nationalityPlaceholder')}
               </Text>
               <IconSymbol name="chevron.down" size={14} color={SLATE[400]} />
             </TouchableOpacity>
           </View>
 
-          <View style={s.field}>
-            <View style={s.bioHeader}>
-              <Text style={s.fieldLabel}>{t('profile.about.bio')}</Text>
-              <Text style={s.charCount}>{bio.length}/500</Text>
-            </View>
-            <TextInput
-              value={bio}
-              onChangeText={(v) => setBio(v.slice(0, 500))}
-              placeholder={t('profile.about.bioPlaceholder')}
-              placeholderTextColor={SLATE[400]}
-              multiline
-              numberOfLines={4}
-              style={[s.input, s.bioInput]}
-              textAlignVertical="top"
-            />
-          </View>
+
         </View>
 
-        <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.8}>
-          <Text style={s.saveBtnText}>{t('profile.about.save')}</Text>
+        <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.8} disabled={saving}>
+          <Text style={s.saveBtnText}>{saving ? '…' : t('profile.about.save')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -190,12 +189,12 @@ export default function AboutScreen() {
               keyExtractor={(item) => item.code}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[s.pickerItem, nationality === item.name && s.pickerItemActive]}
-                  onPress={() => { setNationality(item.name); setShowNationalityPicker(false); }}
+                  style={[s.pickerItem, nationality === item.code && s.pickerItemActive]}
+                  onPress={() => { setNationality(item.code); setShowNationalityPicker(false); }}
                 >
                   <Text style={s.flag}>{item.flag}</Text>
                   <Text style={s.countryName}>{item.name}</Text>
-                  {nationality === item.name && <IconSymbol name="checkmark" size={16} color={CORAL} />}
+                  {nationality === item.code && <IconSymbol name="checkmark" size={16} color={CORAL} />}
                 </TouchableOpacity>
               )}
             />

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/lib/context/auth-context';
+import { profileUpdateSchema, buildProfileUpdatePayload } from '@/lib/validation/schemas';
 import type { GuestProfile } from '@/types/api';
 import { safeGoBack } from '@/lib/utils';
 import { BG, SLATE, NEUTRAL, BRAND, SRS } from '@/lib/constants/figma-tokens';
@@ -17,7 +18,7 @@ export default function ProfileEditScreen() {
   const user = authUser as GuestProfile | null;
   const [profilePhoto, setProfilePhoto] = useState<string | null>(user?.profile_photo || null);
   const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [email] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [nationality, setNationality] = useState(user?.nationality || '');
   const [saving, setSaving] = useState(false);
@@ -37,14 +38,24 @@ export default function ProfileEditScreen() {
     if (!user) { Alert.alert(t('common.error'), t('profileEdit.noUser')); return; }
     setSaving(true);
     try {
+      // The backend PATCH only accepts full_name/phone/nationality and
+      // enforces (letters-only name, 10-digit phone, letters-only
+      // nationality). Validate locally first so a rejection comes back as a
+      // clear message instead of an opaque 422.
+      const parsed = profileUpdateSchema.safeParse({
+        full_name: name,
+        phone,
+        nationality,
+      });
+      if (!parsed.success) {
+        Alert.alert(t('common.error'), parsed.error.issues[0].message);
+        return;
+      }
       // updateProfile PATCHes /auth/{guests|users}/me with the server and
       // then refreshes both the auth state and the AsyncStorage profile
       // cache. A local-only photo pick still persists via profile_photo.
       const result = await updateProfile({
-        name,
-        email,
-        phone,
-        nationality,
+        ...buildProfileUpdatePayload(parsed.data),
         profile_photo: profilePhoto ?? undefined,
       });
       if (result.success) {
@@ -94,9 +105,16 @@ export default function ProfileEditScreen() {
 
         {/* Form */}
         <View style={s.form}>
+          {/* Email is shown read-only: the backend has no email-update field,
+              so an editable box would silently discard every change. */}
+          <View style={s.field}>
+            <Text style={s.fieldLabel}>{t('profileEdit.email')}</Text>
+            <View style={[s.input, { justifyContent: 'center', backgroundColor: NEUTRAL[100] }]}>
+              <Text style={{ fontSize: 14, color: SLATE[500] }}>{email}</Text>
+            </View>
+          </View>
           {[
             { label: t('profileEdit.fullName'), val: name, set: setName, placeholder: t('profileEdit.namePlaceholder') },
-            { label: t('profileEdit.email'), val: email, set: setEmail, placeholder: t('profileEdit.emailPlaceholder'), keyboard: 'email-address' as const },
             { label: t('profileEdit.phone'), val: phone, set: setPhone, placeholder: t('profileEdit.phonePlaceholder'), keyboard: 'phone-pad' as const },
             { label: t('profileEdit.nationality'), val: nationality, set: setNationality, placeholder: t('profileEdit.nationalityPlaceholder') },
           ].map(f => (

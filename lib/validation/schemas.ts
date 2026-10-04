@@ -29,6 +29,64 @@ export const registerSchema = z.object({
   path: ['confirmPassword'],
 });
 
+// Backend PATCH /auth/{guests,users}/me accepts ONLY these three fields
+// (GuestProfileUpdate / UserUpdate) — anything else is silently dropped by
+// Pydantic, so an edit that isn't mapped here never reaches the server.
+// Rules mirror the backend validators exactly:
+//   full_name    → strip, ^[a-zA-Z\s]+$, 2–50 chars
+//   phone        → digits only, EXACTLY 10 chars (optional → omit when blank)
+//   nationality  → str.isalpha() (no spaces/symbols), 2–50 (optional)
+export const profileUpdateSchema = z.object({
+  full_name: z
+    .string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(50, 'Name must be at most 50 characters')
+    .regex(/^[a-zA-Z\s]+$/, 'Name must contain only letters and spaces'),
+  phone: z.preprocess(
+    normalizePhoneInput,
+    z.string().regex(/^\d{10}$/, 'Phone must be exactly 10 digits').or(z.literal('')),
+  ),
+  nationality: z
+    .string()
+    .trim()
+    .regex(/^\p{L}{2,50}$/u, 'Nationality must be 2–50 letters only (no spaces or symbols)')
+    .or(z.literal('')),
+});
+
+/**
+ * Strip formatting and a leading Nepal country code so `+977-9841234567`,
+ * `9779841234567` and `9841234567` all normalize to the 10-digit form the
+ * backend requires. Mirrors the reference web app's Signup normalization.
+ */
+export function normalizePhoneInput(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length > 10 && digits.startsWith('977')) return digits.slice(3);
+  return digits;
+}
+
+/**
+ * Trim + drop blank optional fields so the PATCH body only carries values the
+ * backend schema accepts. Sending `phone: ""` would trip min_length=10 and a
+ * blank `nationality` would trip min_length=2, failing the whole request.
+ */
+export function buildProfileUpdatePayload(input: {
+  full_name: string;
+  phone?: string;
+  nationality?: string;
+}): { full_name: string; phone?: string; nationality?: string } {
+  const payload: { full_name: string; phone?: string; nationality?: string } = {
+    full_name: input.full_name.trim(),
+  };
+  const phone = String(normalizePhoneInput(input.phone ?? '') ?? '');
+  if (phone) payload.phone = phone;
+  const nationality = (input.nationality ?? '').trim();
+  if (nationality) payload.nationality = nationality;
+  return payload;
+}
+
 export const forgotPasswordSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Invalid email address'),
 });

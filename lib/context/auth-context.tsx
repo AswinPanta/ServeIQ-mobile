@@ -750,6 +750,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ? API_ENDPOINTS.AUTH.GUEST_ME
       : API_ENDPOINTS.AUTH.USER_ME;
 
+    // Backend PATCH /auth/{guests,users}/me only accepts full_name/phone/
+    // nationality — Pydantic silently DROPS everything else (name, email,
+    // profile_photo), which is why edits used to look saved and then revert
+    // on the next launch. Map our `name` → `full_name` and send only what the
+    // schema accepts; the remaining fields still merge into local state below.
+    const payload: Record<string, string> = {};
+    const fullName = (data.full_name ?? data.name ?? '').trim();
+    if (fullName) payload.full_name = fullName;
+    const phone = (data.phone ?? '').replace(/[\s()-]/g, '');
+    if (phone) payload.phone = phone;
+    const nationality = (data.nationality ?? '').trim();
+    if (nationality) payload.nationality = nationality;
+
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'PATCH',
@@ -757,7 +770,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       const rawBody = await response.json().catch(() => ({}));
@@ -769,7 +782,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const updated: GuestProfile = (rawBody.success === true && rawBody.data) ? rawBody.data : rawBody;
-      const merged = { ...(user as GuestProfile), ...data, ...updated } as PortalProfile;
+      // The server echoes full_name, not name — keep the display field in sync
+      // so the header/profile shows what was actually saved.
+      const serverName = (updated as GuestProfile).full_name || payload.full_name;
+      const merged = {
+        ...(user as GuestProfile),
+        ...data,
+        ...updated,
+        ...(serverName ? { full_name: serverName, name: serverName } : {}),
+      } as PortalProfile;
       setUser(merged);
       try {
         const keys = getPortalStorageKeys(portal);
