@@ -36,8 +36,18 @@ export default function TabLayout() {
             onTabPress={(i) => {
               // Prevent navigation if tab is already active (avoids reload/remount)
               if (state.index === i) return;
-              const route = state.routes[i];
-              navigation.navigate(route.name);
+              // Profile is a nested stack: rebuild the tab state so the tab always
+              // lands on its hub instead of a stale pushed screen (notifications,
+              // bookings, ...) left behind by an earlier visit or the home bell.
+              const routes = state.routes.map((r, idx) => ({
+                key: r.key,
+                name: r.name,
+                params: r.params,
+                ...(idx === i && r.name === 'profile'
+                  ? { state: { index: 0, routes: [{ name: 'index' }] } }
+                  : null),
+              }));
+              navigation.reset({ index: i, routes });
             }}
           />
         );

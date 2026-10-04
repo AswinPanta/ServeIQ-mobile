@@ -117,7 +117,7 @@ export default function HomeScreen() {
             <TouchableOpacity style={s.hostBtn} onPress={() => router.push(isHost ? '/(host)' : '/(host)/landing')}>
               <Text style={s.hostBtnText}>{t('home.becomeHost')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.notifBtn} onPress={() => router.push('/(tabs)/profile/notifications')} activeOpacity={0.7}>
+            <TouchableOpacity style={s.notifBtn} onPress={() => router.push('/notifications')} activeOpacity={0.7}>
               <IconSymbol name="notifications" size={18} color={BRAND.navyLight} />
               {unreadCount > 0 && <View style={s.notifDot} />}
             </TouchableOpacity>
