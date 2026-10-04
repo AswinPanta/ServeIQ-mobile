@@ -10,6 +10,8 @@ import { useNotificationStore } from '@/stores/useNotificationStore';
 import { SRS, SLATE, BG, BLUE, EMERALD, RED, AMBER } from '@/lib/constants/figma-tokens';
 import { RADIUS, GRAY } from '@/constants/portal-theme';
 
+import { PURPLE } from '@/lib/constants/figma-tokens';
+
 const DARK = SLATE[900];
 
 type FilterType = 'today' | 'arrivals' | 'departures' | 'confirmed' | 'in_house';
@@ -36,8 +38,6 @@ function getAvatarColor(name: string) {
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
-
-import { PURPLE } from '@/lib/constants/figma-tokens';
 
 export default function ReservationsScreen() {
   const { bookings } = useFrontDesk();

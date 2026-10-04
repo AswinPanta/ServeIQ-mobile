@@ -8,7 +8,7 @@ interface ThingsToKnowProps {
   checkInTime: string;
   checkOutTime: string;
   cancellationPolicy: string;
-  amenities?: Array<{ name: string }>;
+  amenities?: { name: string }[];
 }
 
 export function ThingsToKnow({ checkInTime, checkOutTime, cancellationPolicy, amenities }: ThingsToKnowProps) {

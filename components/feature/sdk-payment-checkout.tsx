@@ -90,12 +90,12 @@ interface KhaltiModule {
 // actually attempted — and every failure path reports back so the caller can
 // show a graceful in-app note instead of a dead spinner.
 function getStripeModule() {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   return require('@stripe/stripe-react-native') as typeof import('@stripe/stripe-react-native');
 }
 
 function getKhaltiModule(): KhaltiModule['default'] {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+   
   const mod = require('@bishaldahal/react-native-khalti-checkout') as KhaltiModule;
   return mod.default || (mod as unknown as KhaltiModule['default']);
 }
@@ -204,7 +204,7 @@ function RazorpayHost({ options, onReport }: { options: SdkRazorpayOptions; onRe
     startedRef.current = true;
     (async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+         
         const RazorpayCheckout = (require('react-native-razorpay') as typeof import('react-native-razorpay')).default;
         const data = await RazorpayCheckout.open({
           key: options.keyId,

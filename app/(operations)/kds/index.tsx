@@ -89,7 +89,7 @@ export default function KDScreen() {
 
   // Track start times via module-level store (avoids ref-during-render lint)
   const ticketIdsKey = tickets.map(t => t.id).join(',');
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+   
   useEffect(() => {
     tickets.forEach(t => {
       if (!ticketStartTimes.has(t.id)) ticketStartTimes.set(t.id, Date.now());

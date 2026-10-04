@@ -1,12 +1,12 @@
 // expo-router ships untranspulled ESM in this Jest setup — stub it so the pure
 // helper can be imported without booting the router.
+import { buildLoginHref } from '../AuthGuard';
+
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: jest.fn() }),
   useSegments: () => [],
   usePathname: () => '/',
 }));
-
-import { buildLoginHref } from '../AuthGuard';
 
 describe('buildLoginHref', () => {
   it('adds redirect for a portal base without a query string', () => {

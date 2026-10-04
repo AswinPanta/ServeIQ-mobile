@@ -368,7 +368,7 @@ export default function GuestCRMScreen() {
                 { label: 'Phone', val: newPhone, set: setNewPhone, keyboard: 'phone-pad' as const },
                 { label: 'Nationality', val: newNationality, set: setNewNationality },
                 { label: 'ID/Passport', val: newDocNumber, set: setNewDocNumber },
-              ] as Array<{ label: string; val: string; set: (v: string) => void; required?: boolean; keyboard?: 'default' | 'email-address' | 'phone-pad' }>).map(f => (
+              ] as { label: string; val: string; set: (v: string) => void; required?: boolean; keyboard?: 'default' | 'email-address' | 'phone-pad' }[]).map(f => (
                 <View key={f.label}>
                   <Text style={s.fieldLabel}>{f.label}{f.required ? <Text style={{ color: SRS.red }}> *</Text> : null}</Text>
                   <TextInput
