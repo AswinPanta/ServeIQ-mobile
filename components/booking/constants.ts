@@ -40,6 +40,46 @@ export const PAYMENT_METHODS: { key: PaymentGateway; name: string; desc: string 
 // ONLINE (pay full now), ADVANCE (pay 10–50% now, rest later), PAY_ON_ARRIVAL.
 export type PaymentMode = 'online' | 'advance' | 'arrival';
 
+/** Property-configured advance window, from the booking response. */
+export interface AdvanceBounds {
+  min: number;
+  max: number;
+}
+
+export const DEFAULT_ADVANCE_BOUNDS: AdvanceBounds = { min: 10, max: 50 };
+
+/**
+ * Keep an advance amount inside the property's [min%, max%] window of total.
+ * The backend validates this in create_payment_intent and rejects anything
+ * outside with "Advance amount must be at least …" / "cannot exceed …".
+ */
+export function clampAdvanceToWindow(
+  amount: number,
+  total: number,
+  bounds: AdvanceBounds = DEFAULT_ADVANCE_BOUNDS,
+): number {
+  if (!Number.isFinite(total) || total <= 0) return amount;
+  const min = Math.max(0, Math.min(100, bounds.min));
+  const max = Math.max(min, Math.min(100, bounds.max));
+  const lo = Math.round((total * min) / 100);
+  const hi = Math.round((total * max) / 100);
+  return Math.min(Math.max(Math.round(amount), lo), hi);
+}
+
+/**
+ * Percentage chips offered in the UI, sampled inside [min%, max%]. Always
+ * includes both endpoints so the full allowed window stays selectable.
+ */
+export function advanceChipPercents(bounds: AdvanceBounds = DEFAULT_ADVANCE_BOUNDS): number[] {
+  const min = Math.max(0, Math.min(100, bounds.min));
+  const max = Math.max(min, Math.min(100, bounds.max));
+  const step = Math.max(10, Math.round((max - min) / 4 / 10) * 10 || 10);
+  const chips: number[] = [];
+  for (let p = min; p < max; p += step) chips.push(p);
+  chips.push(max);
+  return Array.from(new Set(chips));
+}
+
 export const PAYMENT_MODES: { key: PaymentMode; name: string; desc: string }[] = [
   { key: 'online', name: 'Pay in full', desc: 'Pay the full amount online now' },
   { key: 'advance', name: 'Pay advance', desc: 'Pay a deposit (10–50%) now, the rest later' },

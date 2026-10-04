@@ -6,7 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BG, RED, SLATE, AMBER, PAYMENT } from '@/lib/constants/figma-tokens';
 import { styles } from './styles';
-import { NAVY, BLUE, TEAL, formatDate, PAYMENT_METHODS, PAYMENT_MODES, gatewayUnavailableNote } from './constants';
+import { NAVY, BLUE, TEAL, formatDate, PAYMENT_METHODS, PAYMENT_MODES, gatewayUnavailableNote, advanceChipPercents, DEFAULT_ADVANCE_BOUNDS } from './constants';
+import type { AdvanceBounds } from './constants';
 import type { PaymentGateway, PaymentMode, SelectedRoom, Step, GuestInfo } from './constants';
 
 export function BookingHeader({ onBack }: { onBack: () => void }) {
@@ -255,7 +256,7 @@ export function StepDetails({
 export function StepPayment({
   appliedPromo, promoCode, onPromoCodeChange, onApplyPromo, promoLoading, onClearPromo,
   selectedRooms, nights, currency, promoDiscount, total, checkIn, paymentMethod, onSelectPaymentMethod,
-  paymentMode, onSelectPaymentMode, advanceAmount, onChangeAdvanceAmount,
+  paymentMode, onSelectPaymentMode, advanceAmount, onChangeAdvanceAmount, advanceBounds,
 }: {
   appliedPromo: { code: string; discount: number } | null;
   promoCode: string;
@@ -275,8 +276,16 @@ export function StepPayment({
   onSelectPaymentMode: (m: PaymentMode) => void;
   advanceAmount: number | null;
   onChangeAdvanceAmount: (n: number | null) => void;
+  advanceBounds: AdvanceBounds;
 }) {
-  const advanceFallback = Math.round(total * 0.2);
+  // Default deposit and chips both stay inside the property's [min%, max%]
+  // window so the backend never rejects the ADVANCE payment.
+  const defaultAdvancePct = Math.min(
+    advanceBounds.max,
+    Math.max(advanceBounds.min, 20),
+  );
+  const advanceFallback = Math.round((total * defaultAdvancePct) / 100);
+  const advancePctChips = advanceChipPercents(advanceBounds);
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <Text style={styles.stepTitle}>Finish booking</Text>
@@ -371,9 +380,11 @@ export function StepPayment({
 
         {paymentMode === 'advance' && (
           <View style={styles.promoBox}>
-            <Text style={styles.fieldLabel}>Advance amount (10–50% of total)</Text>
+            <Text style={styles.fieldLabel}>
+              Advance amount ({advanceBounds.min}–{advanceBounds.max}% of total)
+            </Text>
             <View style={styles.chipRow}>
-              {[10, 20, 30, 40, 50].map(pct => {
+              {advancePctChips.map(pct => {
                 const amt = Math.round(total * pct / 100);
                 const active = (advanceAmount ?? advanceFallback) === amt;
                 return (

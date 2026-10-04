@@ -88,6 +88,7 @@ export default function BookingFlowScreen() {
           onSelectPaymentMode={flow.onSelectPaymentMode}
           advanceAmount={flow.advanceAmount}
           onChangeAdvanceAmount={flow.onChangeAdvanceAmount}
+          advanceBounds={flow.advanceBounds}
         />
       )}
 

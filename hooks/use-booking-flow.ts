@@ -18,7 +18,7 @@ import {
   calculateNights, isPaymentVerified,
   GATEWAYS_WITH_SDK, IS_EXPO_GO,
   STRIPE_PUBLISHABLE_KEY, RAZORPAY_KEY_ID, KHALTI_PUBLIC_KEY, KHALTI_ENVIRONMENT,
-  PAYMENT_METHODS,
+  PAYMENT_METHODS, clampAdvanceToWindow,
 } from '@/components/booking/constants';
 import type { Step, SelectedRoom, GuestInfo, PaymentGateway, PaymentMode } from '@/components/booking/constants';
 
@@ -86,6 +86,11 @@ export function useBookingFlow() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentGateway>('khalti');
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('online');
   const [advanceAmount, setAdvanceAmount] = useState<number | null>(null);
+  // Property-configured advance window (GET booking → min/max_advance_percentage).
+  // The backend rejects an ADVANCE payment outside [min%, max%] of total, so
+  // both the chip list and the final amount must stay inside it. Defaults match
+  // the backend's own fallback (10–50) before the booking response arrives.
+  const [advanceBounds, setAdvanceBounds] = useState<{ min: number; max: number }>({ min: 10, max: 50 });
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -95,6 +100,12 @@ export function useBookingFlow() {
   // Computed in the event/async handler that stores the result — never in render.
   const saveBookingResult = (r: BookingReservationResponse) => {
     setBookingResult(r);
+    if (r.min_advance_percentage || r.max_advance_percentage) {
+      setAdvanceBounds({
+        min: r.min_advance_percentage ?? 10,
+        max: r.max_advance_percentage ?? 50,
+      });
+    }
     const expires = r.soft_lock_expires_at ? new Date(r.soft_lock_expires_at).getTime() : Date.now() + 600000;
     setLockSeconds(Math.max(60, Math.round((expires - Date.now()) / 1000)));
   };
@@ -511,7 +522,15 @@ export function useBookingFlow() {
         {
           payment_method: isArrival ? 'PAY_ON_ARRIVAL' : paymentMode === 'advance' ? 'ADVANCE' : 'ONLINE',
           payment_gateway: isArrival ? null : paymentMethod,
-          advance_amount: paymentMode === 'advance' ? (advanceAmount ?? Math.round(finalTotal * 0.2)) : null,
+          // Clamp inside the property's [min%, max%] window — the backend
+          // raises "Advance amount must be at least/cannot exceed …" otherwise.
+          advance_amount: paymentMode === 'advance'
+            ? clampAdvanceToWindow(
+                advanceAmount ?? Math.round(finalTotal * 0.2),
+                finalTotal,
+                advanceBounds,
+              )
+            : null,
           // Khalti/eSewa require return_url to start with the backend's
           // configured base — the WebView intercepts the redirect to it after
           // payment and hands control back with authoritative identifiers.
@@ -780,7 +799,11 @@ export function useBookingFlow() {
       });
 
       // Navigate to confirmation
-      const paidAmount = isArrival ? 0 : paymentMode === 'advance' ? (advanceAmount ?? Math.round(finalTotal * 0.2)) : finalTotal;
+      const paidAmount = isArrival
+        ? 0
+        : paymentMode === 'advance'
+          ? clampAdvanceToWindow(advanceAmount ?? Math.round(finalTotal * 0.2), finalTotal, advanceBounds)
+          : finalTotal;
       router.replace({
         pathname: '/booking-confirmation',
         params: {
@@ -891,6 +914,7 @@ export function useBookingFlow() {
     onSelectPaymentMode: setPaymentMode,
     advanceAmount,
     onChangeAdvanceAmount: setAdvanceAmount,
+    advanceBounds,
     promoCode, onPromoCodeChange: setPromoCode,
     appliedPromo, onApplyPromo: handleApplyPromo, promoLoading, onClearPromo,
     promoDiscount, total, checkIn,
