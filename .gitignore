@@ -72,3 +72,6 @@ ServeIQ.zip
 
 # MCP config (contains API keys)
 .mcp.json
+
+# scratch
+tmp/
